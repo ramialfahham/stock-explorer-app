@@ -69,4 +69,29 @@ markets:
     index_name: ^GDAXI
     exchange_suffix: .DE
     source: yfinance
+    ingest_active: true
+
+  # European markets — activate after per-market yfinance coverage audit (see data_contract.md)
+  - market_code: fr_cac40
+    index_name: ^FCHI
+    exchange_suffix: .PA
+    source: yfinance
+    ingest_active: false
+
+  - market_code: nl_aex
+    index_name: ^AEX
+    exchange_suffix: .AS
+    source: yfinance
+    ingest_active: false
+
+  - market_code: ch_smi
+    index_name: ^SSMI
+    exchange_suffix: .SW
+    source: yfinance
+    ingest_active: false
+
+  - market_code: es_ibex35
+    index_name: ^IBEX
+    exchange_suffix: .MC
+    source: yfinance
     ingest_active: false

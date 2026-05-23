@@ -1,5 +1,5 @@
 -- Stock Swipe App — initial Supabase schema
--- Run in Supabase Dashboard → SQL Editor (New query → Run)
+-- Applied by scripts/apply_supabase_migrations.py
 
 -- ---------------------------------------------------------------------------
 -- Reference: active markets (aligned with docs/market_registry.yml)

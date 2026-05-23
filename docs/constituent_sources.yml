@@ -1,0 +1,41 @@
+# Constituent refresh sources (hybrid model).
+# Ingestion reads committed seeds from storage/seeds/{market_code}/constituents.csv.
+# Run scripts/refresh_constituents.py to update seeds from these sources.
+
+schema_version: "1.0"
+
+markets:
+  us_sp500:
+    provider: wikipedia
+    url: https://en.wikipedia.org/wiki/List_of_S%26P_500_companies
+    table_index: 0
+    ticker_column: Symbol
+    name_column: Security
+
+  uk_ftse100:
+    provider: wikipedia
+    url: https://en.wikipedia.org/wiki/FTSE_100_Index
+    table_index: 6
+    ticker_column: Ticker
+    name_column: Company
+
+  au_asx200:
+    provider: wikipedia
+    url: https://en.wikipedia.org/wiki/S%26P/ASX_200
+    table_index: 2
+    ticker_column: Code
+    name_column: Company
+
+  jp_nikkei225:
+    provider: manual
+    refresh_enabled: false
+    notes: >
+      No stable public Wikipedia table. Update storage/seeds/jp_nikkei225/constituents.csv
+      via scripts/import_constituents.py until an automated source is added.
+
+  de_dax:
+    provider: wikipedia
+    url: https://en.wikipedia.org/wiki/DAX
+    table_index: 4
+    ticker_column: Ticker
+    name_column: Company

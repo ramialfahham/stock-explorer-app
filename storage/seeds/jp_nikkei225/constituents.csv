@@ -1,0 +1,117 @@
+market_code,ticker,company_name,refreshed_at,source
+jp_nikkei225,7203,Toyota Motor,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6758,Sony Group,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9984,SoftBank Group,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6861,Keyence,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8306,MUFG,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9432,NTT,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6501,Hitachi,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8035,Tokyo Electron,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,4063,Shin-Etsu Chemical,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6902,Denso,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6954,Fanuc,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7741,HOYA,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6367,Daikin Industries,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,4519,Chugai Pharmaceutical,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6098,Recruit Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7974,Nintendo,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8058,Mitsubishi Corp,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9433,KDDI,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,4568,Daiichi Sankyo,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,3382,Seven & i Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7267,Honda Motor,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6503,Mitsubishi Electric,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8802,Mitsubishi Estate,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8411,Mizuho Financial,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8766,Tokio Marine Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,2914,Japan Tobacco,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6981,Murata Manufacturing,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6273,SMC,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,4901,Fujifilm Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7751,Canon,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8031,Mitsui & Co,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9020,East Japan Railway,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9022,Central Japan Railway,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8801,Mitsui Fudosan,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,4502,Takeda Pharmaceutical,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8001,Itochu,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8002,Marubeni,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,3407,Asahi Group Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,2502,Asahi Group Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,2801,Kikkoman,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,2802,Ajinomoto,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,5108,Bridgestone,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,5401,Nippon Steel,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,5713,Sumitomo Metal Mining,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6301,Komatsu,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6326,Kubota,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6594,Nidec,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6645,Omron,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6701,NEC,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6702,Fujitsu,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6723,Renesas Electronics,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6752,Panasonic Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6762,TDK,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6770,Alps Alpine,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6841,Yokogawa Electric,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6857,Advantest,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6908,Iris Ohyama,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6971,Kyocera,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6976,Canon Electronics,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,6988,Nitto Denko,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7003,Mitsui E&S Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7011,Mitsubishi Heavy Industries,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7012,Kawasaki Heavy Industries,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7013,IHI,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7201,Nissan Motor,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7202,Isuzu Motors,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7205,Hino Motors,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7261,Mazda Motor,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7269,Suzuki Motor,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7270,Subaru,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7272,Yamaha Motor,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7731,Nikon,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7733,Olympus,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7735,SCREEN Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7752,Ricoh,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7832,BANDAI NAMCO Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7911,Toppan Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7912,Dai Nippon Printing,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,7951,Yamaha,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8005,Showa Shell Sekiyu,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8015,Toyota Tsusho,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8233,Takashimaya,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8267,Aeon,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8308,Resona Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8309,Sumitomo Mitsui Trust,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8316,Sumitomo Mitsui Financial,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8591,ORIX,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8601,Daiwa Securities,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8604,Nomura Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8630,Sompo Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8725,MS&AD Insurance,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8750,Dai-ichi Life Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8795,T&D Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8804,City Development,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,8830,SUMCO,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9001,Tobu Railway,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9005,Keio Corp,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9007,Odakyu Electric Railway,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9008,Keisei Electric Railway,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9009,Keihan Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9021,West Japan Railway,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9101,Mitsui O.S.K. Lines,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9104,Mitsui OSK Lines,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9107,Kawasaki Kisen,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9201,Japan Airlines,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9202,ANA Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9301,Mitsubishi Logistics,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9412,Skylark Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9531,Tokyo Gas,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9532,Osaka Gas,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9602,Toho,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9735,Secom,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9766,Konami Group,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9843,Nitori Holdings,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9962,MISUMI Group,2026-05-23T16:58:30.477501+00:00,import
+jp_nikkei225,9983,Fast Retailing,2026-05-23T16:58:30.477501+00:00,import

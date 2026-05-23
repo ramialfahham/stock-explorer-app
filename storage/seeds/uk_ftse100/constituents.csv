@@ -1,0 +1,101 @@
+market_code,ticker,company_name,refreshed_at,source
+uk_ftse100,III,3i,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ADM,Admiral Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,AAF,Airtel Africa,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ALW,Alliance Witan,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,AAL,Anglo American plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ANTO,Antofagasta plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ABF,Associated British Foods,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,AZN,AstraZeneca,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,AUTO,Autotrader Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,AV,Aviva,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BAB,Babcock International,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BA,BAE Systems,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BARC,Barclays,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BTRW,Barratt Redrow,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BEZ,Beazley,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BKG,Berkeley Group Holdings,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BP,BP,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BATS,British American Tobacco,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BLND,British Land,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BT.A,BT Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BNZL,Bunzl,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BRBY,Burberry Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,CNA,Centrica,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,CCEP,Coca-Cola Europacific Partners,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,CCH,Coca-Cola HBC,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,CPG,Compass Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,CTEC,Convatec,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,CRDA,Croda International,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,DCC,DCC plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,DGE,Diageo,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,DPLM,Diploma,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,EDV,Endeavour Mining,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ENT,Entain,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,EXPN,Experian,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,FCIT,F & C Investment Trust,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,FRES,Fresnillo plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,GAW,Games Workshop,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,GLEN,Glencore,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,GSK,GSK plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,HLN,Haleon,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,HLMA,Halma plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,HSX,Hiscox,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,HWDN,Howdens Joinery,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,HSBA,HSBC,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ICG,ICG,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,IGG,IG Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,IHG,IHG Hotels & Resorts,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,IMI,IMI,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,IMB,Imperial Brands,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,INF,Informa,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,IAG,International Airlines Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ITRK,Intertek,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,JD,JD Sports,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BGEO,Lion Finance Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,KGF,Kingfisher plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,LAND,Land Securities,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,LGEN,Legal & General,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,LLOY,Lloyds Banking Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,LMP,LondonMetric Property,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,LSEG,London Stock Exchange Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,MNG,M&G,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,MKS,Marks & Spencer,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,MRO,Melrose Industries,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,MTLN,Metlen Energy & Metals,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,MNDI,Mondi,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,NG,National Grid plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,NWG,NatWest Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,NXT,Next plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,PSON,Pearson plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,PSH,Pershing Square Holdings,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,PSN,Persimmon,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,PCT,Polar Capital Technology Trust,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,PRU,Prudential plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,RKT,Reckitt,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,REL,RELX,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,RTO,Rentokil Initial,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,RMV,Rightmove,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,RIO,Rio Tinto,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,RR,Rolls-Royce Holdings,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SGE,Sage Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SBRY,Sainsbury's,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SDR,Schroders,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SMT,Scottish Mortgage Investment Trust,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SGRO,Segro,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SVT,Severn Trent,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SHEL,Shell plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SMIN,Smiths Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SN,Smith & Nephew,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SPX,Spirax Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SSE,SSE plc,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,STAN,Standard Chartered,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,SDLF,Standard Life,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,STJ,St. James's Place,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,TSCO,Tesco,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,BBOX,Tritax Big Box REIT,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,ULVR,Unilever,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,UU,United Utilities,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,VOD,Vodafone Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,WEIR,Weir Group,2026-05-23T16:57:41.217356+00:00,wikipedia
+uk_ftse100,WTB,Whitbread,2026-05-23T16:57:41.217356+00:00,wikipedia

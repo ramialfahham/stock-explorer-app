@@ -1,0 +1,139 @@
+# Operations guide — Stock Swipe App
+
+How production data moves and how to respond when it breaks. Product rules live in
+[`north_star.md`](north_star.md); field-level contracts in [`data_contract.md`](data_contract.md).
+
+---
+
+## Production architecture
+
+```
+GitHub Actions (schedule)
+  → refresh constituents (optional / on change)
+  → run_ingestion.py (yfinance → parquet)
+  → dbt build (DuckDB)
+  → check_pipeline_completeness.py
+  → export_to_supabase.py
+  → Streamlit reads Supabase (anon key)
+```
+
+Nothing in this path runs on a developer laptop in production.
+
+---
+
+## Schedules
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| [`ci-validate.yml`](../.github/workflows/ci-validate.yml) | Every PR + push to `main` | Fast integrity checks (Tier A/B) |
+| [`data_pipeline.yml`](../.github/workflows/data_pipeline.yml) | Mon–Fri 06:00 UTC + manual | Full ingest, dbt, completeness, export (Tier C) |
+
+Fundamentals target: **weekly** full refresh. Daily cron is a placeholder until fundamentals
+ingestion exists; adjust cron when Phase B ships.
+
+News (Phase 2): separate workflow, daily, does not block fundamentals export.
+
+---
+
+## Secrets (GitHub Actions)
+
+| Secret | Used by |
+|--------|---------|
+| `SUPABASE_URL` | Export |
+| `SUPABASE_SERVICE_ROLE_KEY` | Export (bypasses RLS) |
+
+Streamlit uses the **anon** key in its own hosting secrets — not in the data pipeline.
+
+---
+
+## Active markets
+
+Synced from [`market_registry.yml`](market_registry.yml). After registry edits:
+
+```bash
+python scripts/sync_dbt_vars.py
+python scripts/check_registry_var_sync.py
+```
+
+| market_code | Index | Status |
+|-------------|-------|--------|
+| `us_sp500` | ^GSPC | Active |
+| `uk_ftse100` | ^FTSE | Active |
+| `jp_nikkei225` | ^N225 | Active (manual seed) |
+| `au_asx200` | ^AXJO | Active |
+| `de_dax` | ^GDAXI | Active |
+
+**Planned (inactive until coverage audit):** `fr_cac40`, `nl_aex`, `ch_smi`, `es_ibex35`.
+
+---
+
+## Manual operations
+
+### Apply database migrations
+
+```bash
+python scripts/apply_supabase_migrations.py
+python scripts/apply_supabase_migrations.py --dry-run
+```
+
+Also runs automatically via GitHub Actions (`supabase-migrate` workflow) when migration
+files change on `main`, and before the data pipeline export step.
+
+### Refresh constituents
+
+```bash
+python scripts/refresh_constituents.py
+python scripts/refresh_constituents.py --market de_dax
+```
+
+### Run ingestion locally
+
+```bash
+python scripts/run_ingestion.py
+python scripts/run_ingestion.py --max-tickers 5   # smoke test
+```
+
+### Full local transform (when models exist)
+
+```bash
+dbt build --project-dir dbt_analytics --profiles-dir .
+```
+
+### Completeness check (post-dbt)
+
+```bash
+python scripts/check_pipeline_completeness.py
+python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.db
+```
+
+---
+
+## Failure playbooks
+
+### Pipeline failed on completeness gate
+
+1. Check logs for which market failed (eligible count vs raw missing).
+2. If yfinance outage: re-run workflow; Supabase retains last export.
+3. If single market degraded: set `ingest_active: false` temporarily, sync dbt vars, re-run.
+4. Do not export partial empty tables over good data.
+
+### Registry / dbt var drift
+
+CI fails `check_registry_var_sync.py`. Run `sync_dbt_vars.py` and commit.
+
+### New Supabase migration
+
+Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migrations.py` or the
+`supabase-migrate` GitHub Action — not the Dashboard SQL Editor. See [`supabase_setup.md`](supabase_setup.md).
+
+---
+
+## Monitoring (v1)
+
+Until dashboards exist, rely on:
+
+- GitHub Actions run status on `main`
+- Completeness script stdout (eligible counts per market)
+- Manual spot-check in Supabase table editor after export ships
+
+Target: every active market **≥ 20** card-eligible tickers (warn below, fail below 5).
