@@ -1,16 +1,9 @@
-
-# Name your project! Project names should contain only lowercase characters
-# and underscores. A good package name should reflect your organization's
-# name or the intended use of these models
 name: 'dbt_analytics'
 version: '1.0.0'
+config-version: 2
 
-# This setting configures which "profile" dbt uses for this project.
 profile: 'dbt_analytics'
 
-# These configurations specify where dbt should look for different types of files.
-# The `model-paths` config, for example, states that models in this project can be
-# found in the "models/" directory. You probably won't need to change these!
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -18,19 +11,45 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
-clean-targets:         # directories to be removed by `dbt clean`
+target-path: "target"
+clean-targets:
   - "target"
   - "dbt_packages"
 
+vars:
+  raw_path: '../storage/raw'
+  # Derived from docs/market_registry.yml (ingest_active: true).
+  # DO NOT edit by hand — run scripts/sync_dbt_vars.py after updating the registry.
+  # scripts/check_registry_var_sync.py (CI) enforces sorted-set equality with the registry.
+  active_market_codes:
+    - au_asx200
+    - jp_nikkei225
+    - uk_ftse100
+    - us_sp500
 
-# Configuring models
-# Full documentation: https://docs.getdbt.com/docs/configuring-models
-
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
 models:
   dbt_analytics:
-    # Config indicated by + and applies to all files under models/example/
-    example:
+    1_staging:
       +materialized: view
+      +schema: staging
+      +tags: [staging]
+
+    2_base:
+      +materialized: view
+      +schema: base
+      +tags: [base]
+
+    3_core:
+      +materialized: table
+      +schema: core
+      +tags: [core]
+
+    4_intermediate:
+      +materialized: table
+      +schema: intermediate
+      +tags: [intermediate]
+
+    5_marts:
+      +materialized: table
+      +schema: marts
+      +tags: [marts]

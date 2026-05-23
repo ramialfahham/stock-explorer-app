@@ -1,0 +1,27 @@
+---
+description: What this project is, the stack, and where the authoritative docs live.
+alwaysApply: true
+---
+
+# Project context
+
+- **What:** Card-based stock dashboard — see [`docs/project_context.md`](../../docs/project_context.md).
+- **Market partition key:** `market_code` from [`docs/market_registry.yml`](../../docs/market_registry.yml).
+
+## Authoritative docs (non-negotiable)
+
+- Agent behaviour: [`docs/working_agreement.md`](../../docs/working_agreement.md)
+- dbt layering: [`docs/layering.md`](../../docs/layering.md)
+- Engineering standards: [`docs/engineering_standards.md`](../../docs/engineering_standards.md)
+- Stock-specific extensions: [`docs/project_context.md`](../../docs/project_context.md)
+
+## dbt project
+
+- Path: `dbt_analytics/`
+- Layers: `models/1_staging/` → `2_base/` → `3_core/` → `4_intermediate/` → `5_marts/`
+- Run from repo root: `dbt <command> --project-dir dbt_analytics --profiles-dir .`
+
+## Ingestion
+
+- Raw parquet to `storage/raw/{market_code}/`
+- No business logic in ingestion — raw fields only

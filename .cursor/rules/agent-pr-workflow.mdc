@@ -1,0 +1,16 @@
+---
+description: Branch, PR, and post-merge housekeeping when the user requests implementation work.
+alwaysApply: true
+---
+
+# PR workflow (implementation tasks)
+
+When the user asks to **implement**, **fix** (code change), **execute the plan**, or similar **explicit build intent**:
+
+1. **Start from main**: `git fetch origin`, `git checkout main`, `git pull origin main`.
+2. **Branch**: create `feature/<short-kebab-topic>` or `fix/<short-kebab-topic>` from `main`. Do not implement on `main`.
+3. **Work**: make the agreed changes; run project checks (`python scripts/check_layer_contract.py`, `dbt parse`, etc.) when edits warrant it.
+4. **Ship**: commit; push with `git push -u origin HEAD`; open a PR with `gh pr create` targeting `main`.
+5. **Reply** with the **PR link** and a short summary.
+
+This supplements [`agent-behavior.mdc`](agent-behavior.mdc) and [`docs/working_agreement.md`](../../docs/working_agreement.md).

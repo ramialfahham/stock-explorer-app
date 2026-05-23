@@ -1,0 +1,13 @@
+selectors:
+  - name: staging
+    definition:
+      method: path
+      value: models/1_staging
+  - name: base
+    definition:
+      method: path
+      value: models/2_base
+  - name: core
+    definition:
+      method: path
+      value: models/3_core

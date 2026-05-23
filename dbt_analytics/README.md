@@ -1,15 +1,36 @@
-Welcome to your new dbt project!
+# dbt_analytics
 
-### Using the starter project
+dbt project for the Stock Swipe App transform layer.
 
-Try running the following commands:
-- dbt run
-- dbt test
+## Docs (authoritative)
 
+- [`docs/layering.md`](../docs/layering.md)
+- [`docs/engineering_standards.md`](../docs/engineering_standards.md)
+- [`docs/working_agreement.md`](../docs/working_agreement.md)
+- [`docs/project_context.md`](../docs/project_context.md) — DuckDB layout, yfinance naming, export
 
-### Resources:
-- Learn more about dbt [in the docs](https://docs.getdbt.com/docs/introduction)
-- Check out [Discourse](https://discourse.getdbt.com/) for commonly asked questions and answers
-- Join the [chat](https://community.getdbt.com/) on Slack for live discussions and support
-- Find [dbt events](https://events.getdbt.com) near you
-- Check out [the blog](https://blog.getdbt.com/) for the latest news on dbt's development and best practices
+## Layout
+
+```
+models/
+  1_staging/<source>/   # stg_<source>__<entity>
+  2_base/               # base_<domain>__<entity>
+  3_core/               # dim_*, fct_*
+  4_intermediate/       # int_<domain>__<purpose>
+  5_marts/              # mart_<domain>__<purpose>
+```
+
+## Commands (from repo root)
+
+```bash
+dbt debug   --project-dir dbt_analytics --profiles-dir .
+dbt deps    --project-dir dbt_analytics --profiles-dir .
+dbt parse   --project-dir dbt_analytics --profiles-dir .
+dbt build   --project-dir dbt_analytics --profiles-dir .
+```
+
+After changing `docs/market_registry.yml`:
+
+```bash
+python scripts/sync_dbt_vars.py
+```

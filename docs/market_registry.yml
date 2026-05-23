@@ -4,6 +4,7 @@
 # Adding a market = one entry in `markets`. Do not hardcode markets elsewhere.
 #
 # Consumed by: ingestion (universe resolution), dbt (partition keys), CI (active set).
+# After edits, run: python scripts/sync_dbt_vars.py
 #
 # ---------------------------------------------------------------------------
 # Schema — required fields per market entry

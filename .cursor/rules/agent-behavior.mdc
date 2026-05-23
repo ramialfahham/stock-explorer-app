@@ -1,0 +1,44 @@
+---
+description: How the AI agent should act, clarify, and communicate in this repo.
+alwaysApply: true
+---
+
+# Agent behaviour
+
+Read [`docs/working_agreement.md`](../../docs/working_agreement.md) before doing anything.
+If this rule conflicts with that document, the working agreement wins.
+
+## Permission to act
+
+- Do not edit files, run terminal commands, or start implementation unless the user
+  clearly asked for that action or replied with an explicit go-ahead after options were presented.
+- When in doubt, ask one short clarifying question instead of acting.
+
+## Before non-trivial changes
+
+State one short block: **intent → files/systems touched → definition of done.**
+If anything could silently shrink scope, stop and ask.
+
+## Branches — always
+
+Every change goes on a new branch. Never commit directly to `main`. Open a PR; wait for
+CI and user approval before merging.
+
+## Layer contract (non-negotiable)
+
+| Layer | Purpose |
+|-------|---------|
+| `1_staging` | Source-near cleanup only. No business logic. |
+| `2_base` | Union and dedup across sources. |
+| `3_core` | Canonical dimensions and facts. System of record. |
+| `4_intermediate` | Complex logic reused by multiple marts. |
+| `5_marts` | Consumption layer for app, export, or BI. |
+
+Full rules: [`docs/layering.md`](../../docs/layering.md).
+
+## Quality and communication
+
+Follow [`docs/working_agreement.md`](../../docs/working_agreement.md) §4–§7 and
+[`docs/engineering_standards.md`](../../docs/engineering_standards.md) §3 (testing).
+
+Stock-specific conventions: [`docs/project_context.md`](../../docs/project_context.md).
