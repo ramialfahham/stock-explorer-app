@@ -1,0 +1,201 @@
+market_code,ticker,company_name,refreshed_at,source
+au_asx200,360,Life360,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,4DX,4DMedical,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,A2M,a2 Milk Company,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AAI,Alcoa,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AFI,Australian Foundation Investment Company,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AGL,AGL Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AIA,Auckland International Airport Limited,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ALD,Ampol,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ALK,Alkane Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ALL,Aristocrat Leisure,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ALQ,ALS,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ALX,Atlas Arteria,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AMC,Amcor,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AMP,AMP,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ANN,Ansell,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ANZ,Australia & New Zealand Banking Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,APA,APA Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,APE,Eagers Automotive,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ARB,ARB Corporation,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ARG,Argo Investments,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ASB,Austal,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ASK,Abacus Storage King,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ASX,ASX,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AUB,AUB Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,AZJ,Aurizon,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BEN,Bendigo & Adelaide Bank,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BFL,BSP Financial Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BGA,Bega Cheese,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BGL,Bellevue Gold,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BHP,BHP,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BOQ,Bank of Queensland,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BPT,Beach Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BRG,Breville Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BSL,BlueScope,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BWP,BWP Trust,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,BXB,Brambles,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CAR,CAR Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CBA,Commonwealth Bank,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CDA,Codan,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CEN,Contact Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CGF,Challenger,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CHC,Charter Hall,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CIA,Champion Iron,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CIP,Centuria Industrial REIT,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CLW,Charter Hall Long WALE REIT,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CMM,Capricorn Metals,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CNU,Chorus,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,COH,Cochlear,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,COL,Coles Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CPU,Computershare,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CQR,Charter Hall Retail REIT,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CSC,Capstone Copper,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CSL,CSL,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CTD,Corporate Travel Management,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CWY,Cleanaway,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,CYL,Catalyst Metals,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DBI,Dalrymple Bay Infrastructure,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DNL,Dyno Nobel,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DOW,Downer Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DRO,Droneshield,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DRR,Deterra Royalties,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DXS,Dexus,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,DYL,Deep Yellow,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,EBO,EBOS Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,EDV,Endeavour Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,EMR,Emerald Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,EOS,Electro Optic Systems Holdings,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,EVN,Evolution Mining,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,EVT,EVT,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,FBU,Fletcher Building,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,FLT,Flight Centre Travel Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,FMG,Fortescue,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,FPH,Fisher & Paykel Healthcare,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,FRW,Freightways Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GDG,Generation Development Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GGP,Greatland Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GMD,Genesis Minerals,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GMG,Goodman Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GNE,Genesis Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GPT,GPT Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,GQG,GQG Partners,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,HDN,HomeCo Daily Needs REIT,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,HUB,HUB24,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,HVN,Harvey Norman,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,IAG,Insurance Australia Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,IFL,Insignia Financial,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,IFT,Infratil,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,IGO,IGO,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ILU,Iluka Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,IMD,IMDEX,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,JBH,JB Hi-Fi,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,JHX,James Hardie,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,L1G,L1 Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,LLC,Lendlease,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,LNW,Light & Wonder,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,LOV,Lovisa,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,LSF,L1 Long Short Fund,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,LTR,Liontown Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,LYC,Lynas Rare Earths,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MCY,Mercury NZ,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MEZ,Meridian Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MFF,MFF Capital Investments,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MFG,Magellan Financial Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MGR,Mirvac,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MIN,Mineral Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MND,Monadelphous Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MPL,Medibank,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MQG,Macquarie Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MSB,Mesoblast,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MTS,Metcash,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,MXT,Metrics Master Income Trust,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NAB,National Australia Bank,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NEM,Newmont,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NHC,New Hope,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NHF,Nib,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NIC,Nickel Industries,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NSR,National Storage,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NST,Northern Star Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NWH,NRW Holdings,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NWL,Netwealth Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NWS,News Corp Class B,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NXG,Nexgen Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,NXT,NextDC,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,OBM,Ora Banda Mining,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ORA,Orora,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ORG,Origin Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ORI,Orica,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PDI,Predictive Discovery,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PDN,Paladin Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PLS,PLS Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PME,Pro Medicus,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PMV,Premier Investments,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PNI,Pinnacle Investment Management,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PPT,Perpetual,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PRN,Perenti,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PRU,Perseus Mining,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,PXA,Pexa Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,QAN,Qantas,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,QBE,QBE Insurance,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,QUB,Qube Holdings,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RDX,Redox,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,REA,REA Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,REG,Regis Healthcare,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,REH,Reece Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RGN,Region Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RHC,Ramsay Health Care,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RIO,Rio Tinto,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RMD,ResMed,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RMS,Ramelius Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RRL,Regis Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RSG,Resolute Mining,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RWC,Reliance Worldwide Corporation,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,RYM,Ryman Healthcare,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,S32,South32,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SCG,Scentre Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SDF,Steadfast Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SEK,Seek,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SFR,Sandfire Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SGH,SGH,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SGM,Sims Metal,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SGP,Stockland,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SHL,Sonic Healthcare,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SIG,Sigma Healthcare,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SMR,Stanmore Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SNZ,Summerset Group Holdings,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SOL,Soul Patts,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SPK,Spark New Zealand,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,STO,Santos,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SUL,Super Retail Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,SUN,Suncorp,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TAH,Tabcorp,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TCL,Transurban,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TLC,The Lottery Corporation,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TLS,Telstra,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TLX,Telix Pharmaceuticals,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TNE,TechnologyOne,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TPG,TPG Telecom,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TUA,Tuas,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,TWE,Treasury Wine Estates,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,VAU,Vault Minerals,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,VCX,Vicinity Centres,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,VEA,Viva Energy,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,VGN,Virgin Australia Holdings,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,VNT,Ventia Services Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WAF,West African Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WAM,WAM Capital,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WBC,Westpac,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WDS,Woodside Energy Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WES,Wesfarmers,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WGX,Westgold Resources,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WHC,Whitehaven Coal,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WLE,WAM Leaders,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WOR,Worley,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WOW,Woolworths Group,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,WTC,Wisetech Global,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,XRO,Xero,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,XYX,"Block, Inc.",2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,YAL,Yancoal Australia,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ZIM,Zimplats Holdings,2026-05-23T16:57:43.058304+00:00,wikipedia
+au_asx200,ZIP,Zip,2026-05-23T16:57:43.058304+00:00,wikipedia

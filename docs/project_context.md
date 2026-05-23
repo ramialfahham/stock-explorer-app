@@ -65,6 +65,10 @@ dbt <command> --project-dir dbt_analytics --profiles-dir .
 
 - No business logic in ingestion — raw fields only, no derived metrics.
 - Reads active markets from `market_registry.yml`; nothing hardcoded.
+- **Hybrid constituents:** committed seeds in `storage/seeds/{market_code}/constituents.csv`;
+  refresh via `scripts/refresh_constituents.py` using `docs/constituent_sources.yml`.
+- Raw parquet output: `storage/raw/{market_code}/yf_constituents.parquet`, `yf_daily_prices.parquet`.
+- Run ingestion: `python scripts/run_ingestion.py` (optional `--max-tickers` for local dev).
 - Credentials via `.env` + python-dotenv only.
 
 ---

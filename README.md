@@ -79,6 +79,19 @@ stock-swipe-app/
 
 4. **Markets** — see `docs/market_registry.yml`. After edits, run `python scripts/sync_dbt_vars.py`.
 
+5. **Refresh constituents** (optional — updates seed CSVs from Wikipedia):
+
+   ```bash
+   python scripts/refresh_constituents.py
+   ```
+
+6. **Run ingestion** (writes parquet to `storage/raw/`):
+
+   ```bash
+   python scripts/run_ingestion.py --max-tickers 5   # small local test
+   python scripts/run_ingestion.py                   # all active markets
+   ```
+
 ## Standards (non-negotiable)
 
 General templates (do not edit for project-specific rules — use `project_context.md` instead):
