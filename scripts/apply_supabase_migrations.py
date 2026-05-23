@@ -2,9 +2,17 @@
 
 Tracks applied files in public.schema_migrations. Safe to run locally and in CI.
 
-Requires in .env (or GitHub Actions secrets):
-  SUPABASE_DB_URL — recommended for CI (Session pooler URI from Supabase Dashboard)
-  or SUPABASE_URL + SUPABASE_DB_PASSWORD — local direct connection
+Requires in .env (or GitHub Actions secrets) — pick one approach:
+
+  A) CI-friendly (recommended):
+     SUPABASE_URL + SUPABASE_DB_PASSWORD + SUPABASE_DB_HOST
+     (+ optional SUPABASE_DB_PORT, default 5432 Session pooler)
+
+  B) Full URI:
+     SUPABASE_DB_URL (Session pooler URI from Supabase Connect dialog)
+
+  C) Local only:
+     SUPABASE_URL + SUPABASE_DB_PASSWORD (direct db.*.supabase.co)
 
 Usage:
     python scripts/apply_supabase_migrations.py
@@ -30,6 +38,15 @@ MIGRATION_TABLE = "public.schema_migrations"
 MIGRATION_FILE_PATTERN = re.compile(r"^\d{3}_.+\.sql$")
 
 
+def _strip_env(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        value = value[1:-1]
+    return value.strip() or None
+
+
 def _project_ref_from_supabase_url(supabase_url: str) -> str:
     host = supabase_url.replace("https://", "").replace("http://", "").split("/")[0]
     ref = host.split(".")[0]
@@ -38,24 +55,39 @@ def _project_ref_from_supabase_url(supabase_url: str) -> str:
     return ref
 
 
-def resolve_database_url() -> str:
-    for key in ("SUPABASE_DB_URL", "SUPABASE_DB_POOLER_URL"):
-        value = os.getenv(key)
-        if value:
-            return _ensure_sslmode(value.strip())
+def _build_pooler_url(project_ref: str, password: str, pooler_host: str, port: str) -> str:
+    host = pooler_host.removeprefix("https://").removeprefix("http://").split("/")[0]
+    return (
+        f"postgresql://postgres.{project_ref}:{quote_plus(password)}"
+        f"@{host}:{port}/postgres"
+    )
 
-    supabase_url = os.getenv("SUPABASE_URL")
-    password = os.getenv("SUPABASE_DB_PASSWORD")
-    if not supabase_url or not password:
-        raise RuntimeError(
-            "Set SUPABASE_DB_URL (Session pooler URI — required in GitHub Actions) "
-            "or both SUPABASE_URL and SUPABASE_DB_PASSWORD for local direct connection."
+
+def resolve_database_url() -> str:
+    supabase_url = _strip_env(os.getenv("SUPABASE_URL"))
+    password = _strip_env(os.getenv("SUPABASE_DB_PASSWORD"))
+    pooler_host = _strip_env(os.getenv("SUPABASE_DB_HOST"))
+    pooler_port = _strip_env(os.getenv("SUPABASE_DB_PORT")) or "5432"
+
+    if supabase_url and password and pooler_host:
+        ref = _project_ref_from_supabase_url(supabase_url)
+        return _ensure_sslmode(_build_pooler_url(ref, password, pooler_host, pooler_port))
+
+    for key in ("SUPABASE_DB_URL", "SUPABASE_DB_POOLER_URL"):
+        value = _strip_env(os.getenv(key))
+        if value:
+            return _ensure_sslmode(value)
+
+    if supabase_url and password:
+        ref = _project_ref_from_supabase_url(supabase_url)
+        return _ensure_sslmode(
+            f"postgresql://postgres:{quote_plus(password)}@db.{ref}.supabase.co:5432/postgres"
         )
 
-    ref = _project_ref_from_supabase_url(supabase_url)
-    encoded_password = quote_plus(password)
-    return _ensure_sslmode(
-        f"postgresql://postgres:{encoded_password}@db.{ref}.supabase.co:5432/postgres"
+    raise RuntimeError(
+        "Set SUPABASE_URL + SUPABASE_DB_PASSWORD + SUPABASE_DB_HOST for CI pooler access, "
+        "or SUPABASE_DB_URL (full Session pooler URI), "
+        "or SUPABASE_URL + SUPABASE_DB_PASSWORD for local direct connection."
     )
 
 
@@ -178,11 +210,11 @@ def main(argv: list[str] | None = None) -> int:
         conn = _connect(db_url)
     except Exception as exc:
         print(f"apply_supabase_migrations: database connection failed — {exc}", file=sys.stderr)
-        if os.getenv("GITHUB_ACTIONS") and not os.getenv("SUPABASE_DB_URL"):
+        if os.getenv("GITHUB_ACTIONS"):
             print(
-                "CI hint: GitHub runners cannot use the direct db.*.supabase.co host. "
-                "Add secret SUPABASE_DB_URL with the Session pooler URI from "
-                "Supabase → Project Settings → Database → Connection string → Session pooler.",
+                "CI hint: copy the exact pooler HOST from Supabase → Connect → Session pooler "
+                "(may be aws-1-REGION, not aws-0). Set GitHub secrets SUPABASE_DB_HOST, "
+                "SUPABASE_URL, and SUPABASE_DB_PASSWORD.",
                 file=sys.stderr,
             )
         return 1
