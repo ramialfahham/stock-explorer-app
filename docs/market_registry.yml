@@ -1,0 +1,71 @@
+# Stock Swipe — Market Registry
+# ==============================
+# Single source of truth for which stock markets the app ingests and serves.
+# Adding a market = one entry in `markets`. Do not hardcode markets elsewhere.
+#
+# Consumed by: ingestion (universe resolution), dbt (partition keys), CI (active set).
+#
+# ---------------------------------------------------------------------------
+# Schema — required fields per market entry
+# ---------------------------------------------------------------------------
+#
+# market_code       (string, required)
+#   Stable snake_case identifier. Used in parquet paths, dbt vars, and Supabase keys.
+#   Must be unique across all entries. Example: us_sp500
+#
+# index_name        (string, required)
+#   Benchmark index ticker as understood by `source`. Used to resolve the
+#   constituent universe for that market. Example: ^GSPC
+#
+# exchange_suffix   (string, required)
+#   Suffix appended to local tickers when querying `source`. Include the leading
+#   dot when the provider expects one (e.g. ".L" for London). Use "" when tickers
+#   need no suffix (typical for US listings on yfinance).
+#
+# source            (string, required)
+#   Data provider identifier. Currently supported: yfinance
+#
+# ingest_active     (boolean, required)
+#   When true, GitHub Actions ingestion includes this market. When false, the
+#   entry remains configured but is skipped (useful for pausing a market without
+#   deleting its definition).
+#
+# ---------------------------------------------------------------------------
+# Optional extensions (not required today; add only when a consumer needs them)
+# ---------------------------------------------------------------------------
+# display_name, currency, timezone, constituent_source, notes
+#
+# ---------------------------------------------------------------------------
+
+schema_version: "1.0"
+
+markets:
+  - market_code: us_sp500
+    index_name: ^GSPC
+    exchange_suffix: ""
+    source: yfinance
+    ingest_active: true
+
+  - market_code: uk_ftse100
+    index_name: ^FTSE
+    exchange_suffix: .L
+    source: yfinance
+    ingest_active: true
+
+  - market_code: jp_nikkei225
+    index_name: ^N225
+    exchange_suffix: .T
+    source: yfinance
+    ingest_active: true
+
+  - market_code: au_asx200
+    index_name: ^AXJO
+    exchange_suffix: .AX
+    source: yfinance
+    ingest_active: true
+
+  - market_code: de_dax
+    index_name: ^GDAXI
+    exchange_suffix: .DE
+    source: yfinance
+    ingest_active: false

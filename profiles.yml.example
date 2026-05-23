@@ -1,0 +1,10 @@
+# Copy to profiles.yml in the project root (same directory as this file).
+# Never commit profiles.yml.
+
+dbt_analytics:
+  outputs:
+    dev:
+      type: duckdb
+      path: storage/stock_data.db
+      threads: 4
+  target: dev

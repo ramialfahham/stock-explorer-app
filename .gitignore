@@ -1,0 +1,32 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Secrets and local config (never commit)
+.env
+profiles.yml
+
+# DuckDB and raw data
+storage/*.db
+storage/raw/*
+!storage/raw/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# dbt
+dbt_analytics/target/
+dbt_analytics/dbt_packages/
+dbt_analytics/logs/
+.user.yml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
