@@ -32,14 +32,20 @@ Nothing runs on a developer machine in production.
 
 ```
 stock-swipe-app/
-├── docs/market_registry.yml   # Active markets (registry-driven, no hardcoding)
+├── docs/
+│   ├── working_agreement.md     # Agent behaviour (non-negotiable, general template)
+│   ├── layering.md              # dbt layer rules (general template)
+│   ├── engineering_standards.md # Naming, testing, CI (general template)
+│   ├── project_context.md       # Stock-specific extensions to the templates
+│   ├── market_registry.yml      # Active markets (registry-driven)
+│   └── supabase_setup.md        # Supabase project + secrets checklist
+├── .cursor/rules/             # Cursor rules mirroring working_agreement.md
+├── supabase/migrations/       # SQL schema (run in Supabase SQL Editor)
+├── scripts/                   # Layer contract, registry sync, connection check
+├── dbt_analytics/             # dbt project (1_staging → 5_marts)
 ├── ingestion/                 # Raw data fetch scripts
-├── storage/
-│   ├── raw/                   # Parquet from ingestion (gitignored)
-│   └── stock_data.db          # Local DuckDB for dev (gitignored)
-├── dbt_analytics/             # dbt project (staging → marts)
 ├── frontend/                  # Streamlit app
-├── .github/workflows/         # CI pipeline
+├── .github/workflows/         # CI + data pipeline
 ├── profiles.yml.example       # Copy to profiles.yml for local dbt
 └── .env.example               # Copy to .env for Supabase credentials
 ```
@@ -61,20 +67,34 @@ stock-swipe-app/
    dbt debug --project-dir dbt_analytics --profiles-dir .
    ```
 
-3. **Configure Supabase** (when ready)
+3. **Configure Supabase**
+
+   Follow [`docs/supabase_setup.md`](docs/supabase_setup.md): create a project, run
+   `supabase/migrations/001_initial_schema.sql`, then:
 
    ```bash
    copy .env.example .env
-   # Edit .env with your Supabase project values
+   python scripts/check_supabase_connection.py
    ```
 
-4. **Markets** — see `docs/market_registry.yml` for the stock universe definition.
+4. **Markets** — see `docs/market_registry.yml`. After edits, run `python scripts/sync_dbt_vars.py`.
 
-## Engineering standards
+## Standards (non-negotiable)
+
+General templates (do not edit for project-specific rules — use `project_context.md` instead):
+
+- [`docs/working_agreement.md`](docs/working_agreement.md)
+- [`docs/layering.md`](docs/layering.md)
+- [`docs/engineering_standards.md`](docs/engineering_standards.md)
+
+Stock-specific extensions:
+
+- [`docs/project_context.md`](docs/project_context.md) — markets, DuckDB, ingestion, Supabase export
+
+## Project conventions
 
 - No business logic in ingestion — raw fields only
 - All credentials via `.env` + python-dotenv
-- dbt model layers: `1_staging/` → `3_core/` → `4_intermediate/` → `5_marts/`
-- Model naming: `stg_yf__<entity>`, `fct_<entity>`, `dim_<entity>`, `mart_<purpose>`
-- Every dbt model needs at least one test
+- dbt layers: `1_staging/` → `2_base/` → `3_core/` → `4_intermediate/` → `5_marts/`
 - Never commit `.env` or `profiles.yml`
+- Every PR must pass `ci-validate`

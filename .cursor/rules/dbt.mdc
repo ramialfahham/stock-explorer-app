@@ -1,0 +1,35 @@
+---
+description: dbt naming skeleton and pointers to layer and testing docs.
+globs: dbt_analytics/**/*.sql, dbt_analytics/**/*.yml, dbt_analytics/**/*.md
+alwaysApply: false
+---
+
+# dbt
+
+## Naming (from engineering_standards.md §1)
+
+- Staging: `stg_<source>__<entity>`
+- Base: `base_<domain>__<entity>`
+- Core: `dim_<entity>`, `fct_<entity>`
+- Intermediate: `int_<domain>__<purpose>`
+- Marts: `mart_<domain>__<purpose>`
+- Columns: snake_case; booleans `is_`/`has_`; timestamps `_at`; dates `_date`
+
+## Where rules live (do not re-derive here)
+
+- Layer contract: [`docs/layering.md`](../../docs/layering.md)
+- Testing, SQL structure, CI gate: [`docs/engineering_standards.md`](../../docs/engineering_standards.md)
+- Stock-specific: [`docs/project_context.md`](../../docs/project_context.md)
+
+## Mandatory guardrails
+
+- `1_staging`: one `stg_*` model per raw source table; no cross-source joins.
+- Staging SQL under `models/1_staging/<source>/`, never at `1_staging/` root.
+- `4_intermediate` must not `ref('mart_*')`.
+- Every model starts with import CTEs; named CTE chains only.
+- Every new model needs at least one meaningful test.
+
+## Tooling
+
+- Sync registry → dbt vars: `python scripts/sync_dbt_vars.py`
+- Layer contract: `python scripts/check_layer_contract.py`

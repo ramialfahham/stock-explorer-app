@@ -1,0 +1,21 @@
+---
+description: Pointers for the Python ingestion package.
+globs: ingestion/**/*.py, scripts/**/*.py
+alwaysApply: false
+---
+
+# Ingestion
+
+## Where rules live
+
+- General standards: [`docs/working_agreement.md`](../../docs/working_agreement.md),
+  [`docs/engineering_standards.md`](../../docs/engineering_standards.md) §7
+- Stock-specific ingestion contract: [`docs/project_context.md`](../../docs/project_context.md)
+- Market registry: [`docs/market_registry.yml`](../../docs/market_registry.yml)
+
+## Rules
+
+- Raw fields only — no derived metrics in Python.
+- Read active markets from the registry; never hardcode tickers or markets.
+- Write parquet to `storage/raw/{market_code}/`.
+- Credentials via `.env` + python-dotenv only.

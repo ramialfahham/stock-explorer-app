@@ -1,0 +1,70 @@
+name: ci-validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Enforce layer contract
+        run: python scripts/check_layer_contract.py
+
+      - name: Check registry/var sync
+        run: python scripts/check_registry_var_sync.py
+
+      - name: Create dbt profile for CI
+        shell: bash
+        run: |
+          mkdir -p /tmp/stock-swipe-raw
+          mkdir -p "$HOME/.dbt"
+          cat > "$HOME/.dbt/profiles.yml" <<'EOF'
+          dbt_analytics:
+            target: ci
+            outputs:
+              ci:
+                type: duckdb
+                path: /tmp/stock_data_ci.db
+                threads: 4
+          EOF
+
+      - name: dbt deps
+        run: dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+
+      - name: dbt parse
+        run: dbt parse --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+
+      - name: dbt build staging
+        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select staging
+
+      - name: dbt build core
+        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select core
+
+  gate:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ]; then
+            echo "validate did not pass (result=${{ needs.validate.result }})"
+            exit 1
+          fi
+          echo "gate passed"
