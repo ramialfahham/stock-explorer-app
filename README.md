@@ -40,8 +40,8 @@ stock-swipe-app/
 │   ├── market_registry.yml      # Active markets (registry-driven)
 │   └── supabase_setup.md        # Supabase project + secrets checklist
 ├── .cursor/rules/             # Cursor rules mirroring working_agreement.md
-├── supabase/migrations/       # SQL schema (run in Supabase SQL Editor)
-├── scripts/                   # Layer contract, registry sync, connection check
+├── supabase/migrations/       # SQL schema (applied via apply_supabase_migrations.py)
+├── scripts/                   # Migrations, layer contract, registry sync, connection check
 ├── dbt_analytics/             # dbt project (1_staging → 5_marts)
 ├── ingestion/                 # Raw data fetch scripts
 ├── frontend/                  # Streamlit app
@@ -69,11 +69,11 @@ stock-swipe-app/
 
 3. **Configure Supabase**
 
-   Follow [`docs/supabase_setup.md`](docs/supabase_setup.md): create a project, run
-   `supabase/migrations/001_initial_schema.sql`, then:
+   Follow [`docs/supabase_setup.md`](docs/supabase_setup.md): create a project, fill `.env`, then:
 
    ```bash
    copy .env.example .env
+   python scripts/apply_supabase_migrations.py
    python scripts/check_supabase_connection.py
    ```
 

@@ -23,6 +23,7 @@ vars:
   # scripts/check_registry_var_sync.py (CI) enforces sorted-set equality with the registry.
   active_market_codes:
     - au_asx200
+    - de_dax
     - jp_nikkei225
     - uk_ftse100
     - us_sp500

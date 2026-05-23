@@ -1,3 +1,4 @@
+psycopg2-binary==2.9.10
 dbt-core==1.11.11
 dbt-duckdb==1.10.1
 duckdb==1.5.3

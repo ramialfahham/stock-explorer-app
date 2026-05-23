@@ -1,19 +1,19 @@
-name: Data Pipeline
+name: supabase-migrate
 
 on:
-  schedule:
-    # Weekdays 06:00 UTC — adjust when ingestion is implemented
-    - cron: "0 6 * * 1-5"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "scripts/apply_supabase_migrations.py"
   workflow_dispatch:
 
 jobs:
-  ingest-and-transform:
+  migrate:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,6 +29,3 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: python scripts/apply_supabase_migrations.py
-
-      - name: Pipeline placeholder
-        run: echo "Ingestion, dbt, and Supabase export not yet implemented."

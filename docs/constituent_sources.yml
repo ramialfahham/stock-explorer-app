@@ -32,3 +32,10 @@ markets:
     notes: >
       No stable public Wikipedia table. Update storage/seeds/jp_nikkei225/constituents.csv
       via scripts/import_constituents.py until an automated source is added.
+
+  de_dax:
+    provider: wikipedia
+    url: https://en.wikipedia.org/wiki/DAX
+    table_index: 4
+    ticker_column: Ticker
+    name_column: Company

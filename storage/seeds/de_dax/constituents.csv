@@ -1,0 +1,41 @@
+market_code,ticker,company_name,refreshed_at,source
+de_dax,ADS,Adidas,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,AIR.PA,Airbus,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,ALV,Allianz,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,BAS,BASF,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,BAYN,Bayer,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,BEI,Beiersdorf,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,BMW,BMW,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,BNR,Brenntag,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,CBK,Commerzbank,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,CON,Continental,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,DTG,Daimler Truck,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,DBK,Deutsche Bank,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,DB1,Deutsche Börse,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,DHL,Deutsche Post,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,DTE,Deutsche Telekom,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,EOAN,E.ON,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,FRE,Fresenius,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,FME,Fresenius Medical Care,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,G1A,GEA Group,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,HNR1,Hannover Re,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,HEI,Heidelberg Materials,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,HEN3,Henkel,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,IFX,Infineon Technologies,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,MBG,Mercedes-Benz Group,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,MRK,Merck,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,MTX,MTU Aero Engines,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,MUV2,Munich Re,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,PAH3,Porsche SE,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,QIA,Qiagen,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,RHM,Rheinmetall,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,RWE,RWE,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,SAP,SAP,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,G24,Scout24,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,SIE,Siemens,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,ENR,Siemens Energy,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,SHL,Siemens Healthineers,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,SY1,Symrise,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,VOW3,Volkswagen Group,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,VNA,Vonovia,2026-05-23T19:43:01.900298+00:00,wikipedia
+de_dax,ZAL,Zalando,2026-05-23T19:43:01.900298+00:00,wikipedia

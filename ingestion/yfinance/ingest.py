@@ -16,6 +16,9 @@ BATCH_SIZE = 50
 
 
 def _to_yfinance_ticker(local_ticker: str, exchange_suffix: str) -> str:
+    # Some indices list full provider symbols (e.g. AIR.PA on DAX); do not double-suffix.
+    if "." in local_ticker:
+        return local_ticker
     return f"{local_ticker}{exchange_suffix}"
 
 
