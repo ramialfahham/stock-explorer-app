@@ -60,9 +60,22 @@ In your repo **Settings → Secrets and variables → Actions**, add:
 
 | Secret | Value |
 |--------|--------|
-| `SUPABASE_URL` | Project URL |
-| `SUPABASE_DB_PASSWORD` | Database password |
+| `SUPABASE_URL` | Project URL (data pipeline / Streamlit) |
+| `SUPABASE_DB_URL` | **Session pooler** Postgres URI (migrations in CI) |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (data pipeline export) |
+
+### Getting `SUPABASE_DB_URL` (required for CI migrations)
+
+GitHub Actions cannot reach the direct `db.*.supabase.co` host. Use the **Session pooler** URI:
+
+1. Supabase Dashboard → **Project Settings → Database**
+2. **Connection string** → **Session pooler** (not Transaction)
+3. Copy the URI and replace `[YOUR-PASSWORD]` with your database password
+4. Example shape:
+   `postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`
+5. Add as GitHub secret **`SUPABASE_DB_URL`**
+
+Locally you can keep using `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` (direct connection) or the same pooler URI in `.env`.
 
 When migration files change on `main`, [`.github/workflows/supabase-migrate.yml`](../.github/workflows/supabase-migrate.yml)
 applies them automatically. You can also trigger it manually (**Actions → supabase-migrate → Run workflow**).
@@ -71,7 +84,7 @@ Via CLI:
 
 ```bash
 gh secret set SUPABASE_URL --body "https://xxxxxxxx.supabase.co"
-gh secret set SUPABASE_DB_PASSWORD --body "your-database-password"
+gh secret set SUPABASE_DB_URL --body "postgresql://postgres.xxxxx:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres"
 gh secret set SUPABASE_SERVICE_ROLE_KEY --body "eyJ..."
 ```
 

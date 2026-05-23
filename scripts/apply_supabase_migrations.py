@@ -3,8 +3,8 @@
 Tracks applied files in public.schema_migrations. Safe to run locally and in CI.
 
 Requires in .env (or GitHub Actions secrets):
-  SUPABASE_URL + SUPABASE_DB_PASSWORD
-  or SUPABASE_DB_URL (full postgresql:// URI)
+  SUPABASE_DB_URL — recommended for CI (Session pooler URI from Supabase Dashboard)
+  or SUPABASE_URL + SUPABASE_DB_PASSWORD — local direct connection
 
 Usage:
     python scripts/apply_supabase_migrations.py
@@ -39,20 +39,31 @@ def _project_ref_from_supabase_url(supabase_url: str) -> str:
 
 
 def resolve_database_url() -> str:
-    direct = os.getenv("SUPABASE_DB_URL")
-    if direct:
-        return direct.strip()
+    for key in ("SUPABASE_DB_URL", "SUPABASE_DB_POOLER_URL"):
+        value = os.getenv(key)
+        if value:
+            return _ensure_sslmode(value.strip())
 
     supabase_url = os.getenv("SUPABASE_URL")
     password = os.getenv("SUPABASE_DB_PASSWORD")
     if not supabase_url or not password:
         raise RuntimeError(
-            "Set SUPABASE_DB_URL or both SUPABASE_URL and SUPABASE_DB_PASSWORD in .env"
+            "Set SUPABASE_DB_URL (Session pooler URI — required in GitHub Actions) "
+            "or both SUPABASE_URL and SUPABASE_DB_PASSWORD for local direct connection."
         )
 
     ref = _project_ref_from_supabase_url(supabase_url)
     encoded_password = quote_plus(password)
-    return f"postgresql://postgres:{encoded_password}@db.{ref}.supabase.co:5432/postgres"
+    return _ensure_sslmode(
+        f"postgresql://postgres:{encoded_password}@db.{ref}.supabase.co:5432/postgres"
+    )
+
+
+def _ensure_sslmode(db_url: str) -> str:
+    if "sslmode=" in db_url:
+        return db_url
+    separator = "&" if "?" in db_url else "?"
+    return f"{db_url}{separator}sslmode=require"
 
 
 def _connect(db_url: str):
@@ -167,6 +178,13 @@ def main(argv: list[str] | None = None) -> int:
         conn = _connect(db_url)
     except Exception as exc:
         print(f"apply_supabase_migrations: database connection failed — {exc}", file=sys.stderr)
+        if os.getenv("GITHUB_ACTIONS") and not os.getenv("SUPABASE_DB_URL"):
+            print(
+                "CI hint: GitHub runners cannot use the direct db.*.supabase.co host. "
+                "Add secret SUPABASE_DB_URL with the Session pooler URI from "
+                "Supabase → Project Settings → Database → Connection string → Session pooler.",
+                file=sys.stderr,
+            )
         return 1
 
     try:
