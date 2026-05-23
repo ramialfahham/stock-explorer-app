@@ -27,7 +27,9 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote_plus
+import json
+from urllib.parse import quote_plus, urlparse
+from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 
@@ -63,15 +65,73 @@ def _build_pooler_url(project_ref: str, password: str, pooler_host: str, port: s
     )
 
 
+def _fetch_pooler_host_port(project_ref: str, access_token: str) -> tuple[str, str]:
+    """Resolve pooler host/port via Supabase Management API (no Connect UI needed)."""
+    url = f"https://api.supabase.com/v1/projects/{project_ref}/config/database/pooler"
+    request = Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+        },
+    )
+    with urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+
+    # Prefer explicit session mode connection string when present.
+    candidates: list[str] = []
+    if isinstance(payload, dict):
+        for key in ("session", "transaction"):
+            section = payload.get(key)
+            if isinstance(section, dict):
+                for field in ("connection_string", "connectionString", "uri"):
+                    value = section.get(field)
+                    if isinstance(value, str):
+                        candidates.append(value)
+
+        for value in payload.values():
+            if isinstance(value, str) and "pooler.supabase.com" in value:
+                candidates.append(value)
+
+    blob = json.dumps(payload)
+    if "pooler.supabase.com" in blob:
+        import re
+
+        for match in re.findall(r"@[^:@/\"']+?pooler\\.supabase\\.com:(\\d+)", blob):
+            host_match = re.search(
+                rf"([a-z0-9.-]+pooler\\.supabase\\.com):{match}",
+                blob,
+            )
+            if host_match:
+                return host_match.group(1), match
+
+    for conn in candidates:
+        parsed = urlparse(conn.replace("postgres://", "postgresql://", 1))
+        if parsed.hostname and parsed.port:
+            return parsed.hostname, str(parsed.port)
+
+    raise RuntimeError(
+        "Could not parse pooler host from Supabase Management API response. "
+        "Set SUPABASE_DB_HOST manually or paste SUPABASE_DB_URL."
+    )
+
+
 def resolve_database_url() -> str:
     supabase_url = _strip_env(os.getenv("SUPABASE_URL"))
     password = _strip_env(os.getenv("SUPABASE_DB_PASSWORD"))
     pooler_host = _strip_env(os.getenv("SUPABASE_DB_HOST"))
     pooler_port = _strip_env(os.getenv("SUPABASE_DB_PORT")) or "5432"
+    access_token = _strip_env(os.getenv("SUPABASE_ACCESS_TOKEN"))
 
     if supabase_url and password and pooler_host:
         ref = _project_ref_from_supabase_url(supabase_url)
         return _ensure_sslmode(_build_pooler_url(ref, password, pooler_host, pooler_port))
+
+    if supabase_url and password and access_token and os.getenv("GITHUB_ACTIONS"):
+        ref = _project_ref_from_supabase_url(supabase_url)
+        host, port = _fetch_pooler_host_port(ref, access_token)
+        print(f"Resolved pooler via Management API: {host}:{port}")
+        return _ensure_sslmode(_build_pooler_url(ref, password, host, port))
 
     for key in ("SUPABASE_DB_URL", "SUPABASE_DB_POOLER_URL"):
         value = _strip_env(os.getenv(key))
@@ -85,9 +145,8 @@ def resolve_database_url() -> str:
         )
 
     raise RuntimeError(
-        "Set SUPABASE_URL + SUPABASE_DB_PASSWORD + SUPABASE_DB_HOST for CI pooler access, "
-        "or SUPABASE_DB_URL (full Session pooler URI), "
-        "or SUPABASE_URL + SUPABASE_DB_PASSWORD for local direct connection."
+        "CI: set SUPABASE_ACCESS_TOKEN (auto pooler lookup) or SUPABASE_DB_HOST. "
+        "Local: SUPABASE_URL + SUPABASE_DB_PASSWORD."
     )
 
 
@@ -212,9 +271,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"apply_supabase_migrations: database connection failed — {exc}", file=sys.stderr)
         if os.getenv("GITHUB_ACTIONS"):
             print(
-                "CI hint: copy the exact pooler HOST from Supabase → Connect → Session pooler "
-                "(may be aws-1-REGION, not aws-0). Set GitHub secrets SUPABASE_DB_HOST, "
-                "SUPABASE_URL, and SUPABASE_DB_PASSWORD.",
+                "CI hint: add GitHub secret SUPABASE_ACCESS_TOKEN "
+                "(Supabase Dashboard → Account → Access Tokens) for automatic pooler lookup, "
+                "or set SUPABASE_DB_HOST + SUPABASE_DB_PORT manually.",
                 file=sys.stderr,
             )
         return 1
