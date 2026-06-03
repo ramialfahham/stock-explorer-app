@@ -57,8 +57,8 @@ jobs:
       - name: dbt build staging
         run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select tag:staging
 
-      - name: dbt build core
-        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select tag:core
+      - name: dbt build base and core
+        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select tag:base tag:core
 
   gate:
     needs: validate
