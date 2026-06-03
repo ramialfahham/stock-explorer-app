@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime, timezone
 
 import pandas as pd
@@ -10,6 +11,8 @@ import yfinance as yf
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import raw_dir
 from ingestion.registry import Market
+from ingestion.yfinance.rate_limit import call_with_retry, is_rate_limited
+from ingestion.yfinance.symbols import to_yfinance_download_ticker, to_yfinance_ticker
 
 LOOKBACK_DAYS = 30
 BATCH_SIZE = 50
@@ -25,15 +28,8 @@ INFO_FIELDS = {
     "info_long_name": "longName",
 }
 
-INCOME_ROW_LABELS = ("Total Revenue",)
-CASHFLOW_ROW_LABELS = ("Free Cash Flow",)
-
-
-def _to_yfinance_ticker(local_ticker: str, exchange_suffix: str) -> str:
-    # Some indices list full provider symbols (e.g. AIR.PA on DAX); do not double-suffix.
-    if "." in local_ticker:
-        return local_ticker
-    return f"{local_ticker}{exchange_suffix}"
+INCOME_ROW = "Total Revenue"
+CASHFLOW_ROW = "Free Cash Flow"
 
 
 def _write_constituents_snapshot(market: Market, constituents: pd.DataFrame) -> None:
@@ -52,20 +48,33 @@ def _fetch_daily_prices(
     max_tickers: int | None = None,
 ) -> pd.DataFrame:
     tickers = local_tickers[:max_tickers] if max_tickers else local_tickers
-    yf_tickers = [_to_yfinance_ticker(t, market.exchange_suffix) for t in tickers]
+    yf_tickers = [
+        to_yfinance_download_ticker(t, market.exchange_suffix) for t in tickers
+    ]
 
     frames: list[pd.DataFrame] = []
     for start in range(0, len(yf_tickers), BATCH_SIZE):
         batch = yf_tickers[start : start + BATCH_SIZE]
         batch_local = tickers[start : start + BATCH_SIZE]
-        downloaded = yf.download(
-            batch,
-            period=f"{LOOKBACK_DAYS}d",
-            group_by="ticker",
-            auto_adjust=False,
-            threads=True,
-            progress=False,
-        )
+
+        def _download_batch() -> pd.DataFrame:
+            return yf.download(
+                batch,
+                period=f"{LOOKBACK_DAYS}d",
+                group_by="ticker",
+                auto_adjust=False,
+                threads=True,
+                progress=False,
+            )
+
+        try:
+            downloaded = call_with_retry(_download_batch)
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"  warning: price batch failed for {market.market_code} "
+                f"(tickers {start}-{start + len(batch)}): {exc}"
+            )
+            continue
 
         if downloaded.empty:
             continue
@@ -168,35 +177,59 @@ def _fetch_fundamentals_row(
     yf_symbol: str,
     snapshot_date: date,
 ) -> dict[str, object]:
-    ticker = yf.Ticker(yf_symbol)
-    info = ticker.info or {}
+    def _load() -> dict[str, object]:
+        ticker = yf.Ticker(yf_symbol)
+        info = ticker.info or {}
 
-    row: dict[str, object] = {
-        "market_code": market.market_code,
-        "ticker": local_ticker,
-        "snapshot_date": snapshot_date,
-    }
+        row: dict[str, object] = {
+            "market_code": market.market_code,
+            "ticker": local_ticker,
+            "snapshot_date": snapshot_date,
+        }
 
-    for col, key in INFO_FIELDS.items():
-        row[col] = info.get(key)
+        for col, key in INFO_FIELDS.items():
+            row[col] = info.get(key)
 
-    income = ticker.income_stmt
-    if income is None or income.empty:
-        income = ticker.financials
+        income = ticker.income_stmt
+        if income is None or income.empty:
+            income = ticker.financials
 
-    cashflow = ticker.cashflow
+        cashflow = ticker.cashflow
 
-    revenue, fiscal_end, income_currency = _latest_annual_statement_value(
-        income, "Total Revenue"
+        revenue, fiscal_end, income_currency = _latest_annual_statement_value(
+            income, INCOME_ROW
+        )
+        fcf, _, cashflow_currency = _latest_annual_statement_value(
+            cashflow, CASHFLOW_ROW
+        )
+
+        row["stmt_total_revenue"] = revenue
+        row["stmt_free_cash_flow"] = fcf
+        row["stmt_fiscal_period_end"] = fiscal_end
+        row["stmt_currency"] = income_currency or cashflow_currency
+        return row
+
+    return call_with_retry(_load)
+
+
+def _is_card_eligible_raw(row: dict[str, object]) -> bool:
+    """Mirror dbt five-metric gate on raw landed fields."""
+    info_ok = all(
+        row.get(col) is not None
+        for col in (
+            "info_forward_pe",
+            "info_operating_margins",
+            "info_revenue_growth",
+            "info_net_debt",
+            "info_ebitda",
+        )
     )
-    fcf, _, cashflow_currency = _latest_annual_statement_value(cashflow, "Free Cash Flow")
-
-    row["stmt_total_revenue"] = revenue
-    row["stmt_free_cash_flow"] = fcf
-    row["stmt_fiscal_period_end"] = fiscal_end
-    row["stmt_currency"] = income_currency or cashflow_currency
-
-    return row
+    stmt_ok = (
+        row.get("stmt_free_cash_flow") is not None
+        and row.get("stmt_total_revenue") is not None
+        and row.get("stmt_total_revenue") != 0
+    )
+    return info_ok and stmt_ok
 
 
 def _fetch_fundamentals(
@@ -204,35 +237,54 @@ def _fetch_fundamentals(
     local_tickers: list[str],
     *,
     max_tickers: int | None = None,
-) -> pd.DataFrame:
+    delay_seconds: float = 0.0,
+) -> tuple[pd.DataFrame, dict[str, int]]:
     tickers = local_tickers[:max_tickers] if max_tickers else local_tickers
     snapshot_date = datetime.now(timezone.utc).date()
     rows: list[dict[str, object]] = []
+    stats = {"fundamentals_ok": 0, "fundamentals_failed": 0, "fundamentals_eligible": 0}
 
     for local_ticker in tickers:
-        yf_symbol = _to_yfinance_ticker(local_ticker, market.exchange_suffix)
+        yf_symbol = to_yfinance_ticker(local_ticker, market.exchange_suffix)
         try:
-            rows.append(
-                _fetch_fundamentals_row(market, local_ticker, yf_symbol, snapshot_date)
-            )
-        except Exception as exc:  # noqa: BLE001 — log and continue per ticker
+            row = _fetch_fundamentals_row(market, local_ticker, yf_symbol, snapshot_date)
+            rows.append(row)
+            stats["fundamentals_ok"] += 1
+            if _is_card_eligible_raw(row):
+                stats["fundamentals_eligible"] += 1
+        except Exception as exc:  # noqa: BLE001
+            stats["fundamentals_failed"] += 1
+            label = "rate-limited" if is_rate_limited(exc) else "error"
             print(
-                f"  warning: fundamentals failed for {market.market_code}/{local_ticker}: {exc}"
+                f"  warning: fundamentals {label} for "
+                f"{market.market_code}/{local_ticker}: {exc}"
             )
+        if delay_seconds > 0:
+            time.sleep(delay_seconds)
 
     if not rows:
-        return pd.DataFrame()
+        return pd.DataFrame(), stats
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows), stats
 
 
-def ingest_market(market: Market, *, max_tickers: int | None = None) -> dict[str, int]:
+def ingest_market(
+    market: Market,
+    *,
+    max_tickers: int | None = None,
+    delay_seconds: float = 0.0,
+) -> dict[str, int]:
     constituents = load_constituents(market.market_code)
     _write_constituents_snapshot(market, constituents)
 
     local_tickers = constituents["ticker"].tolist()
     prices = _fetch_daily_prices(market, local_tickers, max_tickers=max_tickers)
-    fundamentals = _fetch_fundamentals(market, local_tickers, max_tickers=max_tickers)
+    fundamentals, fund_stats = _fetch_fundamentals(
+        market,
+        local_tickers,
+        max_tickers=max_tickers,
+        delay_seconds=delay_seconds,
+    )
 
     output_dir = raw_dir(market.market_code)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -244,4 +296,5 @@ def ingest_market(market: Market, *, max_tickers: int | None = None) -> dict[str
         "tickers_requested": len(local_tickers[:max_tickers] if max_tickers else local_tickers),
         "price_rows": len(prices),
         "fundamentals_rows": len(fundamentals),
+        **fund_stats,
     }

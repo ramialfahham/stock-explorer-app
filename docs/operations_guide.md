@@ -91,12 +91,25 @@ python scripts/refresh_constituents.py
 python scripts/refresh_constituents.py --market de_dax
 ```
 
+### Audit yfinance coverage (before full ingest)
+
+```bash
+python scripts/audit_yfinance_coverage.py --market us_sp500 --sample-size 10
+python scripts/audit_yfinance_coverage.py   # all active markets, 10 tickers each
+```
+
+Informational only — shows per-field hit rates and estimated card eligibility.
+
 ### Run ingestion locally
 
 ```bash
-python scripts/run_ingestion.py
-python scripts/run_ingestion.py --max-tickers 5   # smoke test
+python scripts/run_ingestion.py --max-tickers 3 --delay-seconds 0   # smoke (fast)
+python scripts/run_ingestion.py --market us_sp500                   # one market (default 0.25s delay)
+python scripts/run_ingestion.py                                     # all markets; long run
 ```
+
+Use `--delay-seconds` (default `0.25`) to reduce Yahoo 429 rate limits on fundamentals.
+Run per-market if a full run hits rate limits.
 
 ### Full local transform (when models exist)
 

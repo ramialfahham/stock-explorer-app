@@ -23,6 +23,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Limit tickers per market (useful for local dev runs)",
     )
+    parser.add_argument(
+        "--delay-seconds",
+        type=float,
+        default=0.25,
+        help="Pause between fundamental ticker requests (default 0.25; use 0 for smoke tests)",
+    )
     args = parser.parse_args(argv)
 
     markets = load_markets(active_only=True)
@@ -44,12 +50,19 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         print(f"Ingesting {market.market_code}...")
-        stats = ingest_market(market, max_tickers=args.max_tickers)
+        stats = ingest_market(
+            market,
+            max_tickers=args.max_tickers,
+            delay_seconds=args.delay_seconds,
+        )
         print(
             f"  constituents={stats['constituents']} "
             f"tickers_requested={stats['tickers_requested']} "
             f"price_rows={stats['price_rows']} "
-            f"fundamentals_rows={stats['fundamentals_rows']}"
+            f"fundamentals_rows={stats['fundamentals_rows']} "
+            f"fundamentals_ok={stats['fundamentals_ok']} "
+            f"fundamentals_failed={stats['fundamentals_failed']} "
+            f"fundamentals_eligible={stats['fundamentals_eligible']}"
         )
 
     return 0
