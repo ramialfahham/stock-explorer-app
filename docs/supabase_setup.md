@@ -100,6 +100,7 @@ gh secret set SUPABASE_SERVICE_ROLE_KEY --body "eyJ..."
 | `schema_migrations` | Tracks applied migration files |
 
 Row Level Security: stock data is publicly readable; interactions are scoped to the signed-in user.
+`schema_migrations` has RLS enabled with no policies (not exposed via the anon key).
 The service role key (used in CI) bypasses RLS.
 
 ---
