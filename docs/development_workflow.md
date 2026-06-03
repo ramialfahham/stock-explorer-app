@@ -31,7 +31,7 @@ Always runs:
 
 | Change area | Extra steps |
 |-------------|-------------|
-| `dbt_analytics/**` | `dbt build --select staging`, `dbt build --select core` |
+| `dbt_analytics/**` | `dbt build --select tag:staging`, `dbt build --select tag:base tag:core` |
 | `ingestion/**`, `scripts/run_ingestion.py`, `storage/seeds/**` | Python import smoke test |
 | `docs/market_registry.yml` | Registry sync (Tier A already covers) |
 

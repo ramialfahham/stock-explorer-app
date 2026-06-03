@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: dim_stock
+    description: "Grain: one row per (market_code, ticker)"
+    columns:
+      - name: market_code
+        tests: [not_null]
+      - name: ticker
+        tests: [not_null]
+
+  - name: fct_fundamentals_snapshot
+    description: "Grain: one row per (market_code, ticker) — latest fundamentals snapshot"
+    columns:
+      - name: market_code
+        tests: [not_null]
+      - name: ticker
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]

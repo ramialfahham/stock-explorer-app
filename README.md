@@ -44,7 +44,7 @@ stock-swipe-app/
 ├── scripts/                   # Migrations, layer contract, registry sync, connection check
 ├── dbt_analytics/             # dbt project (1_staging → 5_marts)
 ├── ingestion/                 # Raw data fetch scripts
-├── frontend/                  # Streamlit app
+├── frontend/                  # Streamlit app (app.py)
 ├── .github/workflows/         # CI + data pipeline
 ├── profiles.yml.example       # Copy to profiles.yml for local dbt
 └── .env.example               # Copy to .env for Supabase credentials
@@ -90,6 +90,21 @@ stock-swipe-app/
    ```bash
    python scripts/run_ingestion.py --max-tickers 5   # small local test
    python scripts/run_ingestion.py                   # all active markets
+   ```
+
+7. **Transform and export** (after ingestion):
+
+   ```bash
+   set DBT_RAW_PATH=storage/raw
+   dbt build --project-dir dbt_analytics --profiles-dir .
+   python scripts/check_pipeline_completeness.py
+   python scripts/export_to_supabase.py
+   ```
+
+8. **Streamlit app** (requires Supabase Auth enabled):
+
+   ```bash
+   streamlit run frontend/app.py
    ```
 
 ## Standards (non-negotiable)

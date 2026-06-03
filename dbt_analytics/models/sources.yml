@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: yfinance
+    description: Raw yfinance parquet landed by Python ingestion under storage/raw/{market_code}/
+    loader: python
+    tables:
+      - name: yf_constituents
+        description: Constituent snapshot per market at ingest time
+      - name: yf_daily_prices
+        description: OHLCV history per ticker and trade date
+      - name: yf_fundamentals
+        description: Raw ticker.info and statement fields per ticker snapshot

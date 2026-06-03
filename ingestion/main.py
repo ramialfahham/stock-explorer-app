@@ -48,7 +48,8 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"  constituents={stats['constituents']} "
             f"tickers_requested={stats['tickers_requested']} "
-            f"price_rows={stats['price_rows']}"
+            f"price_rows={stats['price_rows']} "
+            f"fundamentals_rows={stats['fundamentals_rows']}"
         )
 
     return 0
