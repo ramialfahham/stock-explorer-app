@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: stg_yf__constituents
+    description: "Grain: one row per (market_code, ticker) from yf_constituents.parquet"
+    columns:
+      - name: market_code
+        tests: [not_null]
+      - name: ticker
+        tests: [not_null]
+
+  - name: stg_yf__daily_prices
+    description: "Grain: one row per (market_code, ticker, trading_date)"
+    columns:
+      - name: market_code
+        tests: [not_null]
+      - name: ticker
+        tests: [not_null]
+      - name: trading_date
+        tests: [not_null]
+
+  - name: stg_yf__fundamentals
+    description: "Grain: one row per (market_code, ticker, snapshot_date)"
+    columns:
+      - name: market_code
+        tests: [not_null]
+      - name: ticker
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]

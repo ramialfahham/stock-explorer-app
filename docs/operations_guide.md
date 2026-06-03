@@ -39,10 +39,15 @@ News (Phase 2): separate workflow, daily, does not block fundamentals export.
 
 | Secret | Used by |
 |--------|---------|
-| `SUPABASE_URL` | Export |
-| `SUPABASE_SERVICE_ROLE_KEY` | Export (bypasses RLS) |
+| `SUPABASE_URL` | Migrate, data pipeline, export |
+| `SUPABASE_DB_PASSWORD` | Migrate, data pipeline |
+| `SUPABASE_DB_HOST` | Migrate, data pipeline (Session pooler hostname) |
+| `SUPABASE_DB_PORT` | Migrate, data pipeline (usually `5432`) |
+| `SUPABASE_ACCESS_TOKEN` | Migrate (optional Management API pooler fallback) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export (bypasses RLS) |
 
 Streamlit uses the **anon** key in its own hosting secrets — not in the data pipeline.
+See [`supabase_setup.md`](supabase_setup.md) for local `.env` and pooler discovery.
 
 ---
 

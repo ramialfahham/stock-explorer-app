@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: mart_stock_cards
+    description: "Grain: one row per (market_code, ticker, snapshot_date) — Supabase export target"
+    columns:
+      - name: market_code
+        tests: [not_null]
+      - name: ticker
+        tests: [not_null]
+      - name: snapshot_date
+        tests: [not_null]
+      - name: is_card_eligible
+        tests: [not_null]

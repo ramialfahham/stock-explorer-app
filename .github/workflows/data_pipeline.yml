@@ -2,16 +2,18 @@ name: Data Pipeline
 
 on:
   schedule:
-    # Weekdays 06:00 UTC — adjust when ingestion is implemented
-    - cron: "0 6 * * 1-5"
+    # Weekly Monday 06:00 UTC — fundamentals refresh target
+    - cron: "0 6 * * 1"
   workflow_dispatch:
 
 jobs:
   ingest-and-transform:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DBT_RAW_PATH: storage/raw
     steps:
       - uses: actions/checkout@v4
 
@@ -33,5 +35,31 @@ jobs:
           SUPABASE_DB_PORT: ${{ secrets.SUPABASE_DB_PORT }}
         run: python scripts/apply_supabase_migrations.py
 
-      - name: Pipeline placeholder
-        run: echo "Ingestion, dbt, and Supabase export not yet implemented."
+      - name: Run ingestion
+        run: python scripts/run_ingestion.py
+
+      - name: Create dbt profile
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.dbt"
+          cat > "$HOME/.dbt/profiles.yml" <<'EOF'
+          dbt_analytics:
+            target: ci
+            outputs:
+              ci:
+                type: duckdb
+                path: storage/stock_data.db
+                threads: 4
+          EOF
+
+      - name: dbt deps and build
+        run: |
+          dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+          dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+
+      - name: Completeness gates
+        run: python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.db
+        continue-on-error: false
+
+      - name: Export to Supabase
+        run: python scripts/export_to_supabase.py --duckdb-path storage/stock_data.db

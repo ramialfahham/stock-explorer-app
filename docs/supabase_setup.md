@@ -27,15 +27,7 @@ This is the only step that requires the Supabase UI.
    copy .env.example .env
    ```
 
-4. Fill in `.env`:
-
-   ```
-   SUPABASE_URL=https://xxxxxxxx.supabase.co
-   SUPABASE_ANON_KEY=eyJ...
-   SUPABASE_SERVICE_ROLE_KEY=eyJ...
-   SUPABASE_DB_PASSWORD=your-database-password
-   ```
-
+4. Fill in `.env` (see [`.env.example`](../.env.example) for all keys).
 5. Apply migrations (creates tables, RLS, seeds `markets`):
 
    ```bash
@@ -50,7 +42,15 @@ This is the only step that requires the Supabase UI.
    ```
 
 If you previously ran `001_initial_schema.sql` manually in the Dashboard, the script detects
-the existing schema, records `001` as applied, and only runs newer migrations (e.g. `002`).
+the existing schema, records `001` as applied, and only runs newer migrations.
+
+### Migrations on disk
+
+| File | Purpose |
+|------|---------|
+| `001_initial_schema.sql` | Markets, legacy mart, `user_interactions`, RLS |
+| `002_fundamentals_mart.sql` | Fundamentals `mart_stock_cards`, DAX active |
+| `003_lock_schema_migrations.sql` | RLS on `schema_migrations` (no API policies) |
 
 ---
 
@@ -58,35 +58,64 @@ the existing schema, records `001` as applied, and only runs newer migrations (e
 
 In your repo **Settings → Secrets and variables → Actions**, add:
 
-| Secret | Value |
-|--------|--------|
-| `SUPABASE_URL` | Project URL (data pipeline / Streamlit) |
-| `SUPABASE_DB_URL` | **Session pooler** Postgres URI (migrations in CI) |
-| `SUPABASE_SERVICE_ROLE_KEY` | service_role key (data pipeline export) |
+| Secret | Used by | Notes |
+|--------|---------|--------|
+| `SUPABASE_URL` | Migrate, data pipeline, export | Project URL |
+| `SUPABASE_DB_PASSWORD` | Migrate, data pipeline | Database password |
+| `SUPABASE_DB_HOST` | Migrate, data pipeline | **Session pooler hostname only** (recommended for CI) |
+| `SUPABASE_DB_PORT` | Migrate, data pipeline | Usually `5432` (Session pooler) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export | Bypasses RLS |
+| `SUPABASE_ACCESS_TOKEN` | Migrate (optional) | Personal access token; Management API pooler lookup **fallback only** |
 
-### Getting `SUPABASE_DB_URL` (required for CI migrations)
+### CI migrations — recommended: host + port (not full URI)
 
-GitHub Actions cannot reach the direct `db.*.supabase.co` host. Use the **Session pooler** URI:
+GitHub Actions cannot reach the direct `db.*.supabase.co` host (IPv6). Use the **Session pooler**:
 
-1. Supabase Dashboard → **Project Settings → Database**
-2. **Connection string** → **Session pooler** (not Transaction)
-3. Copy the URI and replace `[YOUR-PASSWORD]` with your database password
-4. Example shape:
-   `postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`
-5. Add as GitHub secret **`SUPABASE_DB_URL`**
+1. Locally, discover the correct pooler host for your project:
 
-Locally you can keep using `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` (direct connection) or the same pooler URI in `.env`.
+   ```bash
+   python scripts/discover_supabase_db_host.py
+   ```
+
+2. Set GitHub secrets from the script output:
+   - `SUPABASE_DB_HOST` — hostname only (e.g. `aws-1-eu-central-2.pooler.supabase.com`)
+   - `SUPABASE_DB_PORT` — `5432` unless the script reports otherwise
+   - `SUPABASE_URL` and `SUPABASE_DB_PASSWORD` — as above
+
+3. Re-run **supabase-migrate** (Actions → workflow_dispatch).
+
+[`scripts/apply_supabase_migrations.py`](../scripts/apply_supabase_migrations.py) resolution order:
+
+1. `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` + `SUPABASE_DB_HOST` (+ optional `SUPABASE_DB_PORT`) — **use this in CI**
+2. **CI only:** same URL/password + `SUPABASE_ACCESS_TOKEN` → Management API pooler lookup (may return **403** if token lacks scope)
+3. `SUPABASE_DB_URL` or `SUPABASE_DB_POOLER_URL` (full Postgres URI)
+4. Local fallback: direct `db.{ref}.supabase.co:5432`
+
+Pooler username format: **`postgres.{project_ref}`** (not `postgres` alone).
+
+### Alternative: full pooler URI
+
+If you prefer one secret instead of host/port:
+
+1. Supabase Dashboard → **Project Settings → Database** → **Connection string** → **Session pooler**
+2. Copy the URI and replace `[YOUR-PASSWORD]` with your database password
+3. Add as `SUPABASE_DB_URL` in `.env` or GitHub secrets
+
+Locally you can use direct connection (`SUPABASE_URL` + `SUPABASE_DB_PASSWORD`) or the same pooler URI.
+
+### Management API 403 troubleshooting
+
+If CI fails with `HTTP Error 403: Forbidden` on pooler config:
+
+- Set `SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` (skip the API), or
+- Regenerate a personal access token at [Account → Access Tokens](https://supabase.com/dashboard/account/tokens) and test:
+
+  ```bash
+  python scripts/print_supabase_pooler_config.py
+  ```
 
 When migration files change on `main`, [`.github/workflows/supabase-migrate.yml`](../.github/workflows/supabase-migrate.yml)
 applies them automatically. You can also trigger it manually (**Actions → supabase-migrate → Run workflow**).
-
-Via CLI:
-
-```bash
-gh secret set SUPABASE_URL --body "https://xxxxxxxx.supabase.co"
-gh secret set SUPABASE_DB_URL --body "postgresql://postgres.xxxxx:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres"
-gh secret set SUPABASE_SERVICE_ROLE_KEY --body "eyJ..."
-```
 
 ---
 
@@ -101,18 +130,32 @@ gh secret set SUPABASE_SERVICE_ROLE_KEY --body "eyJ..."
 
 Row Level Security: stock data is publicly readable; interactions are scoped to the signed-in user.
 `schema_migrations` has RLS enabled with no policies (not exposed via the anon key).
-The service role key (used in CI) bypasses RLS.
+The service role key (used in CI export) bypasses RLS.
 
 ---
 
-## 5. Streamlit Community Cloud (later)
+## 5. Streamlit Community Cloud
 
-When deploying the frontend, add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Streamlit app secrets.
+When deploying the frontend (`frontend/app.py`):
+
+1. Enable at least one auth provider under **Authentication → Providers** (email recommended).
+2. In Streamlit app secrets, set:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+
 Use the **anon** key — not the service role key.
 
 ---
 
-## 6. Auth (later)
+## 6. Auth (Streamlit)
 
-User sign-up is handled by Supabase Auth. Enable providers under **Authentication → Providers**.
+1. Enable **Email** under **Authentication → Providers**.
+2. For local dev, create a test user in **Authentication → Users** or sign up via the app.
+3. Run the app from the repo root:
+
+   ```bash
+   streamlit run frontend/app.py
+   ```
+
 The `user_interactions` table expects `auth.users` UUIDs from authenticated sessions.
+Save and skip actions use the **anon** key with the user's session token (RLS enforces `auth.uid()`).
