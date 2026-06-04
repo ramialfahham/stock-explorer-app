@@ -18,6 +18,16 @@ models:
               - market_code
               - ticker
               - snapshot_date
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: >-
+              is_card_eligible = (
+                forward_pe is not null
+                and ebit_margin_pct is not null
+                and revenue_growth_yoy_pct is not null
+                and net_debt_to_ebitda is not null
+                and fcf_margin_pct is not null
+              )
     columns:
       - name: market_code
         description: >
