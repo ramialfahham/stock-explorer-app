@@ -11,13 +11,24 @@ models:
       owner: data
       domain: stock_cards
       criticality: high
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+              - snapshot_date
     columns:
       - name: market_code
         description: >
           Registry partition key; Supabase FK to markets table.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol exported to Supabase.
+        data_tests:
+          - not_null
       - name: company_name
         description: >
           Company display name on the swipe card.
@@ -45,6 +56,8 @@ models:
       - name: is_card_eligible
         description: >
           Whether all five metrics are present; drives discovery queue inclusion.
+        data_tests:
+          - not_null
       - name: sector_peer_count
         description: >
           Eligible peer count in sector; null when sector unknown or no benchmark row.
@@ -66,3 +79,5 @@ models:
       - name: snapshot_date
         description: >
           Fundamentals as-of date exported with the card row.
+        data_tests:
+          - not_null
