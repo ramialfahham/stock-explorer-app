@@ -11,13 +11,23 @@ models:
       owner: data
       domain: stock_cards
       criticality: high
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
     columns:
       - name: market_code
         description: >
           Registry partition key for the listed universe.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol; natural key with market_code.
+        data_tests:
+          - not_null
       - name: company_name
         description: >
           Display name: seed company_name, else latest info_long_name from fundamentals.
@@ -38,16 +48,28 @@ models:
       owner: data
       domain: stock_cards
       criticality: high
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
     columns:
       - name: market_code
         description: >
           Registry partition key.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol.
+        data_tests:
+          - not_null
       - name: snapshot_date
         description: >
           Date of the winning fundamentals snapshot (latest per ticker).
+        data_tests:
+          - not_null
       - name: info_forward_pe
         description: >
           Yahoo forwardPE on the latest snapshot; direct input to forward_pe.

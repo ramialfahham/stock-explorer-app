@@ -10,13 +10,23 @@ models:
       owner: data
       domain: stock_cards
       criticality: medium
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
     columns:
       - name: market_code
         description: >
           Registry partition key; unique with ticker at this grain.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol after cross-market union and dedup.
+        data_tests:
+          - not_null
       - name: company_name
         description: >
           Company name from the winning constituent row by latest ingested_at.
@@ -39,16 +49,29 @@ models:
       owner: data
       domain: stock_cards
       criticality: medium
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+              - snapshot_date
     columns:
       - name: market_code
         description: >
           Registry partition key.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol.
+        data_tests:
+          - not_null
       - name: snapshot_date
         description: >
           Fundamentals as-of date for this snapshot row.
+        data_tests:
+          - not_null
       - name: info_forward_pe
         description: >
           Deduped raw forwardPE passed through to fct_fundamentals_snapshot.

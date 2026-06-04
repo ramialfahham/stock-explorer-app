@@ -12,16 +12,29 @@ models:
       owner: data
       domain: stock_cards
       criticality: high
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+              - snapshot_date
     columns:
       - name: market_code
         description: >
           Registry partition key.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol.
+        data_tests:
+          - not_null
       - name: snapshot_date
         description: >
           Fundamentals as-of date from the snapshot driving metrics.
+        data_tests:
+          - not_null
       - name: company_name
         description: >
           Display name from dim_stock for card header.
@@ -60,13 +73,23 @@ models:
       owner: data
       domain: stock_cards
       criticality: medium
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - sector
     columns:
       - name: market_code
         description: >
           Registry partition key for the peer set.
+        data_tests:
+          - not_null
       - name: sector
         description: >
           Sector label used to group eligible tickers for medians.
+        data_tests:
+          - not_null
       - name: sector_peer_count
         description: >
           Count of card-eligible tickers in this market and sector.

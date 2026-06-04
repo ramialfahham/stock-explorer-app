@@ -10,13 +10,23 @@ models:
       owner: data
       domain: stock_cards
       criticality: low
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
     columns:
       - name: market_code
         description: >
           Registry partition key for the index universe (e.g. us_sp500). FK to markets.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol as stored in seeds and parquet (string; may include suffixes).
+        data_tests:
+          - not_null
       - name: company_name
         description: >
           Display name from constituent seed or ingest join; may be overridden in core.
@@ -39,16 +49,29 @@ models:
       owner: data
       domain: stock_cards
       criticality: low
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+              - trading_date
     columns:
       - name: market_code
         description: >
           Registry partition key for the index universe.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol for the price series.
+        data_tests:
+          - not_null
       - name: trading_date
         description: >
           Exchange calendar date for the OHLCV bar.
+        data_tests:
+          - not_null
       - name: open
         description: >
           Session open price in local currency units.
@@ -80,16 +103,29 @@ models:
       owner: data
       domain: stock_cards
       criticality: medium
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+              - snapshot_date
     columns:
       - name: market_code
         description: >
           Registry partition key for the index universe.
+        data_tests:
+          - not_null
       - name: ticker
         description: >
           Provider symbol for the fundamentals snapshot.
+        data_tests:
+          - not_null
       - name: snapshot_date
         description: >
           As-of date when ingestion captured this fundamentals pull.
+        data_tests:
+          - not_null
       - name: info_forward_pe
         description: >
           Raw Yahoo forwardPE from ticker.info; feeds card metric forward_pe.
