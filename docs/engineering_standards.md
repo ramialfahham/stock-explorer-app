@@ -150,15 +150,58 @@ in YAML for eligibility rules and metric definitions reused across models.
 
 ## 3. Testing Policy
 
+### Rules
+
 - Singular SQL tests in `dbt_analytics/tests/` follow §1.1 (import CTE per `ref()`,
   named CTE chain, final `select` of failing rows only).
-- Every new model requires at least one meaningful test.
-- `staging`: `not_null` on required fields + `unique` or composite unique on grain key.
-  Do not repeat the same uniqueness assertion downstream if the grain hasn't changed.
-- `base`: structural integrity after unions — `not_null` on keys, `unique` on new grains.
-- `core` / `intermediate`: relationship tests and business-rule assertions.
-- `marts`: consumer-contract tests — required columns, accepted value ranges,
-  metric consistency with upstream core definitions.
+- Every SQL model requires at least one **model-level** test (YAML `data_tests`,
+  `unit_tests`, or a singular test that `ref()`s the model).
+- Column-level `data_tests` supplement model tests; they do not replace them.
+- `staging`: `not_null` on grain keys + `dbt_utils.unique_combination_of_columns` on grain.
+- `base`: same grain discipline after unions; do not re-assert the same uniqueness if grain unchanged.
+- `core` / `intermediate`: grain tests plus `dbt_utils.expression_is_true` for business rules.
+- `marts`: consumer contract — grain, eligibility columns, metric ranges; singular tests for
+  cross-model consistency (row counts, referential integrity).
+
+### Examples by layer
+
+**Staging** (`stg_yf__constituents`):
+
+```yaml
+data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns: [market_code, ticker]
+columns:
+  - name: market_code
+    data_tests: [not_null]
+```
+
+**Intermediate** (`int_stock__card_metrics`):
+
+```yaml
+data_tests:
+  - dbt_utils.unique_combination_of_columns: ...
+  - dbt_utils.expression_is_true:
+      arguments:
+        expression: >-
+          is_card_eligible = (forward_pe is not null and ...)
+unit_tests:
+  - name: card_metrics_eligible_when_all_inputs_present
+    model: int_stock__card_metrics
+```
+
+**Singular** (`dbt_analytics/tests/`): assert failing rows only; see §1.1.
+
+### CI vs production gates
+
+| Gate | When | What it checks |
+|------|------|----------------|
+| `check_dbt_tests.py` | Every PR (Tier A, after `dbt parse`) | Each model has ≥1 test; ≥3 singular SQL tests |
+| `dbt build` / `dbt test` | PR + Tier C | Tests execute against fixtures or full data |
+| `check_pipeline_completeness.py` | Tier C (`data_pipeline.yml`) | Eligible card counts per active market — not SQL style |
+
+Generic dbt examples do not override this section.
 
 ---
 
@@ -209,10 +252,11 @@ Every PR should pass before merge:
    `profiles.yml.example` for the dbt templater)
 3. `dbt deps`
 4. `dbt parse`
-5. `dbt build --select staging`
-6. `dbt build --select tag:base tag:core`
-7. `dbt docs generate` then `python scripts/check_dbt_documentation.py` (requires `target/catalog.json`)
+5. `python scripts/check_dbt_tests.py`
+6. `dbt build --select staging`
+7. `dbt build --select tag:base tag:core`
+8. `dbt docs generate` then `python scripts/check_dbt_documentation.py` (requires `target/catalog.json`)
 
 Before release to prod:
 
-8. `dbt build` (full run)
+9. `dbt build` (full run)

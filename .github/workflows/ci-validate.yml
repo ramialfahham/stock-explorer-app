@@ -57,6 +57,9 @@ jobs:
       - name: dbt parse
         run: dbt parse --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
 
+      - name: Enforce dbt test policy
+        run: python scripts/check_dbt_tests.py
+
       - name: Create repo profiles.yml for SQLFluff dbt templater
         run: cp profiles.yml.example profiles.yml
 

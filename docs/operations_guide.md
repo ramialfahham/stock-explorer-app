@@ -26,10 +26,18 @@ Nothing in this path runs on a developer laptop in production.
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [`ci-validate.yml`](../.github/workflows/ci-validate.yml) | Every PR + push to `main` | Fast integrity checks (Tier A/B) |
-| [`data_pipeline.yml`](../.github/workflows/data_pipeline.yml) | Mon–Fri 06:00 UTC + manual | Full ingest, dbt, completeness, export (Tier C) |
+| [`data_pipeline.yml`](../.github/workflows/data_pipeline.yml) | Mon 06:00 UTC + `workflow_dispatch` | Full ingest, dbt, completeness, export (Tier C) |
 
-Fundamentals target: **weekly** full refresh. Daily cron is a placeholder until fundamentals
-ingestion exists; adjust cron when Phase B ships.
+### Verify production pipeline
+
+1. Ensure `SUPABASE_DB_HOST` and `SUPABASE_DB_PORT` are set in GitHub secrets (see below).
+   Without them, `apply_supabase_migrations` fails with **HTTP 403** when the Management API
+   fallback is used.
+2. Actions → **Data Pipeline** → **Run workflow** on `main`.
+3. Expect: migrate → ingest → `dbt build` → `check_pipeline_completeness.py` → export.
+
+If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` locally and set
+`SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` in repo secrets ([`supabase_setup.md`](supabase_setup.md)).
 
 News (Phase 2): separate workflow, daily, does not block fundamentals export.
 
