@@ -35,6 +35,8 @@ Every change goes on a new branch. Never commit directly to `main`.
 2. Do the work and commit
 3. `git push origin feature/name` — explicit remote branch name
 4. Open a PR; wait for CI and user approval before merging
+5. **After merge:** the agent syncs local `main` (`git fetch --prune`, `checkout main`, `pull`) and
+   deletes merged local (and stale remote) branches — the user should not need to do this each time.
 
 ---
 

@@ -10,6 +10,8 @@ How to change this repo safely. Agent behavior: [`working_agreement.md`](working
 2. Implement; keep scope to the agreed task
 3. Push and open PR; wait for **ci-validate** and review
 4. Merge to `main`; scheduled pipeline picks up on next run
+5. **Post-merge (agent):** `git fetch --prune`, `checkout main`, `pull`, delete merged local branches
+   (`git branch -d` for each entry from `git branch --merged main` except `main`)
 
 Never commit directly to `main`.
 

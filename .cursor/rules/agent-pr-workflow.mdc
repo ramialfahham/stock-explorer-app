@@ -13,4 +13,18 @@ When the user asks to **implement**, **fix** (code change), **execute the plan**
 4. **Ship**: commit; push with `git push -u origin HEAD`; open a PR with `gh pr create` targeting `main`.
 5. **Reply** with the **PR link** and a short summary.
 
+## After merge (agent does this — user should not)
+
+When the user says a PR merged, work is on `main`, or similar **post-merge** signal:
+
+1. `git fetch origin --prune`
+2. `git checkout main` then `git pull origin main`
+3. Delete **local** branches fully merged into `main` (not `main` itself):
+   `git branch --merged main` → `git branch -d <name>` for each (skip if delete fails; report)
+4. If the merged feature branch still exists on `origin`, delete it:
+   `git push origin --delete <branch>` (GitHub often removes it already; `fetch --prune` is enough)
+5. Confirm briefly: current branch is `main`, latest commit, which branches were removed.
+
+Do not ask the user to run these steps manually unless a delete fails and needs a decision.
+
 This supplements [`agent-behavior.mdc`](agent-behavior.mdc) and [`docs/working_agreement.md`](../../docs/working_agreement.md).
