@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -54,12 +55,16 @@ def _load_mart_rows(db_path: Path) -> list[dict]:
     for _, row in rows.iterrows():
         record = {col: row[col] for col in EXPORT_COLUMNS}
         for key, value in record.items():
-            if value is None or (isinstance(value, float) and value != value):
+            if value is None or pd.isna(value):
+                record[key] = None
+            elif isinstance(value, float) and value != value:
                 record[key] = None
             elif hasattr(value, "isoformat"):
                 record[key] = value.isoformat()
             elif hasattr(value, "item"):
                 record[key] = value.item()
+            else:
+                record[key] = value
         record["exported_at"] = exported_at
         records.append(record)
     return records

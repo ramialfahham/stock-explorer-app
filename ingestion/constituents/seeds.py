@@ -20,7 +20,7 @@ def load_constituents(market_code: str) -> pd.DataFrame:
             "Run scripts/refresh_constituents.py or scripts/import_constituents.py."
         )
 
-    frame = pd.read_csv(path)
+    frame = pd.read_csv(path, dtype={"ticker": str})
     missing = [col for col in SEED_COLUMNS if col not in frame.columns]
     if missing:
         raise ValueError(f"{path} missing columns: {missing}")
