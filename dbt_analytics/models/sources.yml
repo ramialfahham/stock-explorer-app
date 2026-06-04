@@ -2,12 +2,88 @@ version: 2
 
 sources:
   - name: yfinance
-    description: Raw yfinance parquet landed by Python ingestion under storage/raw/{market_code}/
+    description: >
+      Raw yfinance parquet landed by Python ingestion under storage/raw/{market_code}/.
+      Loaded weekly via data_pipeline.yml; no derived metrics in ingestion.
     loader: python
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: medium
     tables:
       - name: yf_constituents
-        description: Constituent snapshot per market at ingest time
+        description: >
+          Constituent snapshot per market at ingest time; one row per ticker from seeds.
+        columns:
+          - name: market_code
+            description: Registry partition key.
+          - name: ticker
+            description: Provider symbol string.
+          - name: company_name
+            description: Display name from seed at ingest.
+          - name: refreshed_at
+            description: Seed last-refresh timestamp.
+          - name: source
+            description: Constituent list provenance.
+          - name: ingested_at
+            description: When parquet row was written.
+
       - name: yf_daily_prices
-        description: OHLCV history per ticker and trade date
+        description: >
+          OHLCV price history per ticker and trade date from yfinance download.
+        columns:
+          - name: market_code
+            description: Registry partition key.
+          - name: ticker
+            description: Provider symbol.
+          - name: trading_date
+            description: Trade date for the bar.
+          - name: open
+            description: Open price.
+          - name: high
+            description: High price.
+          - name: low
+            description: Low price.
+          - name: close
+            description: Close price.
+          - name: volume
+            description: Share volume.
+          - name: dividends
+            description: Dividend component on the bar.
+          - name: stock_splits
+            description: Split factor on the bar.
+
       - name: yf_fundamentals
-        description: Raw ticker.info and statement fields per ticker snapshot
+        description: >
+          Raw ticker.info and latest-annual statement fields per ticker snapshot.
+        columns:
+          - name: market_code
+            description: Registry partition key.
+          - name: ticker
+            description: Provider symbol.
+          - name: snapshot_date
+            description: Fundamentals pull as-of date.
+          - name: info_forward_pe
+            description: Raw Yahoo forwardPE.
+          - name: info_operating_margins
+            description: Raw Yahoo operatingMargins (decimal).
+          - name: info_revenue_growth
+            description: Raw Yahoo revenueGrowth (decimal).
+          - name: info_net_debt
+            description: Raw Yahoo netDebt.
+          - name: info_ebitda
+            description: Raw Yahoo ebitda.
+          - name: info_sector
+            description: Raw Yahoo sector.
+          - name: info_currency
+            description: Raw Yahoo currency.
+          - name: info_long_name
+            description: Raw Yahoo longName.
+          - name: stmt_total_revenue
+            description: Latest annual Total Revenue from statements.
+          - name: stmt_free_cash_flow
+            description: Latest annual Free Cash Flow from statements.
+          - name: stmt_fiscal_period_end
+            description: Fiscal period end for statement column.
+          - name: stmt_currency
+            description: Statement currency when available.

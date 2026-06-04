@@ -1,0 +1,87 @@
+version: 2
+
+models:
+  - name: base_yf__constituents
+    description: >
+      **Source:** stg_yf__constituents across all active markets (union via macro).
+      **Grain:** One row per (market_code, ticker) after deduplication.
+      **What:** Latest ingest row per ticker; keys for dim_stock and ingest lineage.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: medium
+    columns:
+      - name: market_code
+        description: >
+          Registry partition key; unique with ticker at this grain.
+      - name: ticker
+        description: >
+          Provider symbol after cross-market union and dedup.
+      - name: company_name
+        description: >
+          Company name from the winning constituent row by latest ingested_at.
+      - name: refreshed_at
+        description: >
+          Seed refresh timestamp from the winning row.
+      - name: source
+        description: >
+          Constituent provenance from the winning row.
+      - name: ingested_at
+        description: >
+          Ingest timestamp used to break ties when multiple rows exist per ticker.
+
+  - name: base_yf__fundamentals
+    description: >
+      **Source:** stg_yf__fundamentals across all active markets.
+      **Grain:** One row per (market_code, ticker, snapshot_date) after deduplication.
+      **What:** Deduplicated fundamentals snapshots before latest-per-ticker in core.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: medium
+    columns:
+      - name: market_code
+        description: >
+          Registry partition key.
+      - name: ticker
+        description: >
+          Provider symbol.
+      - name: snapshot_date
+        description: >
+          Fundamentals as-of date for this snapshot row.
+      - name: info_forward_pe
+        description: >
+          Deduped raw forwardPE passed through to fct_fundamentals_snapshot.
+      - name: info_operating_margins
+        description: >
+          Deduped raw operatingMargins decimal.
+      - name: info_revenue_growth
+        description: >
+          Deduped raw revenueGrowth decimal.
+      - name: info_net_debt
+        description: >
+          Deduped raw netDebt.
+      - name: info_ebitda
+        description: >
+          Deduped raw ebitda.
+      - name: info_sector
+        description: >
+          Deduped raw sector label.
+      - name: info_currency
+        description: >
+          Deduped raw currency code.
+      - name: info_long_name
+        description: >
+          Deduped raw longName.
+      - name: stmt_total_revenue
+        description: >
+          Deduped latest-annual Total Revenue.
+      - name: stmt_free_cash_flow
+        description: >
+          Deduped latest-annual Free Cash Flow.
+      - name: stmt_fiscal_period_end
+        description: >
+          Deduped fiscal period end for statement columns.
+      - name: stmt_currency
+        description: >
+          Deduped statement currency when present.

@@ -2,19 +2,85 @@ version: 2
 
 models:
   - name: dim_stock
-    description: "Grain: one row per (market_code, ticker)"
+    description: >
+      **What:** Canonical stock dimension for discovery (name, sector, currency).
+      **Grain:** One row per (market_code, ticker).
+      **Source:** base_yf__constituents joined to latest base_yf__fundamentals.
+      **Used by:** int_stock__card_metrics, mart_stock_cards.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: high
     columns:
       - name: market_code
-        tests: [not_null]
+        description: >
+          Registry partition key for the listed universe.
       - name: ticker
-        tests: [not_null]
+        description: >
+          Provider symbol; natural key with market_code.
+      - name: company_name
+        description: >
+          Display name: seed company_name, else latest info_long_name from fundamentals.
+      - name: sector
+        description: >
+          GICS-style sector from latest fundamentals info_sector; used for benchmarks.
+      - name: currency
+        description: >
+          Trading/reporting currency from latest fundamentals info_currency.
 
   - name: fct_fundamentals_snapshot
-    description: "Grain: one row per (market_code, ticker) — latest fundamentals snapshot"
+    description: >
+      **What:** Latest fundamentals fact per ticker — system of record for raw Yahoo fields.
+      **Grain:** One row per (market_code, ticker).
+      **Source:** base_yf__fundamentals (most recent snapshot_date per ticker).
+      **Used by:** int_stock__card_metrics for card metric calculations.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: high
     columns:
       - name: market_code
-        tests: [not_null]
+        description: >
+          Registry partition key.
       - name: ticker
-        tests: [not_null]
+        description: >
+          Provider symbol.
       - name: snapshot_date
-        tests: [not_null]
+        description: >
+          Date of the winning fundamentals snapshot (latest per ticker).
+      - name: info_forward_pe
+        description: >
+          Yahoo forwardPE on the latest snapshot; direct input to forward_pe.
+      - name: info_operating_margins
+        description: >
+          Yahoo operatingMargins decimal on latest snapshot.
+      - name: info_revenue_growth
+        description: >
+          Yahoo revenueGrowth decimal on latest snapshot.
+      - name: info_net_debt
+        description: >
+          Yahoo netDebt on latest snapshot; null blocks net_debt_to_ebitda.
+      - name: info_ebitda
+        description: >
+          Yahoo ebitda on latest snapshot; null or zero blocks net_debt_to_ebitda.
+      - name: info_sector
+        description: >
+          Yahoo sector on latest snapshot; coalesced with dim_stock.sector in metrics.
+      - name: info_currency
+        description: >
+          Yahoo currency on latest snapshot.
+      - name: info_long_name
+        description: >
+          Yahoo longName on latest snapshot.
+      - name: stmt_total_revenue
+        description: >
+          Latest annual Total Revenue for FCF margin denominator.
+      - name: stmt_free_cash_flow
+        description: >
+          Latest annual Free Cash Flow for FCF margin numerator.
+      - name: stmt_fiscal_period_end
+        description: >
+          Fiscal period end date for the statement columns used.
+      - name: stmt_currency
+        description: >
+          Statement currency when returned by Yahoo on the cashflow/income objects.
