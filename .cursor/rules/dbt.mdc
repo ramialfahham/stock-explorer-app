@@ -29,7 +29,8 @@ alwaysApply: false
 - Every model and every `dbt_analytics/tests/*.sql` file starts with `WITH` + import CTE per `ref()`; named CTE chains only (§1.1).
 - No scalar subqueries in `SELECT`; no `FROM (SELECT ...)`.
 - Do not cite "dbt standard" to skip [`engineering_standards.md`](../../docs/engineering_standards.md) §1.1 — repo rules win.
-- Every new model needs at least one meaningful test.
+- Every new model needs at least one **model-level** test (`data_tests`, `unit_tests`, or singular `ref()`).
+- Policy examples and Tier A vs Tier C: [`engineering_standards.md`](../../docs/engineering_standards.md) §3.
 
 ## Documentation (same PR as model changes)
 
@@ -47,14 +48,16 @@ sqlfluff lint dbt_analytics/models dbt_analytics/tests
 $env:DBT_RAW_PATH="storage/raw"
 dbt build --project-dir dbt_analytics --profiles-dir .
 dbt docs generate --project-dir dbt_analytics --profiles-dir .
+python scripts/check_dbt_tests.py
 python scripts/check_dbt_documentation.py
 ```
 
-CI fails if descriptions are missing or grain-only one-liners.
+CI fails if tests or descriptions are missing.
 
 ## Tooling
 
 - Sync registry → dbt vars: `python scripts/sync_dbt_vars.py`
 - Layer contract: `python scripts/check_layer_contract.py`
 - SQL structure: `python scripts/check_dbt_sql_structure.py` + `sqlfluff lint` (see [`.sqlfluff`](../../.sqlfluff))
+- Test policy gate: `python scripts/check_dbt_tests.py`
 - Documentation gate: `python scripts/check_dbt_documentation.py`
