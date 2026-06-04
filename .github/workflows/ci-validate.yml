@@ -54,11 +54,14 @@ jobs:
       - name: dbt parse
         run: dbt parse --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
 
-      - name: dbt build staging
-        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select tag:staging
+      - name: dbt build
+        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
 
-      - name: dbt build base and core
-        run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt" --select tag:base tag:core
+      - name: dbt docs generate
+        run: dbt docs generate --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+
+      - name: Enforce dbt documentation
+        run: python scripts/check_dbt_documentation.py
 
   gate:
     needs: validate

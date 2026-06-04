@@ -78,11 +78,63 @@ One sentence per comment is almost always enough. No multi-line comment blocks.
 
 ## 2. Documentation Policy
 
-- Every model must have a `description` in YAML.
-- Document the **grain** (one row per what) in the model description.
-- Business-facing columns in `core`, `intermediate`, and `marts` must have `description`.
-- Every source table must have a short description in `sources.yml`.
-- Descriptions are factual and concise — no implementation details.
+Canonical metric and eligibility definitions live in [`data_contract.md`](data_contract.md).
+YAML descriptions summarize for stakeholders; do not fork formulas in prose.
+
+### Required coverage
+
+- Every **model** must have a non-empty `description` in YAML (same PR as the model).
+- Every **column** in every model must have a non-empty `description` in YAML.
+- Every **source** and source **table** must have a `description` in `sources.yml`.
+- Source **columns** must be documented when listed in `sources.yml`.
+
+CI enforces this via `scripts/check_dbt_documentation.py` after `dbt build`.
+
+### Model description anatomy
+
+Use multiline YAML (`description: >`) with labeled sections. Staging may use
+`Source:` instead of `What:`.
+
+**Core / intermediate / marts:**
+
+```yaml
+description: >
+  **What:** One-line business purpose.
+  **Grain:** One row per (keys…).
+  **Source:** Upstream refs or raw source.
+  **Used by:** Consumer (e.g. Supabase export, Streamlit).
+```
+
+**Staging / base:**
+
+```yaml
+description: >
+  **Source:** Raw parquet or upstream staging model.
+  **Grain:** One row per (keys…).
+  **What:** Typed cleanup / dedup only — no business metrics.
+```
+
+Reject grain-only one-liners (e.g. `"Grain: one row per ticker"` with no What/Source).
+
+### Column description anatomy
+
+```yaml
+description: >
+  Business meaning. Unit or scale (percent 0–100, ratio, ISO currency).
+  Null when: missing upstream field or ineligible ticker (see data_contract).
+```
+
+Staging columns: map to yfinance/parquet field name; note raw vs derived.
+
+### Shared long text
+
+Use `docs` blocks in `dbt_analytics/models/_docs.md` and `'{{ doc("block_name") }}'`
+in YAML for eligibility rules and metric definitions reused across models.
+
+### Style
+
+- Business-focused, factual, concise — no SQL implementation detail.
+- Align names and units with [`data_contract.md`](data_contract.md).
 
 ---
 
@@ -143,8 +195,9 @@ Every PR should pass before merge:
 1. `dbt deps`
 2. `dbt parse`
 3. `dbt build --select staging`
-4. `dbt build --select core`
+4. `dbt build --select tag:base tag:core`
+5. `dbt docs generate` then `python scripts/check_dbt_documentation.py` (requires `target/catalog.json`)
 
 Before release to prod:
 
-5. `dbt build` (full run)
+6. `dbt build` (full run)

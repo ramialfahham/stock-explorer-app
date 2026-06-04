@@ -26,12 +26,13 @@ Always runs:
 - `scripts/check_layer_contract.py`
 - `scripts/check_registry_var_sync.py`
 - `dbt deps` + `dbt parse`
+- After Tier B dbt build: `dbt docs generate`, then `scripts/check_dbt_documentation.py`
 
 ### Tier B — path-triggered
 
 | Change area | Extra steps |
 |-------------|-------------|
-| `dbt_analytics/**` | `dbt build --select tag:staging`, `dbt build --select tag:base tag:core` |
+| `dbt_analytics/**` | `dbt build --select tag:staging`, `dbt build --select tag:base tag:core`, `check_dbt_documentation.py` |
 | `ingestion/**`, `scripts/run_ingestion.py`, `storage/seeds/**` | Python import smoke test |
 | `docs/market_registry.yml` | Registry sync (Tier A already covers) |
 
@@ -80,7 +81,7 @@ python scripts/check_supabase_connection.py
 |-------------|-----------|
 | Registry / market | Vars synced, seed exists, CI green |
 | Ingestion | Raw parquet matches `data_contract.md` grain; no derived metrics in Python |
-| dbt model | Layer folder correct, YAML description + tests, `dbt build` passes |
+| dbt model | Layer folder correct, model + all column descriptions (anatomy in engineering_standards §2), tests, `dbt build` + `check_dbt_documentation.py` pass |
 | Export | Upsert to Supabase documented; RLS unchanged for anon read |
 | Docs | `north_star` / `data_contract` updated if behavior or schema changed |
 

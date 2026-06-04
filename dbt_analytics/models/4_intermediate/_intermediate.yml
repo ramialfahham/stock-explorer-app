@@ -1,0 +1,87 @@
+version: 2
+
+models:
+  - name: int_stock__card_metrics
+    description: >
+      **What:** Five swipe-card metrics and eligibility per ticker snapshot.
+      **Grain:** One row per (market_code, ticker, snapshot_date).
+      **Source:** fct_fundamentals_snapshot, dim_stock.
+      **Used by:** int_stock__sector_benchmarks, mart_stock_cards.
+      Eligibility rules: see doc block card_eligibility in _docs.md / data_contract.md.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: high
+    columns:
+      - name: market_code
+        description: >
+          Registry partition key.
+      - name: ticker
+        description: >
+          Provider symbol.
+      - name: snapshot_date
+        description: >
+          Fundamentals as-of date from the snapshot driving metrics.
+      - name: company_name
+        description: >
+          Display name from dim_stock for card header.
+      - name: sector
+        description: >
+          Sector for peer grouping: coalesce(snapshot info_sector, dim_stock.sector).
+      - name: currency
+        description: >
+          Display currency: coalesce(snapshot info_currency, dim_stock.currency).
+      - name: forward_pe
+        description: >
+          Forward P/E ratio from info_forward_pe. Unit: multiple (x). Null when Yahoo omits forwardPE.
+      - name: ebit_margin_pct
+        description: >
+          Operating margin as percent: info_operating_margins × 100. Null when operatingMargins missing.
+      - name: revenue_growth_yoy_pct
+        description: >
+          YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
+      - name: net_debt_to_ebitda
+        description: >
+          Leverage ratio info_net_debt / info_ebitda. Null when either input null or ebitda is zero.
+      - name: fcf_margin_pct
+        description: >
+          FCF margin percent: stmt_free_cash_flow / stmt_total_revenue × 100. Null when revenue zero or fields missing.
+      - name: is_card_eligible
+        description: >
+          True when all five card metrics are non-null; false excludes ticker from discovery queue.
+
+  - name: int_stock__sector_benchmarks
+    description: >
+      **What:** Sector median benchmarks for card metrics when enough eligible peers exist.
+      **Grain:** One row per (market_code, sector).
+      **Source:** int_stock__card_metrics (eligible rows only).
+      **Used by:** mart_stock_cards.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: medium
+    columns:
+      - name: market_code
+        description: >
+          Registry partition key for the peer set.
+      - name: sector
+        description: >
+          Sector label used to group eligible tickers for medians.
+      - name: sector_peer_count
+        description: >
+          Count of card-eligible tickers in this market and sector.
+      - name: sector_median_forward_pe
+        description: >
+          Median forward_pe among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_median_ebit_margin_pct
+        description: >
+          Median ebit_margin_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_median_revenue_growth_yoy_pct
+        description: >
+          Median revenue_growth_yoy_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_median_net_debt_to_ebitda
+        description: >
+          Median net_debt_to_ebitda among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_median_fcf_margin_pct
+        description: >
+          Median fcf_margin_pct among eligible peers. Null when sector_peer_count < 8.

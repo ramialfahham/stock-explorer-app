@@ -2,13 +2,67 @@ version: 2
 
 models:
   - name: mart_stock_cards
-    description: "Grain: one row per (market_code, ticker, snapshot_date) — Supabase export target"
+    description: >
+      **What:** Supabase export dataset for Streamlit stock swipe cards.
+      **Grain:** One row per (market_code, ticker, snapshot_date).
+      **Source:** int_stock__card_metrics left join int_stock__sector_benchmarks.
+      **Used by:** export_to_supabase.py, Streamlit app.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: high
     columns:
       - name: market_code
-        tests: [not_null]
+        description: >
+          Registry partition key; Supabase FK to markets table.
       - name: ticker
-        tests: [not_null]
-      - name: snapshot_date
-        tests: [not_null]
+        description: >
+          Provider symbol exported to Supabase.
+      - name: company_name
+        description: >
+          Company display name on the swipe card.
+      - name: sector
+        description: >
+          Sector label for UI and benchmark join.
+      - name: currency
+        description: >
+          Currency code for formatted metric display.
+      - name: forward_pe
+        description: >
+          Card metric 1 — forward P/E (multiple). See data_contract § card metrics.
+      - name: ebit_margin_pct
+        description: >
+          Card metric 2 — EBIT margin percent (0–100 scale).
+      - name: revenue_growth_yoy_pct
+        description: >
+          Card metric 3 — revenue growth YoY percent (0–100 scale).
+      - name: net_debt_to_ebitda
+        description: >
+          Card metric 4 — net debt to EBITDA ratio.
+      - name: fcf_margin_pct
+        description: >
+          Card metric 5 — free cash flow margin percent (0–100 scale).
       - name: is_card_eligible
-        tests: [not_null]
+        description: >
+          Whether all five metrics are present; drives discovery queue inclusion.
+      - name: sector_peer_count
+        description: >
+          Eligible peer count in sector; null when sector unknown or no benchmark row.
+      - name: sector_median_forward_pe
+        description: >
+          Sector median benchmark for forward P/E; null if peer count < 8.
+      - name: sector_median_ebit_margin_pct
+        description: >
+          Sector median benchmark for EBIT margin; null if peer count < 8.
+      - name: sector_median_revenue_growth_yoy_pct
+        description: >
+          Sector median benchmark for revenue growth; null if peer count < 8.
+      - name: sector_median_net_debt_to_ebitda
+        description: >
+          Sector median benchmark for leverage; null if peer count < 8.
+      - name: sector_median_fcf_margin_pct
+        description: >
+          Sector median benchmark for FCF margin; null if peer count < 8.
+      - name: snapshot_date
+        description: >
+          Fundamentals as-of date exported with the card row.

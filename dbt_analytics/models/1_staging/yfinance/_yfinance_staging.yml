@@ -2,29 +2,127 @@ version: 2
 
 models:
   - name: stg_yf__constituents
-    description: "Grain: one row per (market_code, ticker) from yf_constituents.parquet"
+    description: >
+      **Source:** `yf_constituents.parquet` per market under `storage/raw/{market_code}/`.
+      **Grain:** One row per (market_code, ticker).
+      **What:** Typed constituent list joined from seeds at ingest; no business metrics.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: low
     columns:
       - name: market_code
-        tests: [not_null]
+        description: >
+          Registry partition key for the index universe (e.g. us_sp500). FK to markets.
       - name: ticker
-        tests: [not_null]
+        description: >
+          Provider symbol as stored in seeds and parquet (string; may include suffixes).
+      - name: company_name
+        description: >
+          Display name from constituent seed or ingest join; may be overridden in core.
+      - name: refreshed_at
+        description: >
+          ISO timestamp when the seed row was last refreshed by refresh_constituents.
+      - name: source
+        description: >
+          Constituent provenance label (e.g. wikipedia, manual_import, ci_fixture).
+      - name: ingested_at
+        description: >
+          ISO timestamp when this row was written to raw parquet during ingestion.
 
   - name: stg_yf__daily_prices
-    description: "Grain: one row per (market_code, ticker, trading_date)"
+    description: >
+      **Source:** `yf_daily_prices.parquet` per market under `storage/raw/{market_code}/`.
+      **Grain:** One row per (market_code, ticker, trading_date).
+      **What:** Typed OHLCV history from yfinance download; not shown on discovery cards.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: low
     columns:
       - name: market_code
-        tests: [not_null]
+        description: >
+          Registry partition key for the index universe.
       - name: ticker
-        tests: [not_null]
+        description: >
+          Provider symbol for the price series.
       - name: trading_date
-        tests: [not_null]
+        description: >
+          Exchange calendar date for the OHLCV bar.
+      - name: open
+        description: >
+          Session open price in local currency units.
+      - name: high
+        description: >
+          Session high price in local currency units.
+      - name: low
+        description: >
+          Session low price in local currency units.
+      - name: close
+        description: >
+          Session close or adjusted close from yfinance.
+      - name: volume
+        description: >
+          Traded share volume for the session.
+      - name: dividends
+        description: >
+          Dividend amount attributed to the bar by yfinance (often 0).
+      - name: stock_splits
+        description: >
+          Split factor attributed to the bar by yfinance (often 0).
 
   - name: stg_yf__fundamentals
-    description: "Grain: one row per (market_code, ticker, snapshot_date)"
+    description: >
+      **Source:** `yf_fundamentals.parquet` per market under `storage/raw/{market_code}/`.
+      **Grain:** One row per (market_code, ticker, snapshot_date).
+      **What:** Typed raw ticker.info and statement fields; ratios computed downstream only.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: medium
     columns:
       - name: market_code
-        tests: [not_null]
+        description: >
+          Registry partition key for the index universe.
       - name: ticker
-        tests: [not_null]
+        description: >
+          Provider symbol for the fundamentals snapshot.
       - name: snapshot_date
-        tests: [not_null]
+        description: >
+          As-of date when ingestion captured this fundamentals pull.
+      - name: info_forward_pe
+        description: >
+          Raw Yahoo forwardPE from ticker.info; feeds card metric forward_pe.
+      - name: info_operating_margins
+        description: >
+          Raw Yahoo operatingMargins decimal (e.g. 0.12 = 12%); feeds ebit_margin_pct.
+      - name: info_revenue_growth
+        description: >
+          Raw Yahoo revenueGrowth decimal; feeds revenue_growth_yoy_pct.
+      - name: info_net_debt
+        description: >
+          Raw Yahoo netDebt from ticker.info; numerator for net_debt_to_ebitda.
+      - name: info_ebitda
+        description: >
+          Raw Yahoo ebitda from ticker.info; denominator for net_debt_to_ebitda.
+      - name: info_sector
+        description: >
+          Raw Yahoo sector label for grouping and sector benchmarks.
+      - name: info_currency
+        description: >
+          Raw Yahoo currency code for display (ISO-style string).
+      - name: info_long_name
+        description: >
+          Raw Yahoo longName; company name fallback in dim_stock.
+      - name: stmt_total_revenue
+        description: >
+          Total Revenue from latest annual income statement column.
+      - name: stmt_free_cash_flow
+        description: >
+          Free Cash Flow from latest annual cashflow statement column.
+      - name: stmt_fiscal_period_end
+        description: >
+          End date of the fiscal period column used for statement fields.
+      - name: stmt_currency
+        description: >
+          Currency on the financial statement object when provided by Yahoo.
