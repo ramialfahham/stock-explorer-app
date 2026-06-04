@@ -129,3 +129,160 @@ models:
       - name: sector_median_fcf_margin_pct
         description: >
           Median fcf_margin_pct among eligible peers. Null when sector_peer_count < 8.
+
+unit_tests:
+  - name: card_metrics_eligible_when_all_inputs_present
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T1,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T1,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T1,
+            is_card_eligible: true,
+            forward_pe: 20.0,
+            ebit_margin_pct: 25.0,
+            revenue_growth_yoy_pct: 8.0,
+            net_debt_to_ebitda: 2.0,
+            fcf_margin_pct: 25.0,
+          }
+  - name: card_metrics_ineligible_when_net_debt_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T2,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: null,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T2,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T2,
+            is_card_eligible: false,
+            net_debt_to_ebitda: null,
+          }
+  - name: card_metrics_ineligible_when_ebitda_zero
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T3,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 0.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T3,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T3,
+            is_card_eligible: false,
+            net_debt_to_ebitda: null,
+          }
+  - name: sector_medians_null_when_seven_eligible_peers
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Technology,
+            sector_peer_count: 7,
+            sector_median_forward_pe: null,
+            sector_median_ebit_margin_pct: null,
+          }
+  - name: sector_medians_populated_when_eight_eligible_peers
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T8, sector: Technology, is_card_eligible: true, forward_pe: 17.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Technology,
+            sector_peer_count: 8,
+            sector_median_forward_pe: 13.5,
+            sector_median_ebit_margin_pct: 20.0,
+          }
