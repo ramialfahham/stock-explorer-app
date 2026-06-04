@@ -30,6 +30,9 @@ jobs:
       - name: Check registry/var sync
         run: python scripts/check_registry_var_sync.py
 
+      - name: Enforce dbt SQL structure
+        run: python scripts/check_dbt_sql_structure.py
+
       - name: Create dbt profile for CI
         shell: bash
         run: |
@@ -53,6 +56,12 @@ jobs:
 
       - name: dbt parse
         run: dbt parse --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+
+      - name: Create repo profiles.yml for SQLFluff dbt templater
+        run: cp profiles.yml.example profiles.yml
+
+      - name: SQLFluff lint dbt SQL
+        run: sqlfluff lint dbt_analytics/models dbt_analytics/tests
 
       - name: dbt build
         run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"

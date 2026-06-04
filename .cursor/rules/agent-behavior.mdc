@@ -8,6 +8,10 @@ alwaysApply: true
 Read [`docs/working_agreement.md`](../../docs/working_agreement.md) before doing anything.
 If this rule conflicts with that document, the working agreement wins.
 
+**Doc hierarchy:** Repo docs (`working_agreement.md`, `engineering_standards.md`, `layering.md`)
+override generic dbt or SQLFluff examples. Do not justify skipping §1.1 SQL structure
+(models or singular tests) by citing "dbt standard" or community shortcuts.
+
 ## Permission to act
 
 - Do not edit files, run terminal commands, or start implementation unless the user

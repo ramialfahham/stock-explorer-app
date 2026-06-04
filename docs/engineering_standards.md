@@ -30,11 +30,21 @@ Column conventions:
 
 ## 1.1. SQL Structure
 
-- Every model starts with import CTEs — one per `ref()` or `source()` — before any
-  transformation logic.
+Applies to all SQL under `dbt_analytics/models/` and `dbt_analytics/tests/` (including
+singular data tests). dbt only requires one `SELECT` returning failing rows for tests;
+this project requires the same CTE structure as models.
+
+- Every file starts with a `WITH` clause and import CTEs — one per `ref()` or `source()`
+  — before transformation logic (`from {{ ref('...') }}` inside a CTE body).
 - Use named CTE chains. No inline subqueries (`FROM (SELECT ...)`).
+- No scalar subqueries in the `SELECT` list (e.g. `(select count(*) from ...)`); use CTEs.
 - Each CTE has a single purpose: import, flatten, dedupe/rank, or final projection.
 - CTE names are descriptive and stable (not `cte1`, `temp`, `final2`).
+- Singular tests: no trailing semicolon; one-line **why** comments allowed (§1.2).
+
+**Enforcement:** SQLFluff ([`.sqlfluff`](../.sqlfluff), `structure.subquery` with
+`forbid_subquery_in = both`) plus `scripts/check_dbt_sql_structure.py` for rules
+SQLFluff cannot express. Generic dbt examples do not override this section.
 
 ```sql
 -- Good structure
@@ -140,6 +150,8 @@ in YAML for eligibility rules and metric definitions reused across models.
 
 ## 3. Testing Policy
 
+- Singular SQL tests in `dbt_analytics/tests/` follow §1.1 (import CTE per `ref()`,
+  named CTE chain, final `select` of failing rows only).
 - Every new model requires at least one meaningful test.
 - `staging`: `not_null` on required fields + `unique` or composite unique on grain key.
   Do not repeat the same uniqueness assertion downstream if the grain hasn't changed.
@@ -192,12 +204,15 @@ in YAML for eligibility rules and metric definitions reused across models.
 
 Every PR should pass before merge:
 
-1. `dbt deps`
-2. `dbt parse`
-3. `dbt build --select staging`
-4. `dbt build --select tag:base tag:core`
-5. `dbt docs generate` then `python scripts/check_dbt_documentation.py` (requires `target/catalog.json`)
+1. `python scripts/check_dbt_sql_structure.py`
+2. `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (requires `profiles.yml` from
+   `profiles.yml.example` for the dbt templater)
+3. `dbt deps`
+4. `dbt parse`
+5. `dbt build --select staging`
+6. `dbt build --select tag:base tag:core`
+7. `dbt docs generate` then `python scripts/check_dbt_documentation.py` (requires `target/catalog.json`)
 
 Before release to prod:
 
-6. `dbt build` (full run)
+8. `dbt build` (full run)

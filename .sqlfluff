@@ -1,0 +1,20 @@
+[sqlfluff]
+dialect = duckdb
+templater = dbt
+max_line_length = 120
+# Hybrid gate: subquery structure only; layout/keyword-id style excluded (see check_dbt_sql_structure.py).
+exclude_rules = structure.column_order, structure.else_null, layout.indent, references.keywords
+
+[sqlfluff:templater:dbt]
+project_dir = dbt_analytics
+profiles_dir = .
+
+[sqlfluff:rules:structure.subquery]
+forbid_subquery_in = both
+
+[sqlfluff:rules:convention.terminator]
+require_final_semicolon = false
+
+[sqlfluff:rules:layout.long_lines]
+ignore_comment_lines = true
+ignore_comment_clauses = true
