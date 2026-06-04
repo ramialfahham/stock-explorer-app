@@ -26,7 +26,9 @@ alwaysApply: false
 - `1_staging`: one `stg_*` model per raw source table; no cross-source joins.
 - Staging SQL under `models/1_staging/<source>/`, never at `1_staging/` root.
 - `4_intermediate` must not `ref('mart_*')`.
-- Every model starts with import CTEs; named CTE chains only.
+- Every model and every `dbt_analytics/tests/*.sql` file starts with `WITH` + import CTE per `ref()`; named CTE chains only (§1.1).
+- No scalar subqueries in `SELECT`; no `FROM (SELECT ...)`.
+- Do not cite "dbt standard" to skip [`engineering_standards.md`](../../docs/engineering_standards.md) §1.1 — repo rules win.
 - Every new model needs at least one meaningful test.
 
 ## Documentation (same PR as model changes)
@@ -40,6 +42,8 @@ alwaysApply: false
 Before opening a PR:
 
 ```powershell
+python scripts/check_dbt_sql_structure.py
+sqlfluff lint dbt_analytics/models dbt_analytics/tests
 $env:DBT_RAW_PATH="storage/raw"
 dbt build --project-dir dbt_analytics --profiles-dir .
 dbt docs generate --project-dir dbt_analytics --profiles-dir .
@@ -52,4 +56,5 @@ CI fails if descriptions are missing or grain-only one-liners.
 
 - Sync registry → dbt vars: `python scripts/sync_dbt_vars.py`
 - Layer contract: `python scripts/check_layer_contract.py`
+- SQL structure: `python scripts/check_dbt_sql_structure.py` + `sqlfluff lint` (see [`.sqlfluff`](../../.sqlfluff))
 - Documentation gate: `python scripts/check_dbt_documentation.py`

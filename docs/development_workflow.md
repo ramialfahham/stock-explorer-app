@@ -25,6 +25,8 @@ Always runs:
 
 - `scripts/check_layer_contract.py`
 - `scripts/check_registry_var_sync.py`
+- `scripts/check_dbt_sql_structure.py`
+- `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (after `profiles.yml` exists; see `profiles.yml.example`)
 - `dbt deps` + `dbt parse`
 - After Tier B dbt build: `dbt docs generate`, then `scripts/check_dbt_documentation.py`
 
