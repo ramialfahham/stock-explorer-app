@@ -99,7 +99,7 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 | 1 | `forward_pe` | `info_forward_pe` | `ticker.info` |
 | 2 | `ebit_margin_pct` | `info_operating_margins * 100` | `ticker.info` |
 | 3 | `revenue_growth_yoy_pct` | `info_revenue_growth * 100` | `ticker.info` |
-| 4 | `net_debt_to_ebitda` | `info_net_debt / info_ebitda` | `ticker.info` (both) |
+| 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
 | 5 | `fcf_margin_pct` | `stmt_free_cash_flow / stmt_total_revenue * 100` | cashflow + income_stmt |
 
 **EBIT margin:** use Yahoo’s pre-calculated `operatingMargins` only. Do not derive from
