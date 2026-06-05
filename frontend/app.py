@@ -16,8 +16,10 @@ if str(ROOT) not in sys.path:
 
 from frontend.card_copy import (
     BENCHMARK_METRICS,
+    DEEP_DIVE_METRICS,
     METRIC_HELP,
     METRIC_LABELS,
+    VISIBLE_METRICS,
     benchmark_line,
     format_metric_value,
 )
@@ -117,6 +119,17 @@ def _login_form() -> None:
             st.error(f"Sign up failed: {exc}")
 
 
+def _render_metric_block(card: dict, metric: str, label: str) -> None:
+    st.metric(label, format_metric_value(metric, card.get(metric)))
+    st.caption(METRIC_HELP[metric])
+    for m_key, median_key, direction in BENCHMARK_METRICS:
+        if m_key == metric:
+            line = benchmark_line(card, metric, median_key, direction)
+            if line:
+                st.caption(line)
+            break
+
+
 def _render_card(card: dict) -> None:
     st.caption(f"Market: {card.get('market_code', '').replace('_', ' ').upper()}")
     st.title(card.get("company_name") or card.get("ticker"))
@@ -129,15 +142,12 @@ def _render_card(card: dict) -> None:
         if peers is not None and peers < 8:
             st.caption("Comparison unavailable (small sector)")
 
-    for metric, label in METRIC_LABELS.items():
-        st.metric(label, format_metric_value(metric, card.get(metric)))
-        st.caption(METRIC_HELP[metric])
-        for m_key, median_key, direction in BENCHMARK_METRICS:
-            if m_key == metric:
-                line = benchmark_line(card, metric, median_key, direction)
-                if line:
-                    st.caption(line)
-                break
+    for metric in VISIBLE_METRICS:
+        _render_metric_block(card, metric, METRIC_LABELS[metric])
+
+    with st.expander("More metrics (scroll)"):
+        for metric in DEEP_DIVE_METRICS:
+            _render_metric_block(card, metric, METRIC_LABELS[metric])
 
     yahoo_ticker = card.get("ticker", "")
     st.link_button(
@@ -175,6 +185,7 @@ def _discovery_page(client) -> None:
             return
 
         card = queue[idx]
+        st.caption(f"Card {idx + 1} of {len(queue)} in this queue")
         _render_card(card)
 
         col_save, col_skip = st.columns(2)
@@ -232,6 +243,10 @@ def main() -> None:
     _init_state()
     st.title("Stock Swipe")
     st.caption("Learn and discover companies — not investment advice.")
+    st.caption(
+        "Fundamentals refresh weekly. Prices on cards are not real-time; "
+        "use Yahoo Finance for a live quote."
+    )
 
     if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_ANON_KEY"):
         st.error("Missing SUPABASE_URL or SUPABASE_ANON_KEY. Add them to `.env` or Streamlit secrets.")

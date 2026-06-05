@@ -1,0 +1,4 @@
+# Minimal deps for Streamlit Community Cloud (set this path in app advanced settings).
+streamlit==1.57.0
+supabase==2.30.0
+python-dotenv==1.2.2

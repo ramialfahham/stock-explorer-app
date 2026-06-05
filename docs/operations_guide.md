@@ -39,6 +39,8 @@ Nothing in this path runs on a developer laptop in production.
 If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` locally and set
 `SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` in repo secrets ([`supabase_setup.md`](supabase_setup.md)).
 
+After a successful export, deploy or refresh the UI: [`streamlit_deploy.md`](streamlit_deploy.md).
+
 News (Phase 2): separate workflow, daily, does not block fundamentals export.
 
 ---
