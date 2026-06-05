@@ -16,6 +16,17 @@ METRIC_LABELS = {
     "fcf_margin_pct": "FCF margin",
 }
 
+# north_star: top three on the card; leverage and FCF in deep dive.
+VISIBLE_METRICS = (
+    "forward_pe",
+    "ebit_margin_pct",
+    "revenue_growth_yoy_pct",
+)
+DEEP_DIVE_METRICS = (
+    "net_debt_to_ebitda",
+    "fcf_margin_pct",
+)
+
 BENCHMARK_METRICS = (
     ("forward_pe", "sector_median_forward_pe", "lower"),
     ("ebit_margin_pct", "sector_median_ebit_margin_pct", "higher"),
