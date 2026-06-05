@@ -29,6 +29,7 @@ FIELD_LABELS = {
     "operatingMargins": "ebit_margin (info)",
     "revenueGrowth": "revenue_growth (info)",
     "netDebt": "net_debt (info)",
+    "totalDebtCash": "total_debt & total_cash (info)",
     "ebitda": "ebitda (info)",
     "stmt_total_revenue": "total_revenue (stmt)",
     "stmt_free_cash_flow": "fcf (stmt)",
@@ -54,6 +55,7 @@ def _audit_ticker(market_code: str, exchange_suffix: str, local_ticker: str) -> 
             "operatingMargins": info.get("operatingMargins") is not None,
             "revenueGrowth": info.get("revenueGrowth") is not None,
             "netDebt": info.get("netDebt") is not None,
+            "totalDebtCash": info.get("totalDebt") is not None and info.get("totalCash") is not None,
             "ebitda": info.get("ebitda") is not None,
             "stmt_total_revenue": _has_statement_row(t, INCOME_ROW),
             "stmt_free_cash_flow": _has_statement_row(t, CASHFLOW_ROW),
@@ -67,7 +69,15 @@ def _audit_ticker(market_code: str, exchange_suffix: str, local_ticker: str) -> 
         for key, ok in hits.items():
             row[key] = ok
 
-        row["card_eligible"] = all(hits.values())
+        row["card_eligible"] = (
+            hits["forwardPE"]
+            and hits["operatingMargins"]
+            and hits["revenueGrowth"]
+            and hits["ebitda"]
+            and (hits["netDebt"] or hits["totalDebtCash"])
+            and hits["stmt_total_revenue"]
+            and hits["stmt_free_cash_flow"]
+        )
 
         hist = t.history(period="5d")
         row["history_rows"] = len(hist)

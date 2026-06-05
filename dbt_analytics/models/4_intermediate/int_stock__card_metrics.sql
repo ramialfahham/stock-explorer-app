@@ -18,8 +18,11 @@ metrics as (
         s.info_operating_margins * 100.0 as ebit_margin_pct,
         s.info_revenue_growth * 100.0 as revenue_growth_yoy_pct,
         case
-            when s.info_net_debt is not null and s.info_ebitda is not null and s.info_ebitda != 0
-                then s.info_net_debt / s.info_ebitda
+            when coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash) is not null
+                and s.info_ebitda is not null
+                and s.info_ebitda != 0
+                then coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash)
+                    / s.info_ebitda
         end as net_debt_to_ebitda,
         case
             when s.stmt_free_cash_flow is not null

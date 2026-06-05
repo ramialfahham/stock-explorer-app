@@ -84,6 +84,12 @@ models:
       - name: info_net_debt
         description: >
           Deduped raw netDebt.
+      - name: info_total_debt
+        description: >
+          Deduped raw totalDebt.
+      - name: info_total_cash
+        description: >
+          Deduped raw totalCash.
       - name: info_ebitda
         description: >
           Deduped raw ebitda.

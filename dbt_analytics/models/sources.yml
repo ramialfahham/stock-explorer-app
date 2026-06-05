@@ -71,6 +71,10 @@ sources:
             description: Raw Yahoo revenueGrowth (decimal).
           - name: info_net_debt
             description: Raw Yahoo netDebt.
+          - name: info_total_debt
+            description: Raw Yahoo totalDebt; used with totalCash when netDebt is null.
+          - name: info_total_cash
+            description: Raw Yahoo totalCash; used with totalDebt when netDebt is null.
           - name: info_ebitda
             description: Raw Yahoo ebitda.
           - name: info_sector

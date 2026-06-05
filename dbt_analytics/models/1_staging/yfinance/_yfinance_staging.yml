@@ -137,7 +137,13 @@ models:
           Raw Yahoo revenueGrowth decimal; feeds revenue_growth_yoy_pct.
       - name: info_net_debt
         description: >
-          Raw Yahoo netDebt from ticker.info; numerator for net_debt_to_ebitda.
+          Raw Yahoo netDebt from ticker.info; primary numerator for net_debt_to_ebitda.
+      - name: info_total_debt
+        description: >
+          Raw Yahoo totalDebt; with info_total_cash when netDebt is null (dbt coalesce).
+      - name: info_total_cash
+        description: >
+          Raw Yahoo totalCash; with info_total_debt when netDebt is null (dbt coalesce).
       - name: info_ebitda
         description: >
           Raw Yahoo ebitda from ticker.info; denominator for net_debt_to_ebitda.
