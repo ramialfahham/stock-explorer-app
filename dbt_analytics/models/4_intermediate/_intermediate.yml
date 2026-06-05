@@ -65,7 +65,8 @@ models:
           YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
       - name: net_debt_to_ebitda
         description: >
-          Leverage ratio info_net_debt / info_ebitda. Null when either input null or ebitda is zero.
+          Leverage ratio: coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda.
+          Null when numerator or denominator missing or ebitda is zero.
       - name: fcf_margin_pct
         description: >
           FCF margin percent: stmt_free_cash_flow / stmt_total_revenue × 100. Null when revenue zero or fields missing.
@@ -242,6 +243,44 @@ unit_tests:
             ticker: T3,
             is_card_eligible: false,
             net_debt_to_ebitda: null,
+          }
+  - name: card_metrics_net_debt_from_total_debt_minus_cash
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T4,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: null,
+              info_total_debt: 3000.0,
+              info_total_cash: 1000.0,
+              info_ebitda: 1000.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T4,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T4,
+            is_card_eligible: true,
+            net_debt_to_ebitda: 2.0,
           }
   - name: sector_medians_null_when_seven_eligible_peers
     model: int_stock__sector_benchmarks

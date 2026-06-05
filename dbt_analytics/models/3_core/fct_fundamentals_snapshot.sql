@@ -19,6 +19,8 @@ select
     info_operating_margins,
     info_revenue_growth,
     info_net_debt,
+    info_total_debt,
+    info_total_cash,
     info_ebitda,
     info_sector,
     info_currency,

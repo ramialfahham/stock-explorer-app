@@ -8,16 +8,17 @@ From `python scripts/audit_yfinance_coverage.py --sample-size 5` on all active m
 |-------|-------------------------------------|
 | forwardPE, operatingMargins, revenueGrowth, ebitda | ~80–100% |
 | Total Revenue / Free Cash Flow (statements) | 100% |
-| **netDebt** | **0%** in this sample |
+| **netDebt** | **0%** in prior sample (use totalDebt − totalCash in dbt) |
+| **totalDebt + totalCash** | ~80–100% when netDebt missing |
 
-**Estimated card_eligible:** 0% in sample — all five metrics require `info_net_debt`; Yahoo often omits `netDebt` in `ticker.info`.
+**Estimated card_eligible:** was 0% before dbt coalesce on totalDebt/totalCash; re-run audit after merge.
 
 Price fetch: `history` and `download` both OK for sampled symbols (including `.L`, `.T`, `.DE`).
 
 ## Implications
 
-- Smoke/full ingest can succeed while **mart eligible count stays low** until netDebt coverage improves or product revisits the contract.
-- `check_pipeline_completeness.py` may fail the **&lt;5 eligible** gate until this changes — expected for now.
+- `check_pipeline_completeness.py` may fail the **<5 eligible** gate when ebitda or other fields are missing for most tickers (e.g. banks).
+- Land `info_total_debt` / `info_total_cash`; dbt coalesces net debt when `netDebt` is null.
 - Run full ingest per market with default `--delay-seconds 0.25`; use `workflow_dispatch` on Data Pipeline after a one-market pilot.
 
 ## Commands

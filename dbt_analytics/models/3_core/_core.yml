@@ -81,7 +81,13 @@ models:
           Yahoo revenueGrowth decimal on latest snapshot.
       - name: info_net_debt
         description: >
-          Yahoo netDebt on latest snapshot; null blocks net_debt_to_ebitda.
+          Yahoo netDebt on latest snapshot; coalesced with total_debt - total_cash in metrics.
+      - name: info_total_debt
+        description: >
+          Yahoo totalDebt on latest snapshot; fallback net-debt numerator with total_cash.
+      - name: info_total_cash
+        description: >
+          Yahoo totalCash on latest snapshot; fallback net-debt numerator with total_debt.
       - name: info_ebitda
         description: >
           Yahoo ebitda on latest snapshot; null or zero blocks net_debt_to_ebitda.

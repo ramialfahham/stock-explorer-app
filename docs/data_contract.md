@@ -61,7 +61,9 @@ Metrics are ordered by **analytical relevance** (valuation → quality → momen
 | `info_forward_pe` | `forwardPE` | `forward_pe` |
 | `info_operating_margins` | `operatingMargins` | `ebit_margin_pct` |
 | `info_revenue_growth` | `revenueGrowth` | `revenue_growth_yoy_pct` |
-| `info_net_debt` | `netDebt` | `net_debt_to_ebitda` (numerator) |
+| `info_net_debt` | `netDebt` | `net_debt_to_ebitda` (numerator, when present) |
+| `info_total_debt` | `totalDebt` | Used with `info_total_cash` when `netDebt` is null |
+| `info_total_cash` | `totalCash` | Used with `info_total_debt` when `netDebt` is null |
 | `info_ebitda` | `ebitda` | `net_debt_to_ebitda` (denominator) |
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
@@ -97,14 +99,15 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 | 1 | `forward_pe` | `info_forward_pe` | `ticker.info` |
 | 2 | `ebit_margin_pct` | `info_operating_margins * 100` | `ticker.info` |
 | 3 | `revenue_growth_yoy_pct` | `info_revenue_growth * 100` | `ticker.info` |
-| 4 | `net_debt_to_ebitda` | `info_net_debt / info_ebitda` | `ticker.info` (both) |
+| 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
 | 5 | `fcf_margin_pct` | `stmt_free_cash_flow / stmt_total_revenue * 100` | cashflow + income_stmt |
 
 **EBIT margin:** use Yahoo’s pre-calculated `operatingMargins` only. Do not derive from
 statements in v1.
 
-**Net debt / EBITDA:** requires both `info_net_debt` and `info_ebitda`. If either is null,
-`net_debt_to_ebitda` is null → ineligible. Do not rebuild EBITDA from statements in v1.
+**Net debt / EBITDA:** dbt uses `coalesce(info_net_debt, info_total_debt - info_total_cash)` as the
+numerator when `info_ebitda` is non-null and non-zero. If both `netDebt` and the debt/cash pair
+are missing, `net_debt_to_ebitda` is null → ineligible. Do not rebuild EBITDA from statements in v1.
 
 **No fallbacks:** if the primary field for a metric is null, the ticker is ineligible — do not
 substitute ROE, ROA, or hand-built ROIC.

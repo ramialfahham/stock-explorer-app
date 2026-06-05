@@ -72,6 +72,8 @@ def _write_market_fixtures(market_code: str) -> None:
                 "info_operating_margins": 0.25,
                 "info_revenue_growth": 0.08,
                 "info_net_debt": 10_000_000_000.0,
+                "info_total_debt": None,
+                "info_total_cash": None,
                 "info_ebitda": 20_000_000_000.0,
                 "info_sector": "Technology",
                 "info_currency": "USD",

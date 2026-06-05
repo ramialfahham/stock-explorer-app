@@ -22,6 +22,8 @@ INFO_FIELDS = {
     "info_operating_margins": "operatingMargins",
     "info_revenue_growth": "revenueGrowth",
     "info_net_debt": "netDebt",
+    "info_total_debt": "totalDebt",
+    "info_total_cash": "totalCash",
     "info_ebitda": "ebitda",
     "info_sector": "sector",
     "info_currency": "currency",
@@ -212,6 +214,18 @@ def _fetch_fundamentals_row(
     return call_with_retry(_load)
 
 
+def _effective_net_debt(row: dict[str, object]) -> object | None:
+    """Match dbt net-debt coalesce: netDebt, else totalDebt - totalCash."""
+    net_debt = row.get("info_net_debt")
+    if net_debt is not None:
+        return net_debt
+    total_debt = row.get("info_total_debt")
+    total_cash = row.get("info_total_cash")
+    if total_debt is not None and total_cash is not None:
+        return total_debt - total_cash
+    return None
+
+
 def _is_card_eligible_raw(row: dict[str, object]) -> bool:
     """Mirror dbt five-metric gate on raw landed fields."""
     info_ok = all(
@@ -220,10 +234,9 @@ def _is_card_eligible_raw(row: dict[str, object]) -> bool:
             "info_forward_pe",
             "info_operating_margins",
             "info_revenue_growth",
-            "info_net_debt",
             "info_ebitda",
         )
-    )
+    ) and _effective_net_debt(row) is not None
     stmt_ok = (
         row.get("stmt_free_cash_flow") is not None
         and row.get("stmt_total_revenue") is not None
