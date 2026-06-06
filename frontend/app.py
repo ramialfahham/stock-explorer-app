@@ -5,7 +5,12 @@ from __future__ import annotations
 import streamlit as st
 from dotenv import load_dotenv
 
-from browser_storage import append_interaction, clear_interactions, ensure_interactions_loaded
+from browser_storage import (
+    append_interaction,
+    clear_interactions,
+    ensure_interactions_loaded,
+    storage_sync_pending,
+)
 from card_copy import (
     BENCHMARK_METRICS,
     DEEP_DIVE_METRICS,
@@ -37,12 +42,16 @@ def _init_state() -> None:
 
 
 def _load_cards(client) -> list[dict]:
-    response = (
-        client.table("mart_stock_cards")
-        .select("*")
-        .eq("is_card_eligible", True)
-        .execute()
-    )
+    try:
+        response = (
+            client.table("mart_stock_cards")
+            .select("*")
+            .eq("is_card_eligible", True)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"Could not load cards from Supabase: {exc}")
+        return []
     return response.data or []
 
 
@@ -112,6 +121,9 @@ def _discovery_page(client) -> None:
     tab_discover, tab_saved, tab_search = st.tabs(["Discover", "Saved", "Search"])
 
     with tab_discover:
+        if storage_sync_pending():
+            _refresh_queue(client)
+
         if st.button("Refresh queue"):
             _refresh_queue(client)
         queue = st.session_state["queue"]
