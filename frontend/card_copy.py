@@ -82,6 +82,50 @@ BENCHMARK_METRICS = (
 
 PEER_THRESHOLD = 8
 
+# Yahoo Finance GICS sector labels (info_sector on cards).
+SECTOR_GLOSS = {
+    "Communication Services": (
+        "Media, telecom, and entertainment — how people connect and consume content"
+    ),
+    "Consumer Cyclical": (
+        "Discretionary spending — retail, autos, travel, and other non-essential purchases"
+    ),
+    "Consumer Defensive": (
+        "Everyday essentials — food, household goods, and staples people buy in any economy"
+    ),
+    "Energy": "Oil, gas, and energy producers — tied to commodity prices and global demand",
+    "Financial Services": (
+        "Banks, insurers, and asset managers — profit from lending, fees, and financial products"
+    ),
+    "Healthcare": "Pharmaceuticals, medical devices, and health services",
+    "Industrials": "Manufacturing, transport, and business equipment — tied to economic cycles",
+    "Basic Materials": (
+        "Raw materials — mining, chemicals, and forestry inputs for other industries"
+    ),
+    "Real Estate": "Property owners and developers — revenue from rent and real estate values",
+    "Technology": "Software, hardware, and IT services — often growth-focused and R&D heavy",
+    "Utilities": "Power, water, and gas distributors — regulated, steady-demand businesses",
+}
+
+DEFAULT_SECTOR_GLOSS = (
+    "Industry grouping used to compare this company with similar businesses in the app"
+)
+
+
+def sector_headline(card: dict) -> str:
+    """Sector label with peer count when available (north_star)."""
+    sector = card.get("sector") or "Unknown sector"
+    peer_count = card.get("sector_peer_count")
+    if peer_count is not None:
+        return f"{sector} ({peer_count} companies)"
+    return sector
+
+
+def sector_gloss_line(sector: str | None) -> str:
+    if not sector:
+        return DEFAULT_SECTOR_GLOSS
+    return SECTOR_GLOSS.get(sector, DEFAULT_SECTOR_GLOSS)
+
 
 def format_snapshot_date(raw: date | str | None) -> str | None:
     if raw is None:

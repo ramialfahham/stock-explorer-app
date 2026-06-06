@@ -15,6 +15,8 @@ from card_copy import (
     benchmark_line,
     format_metric_value,
     freshness_line,
+    sector_gloss_line,
+    sector_headline,
 )
 
 
@@ -73,14 +75,16 @@ def build_card_html(
     company = card.get("company_name") or card.get("ticker") or "Unknown"
     ticker = card.get("ticker") or "—"
     market = _format_market_code(card.get("market_code"))
-    sector = card.get("sector") or "Unknown sector"
 
     progress = ""
     if card_index is not None and queue_total is not None and queue_total > 0:
         progress = f"{card_index}/{queue_total}"
 
-    meta_parts = [p for p in (progress, market, sector) if p]
+    meta_parts = [p for p in (progress, market) if p]
     meta_line = " · ".join(meta_parts)
+
+    sector_head = sector_headline(card)
+    sector_gloss = sector_gloss_line(card.get("sector"))
 
     hero = "".join(_metric_cell_html(card, m) for m in VISIBLE_METRICS)
     balance = "".join(_metric_cell_html(card, m) for m in DEEP_DIVE_METRICS)
@@ -97,6 +101,10 @@ def build_card_html(
         f'<p class="ss-identity">'
         f'<span class="ss-company">{_esc(company)}</span> '
         f'<span class="ss-ticker">{_esc(ticker)}</span></p>'
+        f'<div class="ss-sector-context">'
+        f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
+        f'<p class="ss-sector-gloss">{_esc(sector_gloss)}</p>'
+        f"</div>"
         f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
         f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
         f"{_explain_all_html()}"

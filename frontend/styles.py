@@ -96,6 +96,25 @@ section[data-testid="stSidebar"] {
     color: var(--ss-accent);
 }
 
+.ss-sector-context {
+    margin: 0 0 0.65rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--ss-border);
+}
+.ss-sector-headline {
+    font-size: var(--ss-caption-size);
+    font-weight: 600;
+    color: var(--ss-text);
+    margin: 0 0 0.12rem;
+    line-height: 1.3;
+}
+.ss-sector-gloss {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0;
+    line-height: 1.35;
+}
+
 .ss-metrics-grid {
     display: grid;
     gap: 0.5rem;
