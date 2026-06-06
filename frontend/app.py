@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 import uuid
 from pathlib import Path
@@ -23,6 +22,7 @@ from frontend.card_copy import (
     benchmark_line,
     format_metric_value,
 )
+from frontend.settings import get_supabase_anon_key, get_supabase_url
 from frontend.queue import build_queue
 from frontend.supabase_client import client_for_session, get_anon_client
 
@@ -248,8 +248,11 @@ def main() -> None:
         "use Yahoo Finance for a live quote."
     )
 
-    if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_ANON_KEY"):
-        st.error("Missing SUPABASE_URL or SUPABASE_ANON_KEY. Add them to `.env` or Streamlit secrets.")
+    if not get_supabase_url() or not get_supabase_anon_key():
+        st.error(
+            "Missing SUPABASE_URL or SUPABASE_ANON_KEY. "
+            "Add them under Streamlit app Settings → Secrets (see .streamlit/secrets.toml.example)."
+        )
         return
 
     if st.session_state["session"] is None:
@@ -260,5 +263,4 @@ def main() -> None:
     _discovery_page(client)
 
 
-if __name__ == "__main__":
-    main()
+main()
