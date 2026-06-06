@@ -15,6 +15,7 @@ STORAGE_ITEM_KEY = "interactions"
 _MANAGER_KEY = "stock_swipe_interactions"
 _LOADED_FLAG = "_interactions_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
+_BOOT_RERUN_FLAG = "_storage_boot_rerun_done"
 _DEBUG_LOG = Path(__file__).resolve().parents[1] / "debug-3dd384.log"
 
 
@@ -22,7 +23,7 @@ def _debug_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
     # #region agent log
     payload = {
         "sessionId": "3dd384",
-        "runId": "cloud-fix",
+        "runId": "persist-fix",
         "hypothesisId": hypothesis_id,
         "location": "browser_storage.py",
         "message": message,
@@ -32,10 +33,6 @@ def _debug_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
     with _DEBUG_LOG.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload) + "\n")
     # #endregion
-
-
-def _legacy_component_dir() -> Path:
-    return Path(__file__).resolve().parent / "components" / "local_storage"
 
 
 def _manager():
@@ -58,17 +55,6 @@ def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
 
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
     """Load interactions from browser localStorage into session state."""
-    legacy_dir = _legacy_component_dir()
-    _debug_log(
-        "A",
-        "storage backend init",
-        {
-            "legacy_component_dir_exists": legacy_dir.is_dir(),
-            "legacy_index_exists": (legacy_dir / "index.html").is_file(),
-            "backend": "streamlit_extras.local_storage_manager",
-        },
-    )
-
     if st.session_state.get(_LOADED_FLAG):
         interactions = list(st.session_state.get("interactions", []))
         _debug_log("E", "interactions already loaded", {"count": len(interactions)})
@@ -79,17 +65,28 @@ def ensure_interactions_loaded() -> list[dict[str, Any]]:
 
     manager = _manager()
     ready = manager.ready()
-    _debug_log("D", "localStorage manager ready check", {"ready": ready})
+    _debug_log("D", "manager ready check", {"ready": ready})
 
     if not ready:
+        if not st.session_state.get(_BOOT_RERUN_FLAG):
+            st.session_state[_BOOT_RERUN_FLAG] = True
+            _debug_log("B", "boot rerun waiting for localStorage sync", {})
+            st.rerun()
+        _debug_log("B", "manager still not ready after boot rerun", {})
         return list(st.session_state["interactions"])
 
     stored = manager.get(STORAGE_ITEM_KEY, [])
     interactions = _parse_interactions(stored)
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
-    st.session_state[_SYNC_PENDING_FLAG] = True
-    _debug_log("D", "loaded interactions from localStorage", {"count": len(interactions)})
+    st.session_state[_BOOT_RERUN_FLAG] = False
+    if interactions:
+        st.session_state[_SYNC_PENDING_FLAG] = True
+    _debug_log(
+        "D",
+        "loaded interactions from localStorage",
+        {"count": len(interactions), "saved": sum(1 for i in interactions if i.get("action") == "save")},
+    )
     return interactions
 
 
@@ -103,11 +100,16 @@ def get_interactions() -> list[dict[str, Any]]:
 
 def _persist_interactions(interactions: list[dict[str, Any]]) -> None:
     manager = _manager()
-    if not manager.ready():
-        _debug_log("D", "skip persist; manager not ready", {"count": len(interactions)})
-        return
     manager[STORAGE_ITEM_KEY] = interactions
-    _debug_log("D", "persisted interactions", {"count": len(interactions)})
+    _debug_log(
+        "A",
+        "queued interactions persist",
+        {
+            "count": len(interactions),
+            "ready": manager.ready(),
+            "saved": sum(1 for i in interactions if i.get("action") == "save"),
+        },
+    )
 
 
 def append_interaction(card: dict[str, Any], action: str) -> None:
@@ -127,7 +129,5 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
 def clear_interactions() -> None:
     st.session_state["interactions"] = []
     st.session_state[_LOADED_FLAG] = True
-    manager = _manager()
-    if manager.ready():
-        manager[STORAGE_ITEM_KEY] = []
+    _persist_interactions([])
     st.rerun()
