@@ -1,4 +1,4 @@
-"""Stock card layout — HTML-first, dark editorial."""
+"""Stock card layout — scannable HTML, numbers-first."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import streamlit as st
 from card_copy import (
     BENCHMARK_METRICS,
     DEEP_DIVE_METRICS,
-    METRIC_HELP,
     METRIC_LABELS,
     METRIC_LEARN,
     VISIBLE_METRICS,
@@ -32,33 +31,36 @@ def _esc(value: object) -> str:
 
 def _format_market_code(market_code: str | None) -> str:
     if not market_code:
-        return "Unknown market"
+        return "—"
     return market_code.replace("_", " ").upper()
 
 
-def _metric_row_html(card: dict, metric: str, *, show_learn: bool) -> str:
+def _metric_cell_html(card: dict, metric: str) -> str:
     label = METRIC_LABELS[metric]
     value = format_metric_value(metric, card.get(metric))
-    hint = METRIC_HELP[metric]
     bench = _benchmark_for_metric(card, metric)
-    bench_html = (
-        f'<p class="ss-metric-bench">{_esc(bench)}</p>' if bench else ""
+    bench_html = f'<p class="ss-metric-bench">{_esc(bench)}</p>' if bench else ""
+    return (
+        f'<div class="ss-metric">'
+        f'<p class="ss-metric-label">{_esc(label)}</p>'
+        f'<p class="ss-metric-value">{_esc(value)}</p>'
+        f"{bench_html}"
+        f"</div>"
     )
-    learn_html = ""
-    if show_learn:
-        learn_html = (
-            f'<details class="ss-metric-learn">'
-            f"<summary>?</summary><p>{_esc(METRIC_LEARN[metric])}</p></details>"
+
+
+def _explain_all_html() -> str:
+    blocks = []
+    for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
+        blocks.append(
+            f"<dt>{_esc(METRIC_LABELS[metric])}</dt>"
+            f"<dd>{_esc(METRIC_LEARN[metric])}</dd>"
         )
     return (
-        f'<article class="ss-metric">'
-        f'<div class="ss-metric-head">'
-        f'<span class="ss-metric-label">{_esc(label)}</span>{learn_html}'
-        f"</div>"
-        f'<p class="ss-metric-value">{_esc(value)}</p>'
-        f'<p class="ss-metric-hint">{_esc(hint)}</p>'
-        f"{bench_html}"
-        f"</article>"
+        f'<details class="ss-explain-all">'
+        f"<summary>What do these metrics mean?</summary>"
+        f'<dl class="ss-explain-list">{"".join(blocks)}</dl>'
+        f"</details>"
     )
 
 
@@ -68,51 +70,39 @@ def build_card_html(
     card_index: int | None = None,
     queue_total: int | None = None,
 ) -> str:
-    company = card.get("company_name") or card.get("ticker") or "Unknown company"
+    company = card.get("company_name") or card.get("ticker") or "Unknown"
     ticker = card.get("ticker") or "—"
     market = _format_market_code(card.get("market_code"))
     sector = card.get("sector") or "Unknown sector"
-    peers = card.get("sector_peer_count")
 
-    queue_chip = ""
+    progress = ""
     if card_index is not None and queue_total is not None and queue_total > 0:
-        queue_chip = f'<span class="ss-queue-chip">{card_index} / {queue_total}</span>'
+        progress = f"{card_index}/{queue_total}"
 
-    if peers and peers >= 8:
-        sector_line = f"{_esc(sector)} · {peers} peers"
-    else:
-        sector_line = _esc(sector)
-        if peers is not None and peers < 8:
-            sector_line += ' · <span class="ss-muted">small peer group</span>'
+    meta_parts = [p for p in (progress, market, sector) if p]
+    meta_line = " · ".join(meta_parts)
 
-    hero_rows = "".join(
-        _metric_row_html(card, metric, show_learn=True) for metric in VISIBLE_METRICS
-    )
-    deep_rows = "".join(
-        _metric_row_html(card, metric, show_learn=False) for metric in DEEP_DIVE_METRICS
-    )
+    hero = "".join(_metric_cell_html(card, m) for m in VISIBLE_METRICS)
+    balance = "".join(_metric_cell_html(card, m) for m in DEEP_DIVE_METRICS)
 
     fresh = freshness_line(card)
-    fresh_html = f'<p class="ss-freshness">{_esc(fresh)}</p>' if fresh else ""
+    fresh_html = f'<span class="ss-freshness">{_esc(fresh)}</span>' if fresh else ""
 
     yahoo_ticker = _esc(card.get("ticker", ""))
     yahoo_url = f"https://finance.yahoo.com/quote/{yahoo_ticker}"
 
     return (
         f'<section class="ss-card">'
-        f'<header class="ss-card-header">'
-        f'<div class="ss-card-meta-row">{queue_chip}'
-        f'<span class="ss-ticker">{_esc(ticker)}</span>'
-        f'<span class="ss-market">{_esc(market)}</span></div>'
-        f'<h1 class="ss-company">{_esc(company)}</h1>'
-        f'<p class="ss-sector">{sector_line}</p>'
-        f"</header>"
-        f'<div class="ss-metrics-grid">{hero_rows}</div>'
-        f'<details class="ss-deep-dive"><summary>Debt &amp; cash flow</summary>'
-        f'<div class="ss-metrics-stack">{deep_rows}</div></details>'
+        f'<p class="ss-meta-line">{_esc(meta_line)}</p>'
+        f'<p class="ss-identity">'
+        f'<span class="ss-company">{_esc(company)}</span> '
+        f'<span class="ss-ticker">{_esc(ticker)}</span></p>'
+        f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
+        f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
+        f"{_explain_all_html()}"
         f'<footer class="ss-card-footer">{fresh_html}'
         f'<a class="ss-yahoo-link" href="{yahoo_url}" target="_blank" '
-        f'rel="noopener noreferrer">Yahoo Finance ↗</a></footer>'
+        f'rel="noopener noreferrer">Yahoo ↗</a></footer>'
         f"</section>"
     )
 
@@ -123,7 +113,6 @@ def render_stock_card(
     card_index: int | None = None,
     queue_total: int | None = None,
 ) -> None:
-    """Render a compact HTML stock card."""
     st.markdown(
         build_card_html(card, card_index=card_index, queue_total=queue_total),
         unsafe_allow_html=True,

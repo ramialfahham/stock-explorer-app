@@ -10,6 +10,14 @@ METRIC_HELP = {
     "fcf_margin_pct": "FCF margin shows free cash left from each dollar of revenue after running the business.",
 }
 
+METRIC_GLOSS = {
+    "forward_pe": "Price vs expected next-year earnings",
+    "ebit_margin_pct": "Operating profit as share of sales",
+    "revenue_growth_yoy_pct": "Sales growth vs one year ago",
+    "net_debt_to_ebitda": "Years of profit to repay net debt",
+    "fcf_margin_pct": "Free cash left from each sales dollar",
+}
+
 METRIC_LEARN = {
     "forward_pe": (
         "P/E (price-to-earnings) divides the share price by earnings per share. "
@@ -41,12 +49,19 @@ METRIC_LEARN = {
 METRIC_LABELS = {
     "forward_pe": "Forward P/E",
     "ebit_margin_pct": "EBIT margin",
-    "revenue_growth_yoy_pct": "Revenue growth (YoY)",
+    "revenue_growth_yoy_pct": "Rev growth YoY",
     "net_debt_to_ebitda": "Net debt / EBITDA",
     "fcf_margin_pct": "FCF margin",
 }
 
-# north_star: top three on the card; leverage and FCF in deep dive.
+ALL_METRICS = (
+    "forward_pe",
+    "ebit_margin_pct",
+    "revenue_growth_yoy_pct",
+    "net_debt_to_ebitda",
+    "fcf_margin_pct",
+)
+
 VISIBLE_METRICS = (
     "forward_pe",
     "ebit_margin_pct",
@@ -87,7 +102,7 @@ def freshness_line(card: dict) -> str | None:
     formatted = format_snapshot_date(card.get("snapshot_date"))
     if not formatted:
         return None
-    return f"Fundamentals as of {formatted}"
+    return f"As of {formatted}"
 
 
 def format_metric_value(metric: str, value: float | None) -> str:
@@ -108,10 +123,9 @@ def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> 
     median = card.get(median_key)
     if value is None or median is None:
         return None
-    median_fmt = format_metric_value(metric, median)
     if direction == "higher":
         word = "above" if value >= median else "below"
     else:
         word = "below" if value <= median else "above"
     sector = card.get("sector") or "sector"
-    return f"{word.capitalize()} the {sector} median ({median_fmt}, {peer_count} peers in this app)"
+    return f"{word} {sector} median"
