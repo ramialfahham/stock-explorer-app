@@ -13,6 +13,7 @@ from streamlit_extras.local_storage_manager import local_storage_manager
 
 STORAGE_ITEM_KEY = "interactions"
 _MANAGER_KEY = "stock_swipe_interactions"
+_STORE_KEY = f"{_MANAGER_KEY}__local_storage_state"
 _LOADED_FLAG = "_interactions_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
 _BOOT_RERUN_FLAG = "_storage_boot_rerun_done"
@@ -23,7 +24,7 @@ def _debug_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
     # #region agent log
     payload = {
         "sessionId": "3dd384",
-        "runId": "persist-fix",
+        "runId": "flush-fix",
         "hypothesisId": hypothesis_id,
         "location": "browser_storage.py",
         "message": message,
@@ -35,8 +36,52 @@ def _debug_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
     # #endregion
 
 
-def _manager():
-    return local_storage_manager(key=_MANAGER_KEY)
+def _pending_store() -> dict[str, Any]:
+    return st.session_state.setdefault(
+        _STORE_KEY,
+        {"next_operation_id": 1, "pending_operations": []},
+    )
+
+
+def _queue_interactions_write(interactions: list[dict[str, Any]]) -> None:
+    """Queue a localStorage set without mounting a second component instance."""
+    store = _pending_store()
+    operation_id = store["next_operation_id"]
+    store["next_operation_id"] = operation_id + 1
+    store["pending_operations"].append(
+        {
+            "id": operation_id,
+            "type": "set",
+            "name": STORAGE_ITEM_KEY,
+            "value": interactions,
+        }
+    )
+    _debug_log(
+        "A",
+        "queued interactions write",
+        {
+            "operation_id": operation_id,
+            "count": len(interactions),
+            "saved": sum(1 for i in interactions if i.get("action") == "save"),
+            "pending_count": len(store["pending_operations"]),
+        },
+    )
+
+
+def _mount_manager():
+    """Mount localStorage component once per run (flushes pending writes + reads snapshot)."""
+    manager = local_storage_manager(key=_MANAGER_KEY)
+    store = _pending_store()
+    _debug_log(
+        "C",
+        "mounted localStorage manager",
+        {
+            "ready": manager.ready(),
+            "pending_count": len(store["pending_operations"]),
+            "loaded_flag": bool(st.session_state.get(_LOADED_FLAG)),
+        },
+    )
+    return manager
 
 
 def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
@@ -55,15 +100,16 @@ def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
 
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
     """Load interactions from browser localStorage into session state."""
-    if st.session_state.get(_LOADED_FLAG):
-        interactions = list(st.session_state.get("interactions", []))
-        _debug_log("E", "interactions already loaded", {"count": len(interactions)})
-        return interactions
-
     if "interactions" not in st.session_state:
         st.session_state["interactions"] = []
 
-    manager = _manager()
+    manager = _mount_manager()
+
+    if st.session_state.get(_LOADED_FLAG):
+        interactions = list(st.session_state.get("interactions", []))
+        _debug_log("E", "session interactions (manager mounted for flush)", {"count": len(interactions)})
+        return interactions
+
     ready = manager.ready()
     _debug_log("D", "manager ready check", {"ready": ready})
 
@@ -98,20 +144,6 @@ def get_interactions() -> list[dict[str, Any]]:
     return list(st.session_state.get("interactions", []))
 
 
-def _persist_interactions(interactions: list[dict[str, Any]]) -> None:
-    manager = _manager()
-    manager[STORAGE_ITEM_KEY] = interactions
-    _debug_log(
-        "A",
-        "queued interactions persist",
-        {
-            "count": len(interactions),
-            "ready": manager.ready(),
-            "saved": sum(1 for i in interactions if i.get("action") == "save"),
-        },
-    )
-
-
 def append_interaction(card: dict[str, Any], action: str) -> None:
     row = {
         "market_code": card["market_code"],
@@ -123,11 +155,11 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
     interactions.append(row)
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
-    _persist_interactions(interactions)
+    _queue_interactions_write(interactions)
 
 
 def clear_interactions() -> None:
     st.session_state["interactions"] = []
     st.session_state[_LOADED_FLAG] = True
-    _persist_interactions([])
+    _queue_interactions_write([])
     st.rerun()
