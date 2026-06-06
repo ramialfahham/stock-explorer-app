@@ -14,6 +14,7 @@ from card_copy import (
     VISIBLE_METRICS,
     benchmark_line,
     format_metric_value,
+    freshness_line,
 )
 
 
@@ -100,6 +101,10 @@ def render_stock_card(
             for col, metric in zip(deep_cols, DEEP_DIVE_METRICS, strict=True):
                 with col:
                     _render_metric_cell(card, metric, popover_key=f"{card_key}_deep")
+
+        line = freshness_line(card)
+        if line:
+            st.markdown(f'<p class="card-freshness">{line}</p>', unsafe_allow_html=True)
 
         yahoo_ticker = card.get("ticker", "")
         st.link_button(

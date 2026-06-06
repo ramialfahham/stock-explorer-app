@@ -1,5 +1,7 @@
 """Plain-language metric lines for beginners (north_star)."""
 
+from datetime import date
+
 METRIC_HELP = {
     "forward_pe": "Forward P/E compares today's share price to expected earnings over the next year.",
     "ebit_margin_pct": "EBIT margin shows how much profit the company keeps from sales before interest and taxes.",
@@ -72,6 +74,28 @@ BENCHMARK_METRICS = (
 )
 
 PEER_THRESHOLD = 8
+
+
+def format_snapshot_date(raw: date | str | None) -> str | None:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        try:
+            parsed = date.fromisoformat(raw[:10])
+        except ValueError:
+            return None
+    elif isinstance(raw, date):
+        parsed = raw
+    else:
+        return None
+    return parsed.strftime("%B %d, %Y")
+
+
+def freshness_line(card: dict) -> str | None:
+    formatted = format_snapshot_date(card.get("snapshot_date"))
+    if not formatted:
+        return None
+    return f"Fundamentals as of {formatted}"
 
 
 def format_metric_value(metric: str, value: float | None) -> str:
