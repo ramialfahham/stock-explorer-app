@@ -9,6 +9,7 @@ from browser_storage import (
     append_interaction,
     clear_interactions,
     ensure_interactions_loaded,
+    get_interactions,
     storage_sync_pending,
 )
 from card_copy import (
@@ -55,9 +56,10 @@ def _load_cards(client) -> list[dict]:
     return response.data or []
 
 
-def _refresh_queue(client) -> None:
+def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     cards = _load_cards(client)
-    interactions = ensure_interactions_loaded()
+    if interactions is None:
+        interactions = ensure_interactions_loaded()
     st.session_state["queue"] = build_queue(
         cards,
         interactions,
@@ -118,17 +120,18 @@ def _discovery_page(client) -> None:
     if st.sidebar.button("Clear saved on this device"):
         clear_interactions()
 
+    interactions = ensure_interactions_loaded()
+    if storage_sync_pending():
+        _refresh_queue(client, interactions=interactions)
+
     tab_discover, tab_saved, tab_search = st.tabs(["Discover", "Saved", "Search"])
 
     with tab_discover:
-        if storage_sync_pending():
-            _refresh_queue(client)
-
         if st.button("Refresh queue"):
-            _refresh_queue(client)
+            _refresh_queue(client, interactions=get_interactions())
         queue = st.session_state["queue"]
         if not queue:
-            _refresh_queue(client)
+            _refresh_queue(client, interactions=get_interactions())
             queue = st.session_state["queue"]
 
         if not queue:
@@ -148,7 +151,7 @@ def _discovery_page(client) -> None:
         if col_save.button("Save", use_container_width=True):
             append_interaction(card, "save")
             st.session_state["queue_index"] = idx + 1
-            _refresh_queue(client)
+            _refresh_queue(client, interactions=get_interactions())
             st.rerun()
 
         if col_skip.button("Not interested right now", use_container_width=True):
@@ -160,12 +163,11 @@ def _discovery_page(client) -> None:
             st.session_state["sector_shown"][key] = (
                 st.session_state["sector_shown"].get(key, 0) + 1
             )
-            _refresh_queue(client)
+            _refresh_queue(client, interactions=get_interactions())
             st.rerun()
 
     with tab_saved:
-        interactions = ensure_interactions_loaded()
-        saved_cards = _saved_cards(client, interactions)
+        saved_cards = _saved_cards(client, get_interactions())
         if not saved_cards:
             st.write("No saved companies yet.")
         for card in saved_cards:
