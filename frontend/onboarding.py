@@ -15,21 +15,15 @@ def render_welcome() -> bool:
     st.markdown(
         """
 <div class="welcome-panel">
-  <p class="welcome-kicker">Welcome to Stock Swipe</p>
   <p class="welcome-lead">
-    Browse company cards with five beginner-friendly metrics. Save ones you want to revisit —
-    skip the rest for now.
+    Browse company cards with plain-language fundamentals. Save what you want to revisit —
+    everything stays on this device. Not investment advice.
   </p>
-  <ul class="welcome-list">
-    <li><strong>Save</strong> adds a company to your Saved tab on this device.</li>
-    <li><strong>Not interested right now</strong> moves to the next card.</li>
-    <li>Nothing is investment advice — use cards to learn, then dig deeper elsewhere.</li>
-  </ul>
 </div>
 """,
         unsafe_allow_html=True,
     )
-    if st.button("Got it — show me stocks", type="primary", use_container_width=True):
+    if st.button("Show me stocks", type="primary", use_container_width=True):
         dismiss_onboarding()
         st.rerun()
     return True

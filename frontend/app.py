@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -21,7 +23,12 @@ from supabase_client import get_anon_client
 
 load_dotenv()
 
-st.set_page_config(page_title="Stock Swipe", page_icon="📊", layout="wide")
+st.set_page_config(
+    page_title="Stock Swipe",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 
 def _init_state() -> None:
@@ -31,6 +38,8 @@ def _init_state() -> None:
         "market_index": 0,
         "sector_shown": {},
         "saved_selected_key": None,
+        "search_selected": None,
+        "active_page": "Discover",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -89,63 +98,45 @@ def _card_key(card: dict) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
-def _render_sidebar(*, queue_len: int, queue_index: int, saved_count: int, client) -> None:
-    st.sidebar.markdown("### Stock Swipe")
-    st.sidebar.caption("Browse fundamentals. Save what you want to revisit.")
-    st.sidebar.markdown(
-        "Saves and skips stay on **this device only** — not synced across browsers."
+def _render_topbar(*, remaining: int, saved_count: int) -> None:
+    st.markdown(
+        f"""
+<div class="ss-topbar">
+  <span class="ss-brand">Stock Swipe</span>
+  <span class="ss-chips">
+    <span class="ss-chip">{remaining} left</span>
+    <span class="ss-chip">{saved_count} saved</span>
+  </span>
+</div>
+""",
+        unsafe_allow_html=True,
     )
-    st.sidebar.caption("Not investment advice. Fundamentals refresh weekly.")
-
-    st.sidebar.divider()
-    st.sidebar.markdown("**This session**")
-    remaining = max(queue_len - queue_index, 0)
-    st.sidebar.markdown(f"- **{remaining}** cards left in queue")
-    st.sidebar.markdown(f"- **{saved_count}** saved companies")
-
-    if st.sidebar.button("Start over", use_container_width=True):
-        _start_over(client)
-        st.rerun()
-
-    st.sidebar.divider()
-    if st.sidebar.button("Clear saved on this device", use_container_width=True):
-        clear_interactions()
-        st.session_state["saved_selected_key"] = None
 
 
-def _render_discover_tab(client) -> None:
-    queue = st.session_state["queue"]
-    if not queue:
-        _refresh_queue(client, interactions=get_interactions())
-        queue = st.session_state["queue"]
-
-    if not queue:
-        st.info("No card-eligible stocks in Supabase yet. Run the data pipeline first.")
-        return
-
-    if render_welcome():
-        return
-
-    idx = st.session_state["queue_index"]
-    if idx >= len(queue):
-        st.success("You have seen every card in this queue.")
-        st.caption("Start over to shuffle through companies again with a fresh order.")
-        if st.button("Start over", type="primary", use_container_width=True):
+def _render_utility_actions(client) -> None:
+    st.markdown('<div class="ss-utility-row-marker"></div>', unsafe_allow_html=True)
+    col_start, col_clear, _ = st.columns([1, 1, 2])
+    with col_start:
+        if st.button("Start over", key="utility_start_over"):
             _start_over(client)
             st.rerun()
-        return
+    with col_clear:
+        if st.button("Clear saved", key="utility_clear_saved"):
+            clear_interactions()
+            st.session_state["saved_selected_key"] = None
+            st.rerun()
 
-    card = queue[idx]
-    render_stock_card(card, card_index=idx + 1, queue_total=len(queue))
 
+def _render_sticky_actions(client, card: dict, idx: int) -> None:
+    st.markdown('<div class="ss-action-shell"></div>', unsafe_allow_html=True)
     col_save, col_skip = st.columns(2)
-    if col_save.button("Save", type="primary", use_container_width=True):
+    if col_save.button("Save", type="primary", use_container_width=True, key="discover_save"):
         append_interaction(card, "save")
         st.session_state["queue_index"] = idx + 1
         _refresh_queue(client, interactions=get_interactions())
         st.rerun()
 
-    if col_skip.button("Not interested right now", use_container_width=True):
+    if col_skip.button("Skip", use_container_width=True, key="discover_skip"):
         append_interaction(card, "skip")
         st.session_state["queue_index"] = idx + 1
         st.session_state["market_index"] = st.session_state["market_index"] + 1
@@ -158,52 +149,72 @@ def _render_discover_tab(client) -> None:
         st.rerun()
 
 
+def _render_discover_tab(client) -> None:
+    queue = st.session_state["queue"]
+    if not queue:
+        _refresh_queue(client, interactions=get_interactions())
+        queue = st.session_state["queue"]
+
+    if not queue:
+        st.info("No card-eligible stocks yet. Run the data pipeline first.")
+        return
+
+    if render_welcome():
+        return
+
+    idx = st.session_state["queue_index"]
+    if idx >= len(queue):
+        st.info("You have seen every card in this queue.")
+        if st.button("Start over", type="primary", use_container_width=True, key="discover_start_over"):
+            _start_over(client)
+            st.rerun()
+        return
+
+    card = queue[idx]
+    render_stock_card(card, card_index=idx + 1, queue_total=len(queue))
+    _render_sticky_actions(client, card, idx)
+
+
 def _render_saved_tab(client, interactions: list[dict]) -> None:
     saved_cards = _saved_cards(client, interactions)
-    st.caption(f"{len(saved_cards)} saved on this device")
 
     if not saved_cards:
-        st.info(
-            "Nothing saved yet. Open **Discover**, read a card, and tap **Save** "
-            "to build your watchlist here."
-        )
+        st.info("Nothing saved yet — tap Save on a company in Discover.")
         return
 
     for card in saved_cards:
         key = _card_key(card)
-        label = card.get("company_name") or card.get("ticker")
-        ticker = card.get("ticker") or "—"
-        sector = card.get("sector") or "Unknown sector"
-        row_label, row_action = st.columns([5, 1])
-        with row_label:
-            st.markdown(f"**{label}** · `{ticker}`")
-            st.caption(sector)
+        label = html.escape(card.get("company_name") or card.get("ticker") or "Unknown")
+        ticker = html.escape(card.get("ticker") or "—")
+        sector = html.escape(card.get("sector") or "Unknown sector")
+        row_text, row_action = st.columns([4, 1])
+        with row_text:
+            st.markdown(
+                f'<p class="ss-saved-name">{label} · '
+                f'<span class="ss-saved-ticker">{ticker}</span></p>'
+                f'<p class="ss-saved-sector">{sector}</p>',
+                unsafe_allow_html=True,
+            )
         with row_action:
             if st.button("Open", key=f"saved_open_{key[0]}_{key[1]}", use_container_width=True):
                 st.session_state["saved_selected_key"] = key
                 st.rerun()
-        st.divider()
 
     selected_key = st.session_state.get("saved_selected_key")
     if selected_key:
         selected = next((c for c in saved_cards if _card_key(c) == selected_key), None)
         if selected:
-            st.markdown("#### Selected company")
             render_stock_card(selected)
 
 
 def _render_search_tab(client) -> None:
-    st.caption("Find any card-eligible company — including ones you skipped in Discover.")
     query = st.text_input(
         "Search",
-        placeholder="Try AAPL, Apple, or Life360",
+        placeholder="Ticker or company name",
         label_visibility="collapsed",
     ).strip()
+
     if not query:
-        st.markdown(
-            "Type a **ticker** or **company name** to open its card. "
-            "Only companies with complete fundamentals appear here."
-        )
         return
 
     needle = query.lower()
@@ -217,13 +228,21 @@ def _render_search_tab(client) -> None:
     matches.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
 
     if not matches:
-        st.warning(f"No card-eligible matches for “{query}”. Try a shorter name or ticker symbol.")
+        st.warning(f"No matches for “{query}”.")
         return
 
-    st.caption(f"{len(matches)} match{'es' if len(matches) != 1 else ''} — showing up to 20")
     for card in matches[:20]:
-        with st.expander(f"{card.get('company_name')} ({card.get('ticker')})"):
-            render_stock_card(card)
+        label = card.get("company_name") or card.get("ticker")
+        ticker = card.get("ticker")
+        if st.button(f"{label} ({ticker})", key=f"search_{card['market_code']}_{ticker}"):
+            st.session_state["search_selected"] = _card_key(card)
+            st.rerun()
+
+    selected = st.session_state.get("search_selected")
+    if selected:
+        match = next((c for c in matches if _card_key(c) == selected), None)
+        if match:
+            render_stock_card(match)
 
 
 def _discovery_page(client) -> None:
@@ -237,23 +256,29 @@ def _discovery_page(client) -> None:
         queue = st.session_state["queue"]
 
     saved_count = _saved_count(get_interactions())
-    _render_sidebar(
-        queue_len=len(queue),
-        queue_index=st.session_state["queue_index"],
-        saved_count=saved_count,
-        client=client,
-    )
+    remaining = max(len(queue) - st.session_state["queue_index"], 0)
+    _render_topbar(remaining=remaining, saved_count=saved_count)
+    _render_utility_actions(client)
 
     saved_label = f"Saved ({saved_count})" if saved_count else "Saved"
-    tab_discover, tab_saved, tab_search = st.tabs(["Discover", saved_label, "Search"])
+    active = st.session_state.get("active_page", "Discover")
+    default_nav = saved_label if active == "Saved" else active
+    page = st.segmented_control(
+        "Navigation",
+        options=["Discover", saved_label, "Search"],
+        default=default_nav,
+        label_visibility="collapsed",
+        key="main_nav",
+    )
+    if page:
+        st.session_state["active_page"] = "Saved" if page.startswith("Saved") else page
 
-    with tab_discover:
+    active = st.session_state["active_page"]
+    if active == "Discover":
         _render_discover_tab(client)
-
-    with tab_saved:
+    elif active == "Saved":
         _render_saved_tab(client, get_interactions())
-
-    with tab_search:
+    else:
         _render_search_tab(client)
 
 
