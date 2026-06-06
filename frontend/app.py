@@ -1,4 +1,4 @@
-"""Stock Swipe — card discovery app (Streamlit + Supabase)."""
+"""Stock Explorer — card discovery app (Streamlit + Supabase)."""
 
 from __future__ import annotations
 
@@ -14,9 +14,10 @@ from browser_storage import (
     get_interactions,
     storage_sync_pending,
 )
+from brand import PRODUCT_NAME
 from card_ui import render_stock_card
 from discovery_queue import build_queue
-from onboarding import render_welcome
+from landing import render_landing
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -24,7 +25,7 @@ from supabase_client import get_anon_client
 load_dotenv()
 
 st.set_page_config(
-    page_title="Stock Swipe",
+    page_title=PRODUCT_NAME,
     page_icon="📊",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -103,7 +104,7 @@ def _render_header(*, remaining: int, saved_count: int, client) -> None:
     with bar_col:
         st.markdown(
             f"""
-<div class="ss-brand">Stock Swipe</div>
+<div class="ss-brand">{PRODUCT_NAME}</div>
 <div class="ss-header-stats">{remaining} left · {saved_count} saved</div>
 """,
             unsafe_allow_html=True,
@@ -167,9 +168,6 @@ def _render_discover_tab(client) -> bool:
 
     if not queue:
         st.info("No card-eligible stocks yet.")
-        return False
-
-    if render_welcome():
         return False
 
     idx = st.session_state["queue_index"]
@@ -298,6 +296,10 @@ def main() -> None:
             "Missing SUPABASE_URL or SUPABASE_ANON_KEY. "
             "Add them under Streamlit app Settings → Secrets (see .streamlit/secrets.toml.example)."
         )
+        return
+
+    ensure_interactions_loaded()
+    if render_landing():
         return
 
     client = get_anon_client()
