@@ -16,7 +16,7 @@ from card_copy import (
     benchmark_line,
     format_metric_value,
 )
-from queue import build_queue
+from discovery_queue import build_queue
 from settings import get_supabase_anon_key, get_supabase_url
 from supabase_client import client_for_session, get_anon_client
 
