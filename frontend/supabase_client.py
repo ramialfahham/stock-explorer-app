@@ -15,9 +15,3 @@ def get_anon_client() -> Client:
             "Set SUPABASE_URL and SUPABASE_ANON_KEY in Streamlit secrets or .env."
         )
     return create_client(url, key)
-
-
-def client_for_session(session) -> Client:
-    client = get_anon_client()
-    client.auth.set_session(session.access_token, session.refresh_token)
-    return client

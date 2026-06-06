@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import uuid
-
 import streamlit as st
 from dotenv import load_dotenv
 
+from browser_storage import append_interaction, clear_interactions, ensure_interactions_loaded
 from card_copy import (
     BENCHMARK_METRICS,
     DEEP_DIVE_METRICS,
@@ -18,7 +17,7 @@ from card_copy import (
 )
 from discovery_queue import build_queue
 from settings import get_supabase_anon_key, get_supabase_url
-from supabase_client import client_for_session, get_anon_client
+from supabase_client import get_anon_client
 
 load_dotenv()
 
@@ -27,13 +26,10 @@ st.set_page_config(page_title="Stock Swipe", page_icon="📊", layout="centered"
 
 def _init_state() -> None:
     defaults = {
-        "session": None,
-        "user": None,
         "queue": [],
         "queue_index": 0,
         "market_index": 0,
         "sector_shown": {},
-        "session_id": str(uuid.uuid4()),
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -50,32 +46,9 @@ def _load_cards(client) -> list[dict]:
     return response.data or []
 
 
-def _load_interactions(client, user_id: str) -> list[dict]:
-    response = (
-        client.table("user_interactions")
-        .select("market_code, ticker, action, created_at")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return response.data or []
-
-
-def _record_action(client, user_id: str, card: dict, action: str) -> None:
-    client.table("user_interactions").insert(
-        {
-            "user_id": user_id,
-            "market_code": card["market_code"],
-            "ticker": card["ticker"],
-            "action": action,
-            "session_id": st.session_state["session_id"],
-        }
-    ).execute()
-
-
 def _refresh_queue(client) -> None:
     cards = _load_cards(client)
-    interactions = _load_interactions(client, st.session_state["user"].id)
+    interactions = ensure_interactions_loaded()
     st.session_state["queue"] = build_queue(
         cards,
         interactions,
@@ -83,34 +56,6 @@ def _refresh_queue(client) -> None:
         sector_shown=st.session_state["sector_shown"],
     )
     st.session_state["queue_index"] = 0
-
-
-def _login_form() -> None:
-    st.subheader("Sign in")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-    col1, col2 = st.columns(2)
-    client = get_anon_client()
-
-    if col1.button("Sign in", use_container_width=True):
-        try:
-            auth = client.auth.sign_in_with_password({"email": email, "password": password})
-            st.session_state["session"] = auth.session
-            st.session_state["user"] = auth.user
-            st.rerun()
-        except Exception as exc:  # noqa: BLE001
-            st.error(f"Sign in failed: {exc}")
-
-    if col2.button("Create account", use_container_width=True):
-        try:
-            auth = client.auth.sign_up({"email": email, "password": password})
-            if auth.session:
-                st.session_state["session"] = auth.session
-                st.session_state["user"] = auth.user
-                st.rerun()
-            st.info("Check your email to confirm the account, then sign in.")
-        except Exception as exc:  # noqa: BLE001
-            st.error(f"Sign up failed: {exc}")
 
 
 def _render_metric_block(card: dict, metric: str, label: str) -> None:
@@ -151,13 +96,18 @@ def _render_card(card: dict) -> None:
     )
 
 
+def _saved_cards(client, interactions: list[dict]) -> list[dict]:
+    saved_keys = {
+        (i["market_code"], i["ticker"]) for i in interactions if i.get("action") == "save"
+    }
+    cards = _load_cards(client)
+    return [c for c in cards if (c["market_code"], c["ticker"]) in saved_keys]
+
+
 def _discovery_page(client) -> None:
-    user = st.session_state["user"]
-    st.sidebar.write(f"Signed in as {user.email}")
-    if st.sidebar.button("Sign out"):
-        client.auth.sign_out()
-        st.session_state.clear()
-        st.rerun()
+    st.sidebar.caption("Save and skip are stored on this device only — not synced across browsers.")
+    if st.sidebar.button("Clear saved on this device"):
+        clear_interactions()
 
     tab_discover, tab_saved, tab_search = st.tabs(["Discover", "Saved", "Search"])
 
@@ -184,13 +134,13 @@ def _discovery_page(client) -> None:
 
         col_save, col_skip = st.columns(2)
         if col_save.button("Save", use_container_width=True):
-            _record_action(client, user.id, card, "save")
+            append_interaction(card, "save")
             st.session_state["queue_index"] = idx + 1
             _refresh_queue(client)
             st.rerun()
 
         if col_skip.button("Not interested right now", use_container_width=True):
-            _record_action(client, user.id, card, "skip")
+            append_interaction(card, "skip")
             st.session_state["queue_index"] = idx + 1
             st.session_state["market_index"] = st.session_state["market_index"] + 1
             sector = card.get("sector") or "Unknown"
@@ -202,14 +152,8 @@ def _discovery_page(client) -> None:
             st.rerun()
 
     with tab_saved:
-        interactions = _load_interactions(client, user.id)
-        saved_keys = {
-            (i["market_code"], i["ticker"])
-            for i in interactions
-            if i["action"] == "save"
-        }
-        cards = _load_cards(client)
-        saved_cards = [c for c in cards if (c["market_code"], c["ticker"]) in saved_keys]
+        interactions = ensure_interactions_loaded()
+        saved_cards = _saved_cards(client, interactions)
         if not saved_cards:
             st.write("No saved companies yet.")
         for card in saved_cards:
@@ -249,11 +193,7 @@ def main() -> None:
         )
         return
 
-    if st.session_state["session"] is None:
-        _login_form()
-        return
-
-    client = client_for_session(st.session_state["session"])
+    client = get_anon_client()
     _discovery_page(client)
 
 

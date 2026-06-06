@@ -20,10 +20,10 @@ GitHub Actions (scheduled)
   → export marts to Supabase
 
 Supabase (Postgres)
-  → processed stock data + user interactions + auth
+  → processed stock data (anon read); user_interactions table reserved for future auth
 
 Streamlit Community Cloud
-  → reads Supabase, serves UI
+  → reads card marts via anon key; save/skip in browser localStorage (v1, no signup)
 ```
 
 Nothing runs on a developer machine in production.
