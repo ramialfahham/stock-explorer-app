@@ -138,23 +138,21 @@ The service role key (used in CI export) bypasses RLS.
 
 Full checklist: [`streamlit_deploy.md`](streamlit_deploy.md).
 
-1. Enable at least one auth provider under **Authentication → Providers** (email recommended).
-2. Deploy with main file `frontend/app.py` or `streamlit_app.py`, requirements `frontend/requirements.txt`, Python 3.11.
-3. In Streamlit app secrets, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (see `.streamlit/secrets.toml.example`).
+1. Deploy with main file `frontend/app.py` or `streamlit_app.py`, requirements `frontend/requirements.txt`, Python 3.11.
+2. In Streamlit app secrets, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (see `.streamlit/secrets.toml.example`).
 
 Use the **anon** key — not the service role key.
 
 ---
 
-## 6. Auth (Streamlit)
+## 6. Auth (Streamlit) — deferred
 
-1. Enable **Email** under **Authentication → Providers**.
-2. For local dev, create a test user in **Authentication → Users** or sign up via the app.
-3. Run the app from the repo root:
+v1 Streamlit does **not** require login. The app reads `mart_stock_cards` with the anon key (public read RLS). Save and skip are stored in **browser localStorage** on the device.
 
-   ```bash
-   streamlit run frontend/app.py
-   ```
+The `user_interactions` table and auth-backed RLS remain in the schema for a future release when accounts are added. No Supabase Auth provider setup is required to deploy v1.
 
-The `user_interactions` table expects `auth.users` UUIDs from authenticated sessions.
-Save and skip actions use the **anon** key with the user's session token (RLS enforces `auth.uid()`).
+Run locally from the repo root:
+
+```bash
+streamlit run frontend/app.py
+```

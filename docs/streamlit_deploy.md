@@ -5,7 +5,6 @@ Deploy the discovery UI (`frontend/app.py`) against Supabase data exported by th
 ## Prerequisites
 
 1. **Data pipeline green** — `mart_stock_cards` populated in Supabase ([`operations_guide.md`](operations_guide.md)).
-2. **Supabase Auth** — Email provider enabled ([`supabase_setup.md`](supabase_setup.md) §5–6).
 
 ## Deploy steps
 
@@ -16,7 +15,7 @@ Deploy the discovery UI (`frontend/app.py`) against Supabase data exported by th
 5. **Secrets** — App settings → Secrets, TOML format from [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example):
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (anon / publishable key only — never the service role key)
-6. Deploy. Open the app URL and sign in (or create a test user in Supabase Auth).
+6. Deploy. Open the app URL — Discover and Search load immediately (no login). Save/skip persist in browser localStorage on the device.
 
 ## Local dev
 
@@ -34,3 +33,5 @@ Or use `.env` with `SUPABASE_URL` and `SUPABASE_ANON_KEY` (see `.env.example`).
 
 Card layout follows [`north_star.md`](north_star.md): three headline metrics on the card;
 net debt / EBITDA and FCF margin under **More metrics (scroll)**.
+
+Save and skip are stored in the browser only (not synced across devices). Supabase accounts are deferred to a later release; the `user_interactions` table remains for that phase.
