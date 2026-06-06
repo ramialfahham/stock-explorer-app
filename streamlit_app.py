@@ -1,5 +1,10 @@
 """Streamlit Community Cloud entrypoint (repo root)."""
 
-from frontend.app import main
+import sys
+from pathlib import Path
 
-main()
+sys.path.insert(0, str(Path(__file__).resolve().parent / "frontend"))
+
+import app
+
+app.main()

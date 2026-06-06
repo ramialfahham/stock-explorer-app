@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-import sys
 import uuid
-from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from frontend.card_copy import (
+from card_copy import (
     BENCHMARK_METRICS,
     DEEP_DIVE_METRICS,
     METRIC_HELP,
@@ -22,9 +16,9 @@ from frontend.card_copy import (
     benchmark_line,
     format_metric_value,
 )
-from frontend.settings import get_supabase_anon_key, get_supabase_url
-from frontend.queue import build_queue
-from frontend.supabase_client import client_for_session, get_anon_client
+from queue import build_queue
+from settings import get_supabase_anon_key, get_supabase_url
+from supabase_client import client_for_session, get_anon_client
 
 load_dotenv()
 
