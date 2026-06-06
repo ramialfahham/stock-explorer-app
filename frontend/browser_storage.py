@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -17,23 +15,6 @@ _STORE_KEY = f"{_MANAGER_KEY}__local_storage_state"
 _LOADED_FLAG = "_interactions_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
 _BOOT_RERUN_FLAG = "_storage_boot_rerun_done"
-_DEBUG_LOG = Path(__file__).resolve().parents[1] / "debug-3dd384.log"
-
-
-def _debug_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
-    # #region agent log
-    payload = {
-        "sessionId": "3dd384",
-        "runId": "flush-fix",
-        "hypothesisId": hypothesis_id,
-        "location": "browser_storage.py",
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    with _DEBUG_LOG.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload) + "\n")
-    # #endregion
 
 
 def _pending_store() -> dict[str, Any]:
@@ -56,32 +37,11 @@ def _queue_interactions_write(interactions: list[dict[str, Any]]) -> None:
             "value": interactions,
         }
     )
-    _debug_log(
-        "A",
-        "queued interactions write",
-        {
-            "operation_id": operation_id,
-            "count": len(interactions),
-            "saved": sum(1 for i in interactions if i.get("action") == "save"),
-            "pending_count": len(store["pending_operations"]),
-        },
-    )
 
 
 def _mount_manager():
     """Mount localStorage component once per run (flushes pending writes + reads snapshot)."""
-    manager = local_storage_manager(key=_MANAGER_KEY)
-    store = _pending_store()
-    _debug_log(
-        "C",
-        "mounted localStorage manager",
-        {
-            "ready": manager.ready(),
-            "pending_count": len(store["pending_operations"]),
-            "loaded_flag": bool(st.session_state.get(_LOADED_FLAG)),
-        },
-    )
-    return manager
+    return local_storage_manager(key=_MANAGER_KEY)
 
 
 def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
@@ -106,19 +66,12 @@ def ensure_interactions_loaded() -> list[dict[str, Any]]:
     manager = _mount_manager()
 
     if st.session_state.get(_LOADED_FLAG):
-        interactions = list(st.session_state.get("interactions", []))
-        _debug_log("E", "session interactions (manager mounted for flush)", {"count": len(interactions)})
-        return interactions
+        return list(st.session_state.get("interactions", []))
 
-    ready = manager.ready()
-    _debug_log("D", "manager ready check", {"ready": ready})
-
-    if not ready:
+    if not manager.ready():
         if not st.session_state.get(_BOOT_RERUN_FLAG):
             st.session_state[_BOOT_RERUN_FLAG] = True
-            _debug_log("B", "boot rerun waiting for localStorage sync", {})
             st.rerun()
-        _debug_log("B", "manager still not ready after boot rerun", {})
         return list(st.session_state["interactions"])
 
     stored = manager.get(STORAGE_ITEM_KEY, [])
@@ -128,11 +81,6 @@ def ensure_interactions_loaded() -> list[dict[str, Any]]:
     st.session_state[_BOOT_RERUN_FLAG] = False
     if interactions:
         st.session_state[_SYNC_PENDING_FLAG] = True
-    _debug_log(
-        "D",
-        "loaded interactions from localStorage",
-        {"count": len(interactions), "saved": sum(1 for i in interactions if i.get("action") == "save")},
-    )
     return interactions
 
 
