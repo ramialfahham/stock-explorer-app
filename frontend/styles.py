@@ -178,6 +178,11 @@ div[data-testid="column"]:last-child button[kind="secondary"] {
     color: #475569;
     margin: 0.25rem 0 0.75rem 0;
 }
+div[data-testid="column"] button[data-testid="stPopoverButton"] {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.45rem;
+    min-height: 1.75rem;
+}
 </style>
 """,
         unsafe_allow_html=True,

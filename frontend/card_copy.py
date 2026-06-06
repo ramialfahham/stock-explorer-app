@@ -8,6 +8,42 @@ METRIC_HELP = {
     "fcf_margin_pct": "FCF margin shows free cash left from each dollar of revenue after running the business.",
 }
 
+METRIC_LEARN = {
+    "forward_pe": (
+        "P/E (price-to-earnings) divides the share price by earnings per share. "
+        "Forward P/E uses analyst estimates for next year's earnings, not last year's results. "
+        "A higher number often means investors expect faster growth — or are paying a premium today."
+    ),
+    "ebit_margin_pct": (
+        "EBIT is profit from core operations before interest and taxes. "
+        "EBIT margin expresses that profit as a share of revenue — it shows how efficiently a company "
+        "turns sales into operating profit."
+    ),
+    "revenue_growth_yoy_pct": (
+        "Year-over-year (YoY) growth compares revenue today with the same period one year ago. "
+        "It helps you see whether a company is expanding, flat, or shrinking. "
+        "One quarter can be noisy — look for a pattern over time when you dig deeper."
+    ),
+    "net_debt_to_ebitda": (
+        "Net debt is total debt minus cash on hand. EBITDA is a rough measure of operating cash "
+        "generation before interest, taxes, and non-cash charges. "
+        "Dividing net debt by EBITDA estimates how many years of operating profit would repay the debt."
+    ),
+    "fcf_margin_pct": (
+        "Free cash flow (FCF) is cash left after running and investing in the business. "
+        "FCF margin shows that cash as a percentage of revenue. "
+        "It hints at whether a company can fund dividends, buybacks, or growth without borrowing more."
+    ),
+}
+
+METRIC_LEARN_LINKS = {
+    "forward_pe": "https://www.investopedia.com/terms/p/price-earningsratio.asp",
+    "ebit_margin_pct": "https://www.investopedia.com/terms/e/ebitmargin.asp",
+    "revenue_growth_yoy_pct": "https://www.investopedia.com/terms/y/year-over-year.asp",
+    "net_debt_to_ebitda": "https://www.investopedia.com/terms/n/net-debt-to-ebitda.asp",
+    "fcf_margin_pct": "https://www.investopedia.com/terms/f/freecashflow.asp",
+}
+
 METRIC_LABELS = {
     "forward_pe": "Forward P/E",
     "ebit_margin_pct": "EBIT margin",
@@ -56,9 +92,10 @@ def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> 
     median = card.get(median_key)
     if value is None or median is None:
         return None
+    median_fmt = format_metric_value(metric, median)
     if direction == "higher":
         word = "above" if value >= median else "below"
     else:
         word = "below" if value <= median else "above"
     sector = card.get("sector") or "sector"
-    return f"{word} {sector} median ({peer_count} companies)"
+    return f"{word.capitalize()} the {sector} median ({median_fmt}, {peer_count} peers in this app)"
