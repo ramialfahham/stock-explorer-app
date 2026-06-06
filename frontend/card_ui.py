@@ -14,8 +14,10 @@ from card_copy import (
     METRIC_LEARN,
     VISIBLE_METRICS,
     benchmark_line,
+    benchmark_unavailable_line,
     format_metric_value,
     freshness_line,
+    median_primer_line,
     sector_gloss_line,
     sector_headline,
 )
@@ -36,6 +38,16 @@ def _format_market_code(market_code: str | None) -> str:
     if not market_code:
         return "—"
     return market_code.replace("_", " ").upper()
+
+
+def _benchmark_context_html(card: dict) -> str:
+    unavailable = benchmark_unavailable_line(card)
+    if unavailable:
+        return f'<p class="ss-benchmark-note">{_esc(unavailable)}</p>'
+    primer = median_primer_line(card)
+    if primer:
+        return f'<p class="ss-median-primer">{_esc(primer)}</p>'
+    return ""
 
 
 def _metric_cell_html(card: dict, metric: str) -> str:
@@ -109,6 +121,7 @@ def build_card_html(
         f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
         f'<p class="ss-sector-gloss">{_esc(sector_gloss)}</p>'
         f"</div>"
+        f"{_benchmark_context_html(card)}"
         f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
         f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
         f"{_explain_all_html()}"

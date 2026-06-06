@@ -111,6 +111,33 @@ DEFAULT_SECTOR_GLOSS = (
     "Industry grouping used to compare this company with similar businesses in the app"
 )
 
+MEDIAN_PRIMER = (
+    "Median = the middle value among eligible companies in this sector and market. "
+    "Each metric below is compared to that sector median."
+)
+
+BENCHMARK_UNAVAILABLE = "Comparison unavailable (small sector)"
+
+
+def _benchmark_eligible(card: dict) -> bool:
+    peer_count = card.get("sector_peer_count")
+    return peer_count is not None and peer_count >= PEER_THRESHOLD
+
+
+def benchmark_unavailable_line(card: dict) -> str | None:
+    peer_count = card.get("sector_peer_count")
+    if peer_count is None:
+        return None
+    if peer_count < PEER_THRESHOLD:
+        return BENCHMARK_UNAVAILABLE
+    return None
+
+
+def median_primer_line(card: dict) -> str | None:
+    if not _benchmark_eligible(card):
+        return None
+    return MEDIAN_PRIMER
+
 
 def sector_headline(card: dict) -> str:
     """Sector label with peer count when available (north_star)."""
@@ -160,16 +187,14 @@ def format_metric_value(metric: str, value: float | None) -> str:
 
 
 def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> str | None:
-    peer_count = card.get("sector_peer_count")
-    if peer_count is None or peer_count < PEER_THRESHOLD:
+    if not _benchmark_eligible(card):
         return None
     value = card.get(metric)
     median = card.get(median_key)
     if value is None or median is None:
         return None
     if direction == "higher":
-        word = "above" if value >= median else "below"
+        word = "Above" if value >= median else "Below"
     else:
-        word = "below" if value <= median else "above"
-    sector = card.get("sector") or "sector"
-    return f"{word} {sector} median"
+        word = "Below" if value <= median else "Above"
+    return f"{word} median"

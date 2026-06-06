@@ -115,6 +115,14 @@ section[data-testid="stSidebar"] {
     line-height: 1.35;
 }
 
+.ss-median-primer,
+.ss-benchmark-note {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0 0 0.6rem;
+    line-height: 1.35;
+}
+
 .ss-metrics-grid {
     display: grid;
     gap: 0.5rem;
