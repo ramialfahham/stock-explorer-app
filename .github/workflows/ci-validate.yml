@@ -69,6 +69,9 @@ jobs:
       - name: dbt build
         run: dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
 
+      - name: Eligibility baseline check
+        run: python scripts/check_eligibility_baseline.py --duckdb-path /tmp/stock_data_ci.db
+
       - name: dbt docs generate
         run: dbt docs generate --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
 
