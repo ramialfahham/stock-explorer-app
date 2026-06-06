@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -11,29 +12,12 @@ import streamlit.components.v1 as components
 
 STORAGE_KEY = "stock_swipe_interactions"
 _LOADED_FLAG = "_interactions_storage_loaded"
+_COMPONENT_DIR = Path(__file__).resolve().parent / "components" / "local_storage"
 
-
-def _read_script() -> str:
-    return f"""
-    <script>
-    (function() {{
-        const value = localStorage.getItem({json.dumps(STORAGE_KEY)}) || "[]";
-        window.parent.postMessage({{type: "streamlit:setComponentValue", value: value}}, "*");
-    }})();
-    </script>
-    """
-
-
-def _write_script(data: list[dict[str, Any]]) -> str:
-    payload = json.dumps(data)
-    return f"""
-    <script>
-    (function() {{
-        localStorage.setItem({json.dumps(STORAGE_KEY)}, {json.dumps(payload)});
-        window.parent.postMessage({{type: "streamlit:setComponentValue", value: "ok"}}, "*");
-    }})();
-    </script>
-    """
+_local_storage = components.declare_component(
+    "stock_swipe_local_storage",
+    path=str(_COMPONENT_DIR),
+)
 
 
 def _parse_interactions(raw: str | None) -> list[dict[str, Any]]:
@@ -46,16 +30,39 @@ def _parse_interactions(raw: str | None) -> list[dict[str, Any]]:
     return parsed if isinstance(parsed, list) else []
 
 
+def _read_from_browser() -> str | None:
+    result = _local_storage(
+        mode="read",
+        storage_key=STORAGE_KEY,
+        default_value="[]",
+        key="load_interactions",
+    )
+    if result is None:
+        return None
+    if isinstance(result, str):
+        return result
+    return json.dumps(result)
+
+
+def _write_to_browser(interactions: list[dict[str, Any]], *, component_key: str) -> None:
+    _local_storage(
+        mode="write",
+        storage_key=STORAGE_KEY,
+        value=json.dumps(interactions),
+        key=component_key,
+    )
+
+
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
     """Load interactions from browser localStorage into session state (once per session)."""
     if st.session_state.get(_LOADED_FLAG):
         return list(st.session_state.get("interactions", []))
 
-    result = components.html(_read_script(), height=0, key="load_interactions")
-    if result is None:
+    raw = _read_from_browser()
+    if raw is None:
         st.stop()
 
-    interactions = _parse_interactions(result)
+    interactions = _parse_interactions(raw)
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
     return interactions
@@ -63,10 +70,6 @@ def ensure_interactions_loaded() -> list[dict[str, Any]]:
 
 def get_interactions() -> list[dict[str, Any]]:
     return list(st.session_state.get("interactions", []))
-
-
-def _persist_interactions(interactions: list[dict[str, Any]], *, key: str) -> None:
-    components.html(_write_script(interactions), height=0, key=key)
 
 
 def append_interaction(card: dict[str, Any], action: str) -> None:
@@ -79,11 +82,11 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
     interactions = get_interactions()
     interactions.append(row)
     st.session_state["interactions"] = interactions
-    _persist_interactions(interactions, key=f"write_interactions_{len(interactions)}")
+    _write_to_browser(interactions, component_key=f"write_interactions_{len(interactions)}")
 
 
 def clear_interactions() -> None:
     st.session_state["interactions"] = []
     st.session_state[_LOADED_FLAG] = True
-    _persist_interactions([], key="clear_interactions")
+    _write_to_browser([], component_key="clear_interactions")
     st.rerun()
