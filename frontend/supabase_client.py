@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from supabase import Client, create_client
 
-from frontend.settings import get_supabase_anon_key, get_supabase_url
+from settings import get_supabase_anon_key, get_supabase_url
 
 
 def get_anon_client() -> Client:
