@@ -183,6 +183,11 @@ div[data-testid="column"]:last-child button[kind="secondary"] {
     color: #475569;
     margin: 0.25rem 0 0.75rem 0;
 }
+.card-freshness {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0.75rem 0 0.5rem 0;
+}
 div[data-testid="column"] button[data-testid="stPopoverButton"] {
     font-size: 0.75rem;
     padding: 0.15rem 0.45rem;
