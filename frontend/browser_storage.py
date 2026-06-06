@@ -12,6 +12,7 @@ import streamlit.components.v1 as components
 
 STORAGE_KEY = "stock_swipe_interactions"
 _LOADED_FLAG = "_interactions_storage_loaded"
+_SYNC_PENDING_FLAG = "_storage_sync_pending"
 _COMPONENT_DIR = Path(__file__).resolve().parent / "components" / "local_storage"
 
 _local_storage = components.declare_component(
@@ -54,18 +55,30 @@ def _write_to_browser(interactions: list[dict[str, Any]], *, component_key: str)
 
 
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
-    """Load interactions from browser localStorage into session state (once per session)."""
+    """Load interactions from browser localStorage into session state.
+
+    Does not block the app: returns [] until the custom component responds, then
+    marks a pending queue refresh when saved/skips arrive from localStorage.
+    """
     if st.session_state.get(_LOADED_FLAG):
         return list(st.session_state.get("interactions", []))
 
+    if "interactions" not in st.session_state:
+        st.session_state["interactions"] = []
+
     raw = _read_from_browser()
     if raw is None:
-        st.stop()
+        return list(st.session_state["interactions"])
 
     interactions = _parse_interactions(raw)
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
+    st.session_state[_SYNC_PENDING_FLAG] = True
     return interactions
+
+
+def storage_sync_pending() -> bool:
+    return bool(st.session_state.pop(_SYNC_PENDING_FLAG, False))
 
 
 def get_interactions() -> list[dict[str, Any]]:
@@ -82,6 +95,7 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
     interactions = get_interactions()
     interactions.append(row)
     st.session_state["interactions"] = interactions
+    st.session_state[_LOADED_FLAG] = True
     _write_to_browser(interactions, component_key=f"write_interactions_{len(interactions)}")
 
 
