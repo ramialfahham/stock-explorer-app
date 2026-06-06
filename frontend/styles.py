@@ -134,6 +134,50 @@ div[data-testid="column"]:last-child button[kind="secondary"] {
 .welcome-list li {
     margin-bottom: 0.35rem;
 }
+
+/* Stock card */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    padding: 0.25rem 0.5rem;
+}
+.card-progress-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    margin: 0 0 0.35rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.card-company {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    line-height: 1.25;
+}
+.card-ticker {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin: 0;
+    text-align: right;
+}
+.card-market {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    margin: 0.15rem 0 0 0;
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.card-sector {
+    font-size: 0.95rem;
+    color: #475569;
+    margin: 0.25rem 0 0.75rem 0;
+}
 </style>
 """,
         unsafe_allow_html=True,
