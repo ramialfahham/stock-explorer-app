@@ -23,11 +23,12 @@ from card_copy import (
 )
 from discovery_queue import build_queue
 from settings import get_supabase_anon_key, get_supabase_url
+from styles import inject_global_css
 from supabase_client import get_anon_client
 
 load_dotenv()
 
-st.set_page_config(page_title="Stock Swipe", page_icon="📊", layout="centered")
+st.set_page_config(page_title="Stock Swipe", page_icon="📊", layout="wide")
 
 
 def _init_state() -> None:
@@ -115,10 +116,21 @@ def _saved_cards(client, interactions: list[dict]) -> list[dict]:
     return [c for c in cards if (c["market_code"], c["ticker"]) in saved_keys]
 
 
-def _discovery_page(client) -> None:
-    st.sidebar.caption("Save and skip are stored on this device only — not synced across browsers.")
+def _render_sidebar() -> None:
+    st.sidebar.markdown("### Stock Swipe")
+    st.sidebar.caption("Learn and discover companies — not investment advice.")
+    st.sidebar.markdown(
+        "Save and skip stay on **this device only**. They are not synced across browsers."
+    )
+    st.sidebar.caption(
+        "Fundamentals refresh weekly. Card prices are not real-time — use Yahoo Finance for a live quote."
+    )
     if st.sidebar.button("Clear saved on this device"):
         clear_interactions()
+
+
+def _discovery_page(client) -> None:
+    _render_sidebar()
 
     interactions = ensure_interactions_loaded()
     if storage_sync_pending():
@@ -193,12 +205,8 @@ def _discovery_page(client) -> None:
 
 def main() -> None:
     _init_state()
-    st.title("Stock Swipe")
-    st.caption("Learn and discover companies — not investment advice.")
-    st.caption(
-        "Fundamentals refresh weekly. Prices on cards are not real-time; "
-        "use Yahoo Finance for a live quote."
-    )
+    inject_global_css()
+    st.title("Discover")
 
     if not get_supabase_url() or not get_supabase_anon_key():
         st.error(
