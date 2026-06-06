@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "max_drop_fraction": 0.25,
+  "note": "Update after a verified healthy pipeline run: python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db --write-baseline",
+  "markets": {
+    "au_asx200": {
+      "baseline_eligible": 5,
+      "min_eligible": 5
+    },
+    "de_dax": {
+      "baseline_eligible": 5,
+      "min_eligible": 5
+    },
+    "jp_nikkei225": {
+      "baseline_eligible": 5,
+      "min_eligible": 5
+    },
+    "uk_ftse100": {
+      "baseline_eligible": 5,
+      "min_eligible": 5
+    },
+    "us_sp500": {
+      "baseline_eligible": 5,
+      "min_eligible": 5
+    }
+  },
+  "total_baseline_eligible": 25
+}
