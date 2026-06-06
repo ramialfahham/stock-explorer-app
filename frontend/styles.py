@@ -150,6 +150,12 @@ section[data-testid="stSidebar"] {
     margin: 0;
     line-height: 1.1;
 }
+.ss-metric-gloss {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0.1rem 0 0;
+    line-height: 1.25;
+}
 .ss-metric-bench {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
