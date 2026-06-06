@@ -12,15 +12,7 @@ from browser_storage import (
     get_interactions,
     storage_sync_pending,
 )
-from card_copy import (
-    BENCHMARK_METRICS,
-    DEEP_DIVE_METRICS,
-    METRIC_HELP,
-    METRIC_LABELS,
-    VISIBLE_METRICS,
-    benchmark_line,
-    format_metric_value,
-)
+from card_ui import render_stock_card
 from discovery_queue import build_queue
 from onboarding import render_welcome
 from settings import get_supabase_anon_key, get_supabase_url
@@ -69,44 +61,6 @@ def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
         sector_shown=st.session_state["sector_shown"],
     )
     st.session_state["queue_index"] = 0
-
-
-def _render_metric_block(card: dict, metric: str, label: str) -> None:
-    st.metric(label, format_metric_value(metric, card.get(metric)))
-    st.caption(METRIC_HELP[metric])
-    for m_key, median_key, direction in BENCHMARK_METRICS:
-        if m_key == metric:
-            line = benchmark_line(card, metric, median_key, direction)
-            if line:
-                st.caption(line)
-            break
-
-
-def _render_card(card: dict) -> None:
-    st.caption(f"Market: {card.get('market_code', '').replace('_', ' ').upper()}")
-    st.title(card.get("company_name") or card.get("ticker"))
-    sector = card.get("sector") or "Unknown sector"
-    peers = card.get("sector_peer_count")
-    if peers and peers >= 8:
-        st.write(f"{sector} ({peers} companies)")
-    else:
-        st.write(sector)
-        if peers is not None and peers < 8:
-            st.caption("Comparison unavailable (small sector)")
-
-    for metric in VISIBLE_METRICS:
-        _render_metric_block(card, metric, METRIC_LABELS[metric])
-
-    with st.expander("More metrics (scroll)"):
-        for metric in DEEP_DIVE_METRICS:
-            _render_metric_block(card, metric, METRIC_LABELS[metric])
-
-    yahoo_ticker = card.get("ticker", "")
-    st.link_button(
-        "View on Yahoo Finance",
-        f"https://finance.yahoo.com/quote/{yahoo_ticker}",
-        use_container_width=True,
-    )
 
 
 def _saved_cards(client, interactions: list[dict]) -> list[dict]:
@@ -160,8 +114,7 @@ def _discovery_page(client) -> None:
             return
 
         card = queue[idx]
-        st.caption(f"Card {idx + 1} of {len(queue)} in this queue")
-        _render_card(card)
+        render_stock_card(card, card_index=idx + 1, queue_total=len(queue))
 
         col_save, col_skip = st.columns(2)
         if col_save.button("Save", use_container_width=True):
@@ -188,7 +141,7 @@ def _discovery_page(client) -> None:
             st.write("No saved companies yet.")
         for card in saved_cards:
             with st.expander(f"{card.get('company_name')} ({card.get('ticker')})"):
-                _render_card(card)
+                render_stock_card(card)
 
     with tab_search:
         query = st.text_input("Search by ticker or company name").strip().lower()
@@ -204,7 +157,7 @@ def _discovery_page(client) -> None:
                 st.write("No eligible matches.")
             for card in matches[:20]:
                 with st.expander(f"{card.get('company_name')} ({card.get('ticker')})"):
-                    _render_card(card)
+                    render_stock_card(card)
 
 
 def main() -> None:
