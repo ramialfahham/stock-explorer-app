@@ -38,14 +38,6 @@ METRIC_LEARN = {
     ),
 }
 
-METRIC_LEARN_LINKS = {
-    "forward_pe": "https://www.investopedia.com/terms/p/price-earningsratio.asp",
-    "ebit_margin_pct": "https://www.investopedia.com/terms/e/ebitmargin.asp",
-    "revenue_growth_yoy_pct": "https://www.investopedia.com/terms/y/year-over-year.asp",
-    "net_debt_to_ebitda": "https://www.investopedia.com/terms/n/net-debt-to-ebitda.asp",
-    "fcf_margin_pct": "https://www.investopedia.com/terms/f/freecashflow.asp",
-}
-
 METRIC_LABELS = {
     "forward_pe": "Forward P/E",
     "ebit_margin_pct": "EBIT margin",
