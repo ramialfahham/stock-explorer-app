@@ -49,7 +49,7 @@ h2, h3 {
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-/* Primary Save action */
+/* Primary Save action — fallback when not using type=primary */
 div[data-testid="column"]:first-child button[kind="secondary"] {
     background: #2563eb !important;
     color: #ffffff !important;
@@ -59,6 +59,11 @@ div[data-testid="column"]:first-child button[kind="secondary"] {
 div[data-testid="column"]:first-child button[kind="secondary"]:hover {
     background: #1d4ed8 !important;
     border-color: #1d4ed8 !important;
+}
+
+/* Saved list rows */
+[data-testid="stSidebar"] hr {
+    margin: 0.75rem 0;
 }
 
 /* Secondary Skip action */
