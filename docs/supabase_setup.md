@@ -139,7 +139,7 @@ The service role key (used in CI export) bypasses RLS.
 Full checklist: [`streamlit_deploy.md`](streamlit_deploy.md).
 
 1. Enable at least one auth provider under **Authentication → Providers** (email recommended).
-2. Deploy with main file `frontend/app.py`, requirements `frontend/requirements.txt`, Python 3.11.
+2. Deploy with main file `streamlit_app.py`, requirements `frontend/requirements.txt`, Python 3.11.
 3. In Streamlit app secrets, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (see `.streamlit/secrets.toml.example`).
 
 Use the **anon** key — not the service role key.

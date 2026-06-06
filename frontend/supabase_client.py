@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import os
-
-from dotenv import load_dotenv
 from supabase import Client, create_client
 
-load_dotenv()
+from frontend.settings import get_supabase_anon_key, get_supabase_url
 
 
 def get_anon_client() -> Client:
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_ANON_KEY")
+    url = get_supabase_url()
+    key = get_supabase_anon_key()
     if not url or not key:
-        raise RuntimeError("Set SUPABASE_URL and SUPABASE_ANON_KEY in environment or Streamlit secrets.")
+        raise RuntimeError(
+            "Set SUPABASE_URL and SUPABASE_ANON_KEY in Streamlit secrets or .env."
+        )
     return create_client(url, key)
 
 
