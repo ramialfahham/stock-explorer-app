@@ -214,19 +214,46 @@ section[data-testid="stSidebar"] {
     margin: 0.08rem 0 0;
 }
 
-/* Welcome */
-.welcome-panel {
-    background: var(--ss-surface);
-    border: 1px solid var(--ss-border);
-    border-radius: 12px;
-    padding: 0.85rem;
-    margin-bottom: 0.5rem;
+/* Landing (first visit) */
+.ss-landing {
+    padding: 1.5rem 0 1rem;
 }
-.welcome-lead {
-    font-size: 0.85rem;
+.ss-landing-eyebrow {
+    font-size: var(--ss-caption-size);
+    font-weight: 600;
+    color: var(--ss-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.5rem;
+}
+.ss-landing-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--ss-text);
+    letter-spacing: -0.03em;
+    margin: 0 0 0.55rem;
+    line-height: 1.15;
+}
+.ss-landing-tagline {
+    font-size: 0.95rem;
     color: var(--ss-muted);
     line-height: 1.45;
-    margin: 0;
+    margin: 0 0 1.1rem;
+}
+.ss-landing-points {
+    font-size: 0.85rem;
+    color: var(--ss-muted);
+    line-height: 1.5;
+    margin: 0 0 1rem;
+    padding-left: 1.1rem;
+}
+.ss-landing-points li {
+    margin-bottom: 0.45rem;
+}
+.ss-landing-disclaimer {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0 0 1.25rem;
 }
 
 /* Overflow menu button */
