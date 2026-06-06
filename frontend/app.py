@@ -26,7 +26,7 @@ load_dotenv()
 st.set_page_config(
     page_title="Stock Swipe",
     page_icon="📊",
-    layout="wide",
+    layout="centered",
     initial_sidebar_state="collapsed",
 )
 
@@ -98,33 +98,42 @@ def _card_key(card: dict) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
-def _render_topbar(*, remaining: int, saved_count: int) -> None:
-    st.markdown(
-        f"""
-<div class="ss-topbar">
-  <span class="ss-brand">Stock Swipe</span>
-  <span class="ss-chips">
-    <span class="ss-chip">{remaining} left</span>
-    <span class="ss-chip">{saved_count} saved</span>
-  </span>
-</div>
+def _render_header(*, remaining: int, saved_count: int, client) -> None:
+    bar_col, menu_col = st.columns([6, 1])
+    with bar_col:
+        st.markdown(
+            f"""
+<div class="ss-brand">Stock Swipe</div>
+<div class="ss-header-stats">{remaining} left · {saved_count} saved</div>
 """,
-        unsafe_allow_html=True,
+            unsafe_allow_html=True,
+        )
+    with menu_col:
+        with st.popover("⋯"):
+            if st.button("Start over", key="menu_start_over", use_container_width=True):
+                _start_over(client)
+                st.rerun()
+            if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
+                clear_interactions()
+                st.session_state["saved_selected_key"] = None
+                st.rerun()
+
+
+def _render_bottom_nav(saved_count: int) -> None:
+    saved_label = f"Saved ({saved_count})" if saved_count else "Saved"
+    active = st.session_state.get("active_page", "Discover")
+    default_nav = saved_label if active == "Saved" else active
+
+    st.markdown('<div class="ss-bottom-nav-marker"></div>', unsafe_allow_html=True)
+    page = st.segmented_control(
+        "Navigation",
+        options=["Discover", saved_label, "Search"],
+        default=default_nav,
+        label_visibility="collapsed",
+        key="bottom_nav",
     )
-
-
-def _render_utility_actions(client) -> None:
-    st.markdown('<div class="ss-utility-row-marker"></div>', unsafe_allow_html=True)
-    col_start, col_clear, _ = st.columns([1, 1, 2])
-    with col_start:
-        if st.button("Start over", key="utility_start_over"):
-            _start_over(client)
-            st.rerun()
-    with col_clear:
-        if st.button("Clear saved", key="utility_clear_saved"):
-            clear_interactions()
-            st.session_state["saved_selected_key"] = None
-            st.rerun()
+    if page:
+        st.session_state["active_page"] = "Saved" if page.startswith("Saved") else page
 
 
 def _render_sticky_actions(client, card: dict, idx: int) -> None:
@@ -149,37 +158,38 @@ def _render_sticky_actions(client, card: dict, idx: int) -> None:
         st.rerun()
 
 
-def _render_discover_tab(client) -> None:
+def _render_discover_tab(client) -> bool:
+    """Render discover content. Returns True if Save/Skip should show."""
     queue = st.session_state["queue"]
     if not queue:
         _refresh_queue(client, interactions=get_interactions())
         queue = st.session_state["queue"]
 
     if not queue:
-        st.info("No card-eligible stocks yet. Run the data pipeline first.")
-        return
+        st.info("No card-eligible stocks yet.")
+        return False
 
     if render_welcome():
-        return
+        return False
 
     idx = st.session_state["queue_index"]
     if idx >= len(queue):
-        st.info("You have seen every card in this queue.")
+        st.info("Queue complete.")
         if st.button("Start over", type="primary", use_container_width=True, key="discover_start_over"):
             _start_over(client)
             st.rerun()
-        return
+        return False
 
     card = queue[idx]
     render_stock_card(card, card_index=idx + 1, queue_total=len(queue))
-    _render_sticky_actions(client, card, idx)
+    return True
 
 
 def _render_saved_tab(client, interactions: list[dict]) -> None:
     saved_cards = _saved_cards(client, interactions)
 
     if not saved_cards:
-        st.info("Nothing saved yet — tap Save on a company in Discover.")
+        st.info("Nothing saved yet — tap Save in Discover.")
         return
 
     for card in saved_cards:
@@ -257,29 +267,26 @@ def _discovery_page(client) -> None:
 
     saved_count = _saved_count(get_interactions())
     remaining = max(len(queue) - st.session_state["queue_index"], 0)
-    _render_topbar(remaining=remaining, saved_count=saved_count)
-    _render_utility_actions(client)
 
-    saved_label = f"Saved ({saved_count})" if saved_count else "Saved"
+    _render_bottom_nav(saved_count)
     active = st.session_state.get("active_page", "Discover")
-    default_nav = saved_label if active == "Saved" else active
-    page = st.segmented_control(
-        "Navigation",
-        options=["Discover", saved_label, "Search"],
-        default=default_nav,
-        label_visibility="collapsed",
-        key="main_nav",
-    )
-    if page:
-        st.session_state["active_page"] = "Saved" if page.startswith("Saved") else page
 
-    active = st.session_state["active_page"]
+    _render_header(remaining=remaining, saved_count=saved_count, client=client)
+
+    show_actions = False
+
     if active == "Discover":
-        _render_discover_tab(client)
+        show_actions = _render_discover_tab(client)
     elif active == "Saved":
         _render_saved_tab(client, get_interactions())
     else:
         _render_search_tab(client)
+
+    if show_actions and active == "Discover":
+        idx = st.session_state["queue_index"]
+        queue = st.session_state["queue"]
+        if idx < len(queue):
+            _render_sticky_actions(client, queue[idx], idx)
 
 
 def main() -> None:
