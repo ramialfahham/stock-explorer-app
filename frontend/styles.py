@@ -101,6 +101,39 @@ div[data-testid="column"]:last-child button[kind="secondary"] {
     border: 1px solid #e2e8f0;
     border-radius: 10px;
 }
+
+/* Welcome panel */
+.welcome-panel {
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
+}
+.welcome-kicker {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #2563eb;
+    margin: 0 0 0.5rem 0;
+}
+.welcome-lead {
+    font-size: 1.05rem;
+    color: #0f172a;
+    line-height: 1.5;
+    margin: 0 0 0.75rem 0;
+}
+.welcome-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #475569;
+    line-height: 1.55;
+}
+.welcome-list li {
+    margin-bottom: 0.35rem;
+}
 </style>
 """,
         unsafe_allow_html=True,

@@ -22,6 +22,7 @@ from card_copy import (
     format_metric_value,
 )
 from discovery_queue import build_queue
+from onboarding import render_welcome
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -148,6 +149,9 @@ def _discovery_page(client) -> None:
 
         if not queue:
             st.info("No card-eligible stocks in Supabase yet. Run the data pipeline first.")
+            return
+
+        if render_welcome():
             return
 
         idx = st.session_state["queue_index"]
