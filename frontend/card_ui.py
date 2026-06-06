@@ -9,6 +9,8 @@ from card_copy import (
     DEEP_DIVE_METRICS,
     METRIC_HELP,
     METRIC_LABELS,
+    METRIC_LEARN,
+    METRIC_LEARN_LINKS,
     VISIBLE_METRICS,
     benchmark_line,
     format_metric_value,
@@ -22,9 +24,17 @@ def _benchmark_for_metric(card: dict, metric: str) -> str | None:
     return None
 
 
-def _render_metric_cell(card: dict, metric: str) -> None:
+def _render_metric_cell(card: dict, metric: str, *, popover_key: str) -> None:
     label = METRIC_LABELS[metric]
-    st.metric(label, format_metric_value(metric, card.get(metric)))
+    value_col, learn_col = st.columns([5, 1])
+    with value_col:
+        st.metric(label, format_metric_value(metric, card.get(metric)))
+    with learn_col:
+        with st.popover("Learn", key=f"learn_{popover_key}_{metric}"):
+            st.markdown(METRIC_LEARN[metric])
+            link = METRIC_LEARN_LINKS.get(metric)
+            if link:
+                st.markdown(f"[External explainer]({link})")
     st.caption(METRIC_HELP[metric])
     line = _benchmark_for_metric(card, metric)
     if line:
@@ -73,6 +83,7 @@ def render_stock_card(
     queue_total: int | None = None,
 ) -> None:
     """Render a bordered stock card with identity row, metrics grid, and deep dive."""
+    card_key = f"{card.get('market_code', 'unknown')}_{card.get('ticker', 'unknown')}"
     with st.container(border=True):
         if card_index is not None and queue_total is not None and queue_total > 0:
             _render_progress(card_index, queue_total)
@@ -82,13 +93,13 @@ def render_stock_card(
         metric_cols = st.columns(len(VISIBLE_METRICS))
         for col, metric in zip(metric_cols, VISIBLE_METRICS, strict=True):
             with col:
-                _render_metric_cell(card, metric)
+                _render_metric_cell(card, metric, popover_key=card_key)
 
         with st.expander("More metrics"):
             deep_cols = st.columns(len(DEEP_DIVE_METRICS))
             for col, metric in zip(deep_cols, DEEP_DIVE_METRICS, strict=True):
                 with col:
-                    _render_metric_cell(card, metric)
+                    _render_metric_cell(card, metric, popover_key=f"{card_key}_deep")
 
         yahoo_ticker = card.get("ticker", "")
         st.link_button(
