@@ -125,14 +125,26 @@ models:
             expression: len(missing_metrics) > 0
     columns:
       - name: market_code
+        description: >
+          Registry partition key for the ineligible ticker row.
         data_tests:
           - not_null
       - name: ticker
+        description: >
+          Provider symbol failing the eligibility gate.
         data_tests:
           - not_null
       - name: snapshot_date
+        description: >
+          Fundamentals as-of date for the gap row.
         data_tests:
           - not_null
+      - name: company_name
+        description: >
+          Company display name for ops debugging.
+      - name: sector
+        description: >
+          Sector label for grouping gap patterns.
       - name: missing_metrics
         description: >
           List of null card metric column names blocking eligibility.
