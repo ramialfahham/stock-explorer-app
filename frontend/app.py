@@ -23,6 +23,7 @@ from explore_filters import (
     ALL_SECTORS,
     SURPRISE_ME_LABEL,
     browse_row_subtitle,
+    dedupe_to_latest_snapshot,
     default_market_filter,
     filter_pool,
     market_filter_options,
@@ -82,7 +83,8 @@ def _load_cards(client) -> list[dict]:
     except Exception as exc:  # noqa: BLE001
         st.error(f"Could not load cards from Supabase: {exc}")
         return []
-    return response.data or []
+    raw = response.data or []
+    return dedupe_to_latest_snapshot(raw)
 
 
 def _ensure_all_cards(client) -> list[dict]:

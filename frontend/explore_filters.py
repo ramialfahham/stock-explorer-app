@@ -26,6 +26,24 @@ def _card_key(card: dict[str, Any]) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
+def _snapshot_sort_key(card: dict[str, Any]) -> str:
+    raw = card.get("snapshot_date")
+    if raw is None:
+        return ""
+    return str(raw)[:10]
+
+
+def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one row per (market_code, ticker) — latest snapshot_date wins."""
+    latest: dict[tuple[str, str], dict[str, Any]] = {}
+    for card in cards:
+        key = _card_key(card)
+        prev = latest.get(key)
+        if prev is None or _snapshot_sort_key(card) > _snapshot_sort_key(prev):
+            latest[key] = card
+    return list(latest.values())
+
+
 def _saved_keys(interactions: list[dict[str, Any]]) -> set[tuple[str, str]]:
     return {
         _card_key(row)
