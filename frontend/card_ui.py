@@ -9,11 +9,13 @@ import streamlit as st
 from card_copy import (
     BENCHMARK_METRICS,
     BUSINESS_SUMMARY_PREVIEW_CHARS,
+    BUSINESS_SUMMARY_UNAVAILABLE,
     DEEP_DIVE_METRICS,
     MEDIAN_PRIMER,
     METRIC_GLOSS,
     METRIC_LABELS,
     METRIC_LEARN,
+    METRIC_SOURCE_FOOTNOTE,
     VISIBLE_METRICS,
     benchmark_compare_available,
     benchmark_line,
@@ -82,10 +84,16 @@ def _benchmark_compare_html(card: dict) -> str:
 def _company_summary_html(card: dict) -> str:
     preview = business_summary_preview(card)
     if not preview:
-        return ""
+        return (
+            f'<p class="ss-company-summary ss-company-summary--empty">'
+            f"{_esc(BUSINESS_SUMMARY_UNAVAILABLE)}</p>"
+        )
     full = business_summary_full(card)
     if not full:
-        return ""
+        return (
+            f'<p class="ss-company-summary ss-company-summary--empty">'
+            f"{_esc(BUSINESS_SUMMARY_UNAVAILABLE)}</p>"
+        )
     if len(full) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
         return f'<p class="ss-company-summary">{_esc(preview)}</p>'
     return (
@@ -95,6 +103,10 @@ def _company_summary_html(card: dict) -> str:
         f'<p class="ss-company-summary-full">{_esc(full)}</p>'
         f"</details>"
     )
+
+
+def _metric_sources_html() -> str:
+    return f'<p class="ss-metric-sources">{_esc(METRIC_SOURCE_FOOTNOTE)}</p>'
 
 
 def _metric_cell_html(card: dict, metric: str) -> str:
@@ -153,14 +165,15 @@ def build_card_html(
         f'<p class="ss-identity">'
         f'<span class="ss-company">{_esc(company)}</span> '
         f'<span class="ss-ticker">{_esc(ticker)}</span></p>'
+        f"{_company_summary_html(card)}"
         f'<div class="ss-sector-context">'
         f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
         f'<p class="ss-sector-gloss">{_esc(sector_gloss)}</p>'
         f"{_benchmark_compare_html(card)}"
         f"</div>"
-        f"{_company_summary_html(card)}"
         f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
         f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
+        f"{_metric_sources_html()}"
         f"{_explain_all_html()}"
         f"</section>"
     )

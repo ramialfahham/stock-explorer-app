@@ -50,10 +50,10 @@ Record decisions here before PR B metric fixes:
 | Metric | Audit finding | Decision | PR |
 |--------|---------------|----------|-----|
 | Forward P/E | | align / relabel / ops | |
-| EBIT margin | | | |
+| EBIT margin | | relabeled Operating margin; audit before formula change | PR B v2.4 |
 | Rev growth YoY | | | |
 | Net debt / EBITDA | | | |
-| FCF margin | | | |
+| FCF margin | | footnote: annual statements; audit reference_fcf_margin_info | PR B v2.4 |
 
 ## Fail on drift (optional)
 

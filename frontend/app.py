@@ -15,7 +15,7 @@ from browser_storage import (
     request_landing,
     storage_sync_pending,
 )
-from brand import PRODUCT_NAME
+from brand import PRODUCT_NAME, PRODUCT_TAGLINE
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from explore_filters import (
@@ -133,12 +133,25 @@ def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     )
 
 
-def _start_over(client) -> None:
+def _sync_discover_queue(client, *, interactions: list[dict] | None = None) -> None:
+    """Rebuild walk queue from current filter session state."""
+    _refresh_queue(client, interactions=interactions)
+
+
+def _scoped_remaining() -> int:
+    return max(len(st.session_state["queue"]) - st.session_state["queue_index"], 0)
+
+
+def _reset_walk_state() -> None:
+    """Reset walk pointers only — queue rebuild happens after filters render."""
     st.session_state["queue_index"] = 0
     st.session_state["market_index"] = 0
     st.session_state["sector_shown"] = {}
     st.session_state["browse_selected_key"] = None
-    _refresh_queue(client, interactions=get_interactions())
+
+
+def _start_over() -> None:
+    _reset_walk_state()
 
 
 def _saved_count(interactions: list[dict]) -> int:
@@ -170,6 +183,7 @@ def _render_header(
         st.markdown(
             f"""
 <div class="ss-brand">{PRODUCT_NAME}</div>
+<div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>
 <div class="ss-header-stats ss-header-stats--solo">{remaining} to explore · {saved_count} saved</div>
 """,
             unsafe_allow_html=True,
@@ -193,7 +207,7 @@ def _render_header(
                 request_landing()
                 st.rerun()
             if st.button("Start over", key="menu_start_over", use_container_width=True):
-                _start_over(client)
+                _start_over()
                 st.rerun()
             if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
                 clear_interactions()
@@ -348,9 +362,7 @@ def _render_browse_list(cards: list[dict]) -> None:
 
 
 def _render_discover_tab(client) -> bool:
-    """Render discover content. Returns True if Save/Not now should show."""
-    _render_explore_filters(client)
-    _refresh_queue(client, interactions=get_interactions())
+    """Render discover card + browse. Filters and queue sync run in _discovery_page."""
     queue = st.session_state["queue"]
 
     if not queue:
@@ -375,7 +387,7 @@ def _render_discover_tab(client) -> bool:
                 use_container_width=True,
                 key="discover_start_over",
             ):
-                _start_over(client)
+                _start_over()
                 st.rerun()
             return False
         card = queue[idx]
@@ -487,17 +499,19 @@ def _render_search_tab(client) -> None:
 def _discovery_page(client) -> None:
     interactions = get_interactions()
     if storage_sync_pending():
-        _refresh_queue(client, interactions=interactions)
+        _sync_discover_queue(client, interactions=interactions)
 
     _ensure_all_cards(client)
-    if not st.session_state.get("queue"):
-        _refresh_queue(client, interactions=get_interactions())
-
-    saved_count = _saved_count(get_interactions())
-    remaining = max(len(st.session_state["queue"]) - st.session_state["queue_index"], 0)
+    saved_count = _saved_count(interactions)
+    active = st.session_state.get("active_page", "Discover")
 
     _render_bottom_nav(saved_count)
-    active = st.session_state.get("active_page", "Discover")
+
+    if active == "Discover":
+        _render_explore_filters(client)
+
+    _sync_discover_queue(client, interactions=interactions)
+    remaining = _scoped_remaining()
 
     _render_header(
         remaining=remaining,
@@ -510,7 +524,7 @@ def _discovery_page(client) -> None:
     if active == "Discover":
         show_actions = _render_discover_tab(client)
     elif active == "Saved":
-        _render_saved_tab(client, get_interactions())
+        _render_saved_tab(client, interactions)
     else:
         _render_search_tab(client)
 
