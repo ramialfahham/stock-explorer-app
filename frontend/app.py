@@ -177,9 +177,21 @@ def _saved_cards(client, interactions: list[dict]) -> list[dict]:
     saved_keys = {
         (i["market_code"], i["ticker"]) for i in interactions if i.get("action") == "save"
     }
+    save_order: dict[tuple[str, str], str] = {}
+    for row in interactions:
+        if row.get("action") != "save":
+            continue
+        key = (row["market_code"], row["ticker"])
+        created = row.get("created_at") or ""
+        if key not in save_order or created >= save_order[key]:
+            save_order[key] = created
+
     cards = _ensure_all_cards(client)
     saved = [c for c in cards if (c["market_code"], c["ticker"]) in saved_keys]
-    saved.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
+    saved.sort(
+        key=lambda c: save_order.get((c["market_code"], c["ticker"]), ""),
+        reverse=True,
+    )
     return saved
 
 
@@ -455,26 +467,34 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
     saved_cards = _saved_cards(client, interactions)
 
     if not saved_cards:
-        st.info("Nothing saved yet — tap Save in Discover.")
+        st.info("Nothing saved yet — tap **Save** in Discover to build your learning list on this device.")
         return
 
-    st.markdown(
-        '<p class="ss-saved-list-heading">Your learning list</p>',
-        unsafe_allow_html=True,
-    )
+    if len(saved_cards) == 1:
+        only_key = _saved_row_key(saved_cards[0])
+        if st.session_state.get("saved_focus_key") != only_key:
+            st.session_state["saved_focus_key"] = only_key
 
     focus_key = st.session_state.get("saved_focus_key")
-    for card in saved_cards:
-        row_key = _saved_row_key(card)
-        cols = st.columns([3, 1])
-        with cols[0]:
-            _render_saved_list_row(card)
-        with cols[1]:
-            if st.button("Open", key=f"saved_open_{row_key}", use_container_width=True):
-                st.session_state["saved_focus_key"] = row_key
-                st.rerun()
 
-    if not focus_key:
+    if focus_key:
+        if st.button("← Back to list", key="saved_back_to_list", use_container_width=False):
+            st.session_state["saved_focus_key"] = None
+            st.rerun()
+    else:
+        st.markdown(
+            '<p class="ss-saved-list-heading">Your learning list</p>',
+            unsafe_allow_html=True,
+        )
+        for card in saved_cards:
+            row_key = _saved_row_key(card)
+            cols = st.columns([3, 1])
+            with cols[0]:
+                _render_saved_list_row(card)
+            with cols[1]:
+                if st.button("Open", key=f"saved_open_{row_key}", use_container_width=True):
+                    st.session_state["saved_focus_key"] = row_key
+                    st.rerun()
         return
 
     market_code, ticker = focus_key.split("::", 1)
@@ -486,8 +506,13 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         ),
         None,
     )
-    if selected:
-        render_stock_card(selected, widget_key_prefix="saved")
+    if not selected:
+        st.session_state["saved_focus_key"] = None
+        st.rerun()
+        return
+
+    _render_saved_list_row(selected)
+    render_stock_card(selected, widget_key_prefix="saved")
 
 
 def _render_search_tab(client) -> None:
