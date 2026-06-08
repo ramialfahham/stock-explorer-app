@@ -203,10 +203,15 @@ def _clear_saved_session() -> None:
 
 
 def _render_brand_header(*, saved_count: int, client) -> None:
-    title_col, menu_col = st.columns([5, 1], vertical_alignment="top")
-    with title_col:
+    brand_col, menu_col = st.columns([6, 1], vertical_alignment="top", gap="small")
+    with brand_col:
         st.markdown(
-            f'<div class="ss-brand">{PRODUCT_NAME}</div>',
+            f"""
+            <div class="ss-brand-header">
+                <div class="ss-brand">{PRODUCT_NAME}</div>
+                <div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
     with menu_col:
@@ -220,10 +225,6 @@ def _render_brand_header(*, saved_count: int, client) -> None:
                 on_start_over=_start_over,
                 on_clear_saved=_clear_saved_session,
             )
-    st.markdown(
-        f'<div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>',
-        unsafe_allow_html=True,
-    )
 
 
 def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:
