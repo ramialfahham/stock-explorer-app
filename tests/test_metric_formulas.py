@@ -52,7 +52,8 @@ def test_operating_margin_ttm_pct() -> None:
         "qtr_total_revenue_2": 490.0,
         "qtr_total_revenue_3": 470.0,
     }
-    assert operating_margin_ttm_pct(row) == 20.0
+    # sum(op)=340, sum(rev)=1940 → 340/1940 × 100
+    assert operating_margin_ttm_pct(row) == pytest.approx(340 / 1940 * 100)
 
 
 def test_operating_margin_ttm_pct_requires_four_quarters() -> None:
