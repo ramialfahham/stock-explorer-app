@@ -6,15 +6,14 @@ import streamlit as st
 
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
 from browser_storage import dismiss_onboarding, is_onboarding_dismissed, onboarding_ready
-from markets import HERO_MARKET_CODE, market_display_name
 
 
 def render_landing() -> bool:
-    """Show full landing on first visit. Returns True while landing is visible."""
-    if not onboarding_ready() or is_onboarding_dismissed():
+    """Show full landing on first visit or when reopened from the menu."""
+    show_from_menu = bool(st.session_state.get("show_landing"))
+    if not show_from_menu and (not onboarding_ready() or is_onboarding_dismissed()):
         return False
 
-    hero_label = market_display_name(HERO_MARKET_CODE)
     st.markdown(
         f"""
 <div class="ss-landing">
@@ -22,9 +21,9 @@ def render_landing() -> bool:
   <h1 class="ss-landing-title">{PRODUCT_NAME}</h1>
   <p class="ss-landing-tagline">{PRODUCT_TAGLINE}</p>
   <ul class="ss-landing-points">
-    <li>Start with {hero_label} companies, then rotate through UK, Japan, Australia, and Germany</li>
-    <li>Browse cards with five key fundamentals explained in plain language</li>
-    <li>Save companies you want to follow — skips mean “not for me right now”</li>
+    <li>Explore companies with five key fundamentals explained in plain language</li>
+    <li>Filter by market and sector, browse a list, or walk one company at a time</li>
+    <li>Save = your learning list on this device — “Not now” means skip for later</li>
     <li>No account needed; your list stays on this device</li>
   </ul>
   <p class="ss-landing-disclaimer">Not investment advice.</p>
@@ -33,6 +32,9 @@ def render_landing() -> bool:
         unsafe_allow_html=True,
     )
     if st.button("Start exploring", type="primary", use_container_width=True):
-        dismiss_onboarding()
+        if show_from_menu:
+            st.session_state.pop("show_landing", None)
+        else:
+            dismiss_onboarding()
         st.rerun()
     return True

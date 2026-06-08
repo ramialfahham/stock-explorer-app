@@ -12,11 +12,24 @@ from browser_storage import (
     clear_interactions,
     ensure_interactions_loaded,
     get_interactions,
+    request_landing,
     storage_sync_pending,
 )
 from brand import PRODUCT_NAME
 from card_ui import render_stock_card
 from discovery_queue import build_queue
+from explore_filters import (
+    ALL_MARKETS,
+    ALL_SECTORS,
+    SURPRISE_ME_LABEL,
+    browse_row_subtitle,
+    default_market_filter,
+    filter_pool,
+    market_filter_options,
+    scope_summary,
+    sectors_for_market,
+    walk_meta_line,
+)
 from landing import render_landing
 from markets import (
     HERO_MARKET_CODE,
@@ -46,7 +59,12 @@ def _init_state() -> None:
         "sector_shown": {},
         "saved_selected_key": None,
         "search_selected": None,
+        "browse_selected_key": None,
         "active_page": "Discover",
+        "explore_market": default_market_filter(),
+        "explore_sector": ALL_SECTORS,
+        "explore_surprise_me": False,
+        "all_cards": [],
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -67,26 +85,57 @@ def _load_cards(client) -> list[dict]:
     return response.data or []
 
 
+def _ensure_all_cards(client) -> list[dict]:
+    cards = st.session_state.get("all_cards") or []
+    if not cards:
+        cards = _load_cards(client)
+        st.session_state["all_cards"] = cards
+    return cards
+
+
+def _explore_filters() -> tuple[str, str, bool]:
+    market = st.session_state.get("explore_market", default_market_filter())
+    sector = st.session_state.get("explore_sector", ALL_SECTORS)
+    surprise = bool(st.session_state.get("explore_surprise_me"))
+    if surprise:
+        market = ALL_MARKETS
+    return market, sector, surprise
+
+
 def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
-    cards = _load_cards(client)
+    cards = _ensure_all_cards(client)
     if interactions is None:
         interactions = get_interactions()
     counts = eligible_counts_by_market(cards)
     st.session_state["eligible_counts"] = counts
-    st.session_state["queue"] = build_queue(
+
+    market, sector, surprise = _explore_filters()
+    pool = filter_pool(
         cards,
+        interactions,
+        market_code=market,
+        sector=sector,
+        surprise_me=surprise,
+    )
+    start_market = None if surprise or market == ALL_MARKETS else market
+    st.session_state["queue"] = build_queue(
+        pool,
         interactions,
         market_index=st.session_state["market_index"],
         sector_shown=st.session_state["sector_shown"],
-        start_market=HERO_MARKET_CODE,
+        start_market=start_market or HERO_MARKET_CODE,
     )
-    st.session_state["queue_index"] = 0
+    st.session_state["queue_index"] = min(
+        st.session_state["queue_index"],
+        max(len(st.session_state["queue"]) - 1, 0),
+    )
 
 
 def _start_over(client) -> None:
     st.session_state["queue_index"] = 0
     st.session_state["market_index"] = 0
     st.session_state["sector_shown"] = {}
+    st.session_state["browse_selected_key"] = None
     _refresh_queue(client, interactions=get_interactions())
 
 
@@ -98,7 +147,7 @@ def _saved_cards(client, interactions: list[dict]) -> list[dict]:
     saved_keys = {
         (i["market_code"], i["ticker"]) for i in interactions if i.get("action") == "save"
     }
-    cards = _load_cards(client)
+    cards = _ensure_all_cards(client)
     saved = [c for c in cards if (c["market_code"], c["ticker"]) in saved_keys]
     saved.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
     return saved
@@ -113,26 +162,34 @@ def _render_header(
     remaining: int,
     saved_count: int,
     client,
-    pool_summary: str | None = None,
 ) -> None:
     bar_col, menu_col = st.columns([6, 1])
     with bar_col:
-        stats_class = "ss-header-stats"
-        if not pool_summary:
-            stats_class += " ss-header-stats--solo"
-        pool_line = ""
-        if pool_summary:
-            pool_line = f'<div class="ss-header-pool">{html.escape(pool_summary)}</div>'
         st.markdown(
             f"""
 <div class="ss-brand">{PRODUCT_NAME}</div>
-<div class="{stats_class}">{remaining} left · {saved_count} saved</div>
-{pool_line}
+<div class="ss-header-stats ss-header-stats--solo">{remaining} to explore · {saved_count} saved</div>
 """,
             unsafe_allow_html=True,
         )
     with menu_col:
         with st.popover("⋯"):
+            counts = st.session_state.get("eligible_counts") or {}
+            pool_summary = discover_pool_summary(counts)
+            if pool_summary:
+                st.caption(pool_summary)
+            lines = eligible_breakdown_lines(counts)
+            if lines:
+                breakdown = "\n".join(f"· {line}" for line in lines)
+                st.caption(breakdown)
+            st.divider()
+            if st.button(
+                "How Stock Explorer works",
+                key="menu_how_it_works",
+                use_container_width=True,
+            ):
+                request_landing()
+                st.rerun()
             if st.button("Start over", key="menu_start_over", use_container_width=True):
                 _start_over(client)
                 st.rerun()
@@ -159,18 +216,30 @@ def _render_bottom_nav(saved_count: int) -> None:
         st.session_state["active_page"] = "Saved" if page.startswith("Saved") else page
 
 
-def _render_sticky_actions(client, card: dict, idx: int) -> None:
+def _queue_index_for_card(card: dict) -> int:
+    queue = st.session_state["queue"]
+    key = _card_key(card)
+    for idx, row in enumerate(queue):
+        if _card_key(row) == key:
+            return idx
+    return st.session_state["queue_index"]
+
+
+def _render_sticky_actions(client, card: dict) -> None:
+    idx = _queue_index_for_card(card)
     st.markdown('<div class="ss-action-shell"></div>', unsafe_allow_html=True)
     col_save, col_skip = st.columns(2)
     if col_save.button("Save", type="primary", use_container_width=True, key="discover_save"):
         append_interaction(card, "save")
         st.session_state["queue_index"] = idx + 1
+        st.session_state["browse_selected_key"] = None
         _refresh_queue(client, interactions=get_interactions())
         st.rerun()
 
-    if col_skip.button("Skip", use_container_width=True, key="discover_skip"):
+    if col_skip.button("Not now", use_container_width=True, key="discover_skip"):
         append_interaction(card, "skip")
         st.session_state["queue_index"] = idx + 1
+        st.session_state["browse_selected_key"] = None
         st.session_state["market_index"] = st.session_state["market_index"] + 1
         sector = card.get("sector") or "Unknown"
         key = (card["market_code"], sector)
@@ -181,49 +250,165 @@ def _render_sticky_actions(client, card: dict, idx: int) -> None:
         st.rerun()
 
 
-def _render_discover_context() -> None:
-    counts = st.session_state.get("eligible_counts") or {}
-    if not counts:
-        return
-    lines = eligible_breakdown_lines(counts)
-    breakdown = "<br>".join(html.escape(line) for line in lines)
-    st.markdown(
-        f'<details class="ss-market-breakdown">'
-        f"<summary>Companies by market</summary>"
-        f'<p class="ss-market-breakdown-body">{breakdown}</p>'
-        f"</details>",
-        unsafe_allow_html=True,
+def _on_filter_change() -> None:
+    st.session_state["queue_index"] = 0
+    st.session_state["browse_selected_key"] = None
+    st.session_state["market_index"] = 0
+    st.session_state["sector_shown"] = {}
+
+
+def _render_explore_filters(client) -> None:
+    cards = _ensure_all_cards(client)
+    surprise = st.checkbox(
+        SURPRISE_ME_LABEL,
+        key="explore_surprise_me",
+        on_change=_on_filter_change,
+        help="Walk the full mixed queue across all markets — not the default scoped explore.",
     )
+
+    if not surprise:
+        if st.session_state.get("explore_market") == ALL_MARKETS:
+            st.session_state["explore_market"] = default_market_filter()
+        market_labels = {code: label for code, label in market_filter_options()}
+        market_codes = [code for code, _ in market_filter_options()]
+        st.selectbox(
+            "Market",
+            options=market_codes,
+            format_func=lambda code: market_labels[code],
+            key="explore_market",
+            on_change=_on_filter_change,
+            label_visibility="collapsed",
+        )
+    else:
+        st.session_state["explore_market"] = ALL_MARKETS
+
+    market, sector, surprise = _explore_filters()
+    sector_options = [ALL_SECTORS] + sectors_for_market(
+        cards,
+        market_code=market,
+        surprise_me=surprise,
+    )
+    if st.session_state.get("explore_sector") not in sector_options:
+        st.session_state["explore_sector"] = ALL_SECTORS
+    st.selectbox(
+        "Sector",
+        options=sector_options,
+        format_func=lambda value: "All sectors" if value == ALL_SECTORS else value,
+        key="explore_sector",
+        on_change=_on_filter_change,
+        label_visibility="collapsed",
+    )
+
+    market, sector, surprise = _explore_filters()
+    pool = filter_pool(
+        cards,
+        get_interactions(),
+        market_code=market,
+        sector=sector,
+        surprise_me=surprise,
+    )
+    st.caption(
+        scope_summary(
+            market_code=market,
+            sector=sector,
+            surprise_me=surprise,
+            pool_size=len(pool),
+        )
+    )
+
+
+def _render_browse_list(cards: list[dict]) -> None:
+    if not cards:
+        return
+
+    st.markdown('<p class="ss-browse-heading">Browse in this scope</p>', unsafe_allow_html=True)
+    sorted_cards = sorted(
+        cards,
+        key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower(),
+    )
+    for card in sorted_cards[:60]:
+        key = _card_key(card)
+        label = card.get("company_name") or card.get("ticker") or "Unknown"
+        ticker = card.get("ticker") or "—"
+        subtitle = browse_row_subtitle(card)
+        row_text, row_action = st.columns([4, 1])
+        with row_text:
+            st.markdown(
+                f'<p class="ss-browse-name">{html.escape(label)} · '
+                f'<span class="ss-browse-ticker">{html.escape(ticker)}</span></p>'
+                f'<p class="ss-browse-sub">{html.escape(subtitle)}</p>',
+                unsafe_allow_html=True,
+            )
+        with row_action:
+            if st.button("Open", key=f"browse_{key[0]}_{key[1]}", use_container_width=True):
+                st.session_state["browse_selected_key"] = key
+                st.rerun()
 
 
 def _render_discover_tab(client) -> bool:
-    """Render discover content. Returns True if Save/Skip should show."""
+    """Render discover content. Returns True if Save/Not now should show."""
+    _render_explore_filters(client)
+    _refresh_queue(client, interactions=get_interactions())
     queue = st.session_state["queue"]
-    if not queue:
-        _refresh_queue(client, interactions=get_interactions())
-        queue = st.session_state["queue"]
 
     if not queue:
-        st.info("No card-eligible stocks yet.")
+        st.info("No companies left in this scope — try another market, sector, or clear filters.")
         return False
 
-    _render_discover_context()
-
+    market, sector, surprise = _explore_filters()
+    browse_key = st.session_state.get("browse_selected_key")
+    card: dict | None = None
     idx = st.session_state["queue_index"]
-    if idx >= len(queue):
-        st.info("Queue complete.")
-        if st.button("Start over", type="primary", use_container_width=True, key="discover_start_over"):
-            _start_over(client)
-            st.rerun()
-        return False
 
-    card = queue[idx]
+    if browse_key:
+        card = next((c for c in queue if _card_key(c) == browse_key), None)
+        if card is None:
+            st.session_state["browse_selected_key"] = None
+    if card is None:
+        if idx >= len(queue):
+            st.info("Walk complete in this scope.")
+            if st.button(
+                "Start over in this scope",
+                type="primary",
+                use_container_width=True,
+                key="discover_start_over",
+            ):
+                _start_over(client)
+                st.rerun()
+            return False
+        card = queue[idx]
+
+    scope_meta = None
+    if not browse_key and idx < len(queue):
+        scope_meta = walk_meta_line(
+            position=idx + 1,
+            total=len(queue),
+            market_code=market,
+            sector=sector,
+            surprise_me=surprise,
+        )
+
     render_stock_card(
         card,
-        card_index=idx + 1,
-        queue_total=len(queue),
+        scope_meta=scope_meta,
         widget_key_prefix="discover",
     )
+
+    if not browse_key:
+        if st.button("Next company", use_container_width=True, key="discover_next"):
+            st.session_state["queue_index"] = min(idx + 1, len(queue) - 1)
+            st.rerun()
+
+    cards = _ensure_all_cards(client)
+    browse_pool = filter_pool(
+        cards,
+        get_interactions(),
+        market_code=market,
+        sector=sector,
+        surprise_me=surprise,
+    )
+    with st.expander(f"Browse {len(browse_pool)} companies in this scope", expanded=False):
+        _render_browse_list(browse_pool)
     return True
 
 
@@ -270,7 +455,7 @@ def _render_search_tab(client) -> None:
         return
 
     needle = query.lower()
-    cards = _load_cards(client)
+    cards = _ensure_all_cards(client)
     matches = [
         c
         for c in cards
@@ -302,24 +487,20 @@ def _discovery_page(client) -> None:
     if storage_sync_pending():
         _refresh_queue(client, interactions=interactions)
 
-    queue = st.session_state["queue"]
-    if not queue:
+    _ensure_all_cards(client)
+    if not st.session_state.get("queue"):
         _refresh_queue(client, interactions=get_interactions())
-        queue = st.session_state["queue"]
 
     saved_count = _saved_count(get_interactions())
-    remaining = max(len(queue) - st.session_state["queue_index"], 0)
+    remaining = max(len(st.session_state["queue"]) - st.session_state["queue_index"], 0)
 
     _render_bottom_nav(saved_count)
     active = st.session_state.get("active_page", "Discover")
-    counts = st.session_state.get("eligible_counts") or {}
-    pool_summary = discover_pool_summary(counts) if active == "Discover" else None
 
     _render_header(
         remaining=remaining,
         saved_count=saved_count,
         client=client,
-        pool_summary=pool_summary,
     )
 
     show_actions = False
@@ -332,10 +513,17 @@ def _discovery_page(client) -> None:
         _render_search_tab(client)
 
     if show_actions and active == "Discover":
-        idx = st.session_state["queue_index"]
         queue = st.session_state["queue"]
-        if idx < len(queue):
-            _render_sticky_actions(client, queue[idx], idx)
+        browse_key = st.session_state.get("browse_selected_key")
+        idx = st.session_state["queue_index"]
+        if browse_key:
+            card = next((c for c in queue if _card_key(c) == browse_key), None)
+        elif idx < len(queue):
+            card = queue[idx]
+        else:
+            card = None
+        if card:
+            _render_sticky_actions(client, card)
 
 
 def main() -> None:

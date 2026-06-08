@@ -175,3 +175,8 @@ def dismiss_onboarding() -> None:
     st.session_state["onboarding_dismissed"] = True
     st.session_state[_ONBOARDING_LOADED_FLAG] = True
     _queue_storage_write(ONBOARDING_KEY, True)
+
+
+def request_landing() -> None:
+    """Show the landing page again without clearing saved interactions."""
+    st.session_state["show_landing"] = True
