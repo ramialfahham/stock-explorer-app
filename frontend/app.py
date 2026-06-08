@@ -40,6 +40,7 @@ from markets import (
 )
 from nav_pages import NAV_PAGES, normalize_nav_page
 from saved_compare import compare_partner_options, render_compare_two
+from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -516,6 +517,7 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         return
 
     _render_saved_list_row(selected)
+    render_saved_news(selected, widget_key_prefix="saved")
 
     compare_options = compare_partner_options(saved_cards, selected)
     if len(compare_options) >= 1:
