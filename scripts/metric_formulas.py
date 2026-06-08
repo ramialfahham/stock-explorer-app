@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from ingestion.yfinance.quarterly import TTM_QUARTERS
+
+QTR_OPERATING_INCOME_KEYS = tuple(f"qtr_operating_income_{i}" for i in range(TTM_QUARTERS))
+QTR_TOTAL_REVENUE_KEYS = tuple(f"qtr_total_revenue_{i}" for i in range(TTM_QUARTERS))
+
 
 def effective_net_debt(row: dict[str, Any]) -> float | None:
     net_debt = row.get("info_net_debt")
@@ -14,6 +19,19 @@ def effective_net_debt(row: dict[str, Any]) -> float | None:
     if total_debt is not None and total_cash is not None:
         return float(total_debt) - float(total_cash)
     return None
+
+
+def operating_margin_ttm_pct(row: dict[str, Any]) -> float | None:
+    """TTM operating margin from four quarterly statement values (mirrors dbt)."""
+    op_values = [row.get(key) for key in QTR_OPERATING_INCOME_KEYS]
+    rev_values = [row.get(key) for key in QTR_TOTAL_REVENUE_KEYS]
+    if any(value is None for value in op_values + rev_values):
+        return None
+    op_sum = sum(float(value) for value in op_values)  # type: ignore[arg-type]
+    rev_sum = sum(float(value) for value in rev_values)  # type: ignore[arg-type]
+    if rev_sum == 0:
+        return None
+    return op_sum / rev_sum * 100.0
 
 
 def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None]:
@@ -43,6 +61,27 @@ def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None
         "net_debt_to_ebitda": net_debt_to_ebitda,
         "fcf_margin_pct": fcf_margin_pct,
     }
+
+
+def reference_operating_margin_info(info: dict[str, Any]) -> float | None:
+    """Yahoo info operatingMargins × 100 — often latest quarter, not TTM."""
+    raw = info.get("operatingMargins")
+    if raw is None:
+        return None
+    return float(raw) * 100.0
+
+
+def reference_operating_margin_ttm(row: dict[str, Any]) -> float | None:
+    """TTM operating margin from landed quarterly fields or live ticker object."""
+    ttm = operating_margin_ttm_pct(row)
+    if ttm is not None:
+        return ttm
+    ticker = row.get("_yf_ticker")
+    if ticker is not None:
+        from ingestion.yfinance.quarterly import land_quarterly_ttm_fields
+
+        return operating_margin_ttm_pct(land_quarterly_ttm_fields(ticker))
+    return None
 
 
 def reference_fcf_margin_from_info(info: dict[str, Any]) -> float | None:

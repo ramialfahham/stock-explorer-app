@@ -11,7 +11,7 @@ After a healthy `dbt build` (or weekly pipeline):
 python scripts/audit_mart_vs_yfinance.py \
   --duckdb-path storage/stock_data.db \
   --sample-size 30 \
-  --always NVDA,AAPL,ALB
+  --always ABNB,NVDA,AAPL,ALB
 
 # Production Supabase mart
 python scripts/audit_mart_vs_yfinance.py --source supabase --sample-size 30
@@ -34,6 +34,10 @@ Reports are written to `storage/audit/metric_audit_<timestamp>.csv` and `.json`.
 | `drift_pct_*` | Absolute percent difference vs live |
 | `reference_fcf_margin_info` | `freeCashflow / totalRevenue` from info — Yahoo-trailing style reference, not mart |
 | `reference_forward_pe` | Raw `forwardPE` from info |
+| `reference_operating_margin_info` | `operatingMargins × 100` from info — often **latest quarter**, not TTM |
+| `reference_operating_margin_ttm` | Sum of last 4Q Operating Income ÷ sum of last 4Q Total Revenue × 100 |
+| `drift_pct_ebit_margin_vs_info` | Mart operating margin vs info reference |
+| `drift_pct_ebit_margin_vs_ttm` | Mart operating margin vs TTM reference (target after pipeline fix) |
 | `snapshot_age_days` | Days since mart `snapshot_date` — large age explains stale forward P/E |
 | `business_summary_present` | Whether `longBusinessSummary` reached the mart |
 
@@ -43,17 +47,17 @@ High drift with high `snapshot_age_days` → run export / wait for pipeline befo
 
 Large gap between `mart_fcf_margin_pct` and `reference_fcf_margin_info` → annual statement FCF margin vs trailing info ratio (known NVDA pattern).
 
-## Decision log (metric-by-metric)
+Large gap between `reference_operating_margin_info` and `reference_operating_margin_ttm` on the same ticker (e.g. ABNB ~3% vs ~15–21%) → mart uses info `operatingMargins` today; switch card metric to TTM from quarterly statements.
 
-Record decisions here before PR B metric fixes:
+## Decision log (metric-by-metric)
 
 | Metric | Audit finding | Decision | PR |
 |--------|---------------|----------|-----|
-| Forward P/E | | align / relabel / ops | |
-| EBIT margin | | relabeled Operating margin; audit before formula change | PR B v2.4 |
-| Rev growth YoY | | | |
-| Net debt / EBITDA | | | |
-| FCF margin | | footnote: annual statements; audit reference_fcf_margin_info | PR B v2.4 |
+| Forward P/E | ABNB ~22.1 aligns with Yahoo forward P/E | Keep `info_forward_pe`; monitor snapshot age | — |
+| Operating margin | ABNB mart ~3.2% matches `reference_operating_margin_info` (latest quarter); TTM reference ~15–21% | **Replace card metric with TTM** from quarterly Operating Income / Total Revenue | Pipeline PR |
+| Rev growth YoY | ABNB ~17.9% matches Yahoo quarterly YoY | Keep `info_revenue_growth`; relabel as quarter in UI PR | Labels PR |
+| Net debt / EBITDA | ABNB −3.62 plausible (net cash / EBITDA) | Keep info-based formula | — |
+| FCF margin | ABNB ~38% aligns with annual stmt / info trailing | Keep annual statement formula; label already says (annual) | — |
 
 ## Fail on drift (optional)
 
