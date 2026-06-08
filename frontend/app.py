@@ -39,6 +39,7 @@ from markets import (
     eligible_counts_by_market,
 )
 from nav_pages import NAV_PAGES, normalize_nav_page
+from saved_compare import compare_partner_options, render_compare_two
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -62,6 +63,7 @@ def _init_state() -> None:
         "market_index": 0,
         "sector_shown": {},
         "saved_focus_key": None,
+        "saved_compare_key": None,
         "search_selected": None,
         "browse_selected_key": None,
         "active_page": "Discover",
@@ -235,6 +237,7 @@ def _render_brand_header(*, saved_count: int, client) -> None:
             if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
                 clear_interactions()
                 st.session_state["saved_focus_key"] = None
+                st.session_state["saved_compare_key"] = None
                 st.rerun()
 
 
@@ -480,6 +483,7 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
     if focus_key:
         if st.button("← Back to list", key="saved_back_to_list", use_container_width=False):
             st.session_state["saved_focus_key"] = None
+            st.session_state["saved_compare_key"] = None
             st.rerun()
     else:
         st.markdown(
@@ -512,6 +516,36 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         return
 
     _render_saved_list_row(selected)
+
+    compare_options = compare_partner_options(saved_cards, selected)
+    if len(compare_options) >= 1:
+        labels = [label for label, _ in compare_options]
+        keys = [key for _, key in compare_options]
+        pick = st.selectbox(
+            "Compare with another saved company",
+            options=["—"] + labels,
+            key="saved_compare_select",
+        )
+        if pick and pick != "—":
+            partner_key = keys[labels.index(pick)]
+            st.session_state["saved_compare_key"] = partner_key
+        else:
+            st.session_state["saved_compare_key"] = None
+
+        compare_key = st.session_state.get("saved_compare_key")
+        if compare_key:
+            market_code, ticker = compare_key.split("::", 1)
+            partner = next(
+                (
+                    c
+                    for c in saved_cards
+                    if c["market_code"] == market_code and c["ticker"] == ticker
+                ),
+                None,
+            )
+            if partner:
+                render_compare_two(selected, partner)
+
     render_stock_card(selected, widget_key_prefix="saved")
 
 
