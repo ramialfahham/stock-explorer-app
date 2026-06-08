@@ -43,18 +43,27 @@ section[data-testid="stSidebar"] {
 
 [data-testid="stAppViewContainer"] {
     background: var(--ss-bg);
+    overflow-x: clip;
+}
+[data-testid="stAppViewContainer"] .main {
+    overflow-x: clip;
 }
 .block-container {
     padding: 0.4rem 0.85rem calc(var(--ss-bottom-nav-h) + var(--ss-action-bar-h) + 0.5rem);
     max-width: 480px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100%;
+    box-sizing: border-box;
 }
 .block-container.ss-no-actions {
     padding-bottom: calc(var(--ss-bottom-nav-h) + 0.5rem);
 }
 
-/* Header — title + tagline left, overflow menu top-right (single row) */
+/* Header — full-width title block; menu overlaid top-right (no column nowrap) */
 .ss-brand-header {
     min-width: 0;
+    padding-right: 2.5rem;
 }
 .ss-brand {
     font-family: "Fraunces", Georgia, "Times New Roman", serif;
@@ -74,21 +83,27 @@ section[data-testid="stSidebar"] {
     max-width: none;
 }
 div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) {
-    flex-wrap: nowrap !important;
-    align-items: flex-start !important;
+    position: relative;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) [data-testid="column"]:first-child {
-    flex: 1 1 auto !important;
+    width: 100% !important;
+    flex: 1 1 100% !important;
     min-width: 0 !important;
+    max-width: 100% !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) [data-testid="column"]:last-child {
-    flex: 0 0 auto !important;
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
     width: auto !important;
-    min-width: 2.25rem !important;
-    display: flex;
-    justify-content: flex-end;
-    align-items: flex-start;
-    padding-top: 0.05rem;
+    min-width: 0 !important;
+    flex: none !important;
+    z-index: 2;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) [data-testid="column"]:last-child button {
     margin-top: 0 !important;
