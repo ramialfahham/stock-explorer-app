@@ -11,6 +11,7 @@ from card_copy import (
     BUSINESS_SUMMARY_PREVIEW_CHARS,
     DEEP_DIVE_METRICS,
     MEDIAN_PRIMER,
+    METRIC_ANALOGY,
     METRIC_GLOSS,
     METRIC_LABELS,
     METRIC_LEARN,
@@ -79,14 +80,22 @@ def _benchmark_compare_body(card: dict) -> str:
     return f'<p class="ss-median-primer">{_esc(MEDIAN_PRIMER)}</p>{bench_list}'
 
 
-def _metric_definitions_body() -> str:
-    blocks = []
+def _metric_learn_blocks() -> str:
+    blocks: list[str] = []
     for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
         blocks.append(
-            f"<dt>{_esc(METRIC_LABELS[metric])}</dt>"
-            f"<dd>{_esc(METRIC_LEARN[metric])}</dd>"
+            f'<details class="ss-metric-learn-item">'
+            f"<summary>{_esc(METRIC_LABELS[metric])}</summary>"
+            f'<p class="ss-metric-analogy">{_esc(METRIC_ANALOGY[metric])}</p>'
+            f'<p class="ss-metric-gloss-inline">{_esc(METRIC_GLOSS[metric])}</p>'
+            f'<p class="ss-metric-learn-body">{_esc(METRIC_LEARN[metric])}</p>'
+            f"</details>"
         )
-    return f'<dl class="ss-explain-list">{"".join(blocks)}</dl>'
+    return "".join(blocks)
+
+
+def _metric_definitions_body() -> str:
+    return f'<div class="ss-metric-learn-list">{_metric_learn_blocks()}</div>'
 
 
 def _esc(value: object) -> str:

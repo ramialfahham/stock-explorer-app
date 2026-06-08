@@ -18,6 +18,24 @@ METRIC_GLOSS = {
     "fcf_margin_pct": "Free cash left from each sales dollar (latest annual statements)",
 }
 
+METRIC_ANALOGY = {
+    "forward_pe": (
+        "Think payback time: how many years of expected earnings are priced into one share today."
+    ),
+    "ebit_margin_pct": (
+        "For every dollar of sales, this is the slice kept as operating profit before interest and taxes."
+    ),
+    "revenue_growth_yoy_pct": (
+        "Compared with a year ago — is the business growing, flat, or shrinking?"
+    ),
+    "net_debt_to_ebitda": (
+        "If operating profit stayed steady, about how many years to repay net debt from cash generation?"
+    ),
+    "fcf_margin_pct": (
+        "After running the business, how much cash is left from each sales dollar — not the same as accounting profit."
+    ),
+}
+
 METRIC_LEARN = {
     "forward_pe": (
         "P/E (price-to-earnings) divides the share price by earnings per share. "
