@@ -34,7 +34,7 @@ from live_quote import (
     live_quote_button_label,
     yahoo_finance_url,
 )
-from metric_school import render_metric_playgrounds
+from metric_school import render_metric_micro_checks, render_metric_playgrounds
 
 
 def _bench_indicator_html(card: dict, metric: str) -> str:
@@ -262,4 +262,6 @@ def render_stock_card(
     if show_metric_school:
         with st.expander("Practice with hypothetical numbers", expanded=False):
             render_metric_playgrounds(card, widget_key_prefix=widget_key_prefix)
+        with st.expander("Quick check — test your understanding", expanded=False):
+            render_metric_micro_checks(card, widget_key_prefix=widget_key_prefix)
     render_card_footer(card, widget_key_prefix=widget_key_prefix)
