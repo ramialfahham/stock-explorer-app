@@ -16,6 +16,7 @@ def build_queue(
     *,
     market_index: int = 0,
     sector_shown: dict[tuple[str, str], int] | None = None,
+    start_market: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return card-eligible rows in discovery order (round-robin, unseen first, sector-balanced)."""
     sector_shown = sector_shown or {}
@@ -67,7 +68,10 @@ def build_queue(
 
     ordered: list[dict[str, Any]] = []
     remaining = {m: list(by_market[m]) for m in markets}
-    idx = market_index % len(markets)
+    if market_index == 0 and start_market and start_market in markets:
+        idx = markets.index(start_market)
+    else:
+        idx = market_index % len(markets)
     total = sum(len(v) for v in remaining.values())
 
     while len(ordered) < total:

@@ -6,6 +6,7 @@ import streamlit as st
 
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
 from browser_storage import dismiss_onboarding, is_onboarding_dismissed, onboarding_ready
+from markets import HERO_MARKET_CODE, market_display_name
 
 
 def render_landing() -> bool:
@@ -13,6 +14,7 @@ def render_landing() -> bool:
     if not onboarding_ready() or is_onboarding_dismissed():
         return False
 
+    hero_label = market_display_name(HERO_MARKET_CODE)
     st.markdown(
         f"""
 <div class="ss-landing">
@@ -20,7 +22,8 @@ def render_landing() -> bool:
   <h1 class="ss-landing-title">{PRODUCT_NAME}</h1>
   <p class="ss-landing-tagline">{PRODUCT_TAGLINE}</p>
   <ul class="ss-landing-points">
-    <li>Browse company cards with five key fundamentals explained in plain language</li>
+    <li>Start with {hero_label} companies, then rotate through UK, Japan, Australia, and Germany</li>
+    <li>Browse cards with five key fundamentals explained in plain language</li>
     <li>Save companies you want to follow — skips mean “not for me right now”</li>
     <li>No account needed; your list stays on this device</li>
   </ul>

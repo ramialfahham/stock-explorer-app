@@ -63,9 +63,36 @@ section[data-testid="stSidebar"] {
 .ss-header-stats {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
+    margin: 0.08rem 0 0.2rem;
+}
+.ss-header-stats--solo {
     margin: 0.08rem 0 0.45rem;
     padding-bottom: 0.45rem;
     border-bottom: 1px solid var(--ss-border);
+}
+.ss-header-pool {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-muted);
+    margin: 0 0 0.45rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--ss-border);
+    line-height: 1.35;
+}
+
+.ss-market-breakdown {
+    margin: 0 0 0.65rem;
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+}
+.ss-market-breakdown summary {
+    cursor: pointer;
+    color: var(--ss-accent);
+    margin-bottom: 0.25rem;
+}
+.ss-market-breakdown-body {
+    margin: 0;
+    line-height: 1.45;
+    color: var(--ss-muted);
 }
 
 /* Card */

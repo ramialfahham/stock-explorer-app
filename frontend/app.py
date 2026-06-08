@@ -18,6 +18,12 @@ from brand import PRODUCT_NAME
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from landing import render_landing
+from markets import (
+    HERO_MARKET_CODE,
+    discover_pool_summary,
+    eligible_breakdown_lines,
+    eligible_counts_by_market,
+)
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -65,11 +71,14 @@ def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     cards = _load_cards(client)
     if interactions is None:
         interactions = get_interactions()
+    counts = eligible_counts_by_market(cards)
+    st.session_state["eligible_counts"] = counts
     st.session_state["queue"] = build_queue(
         cards,
         interactions,
         market_index=st.session_state["market_index"],
         sector_shown=st.session_state["sector_shown"],
+        start_market=HERO_MARKET_CODE,
     )
     st.session_state["queue_index"] = 0
 
@@ -99,13 +108,26 @@ def _card_key(card: dict) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
-def _render_header(*, remaining: int, saved_count: int, client) -> None:
+def _render_header(
+    *,
+    remaining: int,
+    saved_count: int,
+    client,
+    pool_summary: str | None = None,
+) -> None:
     bar_col, menu_col = st.columns([6, 1])
     with bar_col:
+        stats_class = "ss-header-stats"
+        if not pool_summary:
+            stats_class += " ss-header-stats--solo"
+        pool_line = ""
+        if pool_summary:
+            pool_line = f'<div class="ss-header-pool">{html.escape(pool_summary)}</div>'
         st.markdown(
             f"""
 <div class="ss-brand">{PRODUCT_NAME}</div>
-<div class="ss-header-stats">{remaining} left · {saved_count} saved</div>
+<div class="{stats_class}">{remaining} left · {saved_count} saved</div>
+{pool_line}
 """,
             unsafe_allow_html=True,
         )
@@ -159,6 +181,21 @@ def _render_sticky_actions(client, card: dict, idx: int) -> None:
         st.rerun()
 
 
+def _render_discover_context() -> None:
+    counts = st.session_state.get("eligible_counts") or {}
+    if not counts:
+        return
+    lines = eligible_breakdown_lines(counts)
+    breakdown = "<br>".join(html.escape(line) for line in lines)
+    st.markdown(
+        f'<details class="ss-market-breakdown">'
+        f"<summary>Companies by market</summary>"
+        f'<p class="ss-market-breakdown-body">{breakdown}</p>'
+        f"</details>",
+        unsafe_allow_html=True,
+    )
+
+
 def _render_discover_tab(client) -> bool:
     """Render discover content. Returns True if Save/Skip should show."""
     queue = st.session_state["queue"]
@@ -169,6 +206,8 @@ def _render_discover_tab(client) -> bool:
     if not queue:
         st.info("No card-eligible stocks yet.")
         return False
+
+    _render_discover_context()
 
     idx = st.session_state["queue_index"]
     if idx >= len(queue):
@@ -273,8 +312,15 @@ def _discovery_page(client) -> None:
 
     _render_bottom_nav(saved_count)
     active = st.session_state.get("active_page", "Discover")
+    counts = st.session_state.get("eligible_counts") or {}
+    pool_summary = discover_pool_summary(counts) if active == "Discover" else None
 
-    _render_header(remaining=remaining, saved_count=saved_count, client=client)
+    _render_header(
+        remaining=remaining,
+        saved_count=saved_count,
+        client=client,
+        pool_summary=pool_summary,
+    )
 
     show_actions = False
 

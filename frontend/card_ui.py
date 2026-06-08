@@ -24,6 +24,7 @@ from card_copy import (
     sector_gloss_line,
     sector_headline,
 )
+from markets import market_display_name
 from live_quote import (
     LiveQuoteError,
     fetch_live_quote,
@@ -45,9 +46,7 @@ def _esc(value: object) -> str:
 
 
 def _format_market_code(market_code: str | None) -> str:
-    if not market_code:
-        return "—"
-    return market_code.replace("_", " ").upper()
+    return market_display_name(market_code)
 
 
 def _benchmark_context_html(card: dict) -> str:
