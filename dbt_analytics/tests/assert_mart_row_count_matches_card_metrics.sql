@@ -1,11 +1,12 @@
--- Mart left-joins sector benchmarks; row count must match card metrics (no fanout).
+-- Mart is eligible-only; row count must match eligible card metrics (no fanout).
 with
 mart as (
     select * from {{ ref('mart_stock_cards') }}
 ),
 
-metrics as (
+eligible_metrics as (
     select * from {{ ref('int_stock__card_metrics') }}
+    where is_card_eligible
 ),
 
 mart_count as (
@@ -15,7 +16,7 @@ mart_count as (
 
 metrics_count as (
     select count(*) as row_count
-    from metrics
+    from eligible_metrics
 ),
 
 comparison as (

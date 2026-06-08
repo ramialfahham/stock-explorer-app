@@ -4,28 +4,28 @@
   "fail_drop_fraction": 0.15,
   "max_drop_fraction": 0.15,
   "updated_at": "2026-06-08",
-  "note": "Update after a verified healthy pipeline run: python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db --write-baseline",
+  "note": "CI fixture baseline (5 eligible per active market from seed_ci_raw_fixtures). Do not overwrite with --write-baseline.",
   "markets": {
     "au_asx200": {
-      "baseline_eligible": 166,
+      "baseline_eligible": 5,
       "min_eligible": 5
     },
     "de_dax": {
-      "baseline_eligible": 35,
+      "baseline_eligible": 5,
       "min_eligible": 5
     },
     "jp_nikkei225": {
-      "baseline_eligible": 97,
+      "baseline_eligible": 5,
       "min_eligible": 5
     },
     "uk_ftse100": {
-      "baseline_eligible": 81,
+      "baseline_eligible": 5,
       "min_eligible": 5
     },
     "us_sp500": {
-      "baseline_eligible": 470,
+      "baseline_eligible": 5,
       "min_eligible": 5
     }
   },
-  "total_baseline_eligible": 849
+  "total_baseline_eligible": 25
 }
