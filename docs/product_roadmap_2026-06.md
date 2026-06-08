@@ -60,6 +60,7 @@ flowchart LR
 | Priority | Work | Scope |
 |----------|------|--------|
 | P0 | **Ops** | Weekly pipeline green; migration 004 applied; re-export for `business_summary`; refresh eligibility baseline after healthy run |
+| P0 | **Ops verify** | After export: latest-snapshot `business_summary` spot-check (e.g. ABNB non-empty in Supabase); drop stale snapshot rows if eligible counts look doubled |
 | P1 | **Phase 2 spike** | News on **Saved tab only** — after v2.3 feels good in manual smoke |
 
 ---
@@ -87,6 +88,7 @@ flowchart LR
 ## Verification checklist (each release)
 
 - Manual smoke on Streamlit Cloud after merge
+- **Mobile header (~480px):** ⋯ top-right on title row; tagline full width below (not beside menu); overflow menu opens on Discover, Saved, Search
 - Save / not now / hard refresh still works (localStorage)
 - Mobile-width scan: company + 3 hero metric values visible without scroll; **Save reachable** on Discover
 - Card scannable in ~30 seconds with learn panel closed
@@ -107,4 +109,7 @@ python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db
 
 # Re-export mart to Supabase (after dbt build)
 python scripts/export_to_supabase.py
+
+# Spot-check business_summary on latest snapshot (service role / SQL)
+# e.g. ABNB should have non-empty business_summary on max(snapshot_date)
 ```
