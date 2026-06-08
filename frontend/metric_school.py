@@ -45,10 +45,13 @@ def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
     ratio = card.get("net_debt_to_ebitda")
     default_ebitda = 10.0
     default_debt = float(ratio * default_ebitda) if ratio is not None else 25.0
+    if ratio is not None and ratio < 0:
+        st.caption("Negative net debt means cash on hand exceeds debt (net cash position).")
 
     net_debt = st.number_input(
         "Hypothetical net debt ($B)",
-        min_value=0.0,
+        min_value=-500.0,
+        max_value=500.0,
         value=float(round(default_debt, 2)),
         step=1.0,
         key=_key(prefix, card, "play_debt"),
@@ -108,7 +111,8 @@ def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None
     )
     op = st.number_input(
         "Operating profit ($B)",
-        min_value=0.0,
+        min_value=-500.0,
+        max_value=500.0,
         value=float(round(operating, 2)),
         step=0.5,
         key=_key(prefix, card, "play_ebit_op"),
@@ -133,6 +137,8 @@ def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
     )
     cash = st.number_input(
         "Free cash flow ($B)",
+        min_value=-500.0,
+        max_value=500.0,
         value=float(round(fcf, 2)),
         step=0.5,
         key=_key(prefix, card, "play_fcf_cash"),
