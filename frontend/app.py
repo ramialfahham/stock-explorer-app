@@ -259,16 +259,6 @@ def _render_search_tab(client) -> None:
 
 
 def _discovery_page(client) -> None:
-    # #region agent log
-    from browser_storage import _debug_log
-
-    _debug_log(
-        "H1",
-        "app.py:_discovery_page",
-        "entering discovery page",
-        {"runId": "post-fix", "active_page": st.session_state.get("active_page")},
-    )
-    # #endregion
     interactions = get_interactions()
     if storage_sync_pending():
         _refresh_queue(client, interactions=interactions)
@@ -313,11 +303,6 @@ def main() -> None:
         )
         return
 
-    # #region agent log
-    from browser_storage import _debug_log
-
-    _debug_log("H1", "app.py:main", "before ensure_interactions_loaded in main", {"runId": "post-fix"})
-    # #endregion
     ensure_interactions_loaded()
     if render_landing():
         return
