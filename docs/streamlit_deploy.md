@@ -11,7 +11,10 @@ Deploy the discovery UI (`frontend/app.py`) against Supabase data exported by th
 1. Go to [share.streamlit.io](https://share.streamlit.io) → **Create app** → connect this GitHub repo.
 2. **Main file path:** `frontend/app.py` (existing apps) or `streamlit_app.py` (new apps). Streamlit Cloud **does not allow changing** the main file after create — pick once at deploy time.
 3. **Python version:** 3.11 (repo includes `.python-version`; Cloud may default to 3.14 otherwise)
-4. **Requirements file:** `frontend/requirements.txt` (keeps install fast; omit dbt/ingestion deps)
+4. **Requirements file:**
+   - **`frontend/requirements.txt`** is the single source of truth for UI deps (`streamlit-extras`, etc.).
+   - Main file `frontend/app.py` → set Requirements to `frontend/requirements.txt`.
+   - Main file `streamlit_app.py` → set Requirements to **`requirements.txt`** (repo root includes `-r frontend/requirements.txt`).
 5. **Secrets** — App settings → Secrets, TOML format from [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example):
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (anon / publishable key only — never the service role key)
