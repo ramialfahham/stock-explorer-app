@@ -28,6 +28,9 @@ If anything could silently shrink scope, stop and ask.
 Every change goes on a new branch. Never commit directly to `main`. Open a PR; wait for
 CI and user approval before merging.
 
+**Pre-flight:** before the first file edit, confirm `git branch --show-current` is not `main`.
+Full rules: [`no-changes-on-main.mdc`](no-changes-on-main.mdc).
+
 After the user merges, follow [`agent-pr-workflow.mdc`](agent-pr-workflow.mdc) **After merge**:
 sync local `main` and delete merged branches without asking the user to do it.
 

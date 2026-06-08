@@ -15,6 +15,10 @@ How to change this repo safely. Agent behavior: [`working_agreement.md`](working
 
 Never commit directly to `main`.
 
+**One-time setup:** `python scripts/install_git_hooks.py` — pre-commit hook rejects commits on `main`.
+
+**GitHub (recommended):** branch protection on `main` — require PR, disallow direct push.
+
 ---
 
 ## CI tiers (economic)

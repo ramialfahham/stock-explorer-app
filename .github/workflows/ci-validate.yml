@@ -24,6 +24,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Block protected-branch commits in CI checkout
+        if: github.event_name == 'pull_request'
+        run: python scripts/check_not_on_main.py
+
       - name: Enforce layer contract
         run: python scripts/check_layer_contract.py
 
