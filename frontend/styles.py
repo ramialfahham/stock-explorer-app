@@ -410,72 +410,26 @@ section[data-testid="stSidebar"] {
     color: var(--ss-accent);
 }
 
-/* Saved comparison matrix */
-.ss-saved-matrix-intro {
+/* Saved learning list */
+.ss-saved-list-heading {
     font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-    margin: 0 0 0.55rem;
-    line-height: 1.35;
-}
-.ss-saved-matrix-wrap {
-    overflow-x: auto;
-    margin: 0 0 0.85rem;
-    -webkit-overflow-scrolling: touch;
-}
-.ss-saved-matrix {
-    width: max-content;
-    min-width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
-}
-.ss-saved-matrix th,
-.ss-saved-matrix td {
-    border: 1px solid var(--ss-border);
-    padding: 0.4rem 0.55rem;
-    vertical-align: top;
-}
-.ss-matrix-corner {
-    background: var(--ss-surface);
-    min-width: 6.5rem;
-}
-.ss-matrix-col {
-    background: var(--ss-surface);
-    min-width: 5.5rem;
-    text-align: left;
-}
-.ss-matrix-ticker {
-    display: block;
-    font-weight: 700;
-    color: var(--ss-accent);
-    line-height: 1.2;
-}
-.ss-matrix-name {
-    display: block;
-    font-weight: 600;
-    color: var(--ss-text);
-    line-height: 1.2;
-    margin-top: 0.1rem;
-}
-.ss-matrix-market {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--ss-caption);
-    margin-top: 0.12rem;
-}
-.ss-matrix-metric {
     font-weight: 600;
     color: var(--ss-muted);
-    background: var(--ss-surface);
-    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 0.5rem;
 }
-.ss-matrix-value {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    color: var(--ss-text);
-    text-align: right;
+.ss-saved-row {
+    margin: 0 0 0.35rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--ss-border);
+}
+.ss-saved-fresh {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0.12rem 0 0;
 }
 
-/* Saved list */
 .ss-saved-name {
     font-size: 0.85rem;
     font-weight: 600;
