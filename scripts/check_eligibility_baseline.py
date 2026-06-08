@@ -31,7 +31,6 @@ def _eligible_counts(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
         """
         select market_code, count(*)::integer as eligible_count
         from marts.mart_stock_cards
-        where is_card_eligible
         group by market_code
         """
     ).fetchall()
@@ -42,10 +41,28 @@ def _load_baseline(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _write_baseline(path: Path, counts: dict[str, int], *, max_drop_fraction: float) -> None:
+def _drop_fractions(baseline: dict, *, fail_override: float | None) -> tuple[float, float]:
+    warn_fraction = float(baseline.get("warn_drop_fraction", 0.05))
+    fail_fraction = fail_override
+    if fail_fraction is None:
+        fail_fraction = float(
+            baseline.get("fail_drop_fraction", baseline.get("max_drop_fraction", 0.15))
+        )
+    return warn_fraction, fail_fraction
+
+
+def _write_baseline(
+    path: Path,
+    counts: dict[str, int],
+    *,
+    warn_drop_fraction: float,
+    fail_drop_fraction: float,
+) -> None:
     payload = {
-        "schema_version": 1,
-        "max_drop_fraction": max_drop_fraction,
+        "schema_version": 2,
+        "warn_drop_fraction": warn_drop_fraction,
+        "fail_drop_fraction": fail_drop_fraction,
+        "max_drop_fraction": fail_drop_fraction,
         "updated_at": date.today().isoformat(),
         "note": (
             "Update after a verified healthy pipeline run: "
@@ -92,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         "--max-drop-fraction",
         type=float,
         default=None,
-        help="Override baseline max_drop_fraction (default: read from baseline file)",
+        help="Override baseline fail_drop_fraction (default: read from baseline file)",
     )
     parser.add_argument(
         "--write-baseline",
@@ -116,9 +133,19 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         conn.close()
 
-    max_drop_fraction = args.max_drop_fraction if args.max_drop_fraction is not None else 0.25
+    baseline = _load_baseline(baseline_path) if baseline_path.exists() else {}
+    warn_drop_fraction, fail_drop_fraction = _drop_fractions(
+        baseline,
+        fail_override=args.max_drop_fraction,
+    )
+
     if args.write_baseline:
-        _write_baseline(baseline_path, counts, max_drop_fraction=max_drop_fraction)
+        _write_baseline(
+            baseline_path,
+            counts,
+            warn_drop_fraction=warn_drop_fraction,
+            fail_drop_fraction=fail_drop_fraction,
+        )
         print(f"Wrote baseline to {baseline_path}")
         for market_code in _load_active_markets():
             print(f"  {market_code}: {counts.get(market_code, 0)} eligible")
@@ -128,13 +155,6 @@ def main(argv: list[str] | None = None) -> int:
     if not baseline_path.exists():
         print(f"FAIL: baseline file missing at {baseline_path}")
         return 1
-
-    baseline = _load_baseline(baseline_path)
-    max_drop_fraction = (
-        args.max_drop_fraction
-        if args.max_drop_fraction is not None
-        else float(baseline.get("max_drop_fraction", 0.25))
-    )
 
     failures: list[str] = []
     warnings: list[str] = []
@@ -146,19 +166,26 @@ def main(argv: list[str] | None = None) -> int:
         entry = market_entries.get(market_code, {})
         baseline_count = int(entry.get("baseline_eligible", 0))
         min_eligible = int(entry.get("min_eligible", 5))
-        drop_floor = int(baseline_count * (1 - max_drop_fraction)) if baseline_count else 0
+        fail_floor = int(baseline_count * (1 - fail_drop_fraction)) if baseline_count else 0
+        warn_floor = int(baseline_count * (1 - warn_drop_fraction)) if baseline_count else 0
 
         if current < min_eligible:
             failures.append(
                 f"{market_code}: eligible {current} < minimum {min_eligible}"
             )
             status = "FAIL (min)"
-        elif baseline_count and current < drop_floor:
+        elif baseline_count and current < fail_floor:
             failures.append(
-                f"{market_code}: eligible {current} dropped >{max_drop_fraction:.0%} "
-                f"from baseline {baseline_count} (floor {drop_floor})"
+                f"{market_code}: eligible {current} dropped >{fail_drop_fraction:.0%} "
+                f"from baseline {baseline_count} (floor {fail_floor})"
             )
             status = "FAIL (drop)"
+        elif baseline_count and current < warn_floor:
+            warnings.append(
+                f"{market_code}: eligible {current} dropped >{warn_drop_fraction:.0%} "
+                f"from baseline {baseline_count} (warn floor {warn_floor})"
+            )
+            status = "WARN (drop)"
         elif baseline_count and current < baseline_count:
             warnings.append(
                 f"{market_code}: eligible {current} below baseline {baseline_count}"
@@ -173,18 +200,25 @@ def main(argv: list[str] | None = None) -> int:
 
     total_current = sum(counts.get(m, 0) for m in _load_active_markets())
     total_baseline = int(baseline.get("total_baseline_eligible", 0))
-    total_floor = int(total_baseline * (1 - max_drop_fraction)) if total_baseline else 0
-    if total_baseline and total_current < total_floor:
+    total_fail_floor = int(total_baseline * (1 - fail_drop_fraction)) if total_baseline else 0
+    total_warn_floor = int(total_baseline * (1 - warn_drop_fraction)) if total_baseline else 0
+    if total_baseline and total_current < total_fail_floor:
         failures.append(
-            f"total eligible {total_current} dropped >{max_drop_fraction:.0%} "
-            f"from baseline {total_baseline} (floor {total_floor})"
+            f"total eligible {total_current} dropped >{fail_drop_fraction:.0%} "
+            f"from baseline {total_baseline} (floor {total_fail_floor})"
+        )
+    elif total_baseline and total_current < total_warn_floor:
+        warnings.append(
+            f"total eligible {total_current} dropped >{warn_drop_fraction:.0%} "
+            f"from baseline {total_baseline} (warn floor {total_warn_floor})"
         )
 
     summary_rows.extend(
         [
             "",
             f"- **Total eligible:** {total_current} (baseline {total_baseline})",
-            f"- **Max drop fraction:** {max_drop_fraction:.0%}",
+            f"- **Warn drop fraction:** {warn_drop_fraction:.0%}",
+            f"- **Fail drop fraction:** {fail_drop_fraction:.0%}",
         ]
     )
     if warnings:

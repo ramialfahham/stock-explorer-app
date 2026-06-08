@@ -40,6 +40,16 @@ metrics as (
 eligibility as (
     select
         *,
+        list_filter(
+            list_value(
+                if(forward_pe is null, 'forward_pe', null),
+                if(ebit_margin_pct is null, 'ebit_margin_pct', null),
+                if(revenue_growth_yoy_pct is null, 'revenue_growth_yoy_pct', null),
+                if(net_debt_to_ebitda is null, 'net_debt_to_ebitda', null),
+                if(fcf_margin_pct is null, 'fcf_margin_pct', null)
+            ),
+            metric -> metric is not null
+        ) as missing_metrics,
         (
             forward_pe is not null
             and ebit_margin_pct is not null

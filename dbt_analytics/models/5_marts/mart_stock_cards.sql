@@ -31,6 +31,7 @@ final as (
     left join benchmarks as b
         on m.market_code = b.market_code
         and m.sector = b.sector
+    where m.is_card_eligible
 )
 
 select * from final
