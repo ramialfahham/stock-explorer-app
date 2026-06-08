@@ -17,6 +17,7 @@ renamed as (
         cast(s.info_sector as varchar) as info_sector,
         cast(s.info_currency as varchar) as info_currency,
         cast(s.info_long_name as varchar) as info_long_name,
+        cast(s.info_business_summary as varchar) as info_business_summary,
         cast(s.stmt_total_revenue as double) as stmt_total_revenue,
         cast(s.stmt_free_cash_flow as double) as stmt_free_cash_flow,
         cast(s.stmt_fiscal_period_end as date) as stmt_fiscal_period_end,

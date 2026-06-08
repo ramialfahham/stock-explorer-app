@@ -48,6 +48,9 @@ models:
       - name: currency
         description: >
           Currency code for formatted metric display.
+      - name: business_summary
+        description: >
+          Yahoo longBusinessSummary text for company context on the card; nullable.
       - name: forward_pe
         description: >
           Card metric 1 — forward P/E (multiple). See data_contract § card metrics.

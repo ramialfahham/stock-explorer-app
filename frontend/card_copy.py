@@ -198,3 +198,26 @@ def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> 
     else:
         word = "Below" if value <= median else "Above"
     return f"{word} median"
+
+
+BUSINESS_SUMMARY_PREVIEW_CHARS = 120
+
+
+def business_summary_preview(card: dict) -> str | None:
+    raw = card.get("business_summary")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if len(text) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
+        return text
+    return text[:BUSINESS_SUMMARY_PREVIEW_CHARS].rstrip() + "…"
+
+
+def business_summary_full(card: dict) -> str | None:
+    raw = card.get("business_summary")
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None

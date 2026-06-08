@@ -13,6 +13,7 @@ final as (
         m.company_name,
         m.sector,
         m.currency,
+        m.business_summary,
         m.forward_pe,
         m.ebit_margin_pct,
         m.revenue_growth_yoy_pct,

@@ -156,6 +156,9 @@ models:
       - name: info_long_name
         description: >
           Raw Yahoo longName; company name fallback in dim_stock.
+      - name: info_business_summary
+        description: >
+          Raw Yahoo longBusinessSummary; company description for card context.
       - name: stmt_total_revenue
         description: >
           Total Revenue from latest annual income statement column.
