@@ -4,17 +4,17 @@ from datetime import date
 
 METRIC_HELP = {
     "forward_pe": "Forward P/E compares today's share price to expected earnings over the next year.",
-    "ebit_margin_pct": "Operating margin shows how much profit the company keeps from sales before interest and taxes (Yahoo operatingMargins).",
-    "revenue_growth_yoy_pct": "Revenue growth YoY shows how fast sales grew compared with a year ago.",
-    "net_debt_to_ebitda": "Net debt / EBITDA shows how many years of operating profit would repay net debt.",
+    "ebit_margin_pct": "Operating margin (TTM) shows operating profit as a share of sales over the last four quarters.",
+    "revenue_growth_yoy_pct": "Revenue growth YoY (quarter) shows how fast sales grew vs the same quarter last year.",
+    "net_debt_to_ebitda": "Net debt / EBITDA uses Yahoo balance-sheet debt/cash and EBITDA — periods may differ.",
     "fcf_margin_pct": "FCF margin shows free cash left from each dollar of revenue after running the business.",
 }
 
 METRIC_GLOSS = {
     "forward_pe": "Price vs expected next-year earnings",
-    "ebit_margin_pct": "Operating profit as share of sales",
-    "revenue_growth_yoy_pct": "Sales growth vs one year ago",
-    "net_debt_to_ebitda": "Years of profit to repay net debt",
+    "ebit_margin_pct": "Operating profit as share of sales (TTM)",
+    "revenue_growth_yoy_pct": "Sales growth vs same quarter last year",
+    "net_debt_to_ebitda": "Net debt vs Yahoo EBITDA",
     "fcf_margin_pct": "Free cash left from each sales dollar (latest annual statements)",
 }
 
@@ -43,18 +43,19 @@ METRIC_LEARN = {
         "A higher number often means investors expect faster growth — or are paying a premium today."
     ),
     "ebit_margin_pct": (
-        "This card uses Yahoo's operatingMargins field — operating profit as a share of revenue. "
-        "Yahoo Key Statistics may label a similar figure as operating or EBIT margin with a different period."
+        "This card sums Operating Income and Total Revenue from the last four quarterly "
+        "financial statements, then divides — a trailing twelve-month (TTM) operating margin. "
+        "It is not Yahoo's single-quarter operatingMargins snapshot."
     ),
     "revenue_growth_yoy_pct": (
-        "Year-over-year (YoY) growth compares revenue today with the same period one year ago. "
-        "It helps you see whether a company is expanding, flat, or shrinking. "
-        "One quarter can be noisy — look for a pattern over time when you dig deeper."
+        "Year-over-year (YoY) growth compares revenue in the latest reported quarter with the "
+        "same quarter one year ago (Yahoo revenueGrowth). One quarter can be noisy — look for a "
+        "pattern over time when you dig deeper."
     ),
     "net_debt_to_ebitda": (
-        "Net debt is total debt minus cash on hand. EBITDA is a rough measure of operating cash "
-        "generation before interest, taxes, and non-cash charges. "
-        "Dividing net debt by EBITDA estimates how many years of operating profit would repay the debt."
+        "Net debt is total debt minus cash on hand (Yahoo). EBITDA is Yahoo's reported EBITDA figure — "
+        "often trailing, not necessarily matched to the same instant as the balance sheet. "
+        "Use this as a rough leverage signal, not a precise accounting ratio."
     ),
     "fcf_margin_pct": (
         "Free cash flow (FCF) is cash left after running and investing in the business. "
@@ -65,8 +66,8 @@ METRIC_LEARN = {
 
 METRIC_LABELS = {
     "forward_pe": "Forward P/E",
-    "ebit_margin_pct": "Operating margin",
-    "revenue_growth_yoy_pct": "Rev growth YoY",
+    "ebit_margin_pct": "Operating margin (TTM)",
+    "revenue_growth_yoy_pct": "Rev growth YoY (quarter)",
     "net_debt_to_ebitda": "Net debt / EBITDA",
     "fcf_margin_pct": "FCF margin (annual)",
 }
