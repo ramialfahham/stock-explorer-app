@@ -435,6 +435,17 @@ def _saved_row_key(card: dict) -> str:
     return f"{card['market_code']}::{card['ticker']}"
 
 
+def _saved_row_label(card: dict) -> str:
+    company = card.get("company_name") or card.get("ticker") or "Unknown"
+    ticker = card.get("ticker") or "—"
+    sector = sector_headline(card)
+    fresh = freshness_line(card) or ""
+    lines = [f"{company} · {ticker}", sector]
+    if fresh:
+        lines.append(fresh)
+    return "\n".join(lines)
+
+
 def _render_saved_list_row(card: dict) -> None:
     company = card.get("company_name") or card.get("ticker") or "Unknown"
     ticker = card.get("ticker") or "—"
@@ -472,19 +483,16 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
             st.session_state["saved_compare_key"] = None
             st.rerun()
     else:
-        st.markdown(
-            '<p class="ss-saved-list-heading">Your learning list</p>',
-            unsafe_allow_html=True,
-        )
         for card in saved_cards:
             row_key = _saved_row_key(card)
-            cols = st.columns([3, 1])
-            with cols[0]:
-                _render_saved_list_row(card)
-            with cols[1]:
-                if st.button("Open", key=f"saved_open_{row_key}", use_container_width=True):
-                    st.session_state["saved_focus_key"] = row_key
-                    st.rerun()
+            st.markdown('<div class="ss-saved-list-item"></div>', unsafe_allow_html=True)
+            if st.button(
+                _saved_row_label(card),
+                key=f"saved_open_{row_key}",
+                use_container_width=True,
+            ):
+                st.session_state["saved_focus_key"] = row_key
+                st.rerun()
         return
 
     market_code, ticker = focus_key.split("::", 1)

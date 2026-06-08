@@ -458,14 +458,35 @@ section[data-testid="stSidebar"] {
     color: var(--ss-accent);
 }
 
-/* Saved learning list */
-.ss-saved-list-heading {
+/* Saved list — full-width tappable rows */
+.ss-saved-list-item + div[data-testid="stVerticalBlock"] .stButton > button,
+.ss-saved-list-item + div[data-testid="stElementContainer"] .stButton > button {
+    width: 100%;
+    text-align: left;
+    white-space: pre-line;
+    line-height: 1.35;
     font-size: var(--ss-caption-size);
+    font-weight: 400;
+    color: var(--ss-caption);
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--ss-border) !important;
+    border-radius: 0 !important;
+    padding: 0.55rem 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+}
+.ss-saved-list-item + div[data-testid="stVerticalBlock"] .stButton > button::first-line,
+.ss-saved-list-item + div[data-testid="stElementContainer"] .stButton > button::first-line {
+    font-size: 0.88rem;
     font-weight: 600;
-    color: var(--ss-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 0 0 0.5rem;
+    color: var(--ss-text);
+}
+.ss-saved-list-item + div[data-testid="stVerticalBlock"] .stButton > button:hover,
+.ss-saved-list-item + div[data-testid="stElementContainer"] .stButton > button:hover {
+    background: var(--ss-surface) !important;
+    color: var(--ss-caption);
 }
 .ss-saved-row {
     margin: 0 0 0.35rem;
