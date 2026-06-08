@@ -88,10 +88,14 @@ flowchart LR
 
 - Manual smoke on Streamlit Cloud after merge
 - Save / not now / hard refresh still works (localStorage)
-- Mobile-width scan: company + 3 hero metric values visible without scroll
+- Mobile-width scan: company + 3 hero metric values visible without scroll; **Save reachable** on Discover
+- Card scannable in ~30 seconds with learn panel closed
 - Discover loads without `StreamlitDuplicateElementKey`
 - Small-sector cards show no orphan benchmark line on card face
 - Menu **How Stock Explorer works** reopens landing without clearing Save
+- **Saved tab:** vertical learning list → open one snapshot; no horizontal scroll; no matrix + selectbox stack
+- Search tab: ticker lookup still renders eligible snapshot
+- On-demand live quote button still works on card footer
 
 ---
 
