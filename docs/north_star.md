@@ -1,7 +1,9 @@
-# North star — Stock Swipe App
+# North star — Stock Explorer
 
 Product vision and UX principles. When implementation choices conflict, this document wins
 for user-facing behavior. Technical contracts live in [`data_contract.md`](data_contract.md).
+
+**Product name:** **Stock Explorer** (in-app and docs). Repo name may remain `stock-swipe-app`.
 
 ---
 
@@ -15,6 +17,9 @@ language, optional depth. Sessions are **quick scans** with room to go deeper wh
 
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
 buys or sells.
+
+**Interaction model:** browse with **Save** and **Skip** — not swipe gestures or dating-app
+patterns.
 
 ---
 
@@ -42,28 +47,47 @@ discovery queue only when **all five** metrics are present (no fallbacks, no sub
 | 1 | Forward P/E | Valuation — visible | — |
 | 2 | EBIT margin | Quality / profitability — visible | — |
 | 3 | Revenue growth YoY | Momentum — visible | — |
-| 4 | Net debt / EBITDA | — | Scroll / expand |
-| 5 | FCF margin | — | Scroll / expand |
+| 4 | Net debt / EBITDA | — | Visible on card (below hero three) |
+| 5 | FCF margin | — | Visible on card (below hero three) |
 
-**Live price** is not on the batch card (pipeline is not real-time). Optional **on-demand**
-quote via yfinance in Streamlit is acceptable if low effort. An external Yahoo Finance link
-is always fine.
+**Live price** is not on the batch card (pipeline is not real-time). **On-demand** quote via
+yfinance on button tap is acceptable (session-cached, not in mart). An external Yahoo Finance
+link is always available on the card footer.
+
+**Company context:** optional `longBusinessSummary` from Yahoo — truncated preview on the card;
+full text in an expand panel when present.
 
 **Large constituent bucket, smaller eligible pool:** index constituents are ingested broadly;
 only tickers passing the five-metric gate enter discovery. Bad or incomplete data erodes trust.
 
 ---
 
+## Progressive disclosure (card layout)
+
+Three tiers — never all expanded at once on first load:
+
+| Tier | Content | Goal |
+|------|---------|------|
+| **Scan** | Name, ticker, market, sector headline, five metric values | Answer “what company?” in seconds |
+| **Gloss** | Sector one-liner, company blurb preview, metric gloss lines, median primer | Plain-English context without clutter |
+| **Deep** | “What do these metrics mean?” panel, “About this company” full summary | Optional learning on demand |
+
+**Success check (mobile):** user can read company + sector + three hero metrics without scrolling;
+Save remains reachable.
+
+---
+
 ## Benchmarking (v1)
 
 - Compare each metric to **sector median** within the **app universe** (same `market_code`).
-- **Direction-aware wording** in the UI (e.g. lower debt vs median is favorable; higher EBIT margin is
-  favorable). **No color coding** on benchmarks in v1 — monochrome text only.
-- Show sector context: e.g. `Technology (47 companies)`.
-- **Benchmark is not required for eligibility.** If sector median is unavailable (too few peers,
-  default threshold: fewer than **8** companies in sector within that market), the card still
-  shows all five metrics and omits the comparison line with copy such as:
-  `Comparison unavailable (small sector)`.
+- **One card-level median primer** when benchmarks are available (defines “median” once).
+- Per-metric lines use short wording (e.g. **Above median** / **Below median**); sector name
+  appears once in the sector header.
+- **Direction-aware wording** — no color coding on benchmarks in v1 (monochrome text only).
+- Show sector context: e.g. `Consumer Cyclical (42 companies)`.
+- **Benchmark is not required for eligibility.** If sector median is unavailable (fewer than **8**
+  eligible peers in sector within that market), show once:
+  `Comparison unavailable (small sector)` — no per-metric benchmark lines.
 - Do not use naive “Top 10% in sector” rankings — misleading for debt, negative growth, etc.
 
 ---
@@ -77,6 +101,7 @@ only tickers passing the five-metric gate enter discovery. Bad or incomplete dat
 | Ordering | **Not random** — round-robin across markets, unseen first, sector-balanced |
 | Universe | **Card-eligible tickers only** (all five metrics) |
 | Not analyst picks | No “famous brands only” or buy-list curation |
+| Auth | **None in v1** — Save/Skip persist in browser localStorage on device |
 
 ### Save
 
@@ -85,7 +110,6 @@ only tickers passing the five-metric gate enter discovery. Bad or incomplete dat
 - Adds ticker to **Saved** (watchlist).
 - Removes from discovery queue (or lowest priority).
 - Entry point for optional on-demand quote and external research links.
-- Optional micro-education after save (e.g. why operating margin matters) — never blocking.
 
 ### Skip
 
@@ -93,11 +117,10 @@ only tickers passing the five-metric gate enter discovery. Bad or incomplete dat
 
 - **Deprioritize** in queue; ticker can resurface after many other cards.
 - Always reachable via **Search** (ticker or company name).
-- Optional **Skipped** review list in a later release.
 
 Neither action deletes pipeline data.
 
-### Search (v1 or early v2)
+### Search (v1)
 
 Intentional lookup by ticker or name. Same card layout if the company is card-eligible.
 
@@ -105,9 +128,10 @@ Intentional lookup by ticker or name. Same card layout if the company is card-el
 
 ## Education on the card
 
-**Always visible:** one short plain-language line per metric (what it is, not how to trade).
+**Always visible (Tier 2 gloss):** one short plain-language line per metric under each value.
 
-**On expand / Learn:** 2–3 sentences plus optional link to an external explainer.
+**On expand (Tier 3):** fuller `METRIC_LEARN` copy in a single “What do these metrics mean?”
+panel — not five separate popovers.
 
 Keep copy concise. The card must remain scannable in under 30 seconds.
 
@@ -132,6 +156,7 @@ thresholds.
 - Buy/sell recommendations or portfolio tracking
 - Color-coded benchmark badges
 - Dating-app interaction patterns or gamified streaks as core UX
+- Auth / cross-device sync
 
 ---
 
@@ -139,3 +164,4 @@ thresholds.
 
 - **News** feed (daily refresh) — optional habit layer, not mixed into fundamentals CI gates
 - Richer saved-company updates when fundamentals refresh weekly
+- Optional **Skipped** review list
