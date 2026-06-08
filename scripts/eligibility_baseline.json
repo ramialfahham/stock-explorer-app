@@ -7,25 +7,25 @@
   "note": "Update after a verified healthy pipeline run: python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db --write-baseline",
   "markets": {
     "au_asx200": {
-      "baseline_eligible": 166,
+      "baseline_eligible": 10,
       "min_eligible": 5
     },
     "de_dax": {
-      "baseline_eligible": 35,
+      "baseline_eligible": 28,
       "min_eligible": 5
     },
     "jp_nikkei225": {
-      "baseline_eligible": 97,
+      "baseline_eligible": 6,
       "min_eligible": 5
     },
     "uk_ftse100": {
-      "baseline_eligible": 81,
+      "baseline_eligible": 7,
       "min_eligible": 5
     },
     "us_sp500": {
-      "baseline_eligible": 470,
+      "baseline_eligible": 449,
       "min_eligible": 5
     }
   },
-  "total_baseline_eligible": 849
+  "total_baseline_eligible": 500
 }
