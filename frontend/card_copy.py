@@ -263,11 +263,6 @@ def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str |
 
 BUSINESS_SUMMARY_PREVIEW_CHARS = 120
 
-METRIC_SOURCE_MENU = (
-    "Fundamentals refresh weekly from Yahoo via yfinance. "
-    "Some definitions differ from Yahoo Key Statistics — see docs/metric_audit.md."
-)
-
 STALE_SNAPSHOT_DAYS = 7
 
 
