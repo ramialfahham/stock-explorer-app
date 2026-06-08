@@ -29,5 +29,13 @@ select
     stmt_total_revenue,
     stmt_free_cash_flow,
     stmt_fiscal_period_end,
-    stmt_currency
+    stmt_currency,
+    qtr_operating_income_0,
+    qtr_operating_income_1,
+    qtr_operating_income_2,
+    qtr_operating_income_3,
+    qtr_total_revenue_0,
+    qtr_total_revenue_1,
+    qtr_total_revenue_2,
+    qtr_total_revenue_3
 from latest

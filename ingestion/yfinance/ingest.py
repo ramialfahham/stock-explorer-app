@@ -11,6 +11,7 @@ import yfinance as yf
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import raw_dir
 from ingestion.registry import Market
+from ingestion.yfinance.quarterly import land_quarterly_ttm_fields
 from ingestion.yfinance.rate_limit import call_with_retry, is_rate_limited
 from ingestion.yfinance.symbols import to_yfinance_download_ticker, to_yfinance_ticker
 
@@ -210,6 +211,7 @@ def _fetch_fundamentals_row(
         row["stmt_free_cash_flow"] = fcf
         row["stmt_fiscal_period_end"] = fiscal_end
         row["stmt_currency"] = income_currency or cashflow_currency
+        row.update(land_quarterly_ttm_fields(ticker))
         return row
 
     return call_with_retry(_load)
@@ -227,13 +229,23 @@ def _effective_net_debt(row: dict[str, object]) -> object | None:
     return None
 
 
+def _has_ttm_quarterly_fields(row: dict[str, object]) -> bool:
+    keys = [
+        *(f"qtr_operating_income_{i}" for i in range(4)),
+        *(f"qtr_total_revenue_{i}" for i in range(4)),
+    ]
+    if any(row.get(key) is None for key in keys):
+        return False
+    revenue_sum = sum(float(row[key]) for key in keys[4:])  # type: ignore[arg-type]
+    return revenue_sum != 0
+
+
 def _is_card_eligible_raw(row: dict[str, object]) -> bool:
     """Mirror dbt five-metric gate on raw landed fields."""
     info_ok = all(
         row.get(col) is not None
         for col in (
             "info_forward_pe",
-            "info_operating_margins",
             "info_revenue_growth",
             "info_ebitda",
         )
@@ -243,7 +255,8 @@ def _is_card_eligible_raw(row: dict[str, object]) -> bool:
         and row.get("stmt_total_revenue") is not None
         and row.get("stmt_total_revenue") != 0
     )
-    return info_ok and stmt_ok
+    ttm_ok = _has_ttm_quarterly_fields(row)
+    return info_ok and stmt_ok and ttm_ok
 
 
 def _fetch_fundamentals(

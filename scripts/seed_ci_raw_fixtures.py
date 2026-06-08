@@ -12,6 +12,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
 SNAPSHOT = date.today()
 TICKERS = [f"CI{i:02d}" for i in range(1, 6)]
+TTM_QUARTER_FIXTURE = {
+    "qtr_operating_income_0": 25.0,
+    "qtr_operating_income_1": 25.0,
+    "qtr_operating_income_2": 25.0,
+    "qtr_operating_income_3": 25.0,
+    "qtr_total_revenue_0": 100.0,
+    "qtr_total_revenue_1": 100.0,
+    "qtr_total_revenue_2": 100.0,
+    "qtr_total_revenue_3": 100.0,
+}
 
 
 def _load_active_markets() -> list[str]:
@@ -85,6 +95,7 @@ def _write_market_fixtures(market_code: str) -> None:
                 "stmt_free_cash_flow": 5_000_000_000.0,
                 "stmt_fiscal_period_end": SNAPSHOT,
                 "stmt_currency": "USD",
+                **TTM_QUARTER_FIXTURE,
             }
             for i, ticker in enumerate(TICKERS, start=1)
         ]

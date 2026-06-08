@@ -37,7 +37,7 @@ def operating_margin_ttm_pct(row: dict[str, Any]) -> float | None:
 def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None]:
     """Compute the five card metrics from landed yfinance raw fields."""
     forward_pe = row.get("info_forward_pe")
-    ebit_margin_pct = row.get("info_operating_margins")
+    ebit_margin_pct = operating_margin_ttm_pct(row)
     revenue_growth_yoy_pct = row.get("info_revenue_growth")
     net_debt = effective_net_debt(row)
     ebitda = row.get("info_ebitda")
@@ -54,7 +54,7 @@ def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None
 
     return {
         "forward_pe": float(forward_pe) if forward_pe is not None else None,
-        "ebit_margin_pct": float(ebit_margin_pct) * 100.0 if ebit_margin_pct is not None else None,
+        "ebit_margin_pct": ebit_margin_pct,
         "revenue_growth_yoy_pct": float(revenue_growth_yoy_pct) * 100.0
         if revenue_growth_yoy_pct is not None
         else None,

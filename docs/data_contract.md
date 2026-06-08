@@ -59,7 +59,7 @@ Metrics are ordered by **analytical relevance** (valuation → quality → momen
 | Raw column (parquet) | yfinance key | Card metric (dbt) |
 |----------------------|--------------|-------------------|
 | `info_forward_pe` | `forwardPE` | `forward_pe` |
-| `info_operating_margins` | `operatingMargins` | `ebit_margin_pct` |
+| `info_operating_margins` | `operatingMargins` | Audit only — not used for card metric |
 | `info_revenue_growth` | `revenueGrowth` | `revenue_growth_yoy_pct` |
 | `info_net_debt` | `netDebt` | `net_debt_to_ebitda` (numerator, when present) |
 | `info_total_debt` | `totalDebt` | Used with `info_total_cash` when `netDebt` is null |
@@ -73,8 +73,9 @@ Metrics are ordered by **analytical relevance** (valuation → quality → momen
 Store `info_*` values exactly as returned (`null` if missing). Do not coerce types beyond
 safe numeric parsing for parquet.
 
-**Decimals → percent:** `revenueGrowth` and `operatingMargins` are decimals (e.g. `0.12` = 12%).
-dbt multiplies by 100 for `revenue_growth_yoy_pct` and `ebit_margin_pct`.
+**Decimals → percent:** `revenueGrowth` is a decimal (e.g. `0.12` = 12%); dbt multiplies by 100
+for `revenue_growth_yoy_pct`. Operating margin is computed as a percent in dbt from quarterly
+statement sums.
 
 ### From financial statements
 
@@ -87,6 +88,8 @@ Use the **latest annual fiscal period** (most recent column) from:
 |----------------------|----------------------|-----------|
 | `stmt_total_revenue` | `Total Revenue` | income_stmt |
 | `stmt_free_cash_flow` | `Free Cash Flow` | cashflow |
+| `qtr_operating_income_0` … `_3` | `Operating Income` | quarterly_income_stmt (0 = most recent) |
+| `qtr_total_revenue_0` … `_3` | `Total Revenue` | quarterly_income_stmt (0 = most recent) |
 | `stmt_fiscal_period_end` | column date | metadata |
 
 Also persist `stmt_currency` if available on the statement object.
@@ -98,13 +101,15 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 | # | Card metric | Formula | Primary inputs |
 |---|-------------|---------|----------------|
 | 1 | `forward_pe` | `info_forward_pe` | `ticker.info` |
-| 2 | `ebit_margin_pct` | `info_operating_margins * 100` | `ticker.info` |
+| 2 | `ebit_margin_pct` | `sum(qtr_operating_income_0..3) / sum(qtr_total_revenue_0..3) * 100` | quarterly income_stmt |
 | 3 | `revenue_growth_yoy_pct` | `info_revenue_growth * 100` | `ticker.info` |
 | 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
 | 5 | `fcf_margin_pct` | `stmt_free_cash_flow / stmt_total_revenue * 100` | cashflow + income_stmt |
 
-**EBIT margin:** use Yahoo’s pre-calculated `operatingMargins` only. Do not derive from
-statements in v1.
+**Operating margin (TTM):** sum the last four quarterly **Operating Income** and **Total Revenue**
+rows from `quarterly_income_stmt` (fallback `quarterly_financials`). All four quarters must be
+present and revenue sum non-zero. `info_operating_margins` remains in raw for audit only — it is
+often a single quarter, not TTM.
 
 **Net debt / EBITDA:** dbt uses `coalesce(info_net_debt, info_total_debt - info_total_cash)` as the
 numerator when `info_ebitda` is non-null and non-zero. If both `netDebt` and the debt/cash pair

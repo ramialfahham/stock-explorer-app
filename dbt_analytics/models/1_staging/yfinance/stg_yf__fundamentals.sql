@@ -21,7 +21,15 @@ renamed as (
         cast(s.stmt_total_revenue as double) as stmt_total_revenue,
         cast(s.stmt_free_cash_flow as double) as stmt_free_cash_flow,
         cast(s.stmt_fiscal_period_end as date) as stmt_fiscal_period_end,
-        cast(s.stmt_currency as varchar) as stmt_currency
+        cast(s.stmt_currency as varchar) as stmt_currency,
+        cast(s.qtr_operating_income_0 as double) as qtr_operating_income_0,
+        cast(s.qtr_operating_income_1 as double) as qtr_operating_income_1,
+        cast(s.qtr_operating_income_2 as double) as qtr_operating_income_2,
+        cast(s.qtr_operating_income_3 as double) as qtr_operating_income_3,
+        cast(s.qtr_total_revenue_0 as double) as qtr_total_revenue_0,
+        cast(s.qtr_total_revenue_1 as double) as qtr_total_revenue_1,
+        cast(s.qtr_total_revenue_2 as double) as qtr_total_revenue_2,
+        cast(s.qtr_total_revenue_3 as double) as qtr_total_revenue_3
     from source_data as s
 )
 

@@ -19,12 +19,19 @@ from metric_formulas import (  # noqa: E402
 def test_compute_card_metrics_from_raw() -> None:
     row = {
         "info_forward_pe": 20.0,
-        "info_operating_margins": 0.25,
         "info_revenue_growth": 0.1,
         "info_net_debt": 100.0,
         "info_ebitda": 50.0,
         "stmt_free_cash_flow": 30.0,
         "stmt_total_revenue": 200.0,
+        "qtr_operating_income_0": 25.0,
+        "qtr_operating_income_1": 25.0,
+        "qtr_operating_income_2": 25.0,
+        "qtr_operating_income_3": 25.0,
+        "qtr_total_revenue_0": 100.0,
+        "qtr_total_revenue_1": 100.0,
+        "qtr_total_revenue_2": 100.0,
+        "qtr_total_revenue_3": 100.0,
     }
     metrics = compute_card_metrics_from_raw(row)
     assert metrics["forward_pe"] == 20.0
