@@ -64,7 +64,7 @@ def _load_cards(client) -> list[dict]:
 def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     cards = _load_cards(client)
     if interactions is None:
-        interactions = ensure_interactions_loaded()
+        interactions = get_interactions()
     st.session_state["queue"] = build_queue(
         cards,
         interactions,
@@ -259,7 +259,17 @@ def _render_search_tab(client) -> None:
 
 
 def _discovery_page(client) -> None:
-    interactions = ensure_interactions_loaded()
+    # #region agent log
+    from browser_storage import _debug_log
+
+    _debug_log(
+        "H1",
+        "app.py:_discovery_page",
+        "entering discovery page",
+        {"runId": "post-fix", "active_page": st.session_state.get("active_page")},
+    )
+    # #endregion
+    interactions = get_interactions()
     if storage_sync_pending():
         _refresh_queue(client, interactions=interactions)
 
@@ -303,6 +313,11 @@ def main() -> None:
         )
         return
 
+    # #region agent log
+    from browser_storage import _debug_log
+
+    _debug_log("H1", "app.py:main", "before ensure_interactions_loaded in main", {"runId": "post-fix"})
+    # #endregion
     ensure_interactions_loaded()
     if render_landing():
         return

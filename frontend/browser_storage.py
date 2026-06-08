@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -12,11 +13,36 @@ from streamlit_extras.local_storage_manager import local_storage_manager
 STORAGE_ITEM_KEY = "interactions"
 ONBOARDING_KEY = "onboarding_dismissed"
 _MANAGER_KEY = "stock_swipe_interactions"
+_MANAGER_INSTANCE_KEY = "_local_storage_manager_instance"
+_MANAGER_RUN_KEY = "_local_storage_manager_run_id"
 _STORE_KEY = f"{_MANAGER_KEY}__local_storage_state"
 _LOADED_FLAG = "_interactions_storage_loaded"
 _ONBOARDING_LOADED_FLAG = "_onboarding_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
 _BOOT_RERUN_FLAG = "_storage_boot_rerun_done"
+_DEBUG_MOUNT_COUNT = "_debug_mount_count"
+
+
+def _debug_log(hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
+    # #region agent log
+    try:
+        import time
+
+        entry = {
+            "sessionId": "669620",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        log_path = Path(__file__).resolve().parents[1] / "debug-669620.log"
+        with log_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
 
 
 def _pending_store() -> dict[str, Any]:
@@ -45,9 +71,49 @@ def _queue_interactions_write(interactions: list[dict[str, Any]]) -> None:
     _queue_storage_write(STORAGE_ITEM_KEY, interactions)
 
 
+def _current_run_id() -> str | None:
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+
+        ctx = get_script_run_ctx()
+        if ctx is None:
+            return None
+        return str(ctx.script_run_id)
+    except Exception:
+        return None
+
+
 def _mount_manager():
     """Mount localStorage component once per run (flushes pending writes + reads snapshot)."""
-    return local_storage_manager(key=_MANAGER_KEY)
+    import inspect
+
+    mount_count = st.session_state.get(_DEBUG_MOUNT_COUNT, 0) + 1
+    st.session_state[_DEBUG_MOUNT_COUNT] = mount_count
+    caller = inspect.stack()[1]
+    run_id = _current_run_id()
+    cached_manager = st.session_state.get(_MANAGER_INSTANCE_KEY)
+    cached_run = st.session_state.get(_MANAGER_RUN_KEY)
+    reused = cached_manager is not None and cached_run == run_id and run_id is not None
+    _debug_log(
+        "H1",
+        "browser_storage.py:_mount_manager",
+        "local_storage_manager mount attempt",
+        {
+            "runId": "post-fix",
+            "mount_count": mount_count,
+            "reused_cached": reused,
+            "caller_function": caller.function,
+            "caller_filename": caller.filename,
+            "caller_lineno": caller.lineno,
+        },
+    )
+    if reused:
+        return cached_manager
+
+    manager = local_storage_manager(key=_MANAGER_KEY)
+    st.session_state[_MANAGER_INSTANCE_KEY] = manager
+    st.session_state[_MANAGER_RUN_KEY] = run_id
+    return manager
 
 
 def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
@@ -84,6 +150,21 @@ def _load_onboarding_from_manager(manager) -> None:
 
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
     """Load interactions from browser localStorage into session state."""
+    import inspect
+
+    caller = inspect.stack()[1]
+    _debug_log(
+        "H1",
+        "browser_storage.py:ensure_interactions_loaded",
+        "ensure_interactions_loaded called",
+        {
+            "runId": "post-fix",
+            "caller_function": caller.function,
+            "caller_filename": caller.filename,
+            "caller_lineno": caller.lineno,
+            "loaded_flag": bool(st.session_state.get(_LOADED_FLAG)),
+        },
+    )
     if "interactions" not in st.session_state:
         st.session_state["interactions"] = []
 
