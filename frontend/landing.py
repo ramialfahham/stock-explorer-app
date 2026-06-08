@@ -17,14 +17,14 @@ def render_landing() -> bool:
     st.markdown(
         f"""
 <div class="ss-landing">
-  <p class="ss-landing-eyebrow">Welcome</p>
+  <p class="ss-landing-eyebrow">How it works</p>
   <h1 class="ss-landing-title">{PRODUCT_NAME}</h1>
   <p class="ss-landing-tagline">{LANDING_TAGLINE}</p>
   <ul class="ss-landing-points">
-    <li>Explore companies with five key fundamentals explained in plain language</li>
+    <li>Each company snapshot shows five financial fundamentals with short context lines</li>
     <li>Filter by market and sector, browse a list, or walk one company at a time</li>
-    <li>Save = your learning list on this device — “Not now” means skip for later</li>
-    <li>No account needed; your list stays on this device</li>
+    <li>Save builds your learning list on this device — Not now skips for later</li>
+    <li>No account — your list stays on this device</li>
   </ul>
   <p class="ss-landing-disclaimer">Not investment advice.</p>
 </div>

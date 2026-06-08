@@ -135,9 +135,9 @@ section[data-testid="stSidebar"] {
 }
 
 .ss-sector-context {
-    margin: 0 0 0.65rem;
-    padding-bottom: 0.55rem;
-    border-bottom: 1px solid var(--ss-border);
+    margin: 0;
+    padding-bottom: 0;
+    border-bottom: none;
 }
 .ss-sector-headline {
     font-size: var(--ss-caption-size);
@@ -183,9 +183,52 @@ section[data-testid="stSidebar"] {
 }
 
 .ss-company-summary--empty {
+    display: none;
+}
+
+.ss-learn-panel {
+    margin: 0.5rem 0;
+    font-size: var(--ss-caption-size);
     color: var(--ss-caption);
-    font-style: italic;
-    margin: 0 0 0.55rem;
+}
+.ss-learn-panel summary {
+    cursor: pointer;
+    color: var(--ss-accent);
+    font-weight: 600;
+    font-size: var(--ss-caption-size);
+    list-style: none;
+}
+.ss-learn-panel summary::before {
+    content: "▸ ";
+}
+.ss-learn-panel[open] summary::before {
+    content: "▾ ";
+}
+.ss-learn-panel summary::-webkit-details-marker {
+    display: none;
+}
+.ss-learn-panel-body {
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    background: var(--ss-surface);
+    border: 1px solid var(--ss-border);
+    border-radius: 10px;
+}
+.ss-learn-section + .ss-learn-section {
+    margin-top: 0.55rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--ss-border);
+}
+.ss-learn-heading {
+    font-size: var(--ss-caption-size);
+    font-weight: 600;
+    color: var(--ss-text);
+    margin: 0 0 0.3rem;
+    line-height: 1.3;
+}
+
+.ss-card-metrics {
+    margin-top: 0.5rem;
 }
 
 .ss-metric-sources {
@@ -408,6 +451,7 @@ section[data-testid="stSidebar"] {
     margin: 0 0 0.5rem;
 }
 .ss-landing-title {
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
     font-size: 1.75rem;
     font-weight: 700;
     color: var(--ss-text);

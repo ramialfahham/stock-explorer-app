@@ -16,6 +16,7 @@ from browser_storage import (
     storage_sync_pending,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
+from card_copy import METRIC_SOURCE_MENU
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from explore_filters import (
@@ -43,6 +44,8 @@ from supabase_client import get_anon_client
 
 load_dotenv()
 
+EXPLORE_DEFAULTS_VERSION = 2
+
 st.set_page_config(
     page_title=PRODUCT_NAME,
     page_icon="📊",
@@ -69,6 +72,11 @@ def _init_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+    if st.session_state.get("_explore_defaults_version", 0) < EXPLORE_DEFAULTS_VERSION:
+        st.session_state["explore_market"] = default_market_filter()
+        st.session_state["explore_sector"] = ALL_SECTORS
+        st.session_state["_explore_defaults_version"] = EXPLORE_DEFAULTS_VERSION
 
 
 def _load_cards(client) -> list[dict]:
@@ -191,6 +199,8 @@ def _render_brand_header(*, saved_count: int, client) -> None:
             if lines:
                 breakdown = "\n".join(f"· {line}" for line in lines)
                 st.caption(breakdown)
+            st.divider()
+            st.caption(METRIC_SOURCE_MENU)
             st.divider()
             if st.button(
                 "How Stock Explorer works",

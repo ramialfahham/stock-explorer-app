@@ -212,12 +212,10 @@ def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> 
 
 
 BUSINESS_SUMMARY_PREVIEW_CHARS = 120
-BUSINESS_SUMMARY_UNAVAILABLE = "Company overview not available from Yahoo for this ticker."
 
-METRIC_SOURCE_FOOTNOTE = (
-    "Fundamentals from weekly pipeline export (Yahoo via yfinance). "
-    "Operating margin = operatingMargins; FCF margin = latest annual statements. "
-    "See docs/metric_audit.md to compare with live Yahoo."
+METRIC_SOURCE_MENU = (
+    "Fundamentals refresh weekly from Yahoo via yfinance. "
+    "Some definitions differ from Yahoo Key Statistics — see docs/metric_audit.md."
 )
 
 STALE_SNAPSHOT_DAYS = 7
