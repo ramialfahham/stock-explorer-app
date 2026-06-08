@@ -31,12 +31,20 @@ If anything could silently shrink scope or affect something not listed, stop and
 
 Every change goes on a new branch. Never commit directly to `main`.
 
-1. `git checkout -b feature/name`
+**Agent pre-flight:** before the first file edit, run `git branch --show-current`. If on `main`, stop and create `feature/<name>` or `fix/<name>` first.
+
+**Multi-PR plans:** when a plan lists PR A / B / C, ship one branch + one PR per slice unless the user explicitly asks to combine.
+
+1. `git checkout -b feature/name` (from latest `main`)
 2. Do the work and commit
 3. `git push origin feature/name` — explicit remote branch name
 4. Open a PR; wait for CI and user approval before merging
 5. **After merge:** the agent syncs local `main` (`git fetch --prune`, `checkout main`, `pull`) and
    deletes merged local (and stale remote) branches — the user should not need to do this each time.
+
+**Local guard:** run once per clone — `python scripts/install_git_hooks.py` — to block accidental commits on `main`.
+
+**Remote guard (recommended):** GitHub → Settings → Branches → protect `main` — require pull request, no direct push.
 
 ---
 
