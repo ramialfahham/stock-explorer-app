@@ -77,7 +77,31 @@ models:
           Deduped raw forwardPE passed through to fct_fundamentals_snapshot.
       - name: info_operating_margins
         description: >
-          Deduped raw operatingMargins decimal.
+          Deduped raw operatingMargins decimal; audit reference only after TTM cutover.
+      - name: qtr_operating_income_0
+        description: >
+          Deduped Operating Income, most recent quarter (index 0); TTM numerator.
+      - name: qtr_operating_income_1
+        description: >
+          Deduped Operating Income, one quarter back (index 1); TTM numerator.
+      - name: qtr_operating_income_2
+        description: >
+          Deduped Operating Income, two quarters back (index 2); TTM numerator.
+      - name: qtr_operating_income_3
+        description: >
+          Deduped Operating Income, three quarters back (index 3); TTM numerator.
+      - name: qtr_total_revenue_0
+        description: >
+          Deduped Total Revenue, most recent quarter (index 0); TTM denominator.
+      - name: qtr_total_revenue_1
+        description: >
+          Deduped Total Revenue, one quarter back (index 1); TTM denominator.
+      - name: qtr_total_revenue_2
+        description: >
+          Deduped Total Revenue, two quarters back (index 2); TTM denominator.
+      - name: qtr_total_revenue_3
+        description: >
+          Deduped Total Revenue, three quarters back (index 3); TTM denominator.
       - name: info_revenue_growth
         description: >
           Deduped raw revenueGrowth decimal.

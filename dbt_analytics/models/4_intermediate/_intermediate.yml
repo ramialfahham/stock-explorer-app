@@ -68,7 +68,9 @@ models:
           Forward P/E ratio from info_forward_pe. Unit: multiple (x). Null when Yahoo omits forwardPE.
       - name: ebit_margin_pct
         description: >
-          Operating margin as percent: info_operating_margins × 100. Null when operatingMargins missing.
+          TTM operating margin percent: sum of last four quarterly Operating Income
+          divided by sum of last four quarterly Total Revenue × 100. Null when any
+          quarter is missing or revenue sum is zero.
       - name: revenue_growth_yoy_pct
         description: >
           YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
@@ -163,6 +165,14 @@ unit_tests:
               info_currency: USD,
               stmt_total_revenue: 200.0,
               stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
             }
       - input: ref('dim_stock')
         rows:
@@ -204,6 +214,14 @@ unit_tests:
               info_currency: USD,
               stmt_total_revenue: 200.0,
               stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
             }
       - input: ref('dim_stock')
         rows:
@@ -241,6 +259,14 @@ unit_tests:
               info_currency: USD,
               stmt_total_revenue: null,
               stmt_free_cash_flow: null,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
             }
       - input: ref('dim_stock')
         rows:
@@ -278,6 +304,14 @@ unit_tests:
               info_currency: USD,
               stmt_total_revenue: 200.0,
               stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
             }
       - input: ref('dim_stock')
         rows:
@@ -317,6 +351,14 @@ unit_tests:
               info_currency: USD,
               stmt_total_revenue: 200.0,
               stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
             }
       - input: ref('dim_stock')
         rows:
@@ -334,6 +376,50 @@ unit_tests:
             ticker: T4,
             is_card_eligible: true,
             net_debt_to_ebitda: 2.0,
+          }
+  - name: card_metrics_ineligible_when_ttm_quarters_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T5,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: null,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T5,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T5,
+            is_card_eligible: false,
+            ebit_margin_pct: null,
+            missing_metrics: [ebit_margin_pct],
           }
   - name: sector_medians_null_when_seven_eligible_peers
     model: int_stock__sector_benchmarks

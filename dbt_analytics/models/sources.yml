@@ -93,3 +93,19 @@ sources:
             description: Fiscal period end for statement column.
           - name: stmt_currency
             description: Statement currency when available.
+          - name: qtr_operating_income_0
+            description: Most recent quarter Operating Income (raw).
+          - name: qtr_operating_income_1
+            description: Prior quarter Operating Income (raw).
+          - name: qtr_operating_income_2
+            description: Third quarter back Operating Income (raw).
+          - name: qtr_operating_income_3
+            description: Fourth quarter back Operating Income (raw).
+          - name: qtr_total_revenue_0
+            description: Most recent quarter Total Revenue (raw).
+          - name: qtr_total_revenue_1
+            description: Prior quarter Total Revenue (raw).
+          - name: qtr_total_revenue_2
+            description: Third quarter back Total Revenue (raw).
+          - name: qtr_total_revenue_3
+            description: Fourth quarter back Total Revenue (raw).

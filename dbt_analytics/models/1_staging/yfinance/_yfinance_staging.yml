@@ -131,7 +131,31 @@ models:
           Raw Yahoo forwardPE from ticker.info; feeds card metric forward_pe.
       - name: info_operating_margins
         description: >
-          Raw Yahoo operatingMargins decimal (e.g. 0.12 = 12%); feeds ebit_margin_pct.
+          Raw Yahoo operatingMargins decimal (e.g. 0.12 = 12%); audit reference only after TTM cutover.
+      - name: qtr_operating_income_0
+        description: >
+          Operating Income from the most recent quarterly income statement (index 0); TTM numerator.
+      - name: qtr_operating_income_1
+        description: >
+          Operating Income one quarter back (index 1); TTM numerator.
+      - name: qtr_operating_income_2
+        description: >
+          Operating Income two quarters back (index 2); TTM numerator.
+      - name: qtr_operating_income_3
+        description: >
+          Operating Income three quarters back (index 3); TTM numerator.
+      - name: qtr_total_revenue_0
+        description: >
+          Total Revenue from the most recent quarter (index 0); TTM denominator.
+      - name: qtr_total_revenue_1
+        description: >
+          Total Revenue one quarter back (index 1); TTM denominator.
+      - name: qtr_total_revenue_2
+        description: >
+          Total Revenue two quarters back (index 2); TTM denominator.
+      - name: qtr_total_revenue_3
+        description: >
+          Total Revenue three quarters back (index 3); TTM denominator.
       - name: info_revenue_growth
         description: >
           Raw Yahoo revenueGrowth decimal; feeds revenue_growth_yoy_pct.

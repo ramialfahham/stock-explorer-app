@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from ingestion.yfinance.quarterly import TTM_QUARTERS
+
+QTR_OPERATING_INCOME_KEYS = tuple(f"qtr_operating_income_{i}" for i in range(TTM_QUARTERS))
+QTR_TOTAL_REVENUE_KEYS = tuple(f"qtr_total_revenue_{i}" for i in range(TTM_QUARTERS))
+
 
 def effective_net_debt(row: dict[str, Any]) -> float | None:
     net_debt = row.get("info_net_debt")
@@ -16,10 +21,23 @@ def effective_net_debt(row: dict[str, Any]) -> float | None:
     return None
 
 
+def operating_margin_ttm_pct(row: dict[str, Any]) -> float | None:
+    """TTM operating margin from four quarterly statement values (mirrors dbt)."""
+    op_values = [row.get(key) for key in QTR_OPERATING_INCOME_KEYS]
+    rev_values = [row.get(key) for key in QTR_TOTAL_REVENUE_KEYS]
+    if any(value is None for value in op_values + rev_values):
+        return None
+    op_sum = sum(float(value) for value in op_values)  # type: ignore[arg-type]
+    rev_sum = sum(float(value) for value in rev_values)  # type: ignore[arg-type]
+    if rev_sum == 0:
+        return None
+    return op_sum / rev_sum * 100.0
+
+
 def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None]:
     """Compute the five card metrics from landed yfinance raw fields."""
     forward_pe = row.get("info_forward_pe")
-    ebit_margin_pct = row.get("info_operating_margins")
+    ebit_margin_pct = operating_margin_ttm_pct(row)
     revenue_growth_yoy_pct = row.get("info_revenue_growth")
     net_debt = effective_net_debt(row)
     ebitda = row.get("info_ebitda")
@@ -36,13 +54,34 @@ def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None
 
     return {
         "forward_pe": float(forward_pe) if forward_pe is not None else None,
-        "ebit_margin_pct": float(ebit_margin_pct) * 100.0 if ebit_margin_pct is not None else None,
+        "ebit_margin_pct": ebit_margin_pct,
         "revenue_growth_yoy_pct": float(revenue_growth_yoy_pct) * 100.0
         if revenue_growth_yoy_pct is not None
         else None,
         "net_debt_to_ebitda": net_debt_to_ebitda,
         "fcf_margin_pct": fcf_margin_pct,
     }
+
+
+def reference_operating_margin_info(info: dict[str, Any]) -> float | None:
+    """Yahoo info operatingMargins × 100 — often latest quarter, not TTM."""
+    raw = info.get("operatingMargins")
+    if raw is None:
+        return None
+    return float(raw) * 100.0
+
+
+def reference_operating_margin_ttm(row: dict[str, Any]) -> float | None:
+    """TTM operating margin from landed quarterly fields or live ticker object."""
+    ttm = operating_margin_ttm_pct(row)
+    if ttm is not None:
+        return ttm
+    ticker = row.get("_yf_ticker")
+    if ticker is not None:
+        from ingestion.yfinance.quarterly import land_quarterly_ttm_fields
+
+        return operating_margin_ttm_pct(land_quarterly_ttm_fields(ticker))
+    return None
 
 
 def reference_fcf_margin_from_info(info: dict[str, Any]) -> float | None:

@@ -27,9 +27,11 @@ from metric_formulas import (
     compute_card_metrics_from_raw,
     pct_drift,
     reference_fcf_margin_from_info,
+    reference_operating_margin_info,
+    reference_operating_margin_ttm,
 )
 
-DEFAULT_ALWAYS = ("NVDA", "AAPL", "ALB")
+DEFAULT_ALWAYS = ("ABNB", "NVDA", "AAPL", "ALB")
 MART_COLUMNS = (
     "market_code",
     "ticker",
@@ -192,13 +194,22 @@ def _audit_row(mart: dict, live_raw: dict | None) -> dict:
 
     market = _market_lookup().get(mart["market_code"])
     if market is not None:
-        info = yf.Ticker(to_yfinance_ticker(mart["ticker"], market.exchange_suffix)).info or {}
+        yf_symbol = to_yfinance_ticker(mart["ticker"], market.exchange_suffix)
+        yf_ticker = yf.Ticker(yf_symbol)
+        info = yf_ticker.info or {}
         out["reference_fcf_margin_info"] = reference_fcf_margin_from_info(info)
         out["reference_forward_pe"] = info.get("forwardPE")
-        out["reference_operating_margin_pct"] = (
-            float(info["operatingMargins"]) * 100.0
-            if info.get("operatingMargins") is not None
-            else None
+        out["reference_operating_margin_info"] = reference_operating_margin_info(info)
+        out["reference_operating_margin_ttm"] = reference_operating_margin_ttm(
+            {"_yf_ticker": yf_ticker}
+        )
+        out["drift_pct_ebit_margin_vs_info"] = pct_drift(
+            mart.get("ebit_margin_pct"),
+            out["reference_operating_margin_info"],
+        )
+        out["drift_pct_ebit_margin_vs_ttm"] = pct_drift(
+            mart.get("ebit_margin_pct"),
+            out["reference_operating_margin_ttm"],
         )
 
     return out

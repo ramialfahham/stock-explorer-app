@@ -75,7 +75,31 @@ models:
           Yahoo forwardPE on the latest snapshot; direct input to forward_pe.
       - name: info_operating_margins
         description: >
-          Yahoo operatingMargins decimal on latest snapshot.
+          Yahoo operatingMargins decimal on latest snapshot; audit reference only after TTM cutover.
+      - name: qtr_operating_income_0
+        description: >
+          Operating Income, most recent quarter (index 0); feeds TTM ebit_margin_pct.
+      - name: qtr_operating_income_1
+        description: >
+          Operating Income one quarter back (index 1); feeds TTM ebit_margin_pct.
+      - name: qtr_operating_income_2
+        description: >
+          Operating Income two quarters back (index 2); feeds TTM ebit_margin_pct.
+      - name: qtr_operating_income_3
+        description: >
+          Operating Income three quarters back (index 3); feeds TTM ebit_margin_pct.
+      - name: qtr_total_revenue_0
+        description: >
+          Total Revenue, most recent quarter (index 0); feeds TTM ebit_margin_pct.
+      - name: qtr_total_revenue_1
+        description: >
+          Total Revenue one quarter back (index 1); feeds TTM ebit_margin_pct.
+      - name: qtr_total_revenue_2
+        description: >
+          Total Revenue two quarters back (index 2); feeds TTM ebit_margin_pct.
+      - name: qtr_total_revenue_3
+        description: >
+          Total Revenue three quarters back (index 3); feeds TTM ebit_margin_pct.
       - name: info_revenue_growth
         description: >
           Yahoo revenueGrowth decimal on latest snapshot.

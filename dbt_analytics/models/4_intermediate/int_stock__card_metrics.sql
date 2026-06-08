@@ -16,7 +16,33 @@ metrics as (
         coalesce(s.info_currency, st.currency) as currency,
         s.info_business_summary as business_summary,
         s.info_forward_pe as forward_pe,
-        s.info_operating_margins * 100.0 as ebit_margin_pct,
+        case
+            when s.qtr_operating_income_0 is not null
+                and s.qtr_operating_income_1 is not null
+                and s.qtr_operating_income_2 is not null
+                and s.qtr_operating_income_3 is not null
+                and s.qtr_total_revenue_0 is not null
+                and s.qtr_total_revenue_1 is not null
+                and s.qtr_total_revenue_2 is not null
+                and s.qtr_total_revenue_3 is not null
+                and (
+                    s.qtr_total_revenue_0
+                    + s.qtr_total_revenue_1
+                    + s.qtr_total_revenue_2
+                    + s.qtr_total_revenue_3
+                ) != 0
+                then (
+                    s.qtr_operating_income_0
+                    + s.qtr_operating_income_1
+                    + s.qtr_operating_income_2
+                    + s.qtr_operating_income_3
+                ) / (
+                    s.qtr_total_revenue_0
+                    + s.qtr_total_revenue_1
+                    + s.qtr_total_revenue_2
+                    + s.qtr_total_revenue_3
+                ) * 100.0
+        end as ebit_margin_pct,
         s.info_revenue_growth * 100.0 as revenue_growth_yoy_pct,
         case
             when coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash) is not null
