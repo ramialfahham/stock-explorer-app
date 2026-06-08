@@ -16,7 +16,8 @@ from card_copy import (
     METRIC_LEARN,
     VISIBLE_METRICS,
     benchmark_compare_available,
-    benchmark_line,
+    benchmark_indicator,
+    benchmark_indicator_label,
     business_summary_full,
     business_summary_preview,
     format_metric_value,
@@ -34,19 +35,19 @@ from live_quote import (
 )
 
 
-def _benchmark_for_metric(card: dict, metric: str) -> str | None:
-    for m_key, median_key, direction in BENCHMARK_METRICS:
-        if m_key == metric:
-            return benchmark_line(card, metric, median_key, direction)
-    return None
-
-
-def _esc(value: object) -> str:
-    return html.escape("" if value is None else str(value))
-
-
-def _format_market_code(market_code: str | None) -> str:
-    return market_display_name(market_code)
+def _bench_indicator_html(card: dict, metric: str) -> str:
+    for m_key, median_key, _direction in BENCHMARK_METRICS:
+        if m_key != metric:
+            continue
+        indicator = benchmark_indicator(card, metric, median_key)
+        if not indicator:
+            return ""
+        label = benchmark_indicator_label(card, metric, median_key) or ""
+        return (
+            f'<span class="ss-bench-indicator" title="{_esc(label)}" '
+            f'aria-label="{_esc(label)}">{_esc(indicator)}</span>'
+        )
+    return ""
 
 
 def _benchmark_compare_body(card: dict) -> str:
@@ -55,14 +56,19 @@ def _benchmark_compare_body(card: dict) -> str:
 
     bench_items: list[str] = []
     for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
-        for m_key, median_key, direction in BENCHMARK_METRICS:
+        for m_key, median_key, _direction in BENCHMARK_METRICS:
             if m_key != metric:
                 continue
-            bench = benchmark_line(card, metric, median_key, direction)
-            if bench:
+            indicator = benchmark_indicator(card, metric, median_key)
+            if indicator:
+                label = benchmark_indicator_label(card, metric, median_key) or ""
                 bench_items.append(
-                    f"<li><span class=\"ss-benchmark-metric\">{_esc(METRIC_LABELS[metric])}</span> "
-                    f"— {_esc(bench)}</li>"
+                    f"<li>"
+                    f'<span class="ss-benchmark-metric">{_esc(METRIC_LABELS[metric])}</span> '
+                    f'<span class="ss-bench-indicator" title="{_esc(label)}" '
+                    f'aria-label="{_esc(label)}">{_esc(indicator)}</span> '
+                    f'<span class="ss-bench-vs">vs median</span>'
+                    f"</li>"
                 )
             break
 
@@ -81,6 +87,14 @@ def _metric_definitions_body() -> str:
             f"<dd>{_esc(METRIC_LEARN[metric])}</dd>"
         )
     return f'<dl class="ss-explain-list">{"".join(blocks)}</dl>'
+
+
+def _esc(value: object) -> str:
+    return html.escape("" if value is None else str(value))
+
+
+def _format_market_code(market_code: str | None) -> str:
+    return market_display_name(market_code)
 
 
 def _learn_panel_html(card: dict) -> str:
@@ -129,15 +143,19 @@ def _metric_cell_html(card: dict, metric: str) -> str:
     label = METRIC_LABELS[metric]
     value = format_metric_value(metric, card.get(metric))
     gloss = METRIC_GLOSS[metric]
-    bench = _benchmark_for_metric(card, metric)
+    indicator = _bench_indicator_html(card, metric)
     gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'
-    bench_html = f'<p class="ss-metric-bench">{_esc(bench)}</p>' if bench else ""
+    value_row = (
+        f'<p class="ss-metric-value-row">'
+        f'<span class="ss-metric-value">{_esc(value)}</span>'
+        f"{indicator}"
+        f"</p>"
+    )
     return (
         f'<div class="ss-metric">'
         f'<p class="ss-metric-label">{_esc(label)}</p>'
-        f'<p class="ss-metric-value">{_esc(value)}</p>'
+        f"{value_row}"
         f"{gloss_html}"
-        f"{bench_html}"
         f"</div>"
     )
 

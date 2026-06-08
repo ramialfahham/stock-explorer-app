@@ -112,7 +112,7 @@ DEFAULT_SECTOR_GLOSS = (
 
 MEDIAN_PRIMER = (
     "Median = the middle value among eligible companies in this sector and market. "
-    "Each metric below is compared to that sector median."
+    "↑ higher than median · ↓ lower than median · → at median."
 )
 
 BENCHMARK_UNAVAILABLE = "Comparison unavailable (small sector)"
@@ -197,18 +197,50 @@ def format_metric_value(metric: str, value: float | None) -> str:
     return f"{value:.2f}"
 
 
-def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> str | None:
+def benchmark_position(
+    card: dict,
+    metric: str,
+    median_key: str,
+) -> str | None:
+    """Return above, below, or at vs sector median (neutral positional compare)."""
     if not _benchmark_eligible(card):
         return None
     value = card.get(metric)
     median = card.get(median_key)
     if value is None or median is None:
         return None
-    if direction == "higher":
-        word = "Above" if value >= median else "Below"
-    else:
-        word = "Below" if value <= median else "Above"
-    return f"{word} median"
+    if value > median:
+        return "above"
+    if value < median:
+        return "below"
+    return "at"
+
+
+_BENCHMARK_INDICATORS = {
+    "above": "↑",
+    "below": "↓",
+    "at": "→",
+}
+
+_BENCHMARK_INDICATOR_LABELS = {
+    "above": "Higher than sector median",
+    "below": "Lower than sector median",
+    "at": "At sector median",
+}
+
+
+def benchmark_indicator(card: dict, metric: str, median_key: str) -> str | None:
+    position = benchmark_position(card, metric, median_key)
+    if position is None:
+        return None
+    return _BENCHMARK_INDICATORS[position]
+
+
+def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str | None:
+    position = benchmark_position(card, metric, median_key)
+    if position is None:
+        return None
+    return _BENCHMARK_INDICATOR_LABELS[position]
 
 
 BUSINESS_SUMMARY_PREVIEW_CHARS = 120
