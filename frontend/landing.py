@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from brand import PRODUCT_NAME, PRODUCT_TAGLINE
+from brand import LANDING_TAGLINE, PRODUCT_NAME
 from browser_storage import dismiss_onboarding, is_onboarding_dismissed, onboarding_ready
 
 
@@ -19,7 +19,7 @@ def render_landing() -> bool:
 <div class="ss-landing">
   <p class="ss-landing-eyebrow">Welcome</p>
   <h1 class="ss-landing-title">{PRODUCT_NAME}</h1>
-  <p class="ss-landing-tagline">{PRODUCT_TAGLINE}</p>
+  <p class="ss-landing-tagline">{LANDING_TAGLINE}</p>
   <ul class="ss-landing-points">
     <li>Explore companies with five key fundamentals explained in plain language</li>
     <li>Filter by market and sector, browse a list, or walk one company at a time</li>

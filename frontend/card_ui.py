@@ -148,10 +148,10 @@ def build_card_html(
 ) -> str:
     company = card.get("company_name") or card.get("ticker") or "Unknown"
     ticker = card.get("ticker") or "—"
-    market = _format_market_code(card.get("market_code"))
-
-    meta_parts = [p for p in (scope_meta, market) if p]
-    meta_line = " · ".join(meta_parts)
+    if scope_meta:
+        meta_line = scope_meta
+    else:
+        meta_line = _format_market_code(card.get("market_code"))
 
     sector_head = sector_headline(card)
     sector_gloss = sector_gloss_line(card.get("sector"))

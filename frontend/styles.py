@@ -9,7 +9,7 @@ def inject_global_css() -> None:
     st.markdown(
         """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
 
 :root {
     --ss-bg: #0a0a0b;
@@ -54,27 +54,30 @@ section[data-testid="stSidebar"] {
 
 /* Header */
 .ss-brand {
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-family: "Fraunces", Georgia, "Times New Roman", serif;
+    font-size: 1.45rem;
+    font-weight: 600;
     color: var(--ss-text);
-    letter-spacing: -0.02em;
-    padding-top: 0.15rem;
-    line-height: 1.2;
+    letter-spacing: -0.03em;
+    padding-top: 0.1rem;
+    line-height: 1.15;
 }
 .ss-brand-tagline {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     color: var(--ss-muted);
-    margin: 0.12rem 0 0.35rem;
+    margin: 0.15rem 0 0;
     line-height: 1.35;
     max-width: 22rem;
 }
 .ss-header-stats {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
-    margin: 0.08rem 0 0.2rem;
+    margin: 0.35rem 0 0.45rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--ss-border);
 }
 .ss-header-stats--solo {
-    margin: 0.08rem 0 0.45rem;
+    margin: 0.35rem 0 0.45rem;
     padding-bottom: 0.45rem;
     border-bottom: 1px solid var(--ss-border);
 }

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from card_copy import format_snapshot_date
-from markets import HERO_MARKET_CODE, MARKET_DISPLAY_NAMES, market_display_name
+from markets import MARKET_DISPLAY_NAMES, market_display_name
 
 ALL_MARKETS = "all"
 ALL_SECTORS = "all"
@@ -19,7 +19,7 @@ def market_filter_options() -> list[tuple[str, str]]:
 
 
 def default_market_filter() -> str:
-    return HERO_MARKET_CODE
+    return ALL_MARKETS
 
 
 def _card_key(card: dict[str, Any]) -> tuple[str, str]:
@@ -101,12 +101,20 @@ def scope_summary(
     surprise_me: bool,
     pool_size: int,
 ) -> str:
-    if surprise_me:
+    if surprise_me or market_code == ALL_MARKETS:
+        if sector != ALL_SECTORS:
+            return f"{pool_size} worldwide · {sector}"
         return f"{pool_size} companies worldwide"
     market_label = market_display_name(market_code)
     if sector != ALL_SECTORS:
         return f"{pool_size} in {market_label} · {sector}"
     return f"{pool_size} in {market_label}"
+
+
+def walk_progress_line(*, position: int, total: int) -> str:
+    if total <= 0:
+        return ""
+    return f"{position} of {total}"
 
 
 def walk_meta_line(

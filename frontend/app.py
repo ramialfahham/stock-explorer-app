@@ -27,9 +27,8 @@ from explore_filters import (
     default_market_filter,
     filter_pool,
     market_filter_options,
-    scope_summary,
     sectors_for_market,
-    walk_meta_line,
+    walk_progress_line,
 )
 from landing import render_landing
 from markets import (
@@ -172,19 +171,13 @@ def _card_key(card: dict) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
-def _render_header(
-    *,
-    remaining: int,
-    saved_count: int,
-    client,
-) -> None:
+def _render_brand_header(*, saved_count: int, client) -> None:
     bar_col, menu_col = st.columns([6, 1])
     with bar_col:
         st.markdown(
             f"""
 <div class="ss-brand">{PRODUCT_NAME}</div>
 <div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>
-<div class="ss-header-stats ss-header-stats--solo">{remaining} to explore · {saved_count} saved</div>
 """,
             unsafe_allow_html=True,
         )
@@ -213,6 +206,17 @@ def _render_header(
                 clear_interactions()
                 st.session_state["saved_selected_key"] = None
                 st.rerun()
+
+
+def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:
+    if show_remaining:
+        line = f"{remaining} left · {saved_count} saved"
+    else:
+        line = f"{saved_count} saved"
+    st.markdown(
+        f'<div class="ss-header-stats ss-header-stats--solo">{html.escape(line)}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def _render_bottom_nav(saved_count: int) -> None:
@@ -283,8 +287,6 @@ def _render_explore_filters(client) -> None:
     )
 
     if not surprise:
-        if st.session_state.get("explore_market") == ALL_MARKETS:
-            st.session_state["explore_market"] = default_market_filter()
         market_labels = {code: label for code, label in market_filter_options()}
         market_codes = [code for code, _ in market_filter_options()]
         st.selectbox(
@@ -313,23 +315,6 @@ def _render_explore_filters(client) -> None:
         key="explore_sector",
         on_change=_on_filter_change,
         label_visibility="collapsed",
-    )
-
-    market, sector, surprise = _explore_filters()
-    pool = filter_pool(
-        cards,
-        get_interactions(),
-        market_code=market,
-        sector=sector,
-        surprise_me=surprise,
-    )
-    st.caption(
-        scope_summary(
-            market_code=market,
-            sector=sector,
-            surprise_me=surprise,
-            pool_size=len(pool),
-        )
     )
 
 
@@ -394,13 +379,7 @@ def _render_discover_tab(client) -> bool:
 
     scope_meta = None
     if not browse_key and idx < len(queue):
-        scope_meta = walk_meta_line(
-            position=idx + 1,
-            total=len(queue),
-            market_code=market,
-            sector=sector,
-            surprise_me=surprise,
-        )
+        scope_meta = walk_progress_line(position=idx + 1, total=len(queue))
 
     render_stock_card(
         card,
@@ -505,6 +484,7 @@ def _discovery_page(client) -> None:
     saved_count = _saved_count(interactions)
     active = st.session_state.get("active_page", "Discover")
 
+    _render_brand_header(saved_count=saved_count, client=client)
     _render_bottom_nav(saved_count)
 
     if active == "Discover":
@@ -512,11 +492,10 @@ def _discovery_page(client) -> None:
 
     _sync_discover_queue(client, interactions=interactions)
     remaining = _scoped_remaining()
-
-    _render_header(
+    _render_scope_stats(
         remaining=remaining,
         saved_count=saved_count,
-        client=client,
+        show_remaining=active == "Discover",
     )
 
     show_actions = False
