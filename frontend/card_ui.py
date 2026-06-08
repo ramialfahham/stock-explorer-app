@@ -24,6 +24,13 @@ from card_copy import (
     sector_gloss_line,
     sector_headline,
 )
+from live_quote import (
+    LiveQuoteError,
+    fetch_live_quote,
+    get_cached_quote,
+    live_quote_button_label,
+    yahoo_finance_url,
+)
 
 
 def _benchmark_for_metric(card: dict, metric: str) -> str | None:
@@ -126,12 +133,6 @@ def build_card_html(
     hero = "".join(_metric_cell_html(card, m) for m in VISIBLE_METRICS)
     balance = "".join(_metric_cell_html(card, m) for m in DEEP_DIVE_METRICS)
 
-    fresh = freshness_line(card)
-    fresh_html = f'<span class="ss-freshness">{_esc(fresh)}</span>' if fresh else ""
-
-    yahoo_ticker = _esc(card.get("ticker", ""))
-    yahoo_url = f"https://finance.yahoo.com/quote/{yahoo_ticker}"
-
     return (
         f'<section class="ss-card">'
         f'<p class="ss-meta-line">{_esc(meta_line)}</p>'
@@ -147,11 +148,45 @@ def build_card_html(
         f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
         f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
         f"{_explain_all_html()}"
-        f'<footer class="ss-card-footer">{fresh_html}'
-        f'<a class="ss-yahoo-link" href="{yahoo_url}" target="_blank" '
-        f'rel="noopener noreferrer">Yahoo ↗</a></footer>'
         f"</section>"
     )
+
+
+def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
+    fresh = freshness_line(card)
+    yahoo_url = yahoo_finance_url(card)
+    market_code = card.get("market_code") or "unknown"
+    ticker = card.get("ticker") or "unknown"
+    button_key = f"{widget_key_prefix}_live_quote_{market_code}_{ticker}"
+
+    st.markdown('<div class="ss-card-footer-shell"></div>', unsafe_allow_html=True)
+    fresh_col, quote_col, link_col = st.columns([1.1, 1.2, 0.9])
+
+    with fresh_col:
+        if fresh:
+            st.markdown(
+                f'<p class="ss-freshness">{_esc(fresh)}</p>',
+                unsafe_allow_html=True,
+            )
+
+    with quote_col:
+        if st.button(
+            live_quote_button_label(card),
+            key=button_key,
+            use_container_width=True,
+        ):
+            fetch_live_quote(card)
+            st.rerun()
+        cached = get_cached_quote(card)
+        if isinstance(cached, LiveQuoteError):
+            st.caption(cached.message)
+
+    with link_col:
+        st.link_button(
+            "Yahoo ↗",
+            yahoo_url,
+            use_container_width=True,
+        )
 
 
 def render_stock_card(
@@ -159,8 +194,10 @@ def render_stock_card(
     *,
     card_index: int | None = None,
     queue_total: int | None = None,
+    widget_key_prefix: str = "card",
 ) -> None:
     st.markdown(
         build_card_html(card, card_index=card_index, queue_total=queue_total),
         unsafe_allow_html=True,
     )
+    render_card_footer(card, widget_key_prefix=widget_key_prefix)

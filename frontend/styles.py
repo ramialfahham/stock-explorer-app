@@ -246,6 +246,26 @@ section[data-testid="stSidebar"] {
     padding-top: 0.4rem;
     border-top: 1px solid var(--ss-border);
 }
+.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] {
+    margin-top: -0.35rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--ss-border);
+}
+.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] .ss-freshness {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0;
+    line-height: 1.35;
+}
+.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] button {
+    font-size: var(--ss-caption-size) !important;
+    min-height: 2rem !important;
+    padding: 0.25rem 0.5rem !important;
+}
+.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] [data-testid="stCaptionContainer"] p {
+    font-size: 0.68rem;
+    color: var(--ss-caption);
+}
 .ss-freshness {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);

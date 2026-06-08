@@ -179,7 +179,12 @@ def _render_discover_tab(client) -> bool:
         return False
 
     card = queue[idx]
-    render_stock_card(card, card_index=idx + 1, queue_total=len(queue))
+    render_stock_card(
+        card,
+        card_index=idx + 1,
+        queue_total=len(queue),
+        widget_key_prefix="discover",
+    )
     return True
 
 
@@ -212,7 +217,7 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
     if selected_key:
         selected = next((c for c in saved_cards if _card_key(c) == selected_key), None)
         if selected:
-            render_stock_card(selected)
+            render_stock_card(selected, widget_key_prefix="saved")
 
 
 def _render_search_tab(client) -> None:
@@ -250,7 +255,7 @@ def _render_search_tab(client) -> None:
     if selected:
         match = next((c for c in matches if _card_key(c) == selected), None)
         if match:
-            render_stock_card(match)
+            render_stock_card(match, widget_key_prefix="search")
 
 
 def _discovery_page(client) -> None:
