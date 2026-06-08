@@ -9,17 +9,18 @@ for user-facing behavior. Technical contracts live in [`data_contract.md`](data_
 
 ## What we are building
 
-A **card-based stock discovery app** for **finance-curious beginners** — people with near-zero
-prior knowledge who want to **learn and discover** companies, not execute trades.
+An **explore-and-learn** stock app for **finance-curious beginners** — people with near-zero
+prior knowledge who want to **understand companies**, not execute trades.
 
-Each card is an **analyst-grade snapshot at low barrier**: five fundamental metrics, plain
-language, optional depth. Sessions are **quick scans** with room to go deeper when curious.
+Each **Company Snapshot** is an analyst-grade overview at low barrier: five fundamental metrics,
+plain language, optional depth. **Discover** is scoped exploration (filter, browse, optional walk);
+**Saved** is the return habit — your learning list on this device.
 
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
 buys or sells.
 
-**Interaction model:** browse with **Save** and **Skip** — not swipe gestures or dating-app
-patterns.
+**Interaction model:** **Save** and **Not now** (formerly Skip) — not swipe gestures or
+dating-app patterns.
 
 ---
 
@@ -28,23 +29,23 @@ patterns.
 | Dimension | Choice |
 |-----------|--------|
 | Audience | Beginners — assume no finance vocabulary |
-| Motivation | Learn + discover; build a daily browsing habit over time |
+| Motivation | Learn + discover; build a browsing habit via Saved |
 | Tone | Fun but serious; education integrated, never gimmicky |
 | Builder lens | Dashboard-like reduced overview; v1 optimizes for beginners |
 
-Use **“card session”**, **“save”**, **“skip”**, **“not interested right now”**. Do not use
-dating-app metaphors in product copy or documentation.
+Use **“explore”**, **“save”**, **“not now”**, **“learning list”**. Do not use dating-app
+metaphors or opaque queue counters (e.g. global `1/834`) in product copy.
 
 ---
 
 ## The card — five mandatory metrics
 
 Discovery cards show **fundamentals**, not batch pipeline prices. A company appears in the
-discovery queue only when **all five** metrics are present (no fallbacks, no substitutes).
+scoped pool only when **all five** metrics are present (no fallbacks, no substitutes).
 
 | # | Metric | Role on card | Deep dive |
 |---|--------|--------------|-----------|
-| 1 | Forward P/E | Valuation — visible | — |
+| 1 | Forward P/E | Valuation — visible (hero three) | — |
 | 2 | EBIT margin | Quality / profitability — visible | — |
 | 3 | Revenue growth YoY | Momentum — visible | — |
 | 4 | Net debt / EBITDA | — | Visible on card (below hero three) |
@@ -68,61 +69,72 @@ Three tiers — never all expanded at once on first load:
 
 | Tier | Content | Goal |
 |------|---------|------|
-| **Scan** | Name, ticker, market, sector headline, five metric values | Answer “what company?” in seconds |
-| **Gloss** | Sector one-liner, company blurb preview, metric gloss lines, median primer | Plain-English context without clutter |
-| **Deep** | “What do these metrics mean?” panel, “About this company” full summary | Optional learning on demand |
+| **Scan** | Name, ticker, market, sector headline, three hero metric values (+ two balance metrics below fold) | Answer “what company?” in seconds |
+| **Gloss** | Sector one-liner, company blurb preview, metric gloss lines under values | Plain-English context without clutter |
+| **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?”, “About this company” full summary | Optional learning on demand |
 
-**Success check (mobile):** user can read company + sector + three hero metrics without scrolling;
-Save remains reachable.
+**Median primer and sector benchmarks** live inside **How we compare to similar companies**
+(`<details>`), not always visible. When fewer than 8 eligible peers exist in the sector within
+that market, **hide benchmark UI entirely** — no orphan “unavailable” line on the card face.
+
+**Success check (mobile):** user can read company + sector + three hero metric **values**
+without scrolling; Save remains reachable.
 
 ---
 
 ## Benchmarking (v1)
 
 - Compare each metric to **sector median** within the **app universe** (same `market_code`).
-- **One card-level median primer** when benchmarks are available (defines “median” once).
+- **One card-level median primer** inside the compare expand when benchmarks are available.
 - Per-metric lines use short wording (e.g. **Above median** / **Below median**); sector name
   appears once in the sector header.
 - **Direction-aware wording** — no color coding on benchmarks in v1 (monochrome text only).
 - Show sector context: e.g. `Consumer Cyclical (42 companies)`.
 - **Benchmark is not required for eligibility.** If sector median is unavailable (fewer than **8**
-  eligible peers in sector within that market), show once:
-  `Comparison unavailable (small sector)` — no per-metric benchmark lines.
+  eligible peers), **do not show** benchmark UI on the card — no warning line on the card face.
 - Do not use naive “Top 10% in sector” rankings — misleading for debt, negative growth, etc.
 
 ---
 
-## Session and queue
+## Discover — explore model (v2.3)
 
 | Rule | Behavior |
 |------|----------|
+| Default scope | **S&P 500 · All sectors** — not the full mixed worldwide queue |
+| Filters | Market (registry markets or All), optional sector; client-side on exported mart |
+| Browse | Scrollable list in scope — pick a company to open the same snapshot |
+| Walk | **Next company** advances within the filtered queue; position copy is scope-aware (e.g. `3 of 47 in S&P 500 · Technology`) — not a global universe total |
+| Surprise me worldwide | Explicit opt-in — restores mixed round-robin across all markets |
 | Cards per session | **No limit** |
-| Markets | **Mixed by default**; `market_code` visible on each card |
-| Ordering | **Not random** — round-robin across markets, unseen first, sector-balanced |
+| Ordering (walk) | Round-robin within scope, unseen first, sector-balanced |
 | Universe | **Card-eligible tickers only** (all five metrics) |
-| Not analyst picks | No “famous brands only” or buy-list curation |
-| Auth | **None in v1** — Save/Skip persist in browser localStorage on device |
+| Auth | **None in v1** — Save/Not now persist in browser localStorage on device |
 
 ### Save
 
-**Meaning:** “I want to follow this company.”
+**Meaning:** “I want to follow this company” (learning list).
 
-- Adds ticker to **Saved** (watchlist).
-- Removes from discovery queue (or lowest priority).
+- Adds ticker to **Saved**.
+- Removes from scoped discover pool.
 - Entry point for optional on-demand quote and external research links.
 
-### Skip
+### Not now (Skip)
 
 **Meaning:** “Not for me **right now**” — not “bad stock,” not permanent rejection.
 
-- **Deprioritize** in queue; ticker can resurface after many other cards.
-- Always reachable via **Search** (ticker or company name).
+- **Deprioritize** in scoped walk; ticker can resurface after many other cards.
+- Always reachable via **Search** or **Browse**.
 
 Neither action deletes pipeline data.
 
+### Saved — return habit
+
+Saved is the home for **continue learning**: saved companies, fundamentals freshness
+(`snapshot_date`). Phase 2 may add **1–2 headlines per saved ticker only** — not on Discover.
+
 ### Search (v1)
 
-Intentional lookup by ticker or name. Same card layout if the company is card-eligible.
+Intentional lookup by ticker or name. Same Company Snapshot layout if card-eligible.
 
 ---
 
@@ -130,8 +142,8 @@ Intentional lookup by ticker or name. Same card layout if the company is card-el
 
 **Always visible (Tier 2 gloss):** one short plain-language line per metric under each value.
 
-**On expand (Tier 3):** fuller `METRIC_LEARN` copy in a single “What do these metrics mean?”
-panel — not five separate popovers.
+**On expand (Tier 3):** fuller `METRIC_LEARN` copy in “What do these metrics mean?” — not five
+separate popovers. Sector median context in “How we compare to similar companies.”
 
 Keep copy concise. The card must remain scannable in under 30 seconds.
 
@@ -157,11 +169,14 @@ thresholds.
 - Color-coded benchmark badges
 - Dating-app interaction patterns or gamified streaks as core UX
 - Auth / cross-device sync
+- **News on Discover cards** (defer to Saved-only in Phase 2)
 
 ---
 
 ## Phase 2 (stickiness, separate from fundamentals)
 
-- **News** feed (daily refresh) — optional habit layer, not mixed into fundamentals CI gates
+- **News on Saved tab only** — 2–3 headlines per saved company; on-demand or small daily cache;
+  separate workflow from fundamentals CI
 - Richer saved-company updates when fundamentals refresh weekly
-- Optional **Skipped** review list
+- Optional **Not now** review list
+- Optional filter persistence to localStorage

@@ -133,10 +133,8 @@ def benchmark_unavailable_line(card: dict) -> str | None:
     return None
 
 
-def median_primer_line(card: dict) -> str | None:
-    if not _benchmark_eligible(card):
-        return None
-    return MEDIAN_PRIMER
+def benchmark_compare_available(card: dict) -> bool:
+    return _benchmark_eligible(card)
 
 
 def sector_headline(card: dict) -> str:
