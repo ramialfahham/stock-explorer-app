@@ -52,7 +52,10 @@ section[data-testid="stSidebar"] {
     padding-bottom: calc(var(--ss-bottom-nav-h) + 0.5rem);
 }
 
-/* Header */
+/* Header — title + tagline left, overflow menu top-right (single row) */
+.ss-brand-header {
+    min-width: 0;
+}
 .ss-brand {
     font-family: "Fraunces", Georgia, "Times New Roman", serif;
     font-size: 1.35rem;
@@ -66,17 +69,28 @@ section[data-testid="stSidebar"] {
 .ss-brand-tagline {
     font-size: 0.74rem;
     color: var(--ss-muted);
-    margin: 0.4rem 0 0.35rem;
+    margin: 0.28rem 0 0.35rem;
     line-height: 1.35;
     max-width: none;
 }
-/* Menu trigger — top-right on title row */
-div[data-testid="stHorizontalBlock"]:has(.ss-brand) [data-testid="column"]:last-child {
+div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) {
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) [data-testid="column"]:first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) [data-testid="column"]:last-child {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 2.25rem !important;
     display: flex;
     justify-content: flex-end;
     align-items: flex-start;
+    padding-top: 0.05rem;
 }
-div[data-testid="stHorizontalBlock"]:has(.ss-brand) [data-testid="column"]:last-child button {
+div[data-testid="stHorizontalBlock"]:has(.ss-brand-header) [data-testid="column"]:last-child button {
     margin-top: 0 !important;
 }
 .ss-header-stats {
