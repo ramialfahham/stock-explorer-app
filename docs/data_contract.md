@@ -68,6 +68,7 @@ Metrics are ordered by **analytical relevance** (valuation → quality → momen
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
 | `info_long_name` | `longName` | Company name fallback |
+| `info_business_summary` | `longBusinessSummary` | Company description on card (nullable) |
 
 Store `info_*` values exactly as returned (`null` if missing). Do not coerce types beyond
 safe numeric parsing for parquet.
@@ -193,6 +194,7 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `company_name` | text | |
 | `sector` | text | |
 | `currency` | text | |
+| `business_summary` | text | Yahoo `longBusinessSummary`; nullable |
 | `forward_pe` | numeric | |
 | `ebit_margin_pct` | numeric | |
 | `revenue_growth_yoy_pct` | numeric | |

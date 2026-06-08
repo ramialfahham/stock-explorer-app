@@ -100,6 +100,9 @@ models:
       - name: info_long_name
         description: >
           Yahoo longName on latest snapshot.
+      - name: info_business_summary
+        description: >
+          Yahoo longBusinessSummary on latest snapshot; exported as business_summary on cards.
       - name: stmt_total_revenue
         description: >
           Latest annual Total Revenue for FCF margin denominator.

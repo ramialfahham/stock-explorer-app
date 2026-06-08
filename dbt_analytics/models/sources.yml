@@ -83,6 +83,8 @@ sources:
             description: Raw Yahoo currency.
           - name: info_long_name
             description: Raw Yahoo longName.
+          - name: info_business_summary
+            description: Raw Yahoo longBusinessSummary company description.
           - name: stmt_total_revenue
             description: Latest annual Total Revenue from statements.
           - name: stmt_free_cash_flow

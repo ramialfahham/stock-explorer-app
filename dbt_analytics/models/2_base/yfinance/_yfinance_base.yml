@@ -102,6 +102,9 @@ models:
       - name: info_long_name
         description: >
           Deduped raw longName.
+      - name: info_business_summary
+        description: >
+          Deduped raw longBusinessSummary company description.
       - name: stmt_total_revenue
         description: >
           Deduped latest-annual Total Revenue.

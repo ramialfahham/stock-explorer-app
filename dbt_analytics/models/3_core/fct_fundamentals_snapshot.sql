@@ -25,6 +25,7 @@ select
     info_sector,
     info_currency,
     info_long_name,
+    info_business_summary,
     stmt_total_revenue,
     stmt_free_cash_flow,
     stmt_fiscal_period_end,

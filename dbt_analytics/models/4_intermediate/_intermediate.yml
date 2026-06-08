@@ -54,6 +54,9 @@ models:
       - name: currency
         description: >
           Display currency: coalesce(snapshot info_currency, dim_stock.currency).
+      - name: business_summary
+        description: >
+          Company description from Yahoo longBusinessSummary; nullable context for card UI.
       - name: forward_pe
         description: >
           Forward P/E ratio from info_forward_pe. Unit: multiple (x). Null when Yahoo omits forwardPE.

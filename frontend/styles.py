@@ -115,6 +115,35 @@ section[data-testid="stSidebar"] {
     line-height: 1.35;
 }
 
+.ss-company-summary {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0 0 0.55rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ss-company-about {
+    margin: 0 0 0.55rem;
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+}
+
+.ss-company-about summary {
+    cursor: pointer;
+    color: var(--ss-accent);
+    margin-bottom: 0.35rem;
+}
+
+.ss-company-summary-full {
+    margin: 0;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+
 .ss-median-primer,
 .ss-benchmark-note {
     font-size: var(--ss-caption-size);

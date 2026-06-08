@@ -14,6 +14,7 @@ metrics as (
         st.company_name,
         coalesce(s.info_sector, st.sector) as sector,
         coalesce(s.info_currency, st.currency) as currency,
+        s.info_business_summary as business_summary,
         s.info_forward_pe as forward_pe,
         s.info_operating_margins * 100.0 as ebit_margin_pct,
         s.info_revenue_growth * 100.0 as revenue_growth_yoy_pct,

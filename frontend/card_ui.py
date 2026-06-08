@@ -8,6 +8,7 @@ import streamlit as st
 
 from card_copy import (
     BENCHMARK_METRICS,
+    BUSINESS_SUMMARY_PREVIEW_CHARS,
     DEEP_DIVE_METRICS,
     METRIC_GLOSS,
     METRIC_LABELS,
@@ -15,6 +16,8 @@ from card_copy import (
     VISIBLE_METRICS,
     benchmark_line,
     benchmark_unavailable_line,
+    business_summary_full,
+    business_summary_preview,
     format_metric_value,
     freshness_line,
     median_primer_line,
@@ -48,6 +51,24 @@ def _benchmark_context_html(card: dict) -> str:
     if primer:
         return f'<p class="ss-median-primer">{_esc(primer)}</p>'
     return ""
+
+
+def _company_summary_html(card: dict) -> str:
+    preview = business_summary_preview(card)
+    if not preview:
+        return ""
+    full = business_summary_full(card)
+    if not full:
+        return ""
+    if len(full) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
+        return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+    return (
+        f'<p class="ss-company-summary">{_esc(preview)}</p>'
+        f'<details class="ss-company-about">'
+        f"<summary>About this company</summary>"
+        f'<p class="ss-company-summary-full">{_esc(full)}</p>'
+        f"</details>"
+    )
 
 
 def _metric_cell_html(card: dict, metric: str) -> str:
@@ -121,6 +142,7 @@ def build_card_html(
         f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
         f'<p class="ss-sector-gloss">{_esc(sector_gloss)}</p>'
         f"</div>"
+        f"{_company_summary_html(card)}"
         f"{_benchmark_context_html(card)}"
         f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
         f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
