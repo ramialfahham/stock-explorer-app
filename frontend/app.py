@@ -16,7 +16,7 @@ from browser_storage import (
     storage_sync_pending,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
-from card_copy import METRIC_SOURCE_MENU
+from card_copy import METRIC_SOURCE_MENU, freshness_line, sector_headline
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from explore_filters import (
@@ -39,7 +39,6 @@ from markets import (
     eligible_counts_by_market,
 )
 from nav_pages import NAV_PAGES, normalize_nav_page
-from saved_matrix import render_saved_matrix, saved_card_options
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -62,7 +61,7 @@ def _init_state() -> None:
         "queue_index": 0,
         "market_index": 0,
         "sector_shown": {},
-        "saved_selected_key": None,
+        "saved_focus_key": None,
         "search_selected": None,
         "browse_selected_key": None,
         "active_page": "Discover",
@@ -223,7 +222,7 @@ def _render_brand_header(*, saved_count: int, client) -> None:
                 st.rerun()
             if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
                 clear_interactions()
-                st.session_state["saved_selected_key"] = None
+                st.session_state["saved_focus_key"] = None
                 st.rerun()
 
 
@@ -431,6 +430,27 @@ def _render_discover_tab(client) -> bool:
     return True
 
 
+def _saved_row_key(card: dict) -> str:
+    return f"{card['market_code']}::{card['ticker']}"
+
+
+def _render_saved_list_row(card: dict) -> None:
+    company = card.get("company_name") or card.get("ticker") or "Unknown"
+    ticker = card.get("ticker") or "—"
+    sector = sector_headline(card)
+    fresh = freshness_line(card) or ""
+    st.markdown(
+        f"""
+<div class="ss-saved-row">
+  <p class="ss-saved-name">{html.escape(company)} · <span class="ss-saved-ticker">{html.escape(ticker)}</span></p>
+  <p class="ss-saved-sector">{html.escape(sector)}</p>
+  {f'<p class="ss-saved-fresh">{html.escape(fresh)}</p>' if fresh else ''}
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def _render_saved_tab(client, interactions: list[dict]) -> None:
     saved_cards = _saved_cards(client, interactions)
 
@@ -438,19 +458,26 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         st.info("Nothing saved yet — tap Save in Discover.")
         return
 
-    render_saved_matrix(saved_cards)
-
-    options = saved_card_options(saved_cards)
-    labels = [label for label, _ in options]
-    keys = [key for _, key in options]
-    selected_label = st.selectbox(
-        "Full company snapshot",
-        options=labels,
-        index=0,
-        key="saved_detail_select",
+    st.markdown(
+        '<p class="ss-saved-list-heading">Your learning list</p>',
+        unsafe_allow_html=True,
     )
-    selected_key = keys[labels.index(selected_label)]
-    market_code, ticker = selected_key.split("::", 1)
+
+    focus_key = st.session_state.get("saved_focus_key")
+    for card in saved_cards:
+        row_key = _saved_row_key(card)
+        cols = st.columns([3, 1])
+        with cols[0]:
+            _render_saved_list_row(card)
+        with cols[1]:
+            if st.button("Open", key=f"saved_open_{row_key}", use_container_width=True):
+                st.session_state["saved_focus_key"] = row_key
+                st.rerun()
+
+    if not focus_key:
+        return
+
+    market_code, ticker = focus_key.split("::", 1)
     selected = next(
         (
             c
