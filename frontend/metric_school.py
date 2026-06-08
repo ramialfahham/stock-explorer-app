@@ -163,3 +163,61 @@ def render_metric_playgrounds(card: dict[str, Any], *, widget_key_prefix: str = 
         _render_net_debt_playground(card, prefix=widget_key_prefix)
     with tabs[4]:
         _render_fcf_margin_playground(card, prefix=widget_key_prefix)
+
+
+def render_metric_micro_checks(card: dict[str, Any], *, widget_key_prefix: str = "card") -> None:
+    """Reflective micro-checks tied to this company's exported values."""
+    st.markdown("**Quick check** — interpret the numbers on this card (not investment advice).")
+
+    pe_value = card.get("forward_pe")
+    if pe_value is not None:
+        st.markdown(
+            f"**{METRIC_LABELS['forward_pe']}** on this card is "
+            f"**{format_metric_value('forward_pe', pe_value)}**. What does that mainly describe?"
+        )
+        pe_choice = st.radio(
+            "Forward P/E question",
+            options=[
+                "How many years of expected earnings are priced into one share",
+                "How much debt the company owes",
+                "How fast revenue grew vs last year",
+            ],
+            index=None,
+            key=_key(widget_key_prefix, card, "check_pe"),
+            label_visibility="collapsed",
+        )
+        if pe_choice:
+            if pe_choice.startswith("How many years"):
+                st.success("Right — forward P/E is a valuation lens, not debt or growth.")
+            else:
+                st.info(
+                    "Forward P/E compares price to expected next-year earnings per share. "
+                    "Debt and growth use different metrics on this card."
+                )
+
+    debt_value = card.get("net_debt_to_ebitda")
+    if debt_value is not None:
+        st.markdown(
+            f"**{METRIC_LABELS['net_debt_to_ebitda']}** here is "
+            f"**{format_metric_value('net_debt_to_ebitda', debt_value)}**. "
+            "What is this ratio mainly about?"
+        )
+        debt_choice = st.radio(
+            "Net debt / EBITDA question",
+            options=[
+                "Roughly how many years of operating profit to repay net debt",
+                "Operating profit as a share of sales",
+                "Free cash left from each sales dollar",
+            ],
+            index=None,
+            key=_key(widget_key_prefix, card, "check_debt"),
+            label_visibility="collapsed",
+        )
+        if debt_choice:
+            if debt_choice.startswith("Roughly"):
+                st.success("Right — it is a solvency / leverage lens, not margin or FCF.")
+            else:
+                st.info(
+                    "Net debt / EBITDA divides net debt by operating cash generation (EBITDA). "
+                    "Margins and FCF use different lines on the income and cash flow statements."
+                )
