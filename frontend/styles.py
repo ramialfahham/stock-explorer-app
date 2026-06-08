@@ -55,19 +55,29 @@ section[data-testid="stSidebar"] {
 /* Header */
 .ss-brand {
     font-family: "Fraunces", Georgia, "Times New Roman", serif;
-    font-size: 1.45rem;
+    font-size: 1.35rem;
     font-weight: 600;
     color: var(--ss-text);
     letter-spacing: -0.03em;
-    padding-top: 0.1rem;
+    padding-top: 0;
     line-height: 1.15;
+    margin: 0;
 }
 .ss-brand-tagline {
     font-size: 0.74rem;
     color: var(--ss-muted);
-    margin: 0.15rem 0 0;
+    margin: 0.4rem 0 0.35rem;
     line-height: 1.35;
-    max-width: 22rem;
+    max-width: none;
+}
+/* Menu trigger — top-right on title row */
+div[data-testid="stHorizontalBlock"]:has(.ss-brand) [data-testid="column"]:last-child {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+}
+div[data-testid="stHorizontalBlock"]:has(.ss-brand) [data-testid="column"]:last-child button {
+    margin-top: 0 !important;
 }
 .ss-header-stats {
     font-size: var(--ss-caption-size);
