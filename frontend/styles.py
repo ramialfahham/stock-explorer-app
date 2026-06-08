@@ -300,24 +300,33 @@ section[data-testid="stSidebar"] {
     margin: 0 0 0.15rem;
     line-height: 1.2;
 }
+.ss-metric-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin: 0;
+}
 .ss-metric-value {
     font-size: var(--ss-value);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--ss-text);
-    margin: 0;
     line-height: 1.1;
+}
+.ss-bench-indicator {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--ss-caption);
+    line-height: 1;
+}
+.ss-bench-vs {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
 }
 .ss-metric-gloss {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0.1rem 0 0;
-    line-height: 1.25;
-}
-.ss-metric-bench {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-    margin: 0.12rem 0 0;
     line-height: 1.25;
 }
 
