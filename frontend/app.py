@@ -202,29 +202,16 @@ def _clear_saved_session() -> None:
     st.session_state["saved_compare_key"] = None
 
 
-def _render_brand_header(*, saved_count: int, client) -> None:
-    brand_col, menu_col = st.columns([6, 1], vertical_alignment="top", gap="small")
-    with brand_col:
-        st.markdown(
-            f"""
-            <div class="ss-brand-header">
-                <div class="ss-brand">{PRODUCT_NAME}</div>
-                <div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with menu_col:
-        with st.popover("⋯"):
-            cards = _ensure_all_cards(client)
-            render_overflow_menu(
-                active_tab=normalize_nav_page(st.session_state.get("active_page")),
-                saved_count=saved_count,
-                cards=cards,
-                eligible_counts=st.session_state.get("eligible_counts") or {},
-                on_start_over=_start_over,
-                on_clear_saved=_clear_saved_session,
-            )
+def _render_brand_header() -> None:
+    st.markdown(
+        f"""
+        <div class="ss-brand-header">
+            <div class="ss-brand">{PRODUCT_NAME}</div>
+            <div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:
@@ -238,7 +225,7 @@ def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: boo
     )
 
 
-def _render_bottom_nav() -> str:
+def _render_bottom_nav(*, saved_count: int, client) -> str:
     prior_active = normalize_nav_page(st.session_state.get("active_page"))
     if "bottom_nav" in st.session_state:
         st.session_state["bottom_nav"] = normalize_nav_page(
@@ -246,14 +233,27 @@ def _render_bottom_nav() -> str:
             fallback=prior_active,
         )
 
-    st.markdown('<div class="ss-bottom-nav-marker"></div>', unsafe_allow_html=True)
-    page = st.segmented_control(
-        "Navigation",
-        options=list(NAV_PAGES),
-        default=prior_active,
-        label_visibility="collapsed",
-        key="bottom_nav",
-    )
+    st.markdown('<div class="ss-nav-row-marker"></div>', unsafe_allow_html=True)
+    tabs_col, menu_col = st.columns([6, 1], vertical_alignment="center", gap="small")
+    with tabs_col:
+        page = st.segmented_control(
+            "Navigation",
+            options=list(NAV_PAGES),
+            default=prior_active,
+            label_visibility="collapsed",
+            key="bottom_nav",
+        )
+    with menu_col:
+        with st.popover("⋯"):
+            cards = _ensure_all_cards(client)
+            render_overflow_menu(
+                active_tab=normalize_nav_page(st.session_state.get("active_page")),
+                saved_count=saved_count,
+                cards=cards,
+                eligible_counts=st.session_state.get("eligible_counts") or {},
+                on_start_over=_start_over,
+                on_clear_saved=_clear_saved_session,
+            )
     selected = normalize_nav_page(
         page or st.session_state.get("bottom_nav"),
         fallback=prior_active,
@@ -582,8 +582,8 @@ def _discovery_page(client) -> None:
     _ensure_all_cards(client)
     saved_count = _saved_count(interactions)
 
-    _render_brand_header(saved_count=saved_count, client=client)
-    active = _render_bottom_nav()
+    _render_brand_header()
+    active = _render_bottom_nav(saved_count=saved_count, client=client)
 
     if active == "Discover":
         _render_explore_filters(client)
