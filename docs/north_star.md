@@ -127,10 +127,25 @@ without scrolling; Save remains reachable.
 
 Neither action deletes pipeline data.
 
-### Saved — return habit
+### Saved — return habit (learning list)
 
-Saved is the home for **continue learning**: saved companies, fundamentals freshness
-(`snapshot_date`). Phase 2 may add **1–2 headlines per saved ticker only** — not on Discover.
+Saved is the home for **continue learning** on this device — not a spreadsheet or comparison grid.
+
+| Pattern | v1 behavior |
+|---------|-------------|
+| **List** | Vertical learning list: company name, ticker, sector, `snapshot_date` freshness |
+| **Focus** | Tap **Open** (or equivalent) → **one** Company Snapshot at a time — same layout as Discover |
+| **Learn** | Shared “Understand these numbers” panel on the focused card |
+| **Compare** | Optional later: **two** saved companies side-by-side in a **vertical** table — never horizontal N-column matrix on mobile |
+
+**Out of scope for Saved v1:** metrics × N companies comparison matrix, selectbox + full card stacked
+with a second navigation paradigm, horizontal scroll tables.
+
+Phase 2 adds **2–3 headlines per saved ticker only** on Saved — not on Discover. See
+[`ux_principles_finanz_lern_apps.md`](ux_principles_finanz_lern_apps.md) for pedagogy patterns.
+
+**Discover default scope note:** filter default is **All markets · All sectors**; scoped walk may
+start US-first when “Surprise me worldwide” is off — see [`explore_filters.py`](../frontend/explore_filters.py).
 
 ### Search (v1)
 
@@ -142,8 +157,10 @@ Intentional lookup by ticker or name. Same Company Snapshot layout if card-eligi
 
 **Always visible (Tier 2 gloss):** one short plain-language line per metric under each value.
 
-**On expand (Tier 3):** fuller `METRIC_LEARN` copy in “What do these metrics mean?” — not five
-separate popovers. Sector median context in “How we compare to similar companies.”
+**On expand (Tier 3):** per-metric blocks — **analogy**, then fuller `METRIC_LEARN` copy — in
+“Understand these numbers”; sector median context in “How we compare to similar companies.”
+Optional interactive playgrounds and micro-checks follow the Kennzahlen-Schule pattern in
+[`ux_principles_finanz_lern_apps.md`](ux_principles_finanz_lern_apps.md).
 
 Keep copy concise. The card must remain scannable in under 30 seconds.
 

@@ -25,6 +25,19 @@ State a short block first:
 
 If anything could silently shrink scope or affect something not listed, stop and ask.
 
+### UX PR gate (user-facing frontend)
+
+Applies to Streamlit layout, copy, and interaction changes — not dbt-only or ops-only PRs.
+
+Before opening a UX PR:
+
+1. **north_star check** — tab behavior matches [`north_star.md`](north_star.md) (especially Saved = learning list + single focus).
+2. **One primary job** — PR description includes one sentence: what the user can do after merge.
+3. **Mobile wireframe** — ASCII or sketch in the PR body for new layout patterns (required for Saved, Discover chrome, or card structure changes).
+4. **480px smoke** — no horizontal scroll on Saved; Save still reachable on Discover; three hero metric values visible without scroll.
+
+Audit or premortem tasks that change UI must pass this gate — not ship as silent engineering deliverables.
+
 ---
 
 ## 3. Branches — always
