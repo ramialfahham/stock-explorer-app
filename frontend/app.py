@@ -12,11 +12,10 @@ from browser_storage import (
     clear_interactions,
     ensure_interactions_loaded,
     get_interactions,
-    request_landing,
     storage_sync_pending,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
-from card_copy import METRIC_SOURCE_MENU, freshness_line, sector_headline
+from card_copy import freshness_line, sector_headline
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from explore_filters import (
@@ -32,13 +31,9 @@ from explore_filters import (
     walk_progress_line,
 )
 from landing import render_landing
-from markets import (
-    HERO_MARKET_CODE,
-    discover_pool_summary,
-    eligible_breakdown_lines,
-    eligible_counts_by_market,
-)
+from markets import HERO_MARKET_CODE, eligible_counts_by_market
 from nav_pages import NAV_PAGES, normalize_nav_page
+from overflow_menu import render_overflow_menu
 from saved_compare import compare_partner_options, render_compare_two
 from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
@@ -202,6 +197,11 @@ def _card_key(card: dict) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
+def _clear_saved_session() -> None:
+    st.session_state["saved_focus_key"] = None
+    st.session_state["saved_compare_key"] = None
+
+
 def _render_brand_header(*, saved_count: int, client) -> None:
     bar_col, menu_col = st.columns([6, 1])
     with bar_col:
@@ -214,32 +214,15 @@ def _render_brand_header(*, saved_count: int, client) -> None:
         )
     with menu_col:
         with st.popover("⋯"):
-            counts = st.session_state.get("eligible_counts") or {}
-            pool_summary = discover_pool_summary(counts)
-            if pool_summary:
-                st.caption(pool_summary)
-            lines = eligible_breakdown_lines(counts)
-            if lines:
-                breakdown = "\n".join(f"· {line}" for line in lines)
-                st.caption(breakdown)
-            st.divider()
-            st.caption(METRIC_SOURCE_MENU)
-            st.divider()
-            if st.button(
-                "How Stock Explorer works",
-                key="menu_how_it_works",
-                use_container_width=True,
-            ):
-                request_landing()
-                st.rerun()
-            if st.button("Start over", key="menu_start_over", use_container_width=True):
-                _start_over()
-                st.rerun()
-            if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
-                clear_interactions()
-                st.session_state["saved_focus_key"] = None
-                st.session_state["saved_compare_key"] = None
-                st.rerun()
+            cards = _ensure_all_cards(client)
+            render_overflow_menu(
+                active_tab=normalize_nav_page(st.session_state.get("active_page")),
+                saved_count=saved_count,
+                cards=cards,
+                eligible_counts=st.session_state.get("eligible_counts") or {},
+                on_start_over=_start_over,
+                on_clear_saved=_clear_saved_session,
+            )
 
 
 def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:

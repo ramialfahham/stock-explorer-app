@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
+
+from card_copy import format_snapshot_date
 
 # v1 hero market — intentional starting experience for discovery queue.
 HERO_MARKET_CODE = "us_sp500"
@@ -54,3 +57,27 @@ def eligible_breakdown_lines(counts: dict[str, int]) -> list[str]:
     for code in sorted(counts.keys(), key=lambda c: (c != HERO_MARKET_CODE, c)):
         lines.append(f"{market_display_name(code)}: {counts[code]}")
     return lines
+
+
+def latest_snapshot_label(cards: list[dict[str, Any]]) -> str | None:
+    """Latest fundamentals snapshot date across eligible cards."""
+    latest: date | None = None
+    for card in cards:
+        if not card.get("is_card_eligible"):
+            continue
+        raw = card.get("snapshot_date")
+        parsed: date | None
+        if isinstance(raw, date):
+            parsed = raw
+        elif isinstance(raw, str):
+            try:
+                parsed = date.fromisoformat(raw[:10])
+            except ValueError:
+                parsed = None
+        else:
+            parsed = None
+        if parsed is not None and (latest is None or parsed > latest):
+            latest = parsed
+    if latest is None:
+        return None
+    return format_snapshot_date(latest)

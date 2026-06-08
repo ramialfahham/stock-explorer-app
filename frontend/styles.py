@@ -602,7 +602,43 @@ section[data-testid="stSidebar"] {
     margin: 0 0 1.25rem;
 }
 
-/* Overflow menu button */
+/* Overflow menu panel */
+.ss-menu-panel {
+    margin: 0 0 0.65rem;
+}
+.ss-menu-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--ss-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 0.2rem;
+}
+.ss-menu-label + .ss-menu-body {
+    margin-top: 0;
+}
+.ss-menu-label:not(:first-child) {
+    margin-top: 0.55rem;
+}
+.ss-menu-body {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-text);
+    line-height: 1.4;
+    margin: 0;
+}
+.ss-menu-tip {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-muted);
+    line-height: 1.45;
+    margin: 0;
+    font-style: italic;
+}
+.ss-menu-actions-divider {
+    border-top: 1px solid var(--ss-border);
+    margin: 0.45rem 0 0.55rem;
+}
+
+/* Overflow menu trigger */
 .ss-menu-popover button {
     font-size: 1.1rem !important;
     padding: 0.1rem 0.45rem !important;
