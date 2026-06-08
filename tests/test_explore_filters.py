@@ -14,6 +14,7 @@ from explore_filters import (  # noqa: E402
     ALL_SECTORS,
     default_market_filter,
     filter_pool,
+    market_filter_options,
     walk_progress_line,
 )
 
@@ -29,6 +30,12 @@ def _card(ticker: str, sector: str, market: str = "us_sp500") -> dict:
 
 def test_default_market_filter_is_all_markets() -> None:
     assert default_market_filter() == ALL_MARKETS
+
+
+def test_market_filter_options_all_markets_first() -> None:
+    options = market_filter_options()
+    assert options[0][0] == ALL_MARKETS
+    assert options[0][1] == "All markets"
 
 
 def test_walk_progress_line() -> None:

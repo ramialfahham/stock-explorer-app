@@ -9,13 +9,11 @@ import streamlit as st
 from card_copy import (
     BENCHMARK_METRICS,
     BUSINESS_SUMMARY_PREVIEW_CHARS,
-    BUSINESS_SUMMARY_UNAVAILABLE,
     DEEP_DIVE_METRICS,
     MEDIAN_PRIMER,
     METRIC_GLOSS,
     METRIC_LABELS,
     METRIC_LEARN,
-    METRIC_SOURCE_FOOTNOTE,
     VISIBLE_METRICS,
     benchmark_compare_available,
     benchmark_line,
@@ -51,7 +49,7 @@ def _format_market_code(market_code: str | None) -> str:
     return market_display_name(market_code)
 
 
-def _benchmark_compare_html(card: dict) -> str:
+def _benchmark_compare_body(card: dict) -> str:
     if not benchmark_compare_available(card):
         return ""
 
@@ -68,15 +66,43 @@ def _benchmark_compare_html(card: dict) -> str:
                 )
             break
 
-    bench_list = ""
-    if bench_items:
-        bench_list = f'<ul class="ss-benchmark-list">{"".join(bench_items)}</ul>'
+    if not bench_items:
+        return ""
 
+    bench_list = f'<ul class="ss-benchmark-list">{"".join(bench_items)}</ul>'
+    return f'<p class="ss-median-primer">{_esc(MEDIAN_PRIMER)}</p>{bench_list}'
+
+
+def _metric_definitions_body() -> str:
+    blocks = []
+    for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
+        blocks.append(
+            f"<dt>{_esc(METRIC_LABELS[metric])}</dt>"
+            f"<dd>{_esc(METRIC_LEARN[metric])}</dd>"
+        )
+    return f'<dl class="ss-explain-list">{"".join(blocks)}</dl>'
+
+
+def _learn_panel_html(card: dict) -> str:
+    compare = _benchmark_compare_body(card)
+    compare_section = ""
+    if compare:
+        compare_section = (
+            f'<div class="ss-learn-section">'
+            f'<p class="ss-learn-heading">How we compare to similar companies</p>'
+            f"{compare}"
+            f"</div>"
+        )
     return (
-        f'<details class="ss-benchmark-compare">'
-        f"<summary>How we compare to similar companies</summary>"
-        f'<p class="ss-median-primer">{_esc(MEDIAN_PRIMER)}</p>'
-        f"{bench_list}"
+        f'<details class="ss-learn-panel">'
+        f"<summary>Understand these numbers</summary>"
+        f'<div class="ss-learn-panel-body">'
+        f"{compare_section}"
+        f'<div class="ss-learn-section">'
+        f'<p class="ss-learn-heading">What each metric means</p>'
+        f"{_metric_definitions_body()}"
+        f"</div>"
+        f"</div>"
         f"</details>"
     )
 
@@ -84,16 +110,10 @@ def _benchmark_compare_html(card: dict) -> str:
 def _company_summary_html(card: dict) -> str:
     preview = business_summary_preview(card)
     if not preview:
-        return (
-            f'<p class="ss-company-summary ss-company-summary--empty">'
-            f"{_esc(BUSINESS_SUMMARY_UNAVAILABLE)}</p>"
-        )
+        return ""
     full = business_summary_full(card)
     if not full:
-        return (
-            f'<p class="ss-company-summary ss-company-summary--empty">'
-            f"{_esc(BUSINESS_SUMMARY_UNAVAILABLE)}</p>"
-        )
+        return ""
     if len(full) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
         return f'<p class="ss-company-summary">{_esc(preview)}</p>'
     return (
@@ -103,10 +123,6 @@ def _company_summary_html(card: dict) -> str:
         f'<p class="ss-company-summary-full">{_esc(full)}</p>'
         f"</details>"
     )
-
-
-def _metric_sources_html() -> str:
-    return f'<p class="ss-metric-sources">{_esc(METRIC_SOURCE_FOOTNOTE)}</p>'
 
 
 def _metric_cell_html(card: dict, metric: str) -> str:
@@ -123,21 +139,6 @@ def _metric_cell_html(card: dict, metric: str) -> str:
         f"{gloss_html}"
         f"{bench_html}"
         f"</div>"
-    )
-
-
-def _explain_all_html() -> str:
-    blocks = []
-    for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
-        blocks.append(
-            f"<dt>{_esc(METRIC_LABELS[metric])}</dt>"
-            f"<dd>{_esc(METRIC_LEARN[metric])}</dd>"
-        )
-    return (
-        f'<details class="ss-explain-all">'
-        f"<summary>What do these metrics mean?</summary>"
-        f'<dl class="ss-explain-list">{"".join(blocks)}</dl>'
-        f"</details>"
     )
 
 
@@ -159,8 +160,8 @@ def build_card_html(
     hero = "".join(_metric_cell_html(card, m) for m in VISIBLE_METRICS)
     balance = "".join(_metric_cell_html(card, m) for m in DEEP_DIVE_METRICS)
 
-    return (
-        f'<section class="ss-card">'
+    identity = (
+        f'<section class="ss-card ss-card-identity">'
         f'<p class="ss-meta-line">{_esc(meta_line)}</p>'
         f'<p class="ss-identity">'
         f'<span class="ss-company">{_esc(company)}</span> '
@@ -169,14 +170,17 @@ def build_card_html(
         f'<div class="ss-sector-context">'
         f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
         f'<p class="ss-sector-gloss">{_esc(sector_gloss)}</p>'
-        f"{_benchmark_compare_html(card)}"
         f"</div>"
-        f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
-        f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
-        f"{_metric_sources_html()}"
-        f"{_explain_all_html()}"
         f"</section>"
     )
+    learn = _learn_panel_html(card)
+    metrics = (
+        f'<section class="ss-card ss-card-metrics">'
+        f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
+        f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
+        f"</section>"
+    )
+    return identity + learn + metrics
 
 
 def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:

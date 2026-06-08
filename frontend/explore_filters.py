@@ -13,8 +13,8 @@ SURPRISE_ME_LABEL = "Surprise me worldwide"
 
 
 def market_filter_options() -> list[tuple[str, str]]:
-    options = [(code, market_display_name(code)) for code in MARKET_DISPLAY_NAMES]
-    options.append((ALL_MARKETS, "All markets"))
+    options: list[tuple[str, str]] = [(ALL_MARKETS, "All markets")]
+    options.extend((code, market_display_name(code)) for code in MARKET_DISPLAY_NAMES)
     return options
 
 
