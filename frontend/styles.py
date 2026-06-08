@@ -367,6 +367,42 @@ section[data-testid="stSidebar"] {
     margin: 0.1rem 0 0;
     line-height: 1.4;
 }
+.ss-metric-learn-list {
+    margin: 0.35rem 0 0;
+}
+.ss-metric-learn-item {
+    border-top: 1px solid var(--ss-border);
+    padding: 0.35rem 0;
+}
+.ss-metric-learn-item summary {
+    font-size: var(--ss-caption-size);
+    font-weight: 700;
+    color: var(--ss-text);
+    cursor: pointer;
+    list-style: none;
+}
+.ss-metric-learn-item summary::-webkit-details-marker {
+    display: none;
+}
+.ss-metric-analogy {
+    font-size: var(--ss-caption-size);
+    font-weight: 600;
+    color: var(--ss-accent);
+    margin: 0.35rem 0 0.2rem;
+    line-height: 1.4;
+}
+.ss-metric-gloss-inline {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-muted);
+    margin: 0 0 0.25rem;
+    line-height: 1.35;
+}
+.ss-metric-learn-body {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-muted);
+    margin: 0;
+    line-height: 1.45;
+}
 
 .ss-card-footer {
     display: flex;
