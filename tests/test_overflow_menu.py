@@ -38,8 +38,13 @@ def test_discover_scope_surprise_me() -> None:
 
 def test_right_now_saved_tab() -> None:
     line = right_now_line(active_tab="Saved", saved_count=3)
-    assert "3 companies" in line
-    assert "learning list" in line
+    assert line == "3 saved companies on this device"
+    assert "learning list" not in line.lower()
+
+
+def test_right_now_saved_tab_singular() -> None:
+    line = right_now_line(active_tab="Saved", saved_count=1)
+    assert line == "1 saved company on this device"
 
 
 def test_right_now_search_tab() -> None:
@@ -48,7 +53,9 @@ def test_right_now_search_tab() -> None:
 
 
 def test_quick_tip_varies_by_tab() -> None:
-    assert "Save adds" in quick_tip_line(active_tab="Discover")
+    discover = quick_tip_line(active_tab="Discover")
+    assert "Save keeps" in discover
+    assert "learning list" not in discover.lower()
     assert "headlines" in quick_tip_line(active_tab="Saved")
     assert "five fundamentals" in quick_tip_line(active_tab="Search")
 

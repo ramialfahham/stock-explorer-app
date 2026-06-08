@@ -24,8 +24,8 @@ MENU_MARKETS_LINE = "Markets: US, UK, Japan, Australia, Germany"
 MENU_METRICS_LINE = "Five metrics per company — no substitutes"
 
 _DISCOVER_TIP = (
-    "Save adds to your learning list. Not now skips for later — "
-    "you can still find the company in Search."
+    "Save keeps a company on this device. Not now skips for later — "
+    "you can still find it in Search."
 )
 _SAVED_TIP = "Open a company to practice numbers or load recent headlines."
 _SEARCH_TIP = "Only companies with all five fundamentals appear here."
@@ -54,7 +54,7 @@ def right_now_line(*, active_tab: str, saved_count: int) -> str:
     tab = active_tab.strip()
     if tab == "Saved":
         noun = "company" if saved_count == 1 else "companies"
-        return f"Your learning list · {saved_count} {noun} on this device"
+        return f"{saved_count} saved {noun} on this device"
     if tab == "Search":
         return "Find any company with a complete five-metric snapshot"
     market = st.session_state.get("explore_market", ALL_MARKETS)
