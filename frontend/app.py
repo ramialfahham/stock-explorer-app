@@ -38,6 +38,7 @@ from markets import (
     eligible_breakdown_lines,
     eligible_counts_by_market,
 )
+from nav_pages import NAV_PAGES, normalize_nav_page
 from saved_matrix import render_saved_matrix, saved_card_options
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
@@ -78,6 +79,13 @@ def _init_state() -> None:
         st.session_state["explore_market"] = default_market_filter()
         st.session_state["explore_sector"] = ALL_SECTORS
         st.session_state["_explore_defaults_version"] = EXPLORE_DEFAULTS_VERSION
+
+    st.session_state["active_page"] = normalize_nav_page(st.session_state.get("active_page"))
+    if "bottom_nav" in st.session_state:
+        st.session_state["bottom_nav"] = normalize_nav_page(
+            st.session_state.get("bottom_nav"),
+            fallback=st.session_state["active_page"],
+        )
 
 
 def _load_cards(client) -> list[dict]:
@@ -230,21 +238,28 @@ def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: boo
     )
 
 
-def _render_bottom_nav(saved_count: int) -> None:
-    saved_label = f"Saved ({saved_count})" if saved_count else "Saved"
-    active = st.session_state.get("active_page", "Discover")
-    default_nav = saved_label if active == "Saved" else active
+def _render_bottom_nav() -> str:
+    prior_active = normalize_nav_page(st.session_state.get("active_page"))
+    if "bottom_nav" in st.session_state:
+        st.session_state["bottom_nav"] = normalize_nav_page(
+            st.session_state.get("bottom_nav"),
+            fallback=prior_active,
+        )
 
     st.markdown('<div class="ss-bottom-nav-marker"></div>', unsafe_allow_html=True)
     page = st.segmented_control(
         "Navigation",
-        options=["Discover", saved_label, "Search"],
-        default=default_nav,
+        options=list(NAV_PAGES),
+        default=prior_active,
         label_visibility="collapsed",
         key="bottom_nav",
     )
-    if page:
-        st.session_state["active_page"] = "Saved" if page.startswith("Saved") else page
+    selected = normalize_nav_page(
+        page or st.session_state.get("bottom_nav"),
+        fallback=prior_active,
+    )
+    st.session_state["active_page"] = selected
+    return selected
 
 
 def _queue_index_for_card(card: dict) -> int:
@@ -493,10 +508,9 @@ def _discovery_page(client) -> None:
 
     _ensure_all_cards(client)
     saved_count = _saved_count(interactions)
-    active = st.session_state.get("active_page", "Discover")
 
     _render_brand_header(saved_count=saved_count, client=client)
-    _render_bottom_nav(saved_count)
+    active = _render_bottom_nav()
 
     if active == "Discover":
         _render_explore_filters(client)
