@@ -3,8 +3,8 @@ version: 2
 models:
   - name: mart_stock_cards
     description: >
-      **What:** Supabase export dataset for Streamlit stock swipe cards.
-      **Grain:** One row per (market_code, ticker, snapshot_date).
+      **What:** Supabase export dataset for Streamlit stock swipe cards (card-eligible rows only).
+      **Grain:** One row per (market_code, ticker, snapshot_date) where is_card_eligible.
       **Source:** int_stock__card_metrics left join int_stock__sector_benchmarks.
       **Used by:** export_to_supabase.py, Streamlit app.
     meta:
@@ -28,6 +28,10 @@ models:
                 and net_debt_to_ebitda is not null
                 and fcf_margin_pct is not null
               )
+      - dbt_utils.expression_is_true:
+          name: mart_stock_cards_all_rows_eligible
+          arguments:
+            expression: is_card_eligible = true
     columns:
       - name: market_code
         description: >
@@ -94,3 +98,56 @@ models:
           Fundamentals as-of date exported with the card row.
         data_tests:
           - not_null
+
+  - name: mart_stock_eligibility_gaps
+    description: >
+      **What:** QA mart of tickers failing the five-metric eligibility gate.
+      **Grain:** One row per (market_code, ticker, snapshot_date) where NOT is_card_eligible.
+      **Source:** int_stock__card_metrics.
+      **Used by:** check_eligibility_gaps.py (ops/CI). Not exported to Supabase.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: medium
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+              - snapshot_date
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: is_card_eligible = false
+      - dbt_utils.expression_is_true:
+          name: eligibility_gaps_missing_metrics_non_empty
+          arguments:
+            expression: len(missing_metrics) > 0
+    columns:
+      - name: market_code
+        description: >
+          Registry partition key for the ineligible ticker row.
+        data_tests:
+          - not_null
+      - name: ticker
+        description: >
+          Provider symbol failing the eligibility gate.
+        data_tests:
+          - not_null
+      - name: snapshot_date
+        description: >
+          Fundamentals as-of date for the gap row.
+        data_tests:
+          - not_null
+      - name: company_name
+        description: >
+          Company display name for ops debugging.
+      - name: sector
+        description: >
+          Sector label for grouping gap patterns.
+      - name: missing_metrics
+        description: >
+          List of null card metric column names blocking eligibility.
+      - name: is_card_eligible
+        description: >
+          Always false on this mart.

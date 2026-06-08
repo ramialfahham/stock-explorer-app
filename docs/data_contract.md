@@ -127,6 +127,10 @@ A ticker is **`is_card_eligible = true`** when **all five** metrics are non-null
 
 Missing any metric → excluded from discovery queue.
 
+**`missing_metrics`** (DuckDB-only, on `int_stock__card_metrics` and `mart_stock_eligibility_gaps`):
+VARCHAR list of the five metric column names that are null for that snapshot.
+Empty when eligible. Used for pipeline QA — **not** exported to Supabase.
+
 Field-level mapping and dbt formulas: **§ yfinance raw field mapping** above.
 
 ---

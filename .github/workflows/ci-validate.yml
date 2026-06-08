@@ -76,6 +76,9 @@ jobs:
       - name: Eligibility baseline check
         run: python scripts/check_eligibility_baseline.py --duckdb-path /tmp/stock_data_ci.db
 
+      - name: Eligibility gaps summary
+        run: python scripts/check_eligibility_gaps.py --duckdb-path /tmp/stock_data_ci.db
+
       - name: dbt docs generate
         run: dbt docs generate --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
 

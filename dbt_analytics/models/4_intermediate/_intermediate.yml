@@ -29,6 +29,12 @@ models:
                 and net_debt_to_ebitda is not null
                 and fcf_margin_pct is not null
               )
+      - dbt_utils.expression_is_true:
+          name: card_metrics_missing_metrics_consistent_with_eligibility
+          arguments:
+            expression: >-
+              (is_card_eligible and len(missing_metrics) = 0)
+              or (not is_card_eligible and len(missing_metrics) > 0)
     columns:
       - name: market_code
         description: >
@@ -76,6 +82,10 @@ models:
       - name: is_card_eligible
         description: >
           True when all five card metrics are non-null; false excludes ticker from discovery queue.
+      - name: missing_metrics
+        description: >
+          VARCHAR list of card metric column names that are null for this snapshot.
+          Empty list when is_card_eligible is true. Internal QA only — not exported to Supabase.
 
   - name: int_stock__sector_benchmarks
     description: >
@@ -174,6 +184,7 @@ unit_tests:
             revenue_growth_yoy_pct: 8.0,
             net_debt_to_ebitda: 2.0,
             fcf_margin_pct: 25.0,
+            missing_metrics: [],
           }
   - name: card_metrics_ineligible_when_net_debt_missing
     model: int_stock__card_metrics
@@ -210,6 +221,44 @@ unit_tests:
             ticker: T2,
             is_card_eligible: false,
             net_debt_to_ebitda: null,
+            missing_metrics: [net_debt_to_ebitda],
+          }
+  - name: card_metrics_near_miss_one_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T_NEAR,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: null,
+              stmt_free_cash_flow: null,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T_NEAR,
+              company_name: Near Miss Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T_NEAR,
+            is_card_eligible: false,
+            fcf_margin_pct: null,
+            missing_metrics: [fcf_margin_pct],
           }
   - name: card_metrics_ineligible_when_ebitda_zero
     model: int_stock__card_metrics
@@ -246,6 +295,7 @@ unit_tests:
             ticker: T3,
             is_card_eligible: false,
             net_debt_to_ebitda: null,
+            missing_metrics: [net_debt_to_ebitda],
           }
   - name: card_metrics_net_debt_from_total_debt_minus_cash
     model: int_stock__card_metrics
