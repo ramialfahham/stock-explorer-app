@@ -38,6 +38,7 @@ from markets import (
     eligible_breakdown_lines,
     eligible_counts_by_market,
 )
+from saved_matrix import render_saved_matrix, saved_card_options
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
 from supabase_client import get_anon_client
@@ -422,29 +423,29 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         st.info("Nothing saved yet — tap Save in Discover.")
         return
 
-    for card in saved_cards:
-        key = _card_key(card)
-        label = html.escape(card.get("company_name") or card.get("ticker") or "Unknown")
-        ticker = html.escape(card.get("ticker") or "—")
-        sector = html.escape(card.get("sector") or "Unknown sector")
-        row_text, row_action = st.columns([4, 1])
-        with row_text:
-            st.markdown(
-                f'<p class="ss-saved-name">{label} · '
-                f'<span class="ss-saved-ticker">{ticker}</span></p>'
-                f'<p class="ss-saved-sector">{sector}</p>',
-                unsafe_allow_html=True,
-            )
-        with row_action:
-            if st.button("Open", key=f"saved_open_{key[0]}_{key[1]}", use_container_width=True):
-                st.session_state["saved_selected_key"] = key
-                st.rerun()
+    render_saved_matrix(saved_cards)
 
-    selected_key = st.session_state.get("saved_selected_key")
-    if selected_key:
-        selected = next((c for c in saved_cards if _card_key(c) == selected_key), None)
-        if selected:
-            render_stock_card(selected, widget_key_prefix="saved")
+    options = saved_card_options(saved_cards)
+    labels = [label for label, _ in options]
+    keys = [key for _, key in options]
+    selected_label = st.selectbox(
+        "Full company snapshot",
+        options=labels,
+        index=0,
+        key="saved_detail_select",
+    )
+    selected_key = keys[labels.index(selected_label)]
+    market_code, ticker = selected_key.split("::", 1)
+    selected = next(
+        (
+            c
+            for c in saved_cards
+            if c["market_code"] == market_code and c["ticker"] == ticker
+        ),
+        None,
+    )
+    if selected:
+        render_stock_card(selected, widget_key_prefix="saved")
 
 
 def _render_search_tab(client) -> None:
