@@ -100,10 +100,10 @@ without scrolling; Save remains reachable.
 
 | Rule | Behavior |
 |------|----------|
-| Default scope | **S&P 500 · All sectors** — not the full mixed worldwide queue |
+| Default scope | **All markets · All sectors** — not the full mixed worldwide queue |
 | Filters | Market (registry markets or All), optional sector; client-side on exported mart |
 | Browse | Scrollable list in scope — pick a company to open the same snapshot |
-| Walk | **Next company** advances within the filtered queue; position copy is scope-aware (e.g. `3 of 47 in S&P 500 · Technology`) — not a global universe total |
+| Walk | **Next company** advances within the filtered queue; position copy is scope-aware (e.g. `3 of 47`) — market/sector live in filters and card sector header, not repeated on the card meta line |
 | Surprise me worldwide | Explicit opt-in — restores mixed round-robin across all markets |
 | Cards per session | **No limit** |
 | Ordering (walk) | Round-robin within scope, unseen first, sector-balanced |
