@@ -7,8 +7,8 @@ Derived from premortem analysis and [`north_star.md`](north_star.md). **Product 
 | # | Criterion | Status (2026-06) |
 |---|-----------|------------------|
 | 1 | First-time user saves one company on first visit and finds it after hard refresh | **Shipped** — localStorage Save/Skip, landing page |
-| 2 | Weekly pipeline green; UI shows data freshness date | **Partial** — `snapshot_date` on card; confirm pipeline cadence in ops |
-| 3 | One hero market experience feels intentional | **Not started** — next product slice |
+| 2 | Weekly pipeline green; UI shows data freshness date | **Partial** — `snapshot_date` on card; run export after merge for production data |
+| 3 | One hero market experience feels intentional | **Shipped** — S&P 500 hero copy, eligible counts, queue starts US-first |
 | 4 | Less than one day per month on infra firefighting | **Ongoing** — monitor CI + Supabase migrate |
 
 ---
@@ -32,6 +32,7 @@ Derived from premortem analysis and [`north_star.md`](north_star.md). **Product 
 | Company business summary | Pipeline → mart → card blurb (`business_summary`) |
 | On-demand live quote | yfinance tap on footer; not in mart |
 | localStorage mount fix | Single `local_storage_manager` mount per run (#56) |
+| Hero market (S&P 500) | US-first queue, eligible-count header, market breakdown, landing copy |
 
 ---
 
@@ -40,17 +41,14 @@ Derived from premortem analysis and [`north_star.md`](north_star.md). **Product 
 ```mermaid
 flowchart LR
   Ops1[Pipeline + export health]
-  Hero[Hero market polish]
-  Docs[Docs aligned]
-  Ops1 --> Hero
-  Hero --> Phase2[Phase 2 spike]
+  Phase2[Phase 2 spike]
+  Ops1 --> Phase2
 ```
 
 | Priority | Work | Scope |
 |----------|------|--------|
 | P0 | **Ops** | Weekly pipeline green; migration 004 applied; re-export for `business_summary`; refresh eligibility baseline after healthy run |
-| P1 | **Hero market** | One market (e.g. US) with intentional copy, eligible-count transparency, queue feel |
-| P2 | **Phase 2 spike** | News feed or skipped-list — only after success criteria 1–2 stable |
+| P1 | **Phase 2 spike** | News feed or skipped-list — only after success criteria 1–2 stable |
 
 ---
 
