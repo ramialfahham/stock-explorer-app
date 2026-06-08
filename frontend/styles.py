@@ -54,11 +54,19 @@ section[data-testid="stSidebar"] {
 
 /* Header */
 .ss-brand {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--ss-text);
     letter-spacing: -0.02em;
     padding-top: 0.15rem;
+    line-height: 1.2;
+}
+.ss-brand-tagline {
+    font-size: 0.78rem;
+    color: var(--ss-muted);
+    margin: 0.12rem 0 0.35rem;
+    line-height: 1.35;
+    max-width: 22rem;
 }
 .ss-header-stats {
     font-size: var(--ss-caption-size);
@@ -169,6 +177,19 @@ section[data-testid="stSidebar"] {
     margin: 0;
     line-height: 1.45;
     white-space: pre-wrap;
+}
+
+.ss-company-summary--empty {
+    color: var(--ss-caption);
+    font-style: italic;
+    margin: 0 0 0.55rem;
+}
+
+.ss-metric-sources {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0.35rem 0 0.45rem;
+    line-height: 1.35;
 }
 
 .ss-median-primer,

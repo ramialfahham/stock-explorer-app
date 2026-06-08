@@ -82,6 +82,12 @@ jobs:
       - name: Enforce dbt documentation
         run: python scripts/check_dbt_documentation.py
 
+      - name: Unit tests
+        run: pip install pytest && python -m pytest tests/ -q
+
+      - name: Metric audit script smoke (offline)
+        run: python scripts/audit_mart_vs_yfinance.py --duckdb-path /tmp/stock_data_ci.db --offline --sample-size 5
+
   gate:
     needs: validate
     if: always()

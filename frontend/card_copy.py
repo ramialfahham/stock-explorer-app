@@ -4,7 +4,7 @@ from datetime import date
 
 METRIC_HELP = {
     "forward_pe": "Forward P/E compares today's share price to expected earnings over the next year.",
-    "ebit_margin_pct": "EBIT margin shows how much profit the company keeps from sales before interest and taxes.",
+    "ebit_margin_pct": "Operating margin shows how much profit the company keeps from sales before interest and taxes (Yahoo operatingMargins).",
     "revenue_growth_yoy_pct": "Revenue growth YoY shows how fast sales grew compared with a year ago.",
     "net_debt_to_ebitda": "Net debt / EBITDA shows how many years of operating profit would repay net debt.",
     "fcf_margin_pct": "FCF margin shows free cash left from each dollar of revenue after running the business.",
@@ -15,7 +15,7 @@ METRIC_GLOSS = {
     "ebit_margin_pct": "Operating profit as share of sales",
     "revenue_growth_yoy_pct": "Sales growth vs one year ago",
     "net_debt_to_ebitda": "Years of profit to repay net debt",
-    "fcf_margin_pct": "Free cash left from each sales dollar",
+    "fcf_margin_pct": "Free cash left from each sales dollar (latest annual statements)",
 }
 
 METRIC_LEARN = {
@@ -25,9 +25,8 @@ METRIC_LEARN = {
         "A higher number often means investors expect faster growth — or are paying a premium today."
     ),
     "ebit_margin_pct": (
-        "EBIT is profit from core operations before interest and taxes. "
-        "EBIT margin expresses that profit as a share of revenue — it shows how efficiently a company "
-        "turns sales into operating profit."
+        "This card uses Yahoo's operatingMargins field — operating profit as a share of revenue. "
+        "Yahoo Key Statistics may label a similar figure as operating or EBIT margin with a different period."
     ),
     "revenue_growth_yoy_pct": (
         "Year-over-year (YoY) growth compares revenue today with the same period one year ago. "
@@ -41,17 +40,17 @@ METRIC_LEARN = {
     ),
     "fcf_margin_pct": (
         "Free cash flow (FCF) is cash left after running and investing in the business. "
-        "FCF margin shows that cash as a percentage of revenue. "
-        "It hints at whether a company can fund dividends, buybacks, or growth without borrowing more."
+        "This card computes FCF margin from the latest annual cash flow and income statements — "
+        "not Yahoo's trailing Key Statistics ratio. Run the metric audit script to compare."
     ),
 }
 
 METRIC_LABELS = {
     "forward_pe": "Forward P/E",
-    "ebit_margin_pct": "EBIT margin",
+    "ebit_margin_pct": "Operating margin",
     "revenue_growth_yoy_pct": "Rev growth YoY",
     "net_debt_to_ebitda": "Net debt / EBITDA",
-    "fcf_margin_pct": "FCF margin",
+    "fcf_margin_pct": "FCF margin (annual)",
 }
 
 ALL_METRICS = (
@@ -171,7 +170,21 @@ def freshness_line(card: dict) -> str | None:
     formatted = format_snapshot_date(card.get("snapshot_date"))
     if not formatted:
         return None
-    return f"As of {formatted}"
+    line = f"As of {formatted}"
+    raw = card.get("snapshot_date")
+    parsed = None
+    if isinstance(raw, str):
+        try:
+            parsed = date.fromisoformat(raw[:10])
+        except ValueError:
+            parsed = None
+    elif isinstance(raw, date):
+        parsed = raw
+    if parsed is not None:
+        age = (date.today() - parsed).days
+        if age > STALE_SNAPSHOT_DAYS:
+            line += f" · data may be up to {age} days old"
+    return line
 
 
 def format_metric_value(metric: str, value: float | None) -> str:
@@ -199,6 +212,15 @@ def benchmark_line(card: dict, metric: str, median_key: str, direction: str) -> 
 
 
 BUSINESS_SUMMARY_PREVIEW_CHARS = 120
+BUSINESS_SUMMARY_UNAVAILABLE = "Company overview not available from Yahoo for this ticker."
+
+METRIC_SOURCE_FOOTNOTE = (
+    "Fundamentals from weekly pipeline export (Yahoo via yfinance). "
+    "Operating margin = operatingMargins; FCF margin = latest annual statements. "
+    "See docs/metric_audit.md to compare with live Yahoo."
+)
+
+STALE_SNAPSHOT_DAYS = 7
 
 
 def business_summary_preview(card: dict) -> str | None:
