@@ -49,14 +49,32 @@ def _snapshot_sort_key(card: dict[str, Any]) -> str:
     return str(raw)[:10]
 
 
+def _has_business_summary(card: dict[str, Any]) -> bool:
+    raw = card.get("business_summary") or card.get("longBusinessSummary")
+    return bool(str(raw or "").strip())
+
+
 def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Keep one row per (market_code, ticker) — latest snapshot_date wins."""
     latest: dict[tuple[str, str], dict[str, Any]] = {}
     for card in cards:
         key = _card_key(card)
         prev = latest.get(key)
-        if prev is None or _snapshot_sort_key(card) > _snapshot_sort_key(prev):
+        if prev is None:
             latest[key] = card
+            continue
+        card_key = _snapshot_sort_key(card)
+        prev_key = _snapshot_sort_key(prev)
+        if card_key > prev_key:
+            winner, loser = card, prev
+        elif card_key < prev_key:
+            winner, loser = prev, card
+        else:
+            winner, loser = prev, card
+        merged = dict(winner)
+        if not _has_business_summary(merged) and _has_business_summary(loser):
+            merged["business_summary"] = loser.get("business_summary")
+        latest[key] = merged
     return list(latest.values())
 
 

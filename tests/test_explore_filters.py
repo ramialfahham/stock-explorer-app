@@ -96,6 +96,28 @@ def test_filter_pool_excludes_saved() -> None:
     assert [c["ticker"] for c in pool] == ["MSFT"]
 
 
+def test_dedupe_coalesces_summary_from_older_snapshot() -> None:
+    cards = [
+        {
+            "market_code": "us_sp500",
+            "ticker": "TEST",
+            "snapshot_date": "2026-06-09",
+            "business_summary": None,
+        },
+        {
+            "market_code": "us_sp500",
+            "ticker": "TEST",
+            "snapshot_date": "2026-05-01",
+            "business_summary": "Older snapshot summary text.",
+        },
+    ]
+    from explore_filters import dedupe_to_latest_snapshot
+
+    deduped = dedupe_to_latest_snapshot(cards)
+    assert len(deduped) == 1
+    assert deduped[0]["business_summary"] == "Older snapshot summary text."
+
+
 def test_cards_lack_business_summary_when_column_missing() -> None:
     cards = [_card("AAPL", "Technology")]
     assert cards_lack_business_summary(cards) is True
