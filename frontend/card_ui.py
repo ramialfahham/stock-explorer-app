@@ -151,16 +151,16 @@ def _company_summary_html(card: dict) -> str:
     if not business_summary_is_truncated(card):
         return f'<p class="ss-company-summary">{_esc(full)}</p>'
     return (
+        f'<div class="ss-company-about-wrap">'
+        f'<p class="ss-company-summary-preview">{_esc(preview)}</p>'
         f'<details class="ss-company-about">'
         f'<summary class="ss-company-summary-toggle">'
-        f'<span class="ss-company-summary-preview">{_esc(preview)}</span>'
-        f'<span class="ss-company-summary-action">'
         f'<span class="ss-company-summary-more">Read full description</span>'
         f'<span class="ss-company-summary-less">Show less</span>'
-        f"</span>"
         f"</summary>"
         f'<p class="ss-company-summary-full">{_esc(full)}</p>'
         f"</details>"
+        f"</div>"
     )
 
 
