@@ -64,5 +64,8 @@ jobs:
       - name: Eligibility drop check
         run: python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db
 
+      - name: Export health check
+        run: python scripts/check_export_health.py --duckdb-path storage/stock_data.db
+
       - name: Export to Supabase
         run: python scripts/export_to_supabase.py --duckdb-path storage/stock_data.db
