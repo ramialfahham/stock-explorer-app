@@ -22,6 +22,7 @@ from explore_filters import (
     ALL_MARKETS,
     ALL_SECTORS,
     browse_row_subtitle,
+    cards_lack_business_summary,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
@@ -42,7 +43,7 @@ from supabase_client import get_anon_client
 load_dotenv()
 
 EXPLORE_DEFAULTS_VERSION = 3
-CARDS_CACHE_VERSION = 1
+CARDS_CACHE_VERSION = 2
 
 st.set_page_config(
     page_title=PRODUCT_NAME,
@@ -97,6 +98,9 @@ def _load_cards(client) -> list[dict]:
 
 def _ensure_all_cards(client) -> list[dict]:
     cards = st.session_state.get("all_cards") or []
+    if cards and cards_lack_business_summary(cards):
+        cards = []
+        st.session_state["all_cards"] = []
     if not cards:
         cards = _load_cards(client)
         st.session_state["all_cards"] = cards
