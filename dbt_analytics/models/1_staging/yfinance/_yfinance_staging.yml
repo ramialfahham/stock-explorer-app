@@ -216,6 +216,9 @@ models:
       - name: info_business_summary
         description: >
           Raw Yahoo longBusinessSummary; company description for card context.
+      - name: info_founded_year
+        description: >
+          Raw Yahoo founded year when available; nullable on most tickers.
       - name: stmt_total_revenue
         description: >
           Total Revenue from latest annual income statement column.

@@ -314,21 +314,9 @@ def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str |
     return _BENCHMARK_INDICATOR_LABELS[position]
 
 
-BUSINESS_SUMMARY_PREVIEW_CHARS = 120
-
 STALE_SNAPSHOT_DAYS = 7
 
-
-def business_summary_preview(card: dict) -> str | None:
-    raw = card.get("business_summary")
-    if raw is None:
-        return None
-    text = str(raw).strip()
-    if not text:
-        return None
-    if len(text) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
-        return text
-    return text[:BUSINESS_SUMMARY_PREVIEW_CHARS].rstrip() + "…"
+_FOUNDED_YEAR_MIN = 1800
 
 
 def business_summary_full(card: dict) -> str | None:
@@ -337,3 +325,51 @@ def business_summary_full(card: dict) -> str | None:
         return None
     text = str(raw).strip()
     return text or None
+
+
+def first_sentence(text: str) -> str:
+    """Return the first sentence from Yahoo longBusinessSummary-style prose."""
+    normalized = " ".join(text.split())
+    if not normalized:
+        return ""
+    period_space = normalized.find(". ")
+    if period_space == -1:
+        return normalized.rstrip(".")
+    return normalized[: period_space + 1].strip()
+
+
+def _valid_founded_year(raw: object | None) -> int | None:
+    if raw is None:
+        return None
+    try:
+        year = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if year < _FOUNDED_YEAR_MIN or year > date.today().year:
+        return None
+    return year
+
+
+def company_plain_summary_line(card: dict) -> str | None:
+    """One scannable plain-language line for the card face (Tier 2 gloss)."""
+    raw = business_summary_full(card)
+    if not raw:
+        return None
+    sentence = first_sentence(raw)
+    if not sentence:
+        return None
+    founded = _valid_founded_year(card.get("company_founded_year"))
+    if founded is not None:
+        return f"Founded {founded} · {sentence}"
+    return sentence
+
+
+def company_summary_has_full_description(card: dict) -> bool:
+    """True when Yahoo text is materially longer than the plain first sentence."""
+    full = business_summary_full(card)
+    if not full:
+        return False
+    sentence = first_sentence(full)
+    if not sentence:
+        return False
+    return len(full.strip()) > len(sentence) + 15

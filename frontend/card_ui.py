@@ -8,7 +8,6 @@ import streamlit as st
 
 from card_copy import (
     BENCHMARK_METRICS,
-    BUSINESS_SUMMARY_PREVIEW_CHARS,
     DEEP_DIVE_METRICS,
     MEDIAN_PRIMER,
     METRIC_ANALOGY,
@@ -22,7 +21,8 @@ from card_copy import (
     benchmark_indicator,
     benchmark_indicator_label,
     business_summary_full,
-    business_summary_preview,
+    company_plain_summary_line,
+    company_summary_has_full_description,
     format_metric_value,
     freshness_line,
     sector_gloss_line,
@@ -135,18 +135,19 @@ def _learn_panel_html(card: dict) -> str:
 
 
 def _company_summary_html(card: dict) -> str:
-    preview = business_summary_preview(card)
-    if not preview:
+    plain = company_plain_summary_line(card)
+    if not plain:
         return ""
+    block = f'<p class="ss-company-summary">{_esc(plain)}</p>'
+    if not company_summary_has_full_description(card):
+        return block
     full = business_summary_full(card)
     if not full:
-        return ""
-    if len(full) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
-        return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+        return block
     return (
-        f'<p class="ss-company-summary">{_esc(preview)}</p>'
+        f"{block}"
         f'<details class="ss-company-about">'
-        f"<summary>About this company</summary>"
+        f"<summary>Full description</summary>"
         f'<p class="ss-company-summary-full">{_esc(full)}</p>'
         f"</details>"
     )

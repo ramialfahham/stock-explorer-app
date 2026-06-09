@@ -166,14 +166,10 @@ section[data-testid="stSidebar"] {
 }
 
 .ss-company-summary {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
+    font-size: var(--ss-body-size);
+    color: var(--ss-body);
     margin: 0 0 0.55rem;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    line-height: 1.45;
 }
 
 .ss-company-about {

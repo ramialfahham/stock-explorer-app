@@ -162,6 +162,9 @@ models:
       - name: info_business_summary
         description: >
           Deduped raw longBusinessSummary company description.
+      - name: info_founded_year
+        description: >
+          Deduped raw Yahoo founded year when available.
       - name: stmt_total_revenue
         description: >
           Deduped latest-annual Total Revenue.

@@ -16,6 +16,7 @@ NEW_COLUMNS = [
     "stmt_operating_income",
     "stmt_operating_revenue",
     "stmt_operating_expense",
+    "info_founded_year",
 ]
 
 

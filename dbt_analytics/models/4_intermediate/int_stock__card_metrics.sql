@@ -61,6 +61,7 @@ metrics as (
         coalesce(s.info_sector, st.sector) as sector,
         coalesce(s.info_currency, st.currency) as currency,
         s.info_business_summary as business_summary,
+        s.info_founded_year as company_founded_year,
         s.info_forward_pe as forward_pe,
         case
             when s.eff_qtr_op_0 is not null

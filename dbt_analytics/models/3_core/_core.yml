@@ -160,6 +160,9 @@ models:
       - name: info_business_summary
         description: >
           Yahoo longBusinessSummary on latest snapshot; exported as business_summary on cards.
+      - name: info_founded_year
+        description: >
+          Yahoo founded year on latest snapshot; exported as company_founded_year on cards.
       - name: stmt_total_revenue
         description: >
           Latest annual Total Revenue for FCF margin denominator.

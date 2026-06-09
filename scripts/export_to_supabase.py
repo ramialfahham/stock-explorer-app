@@ -22,6 +22,7 @@ EXPORT_COLUMNS = [
     "sector",
     "currency",
     "business_summary",
+    "company_founded_year",
     "forward_pe",
     "ebit_margin_pct",
     "ebit_margin_basis",
