@@ -425,20 +425,6 @@ def _saved_row_key(card: dict) -> str:
     return f"{card['market_code']}::{card['ticker']}"
 
 
-def _render_saved_list_row(card: dict) -> None:
-    company = card.get("company_name") or card.get("ticker") or "Unknown"
-    subtitle = saved_row_subtitle(card)
-    st.markdown(
-        f"""
-<div class="ss-saved-row">
-  <p class="ss-saved-name">{html.escape(company)}</p>
-  <p class="ss-saved-sector">{html.escape(subtitle)}</p>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-
 def _render_saved_tab(client, interactions: list[dict]) -> None:
     saved_cards = _saved_cards(client, interactions)
 
@@ -493,7 +479,6 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         st.rerun()
         return
 
-    _render_saved_list_row(selected)
     render_saved_news(selected, widget_key_prefix="saved")
     render_stock_card(selected, widget_key_prefix="saved")
 
