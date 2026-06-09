@@ -21,11 +21,11 @@ from discovery_queue import build_queue
 from explore_filters import (
     ALL_MARKETS,
     ALL_SECTORS,
-    SURPRISE_ME_LABEL,
     browse_row_subtitle,
     dedupe_to_latest_snapshot,
     default_market_filter,
     filter_pool,
+    filter_scope_summary,
     market_filter_options,
     sectors_for_market,
     walk_progress_line,
@@ -34,7 +34,6 @@ from landing import render_landing
 from markets import HERO_MARKET_CODE, eligible_counts_by_market, latest_snapshot_label
 from nav_pages import NAV_PAGES, normalize_nav_page
 from overflow_menu import render_overflow_menu
-from saved_compare import compare_partner_options, render_compare_two
 from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
@@ -42,7 +41,7 @@ from supabase_client import get_anon_client
 
 load_dotenv()
 
-EXPLORE_DEFAULTS_VERSION = 2
+EXPLORE_DEFAULTS_VERSION = 3
 
 st.set_page_config(
     page_title=PRODUCT_NAME,
@@ -59,13 +58,11 @@ def _init_state() -> None:
         "market_index": 0,
         "sector_shown": {},
         "saved_focus_key": None,
-        "saved_compare_key": None,
         "search_selected": None,
         "browse_selected_key": None,
         "active_page": "Discover",
         "explore_market": default_market_filter(),
         "explore_sector": ALL_SECTORS,
-        "explore_surprise_me": False,
         "all_cards": [],
     }
     for key, value in defaults.items():
@@ -108,13 +105,10 @@ def _ensure_all_cards(client) -> list[dict]:
     return cards
 
 
-def _explore_filters() -> tuple[str, str, bool]:
+def _explore_filters() -> tuple[str, str]:
     market = st.session_state.get("explore_market", default_market_filter())
     sector = st.session_state.get("explore_sector", ALL_SECTORS)
-    surprise = bool(st.session_state.get("explore_surprise_me"))
-    if surprise:
-        market = ALL_MARKETS
-    return market, sector, surprise
+    return market, sector
 
 
 def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
@@ -124,15 +118,14 @@ def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     counts = eligible_counts_by_market(cards)
     st.session_state["eligible_counts"] = counts
 
-    market, sector, surprise = _explore_filters()
+    market, sector = _explore_filters()
     pool = filter_pool(
         cards,
         interactions,
         market_code=market,
         sector=sector,
-        surprise_me=surprise,
     )
-    start_market = None if surprise or market == ALL_MARKETS else market
+    start_market = None if market == ALL_MARKETS else market
     st.session_state["queue"] = build_queue(
         pool,
         interactions,
@@ -199,7 +192,6 @@ def _card_key(card: dict) -> tuple[str, str]:
 
 def _clear_saved_session() -> None:
     st.session_state["saved_focus_key"] = None
-    st.session_state["saved_compare_key"] = None
 
 
 def _render_brand_header() -> None:
@@ -305,43 +297,40 @@ def _on_filter_change() -> None:
 
 def _render_explore_filters(client) -> None:
     cards = _ensure_all_cards(client)
-    surprise = st.checkbox(
-        SURPRISE_ME_LABEL,
-        key="explore_surprise_me",
-        on_change=_on_filter_change,
-        help="Walk the full mixed queue across all markets — not the default scoped explore.",
-    )
+    market, sector = _explore_filters()
+    summary = filter_scope_summary(market_code=market, sector=sector)
 
-    if not surprise:
-        market_labels = {code: label for code, label in market_filter_options()}
-        market_codes = [code for code, _ in market_filter_options()]
-        st.selectbox(
-            "Market",
-            options=market_codes,
-            format_func=lambda code: market_labels[code],
-            key="explore_market",
-            on_change=_on_filter_change,
-            label_visibility="collapsed",
+    filter_btn, summary_col = st.columns([2, 5], vertical_alignment="center")
+    with filter_btn:
+        with st.popover("Filters"):
+            market_labels = {code: label for code, label in market_filter_options()}
+            market_codes = [code for code, _ in market_filter_options()]
+            st.selectbox(
+                "Market",
+                options=market_codes,
+                format_func=lambda code: market_labels[code],
+                key="explore_market",
+                on_change=_on_filter_change,
+            )
+            current_market = st.session_state.get("explore_market", default_market_filter())
+            sector_options = [ALL_SECTORS] + sectors_for_market(
+                cards,
+                market_code=current_market,
+            )
+            if st.session_state.get("explore_sector") not in sector_options:
+                st.session_state["explore_sector"] = ALL_SECTORS
+            st.selectbox(
+                "Sector",
+                options=sector_options,
+                format_func=lambda value: "All sectors" if value == ALL_SECTORS else value,
+                key="explore_sector",
+                on_change=_on_filter_change,
+            )
+    with summary_col:
+        st.markdown(
+            f'<p class="ss-filter-summary">{html.escape(summary)}</p>',
+            unsafe_allow_html=True,
         )
-    else:
-        st.session_state["explore_market"] = ALL_MARKETS
-
-    market, sector, surprise = _explore_filters()
-    sector_options = [ALL_SECTORS] + sectors_for_market(
-        cards,
-        market_code=market,
-        surprise_me=surprise,
-    )
-    if st.session_state.get("explore_sector") not in sector_options:
-        st.session_state["explore_sector"] = ALL_SECTORS
-    st.selectbox(
-        "Sector",
-        options=sector_options,
-        format_func=lambda value: "All sectors" if value == ALL_SECTORS else value,
-        key="explore_sector",
-        on_change=_on_filter_change,
-        label_visibility="collapsed",
-    )
 
 
 def _render_browse_list(cards: list[dict]) -> None:
@@ -380,7 +369,7 @@ def _render_discover_tab(client) -> bool:
         st.info("No companies left in this scope — try another market, sector, or clear filters.")
         return False
 
-    market, sector, surprise = _explore_filters()
+    market, sector = _explore_filters()
     browse_key = st.session_state.get("browse_selected_key")
     card: dict | None = None
     idx = st.session_state["queue_index"]
@@ -424,7 +413,6 @@ def _render_discover_tab(client) -> bool:
         get_interactions(),
         market_code=market,
         sector=sector,
-        surprise_me=surprise,
     )
     with st.expander(f"Browse {len(browse_pool)} companies in this scope", expanded=False):
         _render_browse_list(browse_pool)
@@ -456,17 +444,11 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         st.info("Nothing saved yet — tap **Save** in Discover to build your learning list on this device.")
         return
 
-    if len(saved_cards) == 1:
-        only_key = _saved_row_key(saved_cards[0])
-        if st.session_state.get("saved_focus_key") != only_key:
-            st.session_state["saved_focus_key"] = only_key
-
     focus_key = st.session_state.get("saved_focus_key")
 
     if focus_key:
         if st.button("← Back to list", key="saved_back_to_list", use_container_width=False):
             st.session_state["saved_focus_key"] = None
-            st.session_state["saved_compare_key"] = None
             st.rerun()
     else:
         snapshot_label = latest_snapshot_label(saved_cards)
@@ -511,36 +493,6 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
 
     _render_saved_list_row(selected)
     render_saved_news(selected, widget_key_prefix="saved")
-
-    compare_options = compare_partner_options(saved_cards, selected)
-    if len(compare_options) >= 1:
-        labels = [label for label, _ in compare_options]
-        keys = [key for _, key in compare_options]
-        pick = st.selectbox(
-            "Compare with another saved company",
-            options=["—"] + labels,
-            key="saved_compare_select",
-        )
-        if pick and pick != "—":
-            partner_key = keys[labels.index(pick)]
-            st.session_state["saved_compare_key"] = partner_key
-        else:
-            st.session_state["saved_compare_key"] = None
-
-        compare_key = st.session_state.get("saved_compare_key")
-        if compare_key:
-            market_code, ticker = compare_key.split("::", 1)
-            partner = next(
-                (
-                    c
-                    for c in saved_cards
-                    if c["market_code"] == market_code and c["ticker"] == ticker
-                ),
-                None,
-            )
-            if partner:
-                render_compare_two(selected, partner)
-
     render_stock_card(selected, widget_key_prefix="saved")
 
 

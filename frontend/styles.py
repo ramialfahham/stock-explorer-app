@@ -281,31 +281,30 @@ section[data-testid="stSidebar"] {
     font-weight: 600;
 }
 
+.ss-filter-summary {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-muted);
+    margin: 0;
+    line-height: 1.35;
+    text-align: right;
+}
+
+.ss-benchmark-unavailable {
+    margin: 0;
+    line-height: 1.4;
+    color: var(--ss-caption);
+}
+
 .ss-metrics-grid {
     display: grid;
-    gap: 0.85rem;
+    gap: 0.95rem;
 }
-.ss-metrics-hero {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-bottom: 0.65rem;
-}
-.ss-metrics-hero .ss-metric {
-    padding: 0.35rem 0.25rem;
-}
-.ss-metrics-balance {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding-top: 0.65rem;
-    border-top: 1px solid var(--ss-border);
+.ss-metrics-stack {
+    grid-template-columns: 1fr;
     margin-bottom: 0.45rem;
 }
-.ss-metrics-balance .ss-metric {
-    padding: 0.25rem 0.15rem;
-}
-@media (max-width: 480px) {
-    .ss-metrics-hero {
-        grid-template-columns: 1fr;
-        gap: 0.95rem;
-    }
+.ss-metrics-stack .ss-metric {
+    padding: 0.35rem 0;
 }
 
 .ss-metric-label {
@@ -482,8 +481,6 @@ section[data-testid="stSidebar"] {
     margin: 0.12rem 0 0;
 }
 
-/* Saved compare-two (vertical 5×2) */
-.ss-compare-two-heading,
 .ss-saved-news-heading {
     font-size: var(--ss-caption-size);
     font-weight: 600;
@@ -491,52 +488,6 @@ section[data-testid="stSidebar"] {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin: 0.75rem 0 0.4rem;
-}
-.ss-compare-two-wrap {
-    margin: 0 0 0.85rem;
-}
-.ss-compare-two {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
-    table-layout: fixed;
-}
-.ss-compare-two th,
-.ss-compare-two td {
-    border: 1px solid var(--ss-border);
-    padding: 0.4rem 0.45rem;
-    vertical-align: top;
-    word-break: break-word;
-}
-.ss-compare-corner {
-    background: var(--ss-surface);
-    width: 28%;
-}
-.ss-compare-col {
-    background: var(--ss-surface);
-    text-align: left;
-}
-.ss-compare-ticker {
-    display: block;
-    font-weight: 700;
-    color: var(--ss-accent);
-}
-.ss-compare-name {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--ss-caption);
-    margin-top: 0.1rem;
-}
-.ss-compare-metric {
-    font-weight: 600;
-    color: var(--ss-muted);
-    background: var(--ss-surface);
-}
-.ss-compare-value {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    color: var(--ss-text);
-    text-align: right;
 }
 
 .ss-saved-name {

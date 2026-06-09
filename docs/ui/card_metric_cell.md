@@ -1,7 +1,7 @@
 # Card metric cell — UI spec
 
 **Scope:** One metric block on the Company Snapshot (`_metric_cell_html` in `frontend/card_ui.py`).  
-**Authority:** [`north_star.md`](../north_star.md) (three hero metrics + two balance metrics).
+**Authority:** [`north_star.md`](../north_star.md) (five fundamentals, priority order).
 
 ---
 
@@ -29,14 +29,17 @@ Deep copy (analogy, learn text) lives in **Understand these numbers** (`<details
 
 ---
 
-## Hero vs balance grid
+## Metric stack (single column)
 
-| Grid | Metrics | CSS |
-|------|---------|-----|
-| Hero (3) | Forward P/E, operating margin, revenue growth YoY | `.ss-metrics-hero` |
-| Balance (2) | Net debt / EBITDA, FCF margin | `.ss-metrics-balance` |
+All five metrics render in **one vertical column** (`.ss-metrics-stack`), in `ALL_METRICS` order:
 
-Mobile: three hero **values** visible without scrolling (north_star success check).
+1. Forward P/E  
+2. Operating margin  
+3. Revenue growth YoY  
+4. Net debt / EBITDA  
+5. FCF margin  
+
+No hero/balance split; no side-by-side rows at any breakpoint.
 
 ---
 
@@ -59,7 +62,8 @@ When adding a new value-aware metric, update `card_copy.py` **and** this table i
 
 - Show `↑` / `↓` / `→` only when `sector_peer_count >= 8`.
 - **Hide indicator entirely** when peers &lt; 8 — no “unavailable” on the card face.
-- Full median primer and per-metric compare lines live in **How we compare to similar companies** (`<details>`), not duplicated under every cell.
+- Full median primer and per-metric compare lines live in **How we compare to similar companies** inside **Understand these numbers**.
+- When peers &lt; 8, that section shows one calm line: “Fewer than 8 similar companies in this market — sector compare is hidden.”
 
 ---
 
@@ -69,18 +73,20 @@ When adding a new value-aware metric, update `card_copy.py` **and** this table i
 - Using color alone for above/below median (monochrome text only in v1).
 - Hard-coding “Operating margin (TTM)” when `ebit_margin_basis` is `annual_latest`.
 - Replacing gloss with raw Yahoo field names (`operatingMargins`, etc.).
+- Two-column metric grids on mobile (net debt + FCF side by side).
 
 ---
 
 ## 480px smoke
 
-- [ ] Label + value + gloss readable for all three hero metrics without horizontal scroll
+- [ ] Label + value + gloss readable for each metric without horizontal scroll
 - [ ] Value is the most prominent element in each cell
 - [ ] Benchmark glyph does not wrap to its own line away from the value
+- [ ] All five metrics visible in one column
 
 ---
 
 ## Related
 
 - [`../ux_principles_finanz_lern_apps.md`](../ux_principles_finanz_lern_apps.md) — Kennzahlen-Schule / playgrounds
-- Epic [#92](https://github.com/ramialfahham/stock-swipe-app/issues/92) — post-metric-trust UX backlog
+- [`discover_header.md`](discover_header.md)

@@ -134,7 +134,9 @@ MEDIAN_PRIMER = (
     "↑ higher than median · ↓ lower than median · → at median."
 )
 
-BENCHMARK_UNAVAILABLE = "Comparison unavailable (small sector)"
+BENCHMARK_COMPARE_UNAVAILABLE_LEARN = (
+    "Fewer than 8 similar companies in this market — sector compare is hidden."
+)
 
 
 def _benchmark_eligible(card: dict) -> bool:
@@ -142,13 +144,11 @@ def _benchmark_eligible(card: dict) -> bool:
     return peer_count is not None and peer_count >= PEER_THRESHOLD
 
 
-def benchmark_unavailable_line(card: dict) -> str | None:
+def benchmark_compare_unavailable_learn(card: dict) -> str | None:
     peer_count = card.get("sector_peer_count")
-    if peer_count is None:
+    if peer_count is None or peer_count >= PEER_THRESHOLD:
         return None
-    if peer_count < PEER_THRESHOLD:
-        return BENCHMARK_UNAVAILABLE
-    return None
+    return BENCHMARK_COMPARE_UNAVAILABLE_LEARN
 
 
 def benchmark_compare_available(card: dict) -> bool:
