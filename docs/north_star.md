@@ -133,7 +133,7 @@ Saved is the home for **continue learning** on this device — not a spreadsheet
 
 | Pattern | v1 behavior |
 |---------|-------------|
-| **List** | Vertical learning list: company name, ticker, sector, `snapshot_date` freshness |
+| **List** | Vertical learning list: company name, ticker · sector; fundamentals as-of **once at tab top** (see [`ui/saved_list.md`](ui/saved_list.md)) |
 | **Focus** | Tap **Open** (or equivalent) → **one** Company Snapshot at a time — same layout as Discover |
 | **Learn** | Shared “Understand these numbers” panel on the focused card |
 | **Compare** | Optional later: **two** saved companies side-by-side in a **vertical** table — never horizontal N-column matrix on mobile |
@@ -163,6 +163,20 @@ Optional interactive playgrounds and micro-checks follow the Kennzahlen-Schule p
 [`ux_principles_finanz_lern_apps.md`](ux_principles_finanz_lern_apps.md).
 
 Keep copy concise. The card must remain scannable in under 30 seconds.
+
+---
+
+## UI component specs
+
+Layout-level specs for agents and reviewers — ASCII wireframes, anti-patterns, 480px smoke checks:
+
+| Spec | Covers |
+|------|--------|
+| [`ui/saved_list.md`](ui/saved_list.md) | Saved learning list rows, Open button, freshness line |
+| [`ui/discover_header.md`](ui/discover_header.md) | Brand → tagline → nav → filters → stats |
+| [`ui/card_metric_cell.md`](ui/card_metric_cell.md) | Label / value / gloss hierarchy, value-aware copy |
+
+UX PRs that change these areas must cite the relevant spec in the PR body.
 
 ---
 

@@ -101,6 +101,7 @@ Phase 2 stickiness: 2–3 headlines per saved company on Saved tab only — sepa
 Before merging user-facing UX changes:
 
 - [ ] Matches north_star tab behavior
+- [ ] Matches component specs in [`docs/ui/`](ui/) when touching Saved, Discover chrome, or card metrics
 - [ ] Mobile 480px smoke — one primary action visible; no horizontal scroll on Saved
 - [ ] PR description states one-sentence user job (e.g. “Saved: continue learning company X”)
 - [ ] ASCII or wireframe in PR body for new layout patterns
