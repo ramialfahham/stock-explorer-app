@@ -35,6 +35,7 @@ INFO_FIELDS = {
     "info_currency": "currency",
     "info_long_name": "longName",
     "info_business_summary": "longBusinessSummary",
+    "info_founded_year": "founded",
 }
 
 INCOME_ROW = "Total Revenue"

@@ -85,6 +85,8 @@ sources:
             description: Raw Yahoo longName.
           - name: info_business_summary
             description: Raw Yahoo longBusinessSummary company description.
+          - name: info_founded_year
+            description: Raw Yahoo founded year when provided; often null.
           - name: stmt_total_revenue
             description: Latest annual Total Revenue from statements.
           - name: stmt_free_cash_flow

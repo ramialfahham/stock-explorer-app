@@ -63,6 +63,9 @@ models:
       - name: business_summary
         description: >
           Company description from Yahoo longBusinessSummary; nullable context for card UI.
+      - name: company_founded_year
+        description: >
+          Company founding year from Yahoo when available; prefixes plain summary on the card.
       - name: forward_pe
         description: >
           Forward P/E ratio from info_forward_pe. Unit: multiple (x). Null when Yahoo omits forwardPE.

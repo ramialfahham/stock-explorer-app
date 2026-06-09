@@ -102,6 +102,7 @@ def _write_market_fixtures(market_code: str) -> None:
                 "info_business_summary": (
                     f"CI Fixture {ticker} designs and sells technology products worldwide."
                 ),
+                "info_founded_year": 2000 + i,
                 "stmt_total_revenue": 50_000_000_000.0,
                 "stmt_free_cash_flow": 5_000_000_000.0,
                 "stmt_fiscal_period_end": SNAPSHOT,

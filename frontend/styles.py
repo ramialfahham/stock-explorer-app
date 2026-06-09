@@ -166,32 +166,35 @@ section[data-testid="stSidebar"] {
 }
 
 .ss-company-summary {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
+    font-size: 0.78rem;
+    color: var(--ss-text);
     margin: 0 0 0.55rem;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    line-height: 1.45;
 }
 
 .ss-company-about {
     margin: 0 0 0.55rem;
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
 }
 
-.ss-company-about summary {
+.ss-company-about summary.ss-company-summary {
     cursor: pointer;
-    color: var(--ss-accent);
+    list-style: none;
     margin-bottom: 0.35rem;
+}
+
+.ss-company-about summary.ss-company-summary::-webkit-details-marker {
+    display: none;
+}
+
+.ss-company-about[open] summary.ss-company-summary {
+    display: none;
 }
 
 .ss-company-summary-full {
     margin: 0;
+    font-size: 0.78rem;
+    color: var(--ss-text);
     line-height: 1.45;
-    white-space: pre-wrap;
 }
 
 .ss-company-summary--empty {

@@ -14,6 +14,7 @@ final as (
         m.sector,
         m.currency,
         m.business_summary,
+        m.company_founded_year,
         m.forward_pe,
         m.ebit_margin_pct,
         m.ebit_margin_basis,

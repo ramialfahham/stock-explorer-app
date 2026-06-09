@@ -314,21 +314,10 @@ def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str |
     return _BENCHMARK_INDICATOR_LABELS[position]
 
 
-BUSINESS_SUMMARY_PREVIEW_CHARS = 120
-
 STALE_SNAPSHOT_DAYS = 7
 
-
-def business_summary_preview(card: dict) -> str | None:
-    raw = card.get("business_summary")
-    if raw is None:
-        return None
-    text = str(raw).strip()
-    if not text:
-        return None
-    if len(text) <= BUSINESS_SUMMARY_PREVIEW_CHARS:
-        return text
-    return text[:BUSINESS_SUMMARY_PREVIEW_CHARS].rstrip() + "…"
+# Yahoo longBusinessSummary preview length on the card face (tap to expand).
+BUSINESS_SUMMARY_PREVIEW_WORDS = 20
 
 
 def business_summary_full(card: dict) -> str | None:
@@ -337,3 +326,40 @@ def business_summary_full(card: dict) -> str | None:
         return None
     text = str(raw).strip()
     return text or None
+
+
+def truncate_words(text: str, max_words: int) -> tuple[str, bool]:
+    """Return normalized text truncated to max_words; bool is True when shortened."""
+    normalized = " ".join(text.split())
+    if not normalized:
+        return "", False
+    words = normalized.split()
+    if len(words) <= max_words:
+        return normalized, False
+    preview = " ".join(words[:max_words]).rstrip(".,;:")
+    return f"{preview}…", True
+
+
+def business_summary_preview(
+    card: dict,
+    *,
+    max_words: int = BUSINESS_SUMMARY_PREVIEW_WORDS,
+) -> str | None:
+    """Card-face preview from Yahoo text — original wording, word-limited."""
+    full = business_summary_full(card)
+    if not full:
+        return None
+    preview, _ = truncate_words(full, max_words)
+    return preview or None
+
+
+def business_summary_is_truncated(
+    card: dict,
+    *,
+    max_words: int = BUSINESS_SUMMARY_PREVIEW_WORDS,
+) -> bool:
+    full = business_summary_full(card)
+    if not full:
+        return False
+    _, truncated = truncate_words(full, max_words)
+    return truncated
