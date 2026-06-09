@@ -13,6 +13,8 @@ GitHub Actions (schedule)
   → run_ingestion.py (yfinance → parquet)
   → dbt build (DuckDB)
   → check_pipeline_completeness.py
+  → check_eligibility_baseline.py
+  → check_export_health.py
   → export_to_supabase.py
   → Streamlit reads Supabase (anon key)
 ```
@@ -34,7 +36,7 @@ Nothing in this path runs on a developer laptop in production.
    Without them, `apply_supabase_migrations` fails with **HTTP 403** when the Management API
    fallback is used.
 2. Actions → **Data Pipeline** → **Run workflow** on `main`.
-3. Expect: migrate → ingest → `dbt build` → `check_pipeline_completeness.py` → export.
+3. Expect: migrate → ingest → `dbt build` → completeness → eligibility baseline → export health → export.
 
 If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` locally and set
 `SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` in repo secrets ([`supabase_setup.md`](supabase_setup.md)).
