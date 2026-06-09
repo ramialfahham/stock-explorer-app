@@ -7,17 +7,13 @@ import html
 import streamlit as st
 
 from card_copy import (
+    ALL_METRICS,
     BENCHMARK_METRICS,
-    DEEP_DIVE_METRICS,
     MEDIAN_PRIMER,
     METRIC_ANALOGY,
     METRIC_LABELS,
-    metric_analogy,
-    metric_gloss,
-    metric_label,
-    metric_learn_text,
-    VISIBLE_METRICS,
     benchmark_compare_available,
+    benchmark_compare_unavailable_learn,
     benchmark_indicator,
     benchmark_indicator_label,
     business_summary_full,
@@ -25,6 +21,10 @@ from card_copy import (
     business_summary_preview,
     format_metric_value,
     freshness_line,
+    metric_analogy,
+    metric_gloss,
+    metric_label,
+    metric_learn_text,
     sector_gloss_line,
     sector_headline,
 )
@@ -59,7 +59,7 @@ def _benchmark_compare_body(card: dict) -> str:
         return ""
 
     bench_items: list[str] = []
-    for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
+    for metric in ALL_METRICS:
         for m_key, median_key, _direction in BENCHMARK_METRICS:
             if m_key != metric:
                 continue
@@ -85,7 +85,7 @@ def _benchmark_compare_body(card: dict) -> str:
 
 def _metric_learn_blocks(card: dict) -> str:
     blocks: list[str] = []
-    for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
+    for metric in ALL_METRICS:
         value = card.get(metric)
         blocks.append(
             f'<details class="ss-metric-learn-item">'
@@ -118,6 +118,13 @@ def _learn_panel_html(card: dict) -> str:
             f'<div class="ss-learn-section">'
             f'<p class="ss-learn-heading">How we compare to similar companies</p>'
             f"{compare}"
+            f"</div>"
+        )
+    elif unavailable := benchmark_compare_unavailable_learn(card):
+        compare_section = (
+            f'<div class="ss-learn-section">'
+            f'<p class="ss-learn-heading">How we compare to similar companies</p>'
+            f'<p class="ss-benchmark-unavailable">{_esc(unavailable)}</p>'
             f"</div>"
         )
     return (
@@ -187,8 +194,7 @@ def build_card_html(
     sector_head = sector_headline(card)
     sector_gloss = sector_gloss_line(card.get("sector"))
 
-    hero = "".join(_metric_cell_html(card, m) for m in VISIBLE_METRICS)
-    balance = "".join(_metric_cell_html(card, m) for m in DEEP_DIVE_METRICS)
+    metrics_html = "".join(_metric_cell_html(card, m) for m in ALL_METRICS)
 
     identity = (
         f'<section class="ss-card ss-card-identity">'
@@ -206,8 +212,7 @@ def build_card_html(
     learn = _learn_panel_html(card)
     metrics = (
         f'<section class="ss-card ss-card-metrics">'
-        f'<div class="ss-metrics-grid ss-metrics-hero">{hero}</div>'
-        f'<div class="ss-metrics-grid ss-metrics-balance">{balance}</div>'
+        f'<div class="ss-metrics-grid ss-metrics-stack">{metrics_html}</div>'
         f"</section>"
     )
     return identity + learn + metrics

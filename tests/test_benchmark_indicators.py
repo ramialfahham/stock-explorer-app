@@ -49,3 +49,13 @@ def test_benchmark_indicator_neutral_symbols() -> None:
 def test_benchmark_hidden_when_peer_threshold_not_met() -> None:
     card = _card(sector_peer_count=7)
     assert benchmark_indicator(card, "forward_pe", "sector_median_forward_pe") is None
+
+
+def test_benchmark_compare_unavailable_learn() -> None:
+    from card_copy import benchmark_compare_unavailable_learn
+
+    card = _card(sector_peer_count=7)
+    line = benchmark_compare_unavailable_learn(card)
+    assert line is not None
+    assert "Fewer than 8" in line
+    assert benchmark_compare_unavailable_learn(_card(sector_peer_count=10)) is None

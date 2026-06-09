@@ -51,6 +51,11 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `001_initial_schema.sql` | Markets, legacy mart, `user_interactions`, RLS |
 | `002_fundamentals_mart.sql` | Fundamentals `mart_stock_cards`, DAX active |
 | `003_lock_schema_migrations.sql` | RLS on `schema_migrations` (no API policies) |
+| `004_business_summary.sql` | `business_summary` text on mart (Yahoo longBusinessSummary) |
+| `005_ebit_margin_basis.sql` | `ebit_margin_basis` on mart |
+| `006_company_founded_year.sql` | `company_founded_year` on mart (optional; not shown on card yet) |
+
+After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives company descriptions. Hard refresh or a new browser session reloads `all_cards` from Supabase.
 
 ---
 

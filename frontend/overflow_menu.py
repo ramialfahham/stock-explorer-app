@@ -11,7 +11,7 @@ import streamlit as st
 
 from browser_storage import clear_interactions, request_landing
 from card_copy import format_snapshot_date
-from explore_filters import ALL_MARKETS, ALL_SECTORS, SURPRISE_ME_LABEL
+from explore_filters import ALL_MARKETS, ALL_SECTORS, cards_lack_business_summary
 from markets import (
     discover_pool_summary,
     eligible_breakdown_lines,
@@ -39,10 +39,7 @@ def discover_scope_line(
     *,
     market: str,
     sector: str,
-    surprise_me: bool,
 ) -> str:
-    if surprise_me:
-        return f"{SURPRISE_ME_LABEL} — mixed markets"
     market_label = (
         "All markets" if market == ALL_MARKETS else market_display_name(market)
     )
@@ -59,8 +56,7 @@ def right_now_line(*, active_tab: str, saved_count: int) -> str:
         return "Find any company with a complete five-metric snapshot"
     market = st.session_state.get("explore_market", ALL_MARKETS)
     sector = st.session_state.get("explore_sector", ALL_SECTORS)
-    surprise = bool(st.session_state.get("explore_surprise_me"))
-    return discover_scope_line(market=market, sector=sector, surprise_me=surprise)
+    return discover_scope_line(market=market, sector=sector)
 
 
 def quick_tip_line(*, active_tab: str) -> str:
@@ -105,6 +101,11 @@ def _render_about_data(*, cards: list[dict[str, Any]], counts: dict[str, int]) -
             if lines:
                 breakdown = " · ".join(lines)
                 st.caption(breakdown)
+        if cards_lack_business_summary(cards):
+            st.caption(
+                "Company descriptions are missing from this export — run the weekly "
+                "pipeline after migration 004 and re-export mart_stock_cards."
+            )
 
 
 def render_overflow_menu(

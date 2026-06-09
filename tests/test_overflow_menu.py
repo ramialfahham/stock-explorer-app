@@ -21,19 +21,8 @@ def test_discover_scope_all_markets_sectors() -> None:
     line = discover_scope_line(
         market=ALL_MARKETS,
         sector=ALL_SECTORS,
-        surprise_me=False,
     )
     assert line == "Exploring: All markets · All sectors"
-
-
-def test_discover_scope_surprise_me() -> None:
-    line = discover_scope_line(
-        market=ALL_MARKETS,
-        sector=ALL_SECTORS,
-        surprise_me=True,
-    )
-    assert "Surprise me worldwide" in line
-    assert "mixed markets" in line
 
 
 def test_right_now_saved_tab() -> None:

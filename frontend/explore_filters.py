@@ -9,7 +9,6 @@ from markets import MARKET_DISPLAY_NAMES, market_display_name
 
 ALL_MARKETS = "all"
 ALL_SECTORS = "all"
-SURPRISE_ME_LABEL = "Surprise me worldwide"
 
 
 def market_filter_options() -> list[tuple[str, str]]:
@@ -20,6 +19,23 @@ def market_filter_options() -> list[tuple[str, str]]:
 
 def default_market_filter() -> str:
     return ALL_MARKETS
+
+
+def market_filter_label(market_code: str) -> str:
+    if market_code == ALL_MARKETS:
+        return "All markets"
+    return market_display_name(market_code)
+
+
+def sector_filter_label(sector: str) -> str:
+    if sector == ALL_SECTORS:
+        return "All sectors"
+    return sector
+
+
+def filter_scope_summary(*, market_code: str, sector: str) -> str:
+    """Compact label for the closed Filters row on Discover."""
+    return f"{market_filter_label(market_code)} · {sector_filter_label(sector)}"
 
 
 def _card_key(card: dict[str, Any]) -> tuple[str, str]:
@@ -58,7 +74,6 @@ def filter_pool(
     *,
     market_code: str,
     sector: str,
-    surprise_me: bool,
 ) -> list[dict[str, Any]]:
     """Return card-eligible rows in scope, excluding saved tickers."""
     saved = _saved_keys(interactions)
@@ -68,9 +83,8 @@ def filter_pool(
             continue
         if _card_key(card) in saved:
             continue
-        if not surprise_me and market_code != ALL_MARKETS:
-            if card.get("market_code") != market_code:
-                continue
+        if market_code != ALL_MARKETS and card.get("market_code") != market_code:
+            continue
         if sector != ALL_SECTORS and (card.get("sector") or "Unknown") != sector:
             continue
         pool.append(card)
@@ -81,15 +95,13 @@ def sectors_for_market(
     cards: list[dict[str, Any]],
     *,
     market_code: str,
-    surprise_me: bool,
 ) -> list[str]:
     sectors: set[str] = set()
     for card in cards:
         if not card.get("is_card_eligible"):
             continue
-        if not surprise_me and market_code != ALL_MARKETS:
-            if card.get("market_code") != market_code:
-                continue
+        if market_code != ALL_MARKETS and card.get("market_code") != market_code:
+            continue
         sectors.add(card.get("sector") or "Unknown")
     return sorted(sectors, key=str.lower)
 
@@ -98,10 +110,9 @@ def scope_summary(
     *,
     market_code: str,
     sector: str,
-    surprise_me: bool,
     pool_size: int,
 ) -> str:
-    if surprise_me or market_code == ALL_MARKETS:
+    if market_code == ALL_MARKETS:
         if sector != ALL_SECTORS:
             return f"{pool_size} worldwide · {sector}"
         return f"{pool_size} companies worldwide"
@@ -123,11 +134,12 @@ def walk_meta_line(
     total: int,
     market_code: str,
     sector: str,
-    surprise_me: bool,
 ) -> str:
     if total <= 0:
         return ""
-    if surprise_me:
+    if market_code == ALL_MARKETS:
+        if sector != ALL_SECTORS:
+            return f"{position} of {total} worldwide · {sector}"
         return f"{position} of {total} worldwide"
     market_label = market_display_name(market_code)
     if sector != ALL_SECTORS:
@@ -141,3 +153,14 @@ def browse_row_subtitle(card: dict[str, Any]) -> str:
     if snapshot:
         return f"{sector} · {snapshot}"
     return sector
+
+
+def cards_lack_business_summary(cards: list[dict[str, Any]]) -> bool:
+    """True when export/schema has no usable company descriptions."""
+    eligible = [c for c in cards if c.get("is_card_eligible")]
+    if not eligible:
+        return False
+    if any("business_summary" not in c for c in eligible):
+        return True
+    filled = sum(1 for c in eligible if str(c.get("business_summary") or "").strip())
+    return filled == 0

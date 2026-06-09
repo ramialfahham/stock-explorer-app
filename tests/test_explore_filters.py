@@ -12,8 +12,10 @@ sys.path.insert(0, str(FRONTEND))
 from explore_filters import (  # noqa: E402
     ALL_MARKETS,
     ALL_SECTORS,
+    cards_lack_business_summary,
     default_market_filter,
     filter_pool,
+    filter_scope_summary,
     market_filter_options,
     walk_progress_line,
 )
@@ -38,6 +40,15 @@ def test_market_filter_options_all_markets_first() -> None:
     assert options[0][1] == "All markets"
 
 
+def test_filter_scope_summary() -> None:
+    assert filter_scope_summary(market_code=ALL_MARKETS, sector=ALL_SECTORS) == (
+        "All markets · All sectors"
+    )
+    assert filter_scope_summary(market_code="us_sp500", sector="Technology") == (
+        "S&P 500 · Technology"
+    )
+
+
 def test_walk_progress_line() -> None:
     assert walk_progress_line(position=1, total=464) == "1 of 464"
     assert walk_progress_line(position=3, total=47) == "3 of 47"
@@ -54,7 +65,6 @@ def test_filter_pool_respects_sector() -> None:
         [],
         market_code="us_sp500",
         sector="Basic Materials",
-        surprise_me=False,
     )
     tickers = {c["ticker"] for c in pool}
     assert tickers == {"ALB"}
@@ -70,7 +80,6 @@ def test_filter_pool_all_markets() -> None:
         [],
         market_code=ALL_MARKETS,
         sector=ALL_SECTORS,
-        surprise_me=False,
     )
     assert {c["ticker"] for c in pool} == {"AAPL", "BHP"}
 
@@ -83,6 +92,20 @@ def test_filter_pool_excludes_saved() -> None:
         interactions,
         market_code="us_sp500",
         sector=ALL_SECTORS,
-        surprise_me=False,
     )
     assert [c["ticker"] for c in pool] == ["MSFT"]
+
+
+def test_cards_lack_business_summary_when_column_missing() -> None:
+    cards = [_card("AAPL", "Technology")]
+    assert cards_lack_business_summary(cards) is True
+
+
+def test_cards_lack_business_summary_when_all_empty() -> None:
+    cards = [{**_card("AAPL", "Technology"), "business_summary": "   "}]
+    assert cards_lack_business_summary(cards) is True
+
+
+def test_cards_lack_business_summary_when_populated() -> None:
+    cards = [{**_card("AAPL", "Technology"), "business_summary": "Apple designs products."}]
+    assert cards_lack_business_summary(cards) is False
