@@ -15,11 +15,69 @@ def _key(prefix: str, card: dict[str, Any], suffix: str) -> str:
     return f"{prefix}_{market}_{ticker}_{suffix}"
 
 
-def _render_forward_pe_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{METRIC_LABELS['forward_pe']}**")
+def _clamp(value: float, *, min_value: float, max_value: float | None = None) -> float:
+    """Keep playground seeds inside st.number_input bounds."""
+    if max_value is not None:
+        value = min(max_value, value)
+    return max(min_value, value)
+
+
+def seed_forward_pe_playground(card: dict[str, Any]) -> tuple[float, float]:
     default_pe = card.get("forward_pe")
     default_price = 100.0
     default_eps = default_price / default_pe if default_pe and default_pe > 0 else 5.0
+    return (
+        _clamp(default_price, min_value=1.0),
+        _clamp(round(default_eps, 2), min_value=0.1),
+    )
+
+
+def seed_net_debt_playground(card: dict[str, Any]) -> tuple[float, float]:
+    ratio = card.get("net_debt_to_ebitda")
+    default_ebitda = 10.0
+    default_debt = float(ratio * default_ebitda) if ratio is not None else 25.0
+    return (
+        _clamp(round(default_debt, 2), min_value=-500.0, max_value=500.0),
+        _clamp(default_ebitda, min_value=0.1),
+    )
+
+
+def seed_revenue_growth_playground(card: dict[str, Any]) -> tuple[float, float]:
+    growth = card.get("revenue_growth_yoy_pct")
+    prior = 100.0
+    if growth is not None:
+        current = prior * (1 + growth / 100.0)
+    else:
+        current = 110.0
+    return (
+        _clamp(prior, min_value=1.0),
+        _clamp(round(current, 2), min_value=0.0),
+    )
+
+
+def seed_ebit_margin_playground(card: dict[str, Any]) -> tuple[float, float]:
+    margin = card.get("ebit_margin_pct")
+    revenue = 100.0
+    operating = revenue * margin / 100.0 if margin is not None else 15.0
+    return (
+        _clamp(revenue, min_value=1.0),
+        _clamp(round(operating, 2), min_value=-500.0, max_value=500.0),
+    )
+
+
+def seed_fcf_margin_playground(card: dict[str, Any]) -> tuple[float, float]:
+    margin = card.get("fcf_margin_pct")
+    revenue = 100.0
+    fcf = revenue * margin / 100.0 if margin is not None else 8.0
+    return (
+        _clamp(revenue, min_value=1.0),
+        _clamp(round(fcf, 2), min_value=-500.0, max_value=500.0),
+    )
+
+
+def _render_forward_pe_playground(card: dict[str, Any], *, prefix: str) -> None:
+    st.markdown(f"**{METRIC_LABELS['forward_pe']}**")
+    default_price, default_eps = seed_forward_pe_playground(card)
 
     price = st.number_input(
         "Hypothetical share price ($)",
@@ -31,7 +89,7 @@ def _render_forward_pe_playground(card: dict[str, Any], *, prefix: str) -> None:
     eps = st.number_input(
         "Expected earnings per share next year ($)",
         min_value=0.1,
-        value=float(round(default_eps, 2)),
+        value=float(default_eps),
         step=0.1,
         key=_key(prefix, card, "play_pe_eps"),
     )
@@ -43,8 +101,7 @@ def _render_forward_pe_playground(card: dict[str, Any], *, prefix: str) -> None:
 def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
     st.markdown(f"**{METRIC_LABELS['net_debt_to_ebitda']}**")
     ratio = card.get("net_debt_to_ebitda")
-    default_ebitda = 10.0
-    default_debt = float(ratio * default_ebitda) if ratio is not None else 25.0
+    default_debt, default_ebitda = seed_net_debt_playground(card)
     if ratio is not None and ratio < 0:
         st.caption("Negative net debt means cash on hand exceeds debt (net cash position).")
 
@@ -52,7 +109,7 @@ def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
         "Hypothetical net debt ($B)",
         min_value=-500.0,
         max_value=500.0,
-        value=float(round(default_debt, 2)),
+        value=float(default_debt),
         step=1.0,
         key=_key(prefix, card, "play_debt"),
     )
@@ -70,24 +127,19 @@ def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
 
 def _render_revenue_growth_playground(card: dict[str, Any], *, prefix: str) -> None:
     st.markdown(f"**{METRIC_LABELS['revenue_growth_yoy_pct']}**")
-    growth = card.get("revenue_growth_yoy_pct")
-    prior = 100.0
-    if growth is not None:
-        current = prior * (1 + growth / 100.0)
-    else:
-        current = 110.0
+    revenue_prior, revenue_current = seed_revenue_growth_playground(card)
 
     revenue_prior = st.number_input(
         "Revenue one year ago ($B)",
         min_value=1.0,
-        value=float(prior),
+        value=float(revenue_prior),
         step=1.0,
         key=_key(prefix, card, "play_rev_prior"),
     )
     revenue_current = st.number_input(
         "Revenue today ($B)",
         min_value=0.0,
-        value=float(round(current, 2)),
+        value=float(revenue_current),
         step=1.0,
         key=_key(prefix, card, "play_rev_current"),
     )
@@ -98,9 +150,7 @@ def _render_revenue_growth_playground(card: dict[str, Any], *, prefix: str) -> N
 
 def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
     st.markdown(f"**{METRIC_LABELS['ebit_margin_pct']}**")
-    margin = card.get("ebit_margin_pct")
-    revenue = 100.0
-    operating = revenue * margin / 100.0 if margin is not None else 15.0
+    revenue, operating = seed_ebit_margin_playground(card)
 
     rev = st.number_input(
         "Revenue ($B)",
@@ -113,7 +163,7 @@ def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None
         "Operating profit ($B)",
         min_value=-500.0,
         max_value=500.0,
-        value=float(round(operating, 2)),
+        value=float(operating),
         step=0.5,
         key=_key(prefix, card, "play_ebit_op"),
     )
@@ -124,9 +174,7 @@ def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None
 
 def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
     st.markdown(f"**{METRIC_LABELS['fcf_margin_pct']}**")
-    margin = card.get("fcf_margin_pct")
-    revenue = 100.0
-    fcf = revenue * margin / 100.0 if margin is not None else 8.0
+    revenue, fcf = seed_fcf_margin_playground(card)
 
     rev = st.number_input(
         "Revenue ($B)",
@@ -139,7 +187,7 @@ def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
         "Free cash flow ($B)",
         min_value=-500.0,
         max_value=500.0,
-        value=float(round(fcf, 2)),
+        value=float(fcf),
         step=0.5,
         key=_key(prefix, card, "play_fcf_cash"),
     )
