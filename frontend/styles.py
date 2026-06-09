@@ -172,38 +172,42 @@ section[data-testid="stSidebar"] {
     line-height: 1.45;
 }
 
-.ss-company-about {
+.ss-company-about-wrap {
     margin: 0 0 0.55rem;
+}
+
+.ss-company-summary-preview {
+    font-size: 0.78rem;
+    color: var(--ss-text);
+    margin: 0 0 0.28rem;
+    line-height: 1.45;
+}
+
+.ss-company-about-wrap:has(.ss-company-about[open]) .ss-company-summary-preview {
+    display: none;
+}
+
+.ss-company-about {
+    margin: 0;
 }
 
 .ss-company-about summary.ss-company-summary-toggle {
     cursor: pointer;
     list-style: none;
-    margin-bottom: 0.35rem;
+    margin: 0 0 0.35rem;
+    width: fit-content;
 }
 
 .ss-company-about summary.ss-company-summary-toggle::-webkit-details-marker {
     display: none;
 }
 
-.ss-company-summary-preview {
-    display: block;
-    font-size: 0.78rem;
-    color: var(--ss-text);
-    line-height: 1.45;
-}
-
-.ss-company-summary-action {
-    display: block;
-    margin-top: 0.28rem;
+.ss-company-summary-more,
+.ss-company-summary-less {
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--ss-accent);
     line-height: 1.3;
-}
-
-.ss-company-about[open] .ss-company-summary-preview {
-    display: none;
 }
 
 .ss-company-about:not([open]) .ss-company-summary-less {
@@ -214,8 +218,7 @@ section[data-testid="stSidebar"] {
     display: none;
 }
 
-.ss-company-about[open] .ss-company-summary-action {
-    margin-top: 0;
+.ss-company-about[open] summary.ss-company-summary-toggle {
     margin-bottom: 0.35rem;
 }
 

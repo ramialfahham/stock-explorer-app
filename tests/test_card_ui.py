@@ -19,8 +19,9 @@ def test_company_summary_truncated_has_read_and_show_less() -> None:
     html = _company_summary_html(card)
     assert "Read full description" in html
     assert "Show less" in html
-    assert "ss-company-summary-toggle" in html
-    assert "ss-company-summary-full" in html
+    assert "ss-company-summary-preview" in html
+    assert "ss-company-about-wrap" in html
+    assert html.index("ss-company-summary-preview") < html.index("ss-company-summary-toggle")
 
 
 def test_company_summary_short_has_no_toggle() -> None:
