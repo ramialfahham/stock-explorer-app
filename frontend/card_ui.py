@@ -12,9 +12,10 @@ from card_copy import (
     DEEP_DIVE_METRICS,
     MEDIAN_PRIMER,
     METRIC_ANALOGY,
-    METRIC_GLOSS,
     METRIC_LABELS,
-    METRIC_LEARN,
+    metric_analogy,
+    metric_gloss,
+    metric_learn_text,
     VISIBLE_METRICS,
     benchmark_compare_available,
     benchmark_indicator,
@@ -87,9 +88,9 @@ def _metric_learn_blocks() -> str:
         blocks.append(
             f'<details class="ss-metric-learn-item">'
             f"<summary>{_esc(METRIC_LABELS[metric])}</summary>"
-            f'<p class="ss-metric-analogy">{_esc(METRIC_ANALOGY[metric])}</p>'
-            f'<p class="ss-metric-gloss-inline">{_esc(METRIC_GLOSS[metric])}</p>'
-            f'<p class="ss-metric-learn-body">{_esc(METRIC_LEARN[metric])}</p>'
+            f'<p class="ss-metric-analogy">{_esc(metric_analogy(metric, card.get(metric)))}</p>'
+            f'<p class="ss-metric-gloss-inline">{_esc(metric_gloss(metric, card.get(metric)))}</p>'
+            f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, card.get(metric)))}</p>'
             f"</details>"
         )
     return "".join(blocks)
@@ -152,7 +153,7 @@ def _company_summary_html(card: dict) -> str:
 def _metric_cell_html(card: dict, metric: str) -> str:
     label = METRIC_LABELS[metric]
     value = format_metric_value(metric, card.get(metric))
-    gloss = METRIC_GLOSS[metric]
+    gloss = metric_gloss(metric, card.get(metric))
     indicator = _bench_indicator_html(card, metric)
     gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'
     value_row = (
