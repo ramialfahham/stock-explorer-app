@@ -321,7 +321,7 @@ BUSINESS_SUMMARY_PREVIEW_WORDS = 20
 
 
 def business_summary_full(card: dict) -> str | None:
-    raw = card.get("business_summary")
+    raw = card.get("business_summary") or card.get("longBusinessSummary")
     if raw is None:
         return None
     text = str(raw).strip()
