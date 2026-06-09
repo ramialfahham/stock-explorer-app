@@ -164,6 +164,32 @@ def sector_headline(card: dict) -> str:
     return sector
 
 
+def metric_gloss(metric: str, value: float | None) -> str:
+    """Card-face gloss; value-aware where the story depends on the number."""
+    if metric == "net_debt_to_ebitda" and value is not None and value < 0:
+        return "Net cash — cash on hand exceeds debt"
+    return METRIC_GLOSS[metric]
+
+
+def metric_analogy(metric: str, value: float | None) -> str:
+    if metric == "net_debt_to_ebitda" and value is not None and value < 0:
+        return (
+            "Cash on the balance sheet exceeds debt — a net cash position, "
+            "not leverage to repay."
+        )
+    return METRIC_ANALOGY[metric]
+
+
+def metric_learn_text(metric: str, value: float | None) -> str:
+    if metric == "net_debt_to_ebitda" and value is not None and value < 0:
+        return (
+            "Net debt is total debt minus cash. When cash exceeds debt, the ratio "
+            "is negative — a net cash position. Yahoo's EBITDA is still in the "
+            "denominator; read the sign as cash vs debt, not years to repay."
+        )
+    return METRIC_LEARN[metric]
+
+
 def saved_row_subtitle(card: dict) -> str:
     """Second line for Saved list rows: ticker and sector only."""
     ticker = card.get("ticker") or "—"
