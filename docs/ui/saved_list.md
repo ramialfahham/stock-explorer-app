@@ -41,13 +41,35 @@ Each row is **HTML + a separate Open button** — not a single `st.button` carry
 |------|--------|
 | Row structure | `st.columns([5, 1])` — text block left, **Open** right |
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
-| Focus mode | `← Back to list` then news + Company Snapshot (same metrics as Discover) |
+| Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) + Company Snapshot (same metrics as Discover) |
 | Empty state | One `st.info` — no fake rows |
 | Compare | **Removed** — no saved-company compare UI |
 
 ---
 
-## Anti-patterns (do not ship)
+## Focus view — headlines (480px)
+
+Headlines load automatically when the user opens a saved company (Yahoo Finance, session cache ~1 hour). Not shown on Discover.
+
+```
+┌─────────────────────────────────────────────┐
+│ ← Back to list                              │
+├─────────────────────────────────────────────┤
+│ Apple Inc.                                  │
+│ AAPL · Technology                           │
+├─────────────────────────────────────────────┤
+│ RECENT HEADLINES                            │
+│ Apple reports… · Reuters                    │  ← short title = direct link
+│ Long headline preview words…                │  ← long title = preview only
+│ Read full headline                          │  ← gold toggle (not the preview)
+├─────────────────────────────────────────────┤
+│ … Company Snapshot card …                   │
+└─────────────────────────────────────────────┘
+```
+
+Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.md`](disclosure_pattern.md).
+
+---
 
 - **Auto-opening focus view** when the user has only one save (breaks “Back to list”).
 - **Never put 3+ text lines inside an `st.button` label** (Streamlit renders button labels poorly; multi-line hacks break on mobile).
