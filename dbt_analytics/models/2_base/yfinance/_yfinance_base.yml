@@ -102,6 +102,39 @@ models:
       - name: qtr_total_revenue_3
         description: >
           Deduped Total Revenue, three quarters back (index 3); TTM denominator.
+      - name: qtr_operating_revenue_0
+        description: >
+          Deduped Operating Revenue Q0; bank fallback when Operating Income is absent.
+      - name: qtr_operating_revenue_1
+        description: >
+          Deduped Operating Revenue one quarter back (index 1); bank TTM fallback.
+      - name: qtr_operating_revenue_2
+        description: >
+          Deduped Operating Revenue two quarters back (index 2); bank TTM fallback.
+      - name: qtr_operating_revenue_3
+        description: >
+          Deduped Operating Revenue three quarters back (index 3); bank TTM fallback.
+      - name: qtr_operating_expense_0
+        description: >
+          Deduped Operating Expense Q0; paired with Operating Revenue for derived op profit.
+      - name: qtr_operating_expense_1
+        description: >
+          Deduped Operating Expense one quarter back (index 1); bank TTM fallback.
+      - name: qtr_operating_expense_2
+        description: >
+          Deduped Operating Expense two quarters back (index 2); bank TTM fallback.
+      - name: qtr_operating_expense_3
+        description: >
+          Deduped Operating Expense three quarters back (index 3); bank TTM fallback.
+      - name: stmt_operating_income
+        description: >
+          Deduped latest annual operating profit (fallback row labels).
+      - name: stmt_operating_revenue
+        description: >
+          Deduped latest annual Operating Revenue when operating profit row is absent.
+      - name: stmt_operating_expense
+        description: >
+          Deduped latest annual Operating Expense when operating profit row is absent.
       - name: info_revenue_growth
         description: >
           Deduped raw revenueGrowth decimal.

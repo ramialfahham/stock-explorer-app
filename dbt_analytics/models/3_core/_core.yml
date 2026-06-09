@@ -103,9 +103,27 @@ models:
       - name: qtr_operating_revenue_0
         description: >
           Operating Revenue Q0 when Operating Income missing (UK banks); dbt derives op profit.
+      - name: qtr_operating_revenue_1
+        description: >
+          Operating Revenue one quarter back (index 1); bank fallback for TTM op profit.
+      - name: qtr_operating_revenue_2
+        description: >
+          Operating Revenue two quarters back (index 2); bank fallback for TTM op profit.
+      - name: qtr_operating_revenue_3
+        description: >
+          Operating Revenue three quarters back (index 3); bank fallback for TTM op profit.
       - name: qtr_operating_expense_0
         description: >
           Operating Expense Q0 when Operating Income missing (UK banks); dbt derives op profit.
+      - name: qtr_operating_expense_1
+        description: >
+          Operating Expense one quarter back (index 1); bank fallback for TTM op profit.
+      - name: qtr_operating_expense_2
+        description: >
+          Operating Expense two quarters back (index 2); bank fallback for TTM op profit.
+      - name: qtr_operating_expense_3
+        description: >
+          Operating Expense three quarters back (index 3); bank fallback for TTM op profit.
       - name: stmt_operating_income
         description: >
           Latest annual operating profit (fallback labels); feeds annual ebit_margin_pct.
