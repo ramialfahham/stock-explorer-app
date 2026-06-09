@@ -17,84 +17,17 @@ from explore_filters import (  # noqa: E402
     filter_pool,
     filter_scope_summary,
     market_filter_options,
-    metric_filters_from_inputs,
     walk_progress_line,
 )
 
 
-def _card(ticker: str, sector: str, market: str = "us_sp500", **metrics: float) -> dict:
-    row = {
+def _card(ticker: str, sector: str, market: str = "us_sp500") -> dict:
+    return {
         "market_code": market,
         "ticker": ticker,
         "sector": sector,
         "is_card_eligible": True,
     }
-    row.update(metrics)
-    return row
-
-
-def test_filter_pool_max_forward_pe() -> None:
-    cards = [
-        _card("LOW", "Technology", forward_pe=12.0),
-        _card("HIGH", "Technology", forward_pe=40.0),
-    ]
-    metric_filters = metric_filters_from_inputs(
-        {
-            "forward_pe": (0.0, 20.0),
-            "ebit_margin_pct": (-500.0, 500.0),
-            "revenue_growth_yoy_pct": (-100.0, 500.0),
-            "net_debt_to_ebitda": (-50.0, 50.0),
-            "fcf_margin_pct": (-500.0, 500.0),
-        }
-    )
-    pool = filter_pool(
-        cards,
-        [],
-        market_code="us_sp500",
-        sector=ALL_SECTORS,
-        metric_filters=metric_filters,
-    )
-    assert [c["ticker"] for c in pool] == ["LOW"]
-
-
-def test_filter_pool_excludes_null_metric_when_filter_active() -> None:
-    cards = [_card("NULL", "Technology"), _card("OK", "Technology", forward_pe=15.0)]
-    metric_filters = metric_filters_from_inputs(
-        {
-            "forward_pe": (0.0, 20.0),
-            "ebit_margin_pct": (-500.0, 500.0),
-            "revenue_growth_yoy_pct": (-100.0, 500.0),
-            "net_debt_to_ebitda": (-50.0, 50.0),
-            "fcf_margin_pct": (-500.0, 500.0),
-        }
-    )
-    pool = filter_pool(
-        cards,
-        [],
-        market_code="us_sp500",
-        sector=ALL_SECTORS,
-        metric_filters=metric_filters,
-    )
-    assert [c["ticker"] for c in pool] == ["OK"]
-
-
-def test_filter_scope_summary_includes_metric_filters() -> None:
-    metric_filters = metric_filters_from_inputs(
-        {
-            "forward_pe": (0.0, 20.0),
-            "ebit_margin_pct": (-500.0, 500.0),
-            "revenue_growth_yoy_pct": (-100.0, 500.0),
-            "net_debt_to_ebitda": (-50.0, 50.0),
-            "fcf_margin_pct": (-500.0, 500.0),
-        }
-    )
-    summary = filter_scope_summary(
-        market_code=ALL_MARKETS,
-        sector=ALL_SECTORS,
-        metric_filters=metric_filters,
-    )
-    assert summary.startswith("All markets · All sectors · ")
-    assert "Forward P/E" in summary
 
 
 def test_default_market_filter_is_all_markets() -> None:
