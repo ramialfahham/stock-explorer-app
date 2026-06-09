@@ -22,7 +22,6 @@ from explore_filters import (
     ALL_MARKETS,
     ALL_SECTORS,
     browse_row_subtitle,
-    dedupe_to_latest_snapshot,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
@@ -37,11 +36,13 @@ from overflow_menu import render_overflow_menu
 from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
+from supabase_cards import fetch_eligible_cards
 from supabase_client import get_anon_client
 
 load_dotenv()
 
 EXPLORE_DEFAULTS_VERSION = 3
+CARDS_CACHE_VERSION = 1
 
 st.set_page_config(
     page_title=PRODUCT_NAME,
@@ -74,6 +75,10 @@ def _init_state() -> None:
         st.session_state["explore_sector"] = ALL_SECTORS
         st.session_state["_explore_defaults_version"] = EXPLORE_DEFAULTS_VERSION
 
+    if st.session_state.get("_cards_cache_version", 0) < CARDS_CACHE_VERSION:
+        st.session_state["all_cards"] = []
+        st.session_state["_cards_cache_version"] = CARDS_CACHE_VERSION
+
     st.session_state["active_page"] = normalize_nav_page(st.session_state.get("active_page"))
     if "bottom_nav" in st.session_state:
         st.session_state["bottom_nav"] = normalize_nav_page(
@@ -84,17 +89,10 @@ def _init_state() -> None:
 
 def _load_cards(client) -> list[dict]:
     try:
-        response = (
-            client.table("mart_stock_cards")
-            .select("*")
-            .eq("is_card_eligible", True)
-            .execute()
-        )
+        return fetch_eligible_cards(client)
     except Exception as exc:  # noqa: BLE001
         st.error(f"Could not load cards from Supabase: {exc}")
         return []
-    raw = response.data or []
-    return dedupe_to_latest_snapshot(raw)
 
 
 def _ensure_all_cards(client) -> list[dict]:
