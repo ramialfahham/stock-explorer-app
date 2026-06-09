@@ -12,6 +12,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from metric_formulas import (  # noqa: E402
     compute_card_metrics_from_raw,
+    operating_margin_annual_pct,
+    operating_margin_pct,
     operating_margin_ttm_pct,
     pct_drift,
     reference_operating_margin_info,
@@ -75,3 +77,36 @@ def test_operating_margin_ttm_pct_requires_four_quarters() -> None:
 
 def test_reference_operating_margin_info() -> None:
     assert reference_operating_margin_info({"operatingMargins": 0.032}) == 3.2
+
+
+def test_operating_margin_from_operating_revenue_expense() -> None:
+    row = {
+        "qtr_operating_income_0": None,
+        "qtr_operating_revenue_0": 30.0,
+        "qtr_operating_expense_0": 5.0,
+        "qtr_operating_income_1": None,
+        "qtr_operating_revenue_1": 30.0,
+        "qtr_operating_expense_1": 5.0,
+        "qtr_operating_income_2": None,
+        "qtr_operating_revenue_2": 30.0,
+        "qtr_operating_expense_2": 5.0,
+        "qtr_operating_income_3": None,
+        "qtr_operating_revenue_3": 30.0,
+        "qtr_operating_expense_3": 5.0,
+        "qtr_total_revenue_0": 100.0,
+        "qtr_total_revenue_1": 100.0,
+        "qtr_total_revenue_2": 100.0,
+        "qtr_total_revenue_3": 100.0,
+    }
+    assert operating_margin_ttm_pct(row) == 25.0
+
+
+def test_operating_margin_annual_fallback() -> None:
+    row = {
+        "stmt_operating_income": 150.0,
+        "stmt_total_revenue": 1000.0,
+    }
+    assert operating_margin_annual_pct(row) == 15.0
+    margin, basis = operating_margin_pct(row)
+    assert margin == 15.0
+    assert basis == "annual_latest"

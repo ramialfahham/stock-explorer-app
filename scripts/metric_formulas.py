@@ -8,6 +8,8 @@ from ingestion.yfinance.quarterly import TTM_QUARTERS
 
 QTR_OPERATING_INCOME_KEYS = tuple(f"qtr_operating_income_{i}" for i in range(TTM_QUARTERS))
 QTR_TOTAL_REVENUE_KEYS = tuple(f"qtr_total_revenue_{i}" for i in range(TTM_QUARTERS))
+QTR_OPERATING_REVENUE_KEYS = tuple(f"qtr_operating_revenue_{i}" for i in range(TTM_QUARTERS))
+QTR_OPERATING_EXPENSE_KEYS = tuple(f"qtr_operating_expense_{i}" for i in range(TTM_QUARTERS))
 
 
 def effective_net_debt(row: dict[str, Any]) -> float | None:
@@ -21,9 +23,31 @@ def effective_net_debt(row: dict[str, Any]) -> float | None:
     return None
 
 
+def effective_qtr_operating_income(row: dict[str, Any], quarter_idx: int) -> float | None:
+    direct = row.get(f"qtr_operating_income_{quarter_idx}")
+    if direct is not None:
+        return float(direct)
+    revenue = row.get(f"qtr_operating_revenue_{quarter_idx}")
+    expense = row.get(f"qtr_operating_expense_{quarter_idx}")
+    if revenue is not None and expense is not None:
+        return float(revenue) - float(expense)
+    return None
+
+
+def effective_stmt_operating_income(row: dict[str, Any]) -> float | None:
+    direct = row.get("stmt_operating_income")
+    if direct is not None:
+        return float(direct)
+    revenue = row.get("stmt_operating_revenue")
+    expense = row.get("stmt_operating_expense")
+    if revenue is not None and expense is not None:
+        return float(revenue) - float(expense)
+    return None
+
+
 def operating_margin_ttm_pct(row: dict[str, Any]) -> float | None:
     """TTM operating margin from four quarterly statement values (mirrors dbt)."""
-    op_values = [row.get(key) for key in QTR_OPERATING_INCOME_KEYS]
+    op_values = [effective_qtr_operating_income(row, idx) for idx in range(TTM_QUARTERS)]
     rev_values = [row.get(key) for key in QTR_TOTAL_REVENUE_KEYS]
     if any(value is None for value in op_values + rev_values):
         return None
@@ -34,10 +58,29 @@ def operating_margin_ttm_pct(row: dict[str, Any]) -> float | None:
     return op_sum / rev_sum * 100.0
 
 
+def operating_margin_annual_pct(row: dict[str, Any]) -> float | None:
+    stmt_op = effective_stmt_operating_income(row)
+    revenue = row.get("stmt_total_revenue")
+    if stmt_op is None or revenue is None or float(revenue) == 0:
+        return None
+    return stmt_op / float(revenue) * 100.0
+
+
+def operating_margin_pct(row: dict[str, Any]) -> tuple[float | None, str | None]:
+    """Return (margin percent, basis) where basis is ttm_quarterly or annual_latest."""
+    ttm = operating_margin_ttm_pct(row)
+    if ttm is not None:
+        return ttm, "ttm_quarterly"
+    annual = operating_margin_annual_pct(row)
+    if annual is not None:
+        return annual, "annual_latest"
+    return None, None
+
+
 def compute_card_metrics_from_raw(row: dict[str, Any]) -> dict[str, float | None]:
     """Compute the five card metrics from landed yfinance raw fields."""
     forward_pe = row.get("info_forward_pe")
-    ebit_margin_pct = operating_margin_ttm_pct(row)
+    ebit_margin_pct, _basis = operating_margin_pct(row)
     revenue_growth_yoy_pct = row.get("info_revenue_growth")
     net_debt = effective_net_debt(row)
     ebitda = row.get("info_ebitda")
@@ -98,4 +141,4 @@ def pct_drift(mart: float | None, live: float | None) -> float | None:
         return None
     if live == 0:
         return None
-    return abs(mart - live) / abs(live) * 100.0
+    return (mart - live) / abs(live) * 100.0

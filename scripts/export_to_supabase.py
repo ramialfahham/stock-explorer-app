@@ -24,6 +24,7 @@ EXPORT_COLUMNS = [
     "business_summary",
     "forward_pe",
     "ebit_margin_pct",
+    "ebit_margin_basis",
     "revenue_growth_yoy_pct",
     "net_debt_to_ebitda",
     "fcf_margin_pct",

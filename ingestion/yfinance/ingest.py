@@ -11,7 +11,12 @@ import yfinance as yf
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import raw_dir
 from ingestion.registry import Market
-from ingestion.yfinance.quarterly import land_quarterly_ttm_fields
+from ingestion.yfinance.quarterly import (
+    OPERATING_EXPENSE_ROW,
+    OPERATING_INCOME_FALLBACK_ROWS,
+    OPERATING_REVENUE_ROW,
+    land_quarterly_ttm_fields,
+)
 from ingestion.yfinance.rate_limit import call_with_retry, is_rate_limited
 from ingestion.yfinance.symbols import to_yfinance_download_ticker, to_yfinance_ticker
 
@@ -211,6 +216,18 @@ def _fetch_fundamentals_row(
         row["stmt_free_cash_flow"] = fcf
         row["stmt_fiscal_period_end"] = fiscal_end
         row["stmt_currency"] = income_currency or cashflow_currency
+
+        stmt_op = None
+        for label in OPERATING_INCOME_FALLBACK_ROWS:
+            stmt_op, _, _ = _latest_annual_statement_value(income, label)
+            if stmt_op is not None:
+                break
+        row["stmt_operating_income"] = stmt_op
+        stmt_op_rev, _, _ = _latest_annual_statement_value(income, OPERATING_REVENUE_ROW)
+        stmt_op_exp, _, _ = _latest_annual_statement_value(income, OPERATING_EXPENSE_ROW)
+        row["stmt_operating_revenue"] = stmt_op_rev
+        row["stmt_operating_expense"] = stmt_op_exp
+
         row.update(land_quarterly_ttm_fields(ticker))
         return row
 
@@ -229,15 +246,18 @@ def _effective_net_debt(row: dict[str, object]) -> object | None:
     return None
 
 
-def _has_ttm_quarterly_fields(row: dict[str, object]) -> bool:
-    keys = [
-        *(f"qtr_operating_income_{i}" for i in range(4)),
-        *(f"qtr_total_revenue_{i}" for i in range(4)),
-    ]
-    if any(row.get(key) is None for key in keys):
-        return False
-    revenue_sum = sum(float(row[key]) for key in keys[4:])  # type: ignore[arg-type]
-    return revenue_sum != 0
+def _has_operating_margin_inputs(row: dict[str, object]) -> bool:
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[2]
+    scripts_dir = repo_root / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from metric_formulas import operating_margin_pct
+
+    margin, _basis = operating_margin_pct(row)
+    return margin is not None
 
 
 def _is_card_eligible_raw(row: dict[str, object]) -> bool:
@@ -255,8 +275,8 @@ def _is_card_eligible_raw(row: dict[str, object]) -> bool:
         and row.get("stmt_total_revenue") is not None
         and row.get("stmt_total_revenue") != 0
     )
-    ttm_ok = _has_ttm_quarterly_fields(row)
-    return info_ok and stmt_ok and ttm_ok
+    margin_ok = _has_operating_margin_inputs(row)
+    return info_ok and stmt_ok and margin_ok
 
 
 def _fetch_fundamentals(

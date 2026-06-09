@@ -29,7 +29,18 @@ renamed as (
         cast(s.qtr_total_revenue_0 as double) as qtr_total_revenue_0,
         cast(s.qtr_total_revenue_1 as double) as qtr_total_revenue_1,
         cast(s.qtr_total_revenue_2 as double) as qtr_total_revenue_2,
-        cast(s.qtr_total_revenue_3 as double) as qtr_total_revenue_3
+        cast(s.qtr_total_revenue_3 as double) as qtr_total_revenue_3,
+        cast(s.qtr_operating_revenue_0 as double) as qtr_operating_revenue_0,
+        cast(s.qtr_operating_revenue_1 as double) as qtr_operating_revenue_1,
+        cast(s.qtr_operating_revenue_2 as double) as qtr_operating_revenue_2,
+        cast(s.qtr_operating_revenue_3 as double) as qtr_operating_revenue_3,
+        cast(s.qtr_operating_expense_0 as double) as qtr_operating_expense_0,
+        cast(s.qtr_operating_expense_1 as double) as qtr_operating_expense_1,
+        cast(s.qtr_operating_expense_2 as double) as qtr_operating_expense_2,
+        cast(s.qtr_operating_expense_3 as double) as qtr_operating_expense_3,
+        cast(s.stmt_operating_income as double) as stmt_operating_income,
+        cast(s.stmt_operating_revenue as double) as stmt_operating_revenue,
+        cast(s.stmt_operating_expense as double) as stmt_operating_expense
     from source_data as s
 )
 

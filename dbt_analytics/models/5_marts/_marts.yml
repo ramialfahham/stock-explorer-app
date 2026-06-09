@@ -60,7 +60,10 @@ models:
           Card metric 1 — forward P/E (multiple). See data_contract § card metrics.
       - name: ebit_margin_pct
         description: >
-          Card metric 2 — EBIT margin percent (0–100 scale).
+          Card metric 2 — operating margin percent (0–100 scale).
+      - name: ebit_margin_basis
+        description: >
+          Period basis for ebit_margin_pct — ttm_quarterly or annual_latest.
       - name: revenue_growth_yoy_pct
         description: >
           Card metric 3 — revenue growth YoY percent (0–100 scale).

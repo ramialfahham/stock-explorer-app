@@ -88,8 +88,13 @@ Use the **latest annual fiscal period** (most recent column) from:
 |----------------------|----------------------|-----------|
 | `stmt_total_revenue` | `Total Revenue` | income_stmt |
 | `stmt_free_cash_flow` | `Free Cash Flow` | cashflow |
-| `qtr_operating_income_0` … `_3` | `Operating Income` | quarterly_income_stmt (0 = most recent) |
-| `qtr_total_revenue_0` … `_3` | `Total Revenue` | quarterly_income_stmt (0 = most recent) |
+| `qtr_operating_income_0` … `_3` | Operating-profit row (fallback labels) | quarterly_income_stmt |
+| `qtr_total_revenue_0` … `_3` | `Total Revenue` | quarterly_income_stmt |
+| `qtr_operating_revenue_0` … `_3` | `Operating Revenue` | quarterly (UK banks) |
+| `qtr_operating_expense_0` … `_3` | `Operating Expense` | quarterly (UK banks) |
+| `stmt_operating_income` | Operating-profit row (fallback labels) | income_stmt |
+| `stmt_operating_revenue` | `Operating Revenue` | income_stmt |
+| `stmt_operating_expense` | `Operating Expense` | income_stmt |
 | `stmt_fiscal_period_end` | column date | metadata |
 
 Also persist `stmt_currency` if available on the statement object.
@@ -101,15 +106,17 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 | # | Card metric | Formula | Primary inputs |
 |---|-------------|---------|----------------|
 | 1 | `forward_pe` | `info_forward_pe` | `ticker.info` |
-| 2 | `ebit_margin_pct` | `sum(qtr_operating_income_0..3) / sum(qtr_total_revenue_0..3) * 100` | quarterly income_stmt |
+| 2 | `ebit_margin_pct` | TTM: `sum(eff_op_0..3) / sum(qtr_total_revenue_0..3) * 100`; else annual `eff_stmt_op / stmt_total_revenue * 100` | quarterly + annual income_stmt |
 | 3 | `revenue_growth_yoy_pct` | `info_revenue_growth * 100` | `ticker.info` |
 | 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
 | 5 | `fcf_margin_pct` | `stmt_free_cash_flow / stmt_total_revenue * 100` | cashflow + income_stmt |
 
-**Operating margin (TTM):** sum the last four quarterly **Operating Income** and **Total Revenue**
-rows from `quarterly_income_stmt` (fallback `quarterly_financials`). All four quarters must be
-present and revenue sum non-zero. `info_operating_margins` remains in raw for audit only — it is
-often a single quarter, not TTM.
+**Operating margin:** prefer TTM — sum four quarters of operating profit and **Total Revenue**
+from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks (see
+`docs/intl-quarterly-row-labels.md`) and **Operating Revenue − Operating Expense** when needed.
+When four quarters are incomplete, use latest annual operating profit / annual total revenue.
+`ebit_margin_basis` records `ttm_quarterly` vs `annual_latest`. `info_operating_margins` is
+audit-only.
 
 **Net debt / EBITDA:** dbt uses `coalesce(info_net_debt, info_total_debt - info_total_cash)` as the
 numerator when `info_ebitda` is non-null and non-zero. If both `netDebt` and the debt/cash pair

@@ -68,9 +68,12 @@ models:
           Forward P/E ratio from info_forward_pe. Unit: multiple (x). Null when Yahoo omits forwardPE.
       - name: ebit_margin_pct
         description: >
-          TTM operating margin percent: sum of last four quarterly Operating Income
-          divided by sum of last four quarterly Total Revenue × 100. Null when any
-          quarter is missing or revenue sum is zero.
+          Operating margin percent: TTM from four quarterly operating-profit and revenue
+          sums when complete; else latest annual operating profit / annual Total Revenue.
+          Operating profit coalesces row-label fallbacks and Operating Revenue minus Expense.
+      - name: ebit_margin_basis
+        description: >
+          Period basis for ebit_margin_pct — ttm_quarterly or annual_latest.
       - name: revenue_growth_yoy_pct
         description: >
           YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
@@ -376,6 +379,103 @@ unit_tests:
             ticker: T4,
             is_card_eligible: true,
             net_debt_to_ebitda: 2.0,
+          }
+  - name: card_metrics_annual_margin_when_quarterly_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: HSBA,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 12.0,
+              info_revenue_growth: 0.05,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Financial Services,
+              info_currency: GBP,
+              stmt_total_revenue: 1000.0,
+              stmt_free_cash_flow: 100.0,
+              stmt_operating_income: 200.0,
+              qtr_operating_income_0: null,
+              qtr_operating_income_1: null,
+              qtr_operating_income_2: null,
+              qtr_operating_income_3: null,
+              qtr_total_revenue_0: null,
+              qtr_total_revenue_1: null,
+              qtr_total_revenue_2: null,
+              qtr_total_revenue_3: null,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: HSBA,
+              company_name: HSBC,
+              sector: Financial Services,
+              currency: GBP,
+            }
+    expect:
+      rows:
+        - {
+            market_code: uk_ftse100,
+            ticker: HSBA,
+            is_card_eligible: true,
+            ebit_margin_pct: 20.0,
+            ebit_margin_basis: annual_latest,
+          }
+  - name: card_metrics_bank_quarterly_from_operating_revenue_expense
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: LLOY,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 10.0,
+              info_revenue_growth: 0.04,
+              info_net_debt: 500.0,
+              info_ebitda: 250.0,
+              info_sector: Financial Services,
+              info_currency: GBP,
+              stmt_total_revenue: 800.0,
+              stmt_free_cash_flow: 80.0,
+              qtr_operating_income_0: null,
+              qtr_operating_income_1: null,
+              qtr_operating_income_2: null,
+              qtr_operating_income_3: null,
+              qtr_operating_revenue_0: 30.0,
+              qtr_operating_revenue_1: 30.0,
+              qtr_operating_revenue_2: 30.0,
+              qtr_operating_revenue_3: 30.0,
+              qtr_operating_expense_0: 5.0,
+              qtr_operating_expense_1: 5.0,
+              qtr_operating_expense_2: 5.0,
+              qtr_operating_expense_3: 5.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: LLOY,
+              company_name: Lloyds,
+              sector: Financial Services,
+              currency: GBP,
+            }
+    expect:
+      rows:
+        - {
+            market_code: uk_ftse100,
+            ticker: LLOY,
+            is_card_eligible: true,
+            ebit_margin_pct: 25.0,
+            ebit_margin_basis: ttm_quarterly,
           }
   - name: card_metrics_ineligible_when_ttm_quarters_missing
     model: int_stock__card_metrics

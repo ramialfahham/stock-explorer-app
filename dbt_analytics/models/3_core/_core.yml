@@ -100,6 +100,21 @@ models:
       - name: qtr_total_revenue_3
         description: >
           Total Revenue three quarters back (index 3); feeds TTM ebit_margin_pct.
+      - name: qtr_operating_revenue_0
+        description: >
+          Operating Revenue Q0 when Operating Income missing (UK banks); dbt derives op profit.
+      - name: qtr_operating_expense_0
+        description: >
+          Operating Expense Q0 when Operating Income missing (UK banks); dbt derives op profit.
+      - name: stmt_operating_income
+        description: >
+          Latest annual operating profit (fallback labels); feeds annual ebit_margin_pct.
+      - name: stmt_operating_revenue
+        description: >
+          Latest annual Operating Revenue when stmt_operating_income missing.
+      - name: stmt_operating_expense
+        description: >
+          Latest annual Operating Expense when stmt_operating_income missing.
       - name: info_revenue_growth
         description: >
           Yahoo revenueGrowth decimal on latest snapshot.
