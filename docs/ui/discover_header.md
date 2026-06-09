@@ -38,11 +38,11 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 
 **Closed state:** `Filters` button + right-aligned summary (`All markets · All sectors` or scoped labels).
 
-**Open state:** Market selectbox, then Sector selectbox (sector list respects current market). Optional **Metric ranges** min/max for each card metric; **Clear metric filters** resets bounds. Changes reset walk queue via `_on_filter_change`.
+**Open state:** Market selectbox, then Sector selectbox (sector list respects current market). Changes reset walk queue via `_on_filter_change`.
 
 **Removed:** “Surprise me worldwide” checkbox — use **All markets** in the popover instead.
 
-**Closed summary:** `filter_scope_summary()` appends active metric filters (e.g. `Forward P/E ≤ 20.0` or `3 metric filters` when many are set).
+**Phase 2 (deferred):** Metric range filters — needs a mobile-friendly pattern (not a long scrollable popover with min/max widgets). Track in #109.
 
 ---
 

@@ -15,13 +15,7 @@ from browser_storage import (
     storage_sync_pending,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
-from card_copy import (
-    ALL_METRICS,
-    METRIC_LABELS,
-    freshness_line,
-    saved_row_subtitle,
-    sector_headline,
-)
+from card_copy import freshness_line, saved_row_subtitle, sector_headline
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from explore_filters import (
@@ -30,12 +24,9 @@ from explore_filters import (
     browse_row_subtitle,
     cards_lack_business_summary,
     default_market_filter,
-    default_metric_filter_bounds,
     filter_pool,
     filter_scope_summary,
     market_filter_options,
-    metric_filters_from_inputs,
-    METRIC_FILTER_SPECS,
     sectors_for_market,
     walk_progress_line,
 )
@@ -51,7 +42,7 @@ from supabase_client import get_anon_client
 
 load_dotenv()
 
-EXPLORE_DEFAULTS_VERSION = 4
+EXPLORE_DEFAULTS_VERSION = 5
 CARDS_CACHE_VERSION = 2
 
 st.set_page_config(
@@ -83,18 +74,7 @@ def _init_state() -> None:
     if st.session_state.get("_explore_defaults_version", 0) < EXPLORE_DEFAULTS_VERSION:
         st.session_state["explore_market"] = default_market_filter()
         st.session_state["explore_sector"] = ALL_SECTORS
-        for metric in ALL_METRICS:
-            lo, hi = default_metric_filter_bounds(metric)
-            st.session_state[f"explore_metric_{metric}_min"] = lo
-            st.session_state[f"explore_metric_{metric}_max"] = hi
         st.session_state["_explore_defaults_version"] = EXPLORE_DEFAULTS_VERSION
-
-    for metric in ALL_METRICS:
-        lo, hi = default_metric_filter_bounds(metric)
-        if f"explore_metric_{metric}_min" not in st.session_state:
-            st.session_state[f"explore_metric_{metric}_min"] = lo
-        if f"explore_metric_{metric}_max" not in st.session_state:
-            st.session_state[f"explore_metric_{metric}_max"] = hi
 
     if st.session_state.get("_cards_cache_version", 0) < CARDS_CACHE_VERSION:
         st.session_state["all_cards"] = []
@@ -133,24 +113,6 @@ def _explore_filters() -> tuple[str, str]:
     return market, sector
 
 
-def _explore_metric_filters():
-    inputs = {
-        metric: (
-            float(st.session_state[f"explore_metric_{metric}_min"]),
-            float(st.session_state[f"explore_metric_{metric}_max"]),
-        )
-        for metric in ALL_METRICS
-    }
-    return metric_filters_from_inputs(inputs)
-
-
-def _clear_metric_filters() -> None:
-    for metric in ALL_METRICS:
-        lo, hi = default_metric_filter_bounds(metric)
-        st.session_state[f"explore_metric_{metric}_min"] = lo
-        st.session_state[f"explore_metric_{metric}_max"] = hi
-
-
 def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     cards = _ensure_all_cards(client)
     if interactions is None:
@@ -159,13 +121,11 @@ def _refresh_queue(client, *, interactions: list[dict] | None = None) -> None:
     st.session_state["eligible_counts"] = counts
 
     market, sector = _explore_filters()
-    metric_filters = _explore_metric_filters()
     pool = filter_pool(
         cards,
         interactions,
         market_code=market,
         sector=sector,
-        metric_filters=metric_filters,
     )
     start_market = None if market == ALL_MARKETS else market
     st.session_state["queue"] = build_queue(
@@ -340,12 +300,7 @@ def _on_filter_change() -> None:
 def _render_explore_filters(client) -> None:
     cards = _ensure_all_cards(client)
     market, sector = _explore_filters()
-    metric_filters = _explore_metric_filters()
-    summary = filter_scope_summary(
-        market_code=market,
-        sector=sector,
-        metric_filters=metric_filters,
-    )
+    summary = filter_scope_summary(market_code=market, sector=sector)
 
     filter_btn, summary_col = st.columns([2, 5], vertical_alignment="center")
     with filter_btn:
@@ -373,33 +328,6 @@ def _render_explore_filters(client) -> None:
                 key="explore_sector",
                 on_change=_on_filter_change,
             )
-            st.markdown("**Metric ranges** (optional)")
-            for metric in ALL_METRICS:
-                spec = METRIC_FILTER_SPECS[metric]
-                st.caption(METRIC_LABELS[metric])
-                min_col, max_col = st.columns(2)
-                with min_col:
-                    st.number_input(
-                        "Min",
-                        min_value=spec["lo"],
-                        max_value=spec["hi"],
-                        step=spec["step"],
-                        key=f"explore_metric_{metric}_min",
-                        on_change=_on_filter_change,
-                    )
-                with max_col:
-                    st.number_input(
-                        "Max",
-                        min_value=spec["lo"],
-                        max_value=spec["hi"],
-                        step=spec["step"],
-                        key=f"explore_metric_{metric}_max",
-                        on_change=_on_filter_change,
-                    )
-            if st.button("Clear metric filters", key="explore_clear_metric_filters"):
-                _clear_metric_filters()
-                _on_filter_change()
-                st.rerun()
     with summary_col:
         st.markdown(
             f'<p class="ss-filter-summary">{html.escape(summary)}</p>',
@@ -487,7 +415,6 @@ def _render_discover_tab(client) -> bool:
         get_interactions(),
         market_code=market,
         sector=sector,
-        metric_filters=_explore_metric_filters(),
     )
     with st.expander(f"Browse {len(browse_pool)} companies in this scope", expanded=False):
         _render_browse_list(browse_pool)
