@@ -15,7 +15,7 @@ from browser_storage import (
     storage_sync_pending,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
-from card_copy import freshness_line, sector_headline
+from card_copy import freshness_line, saved_row_subtitle, sector_headline
 from card_ui import render_stock_card
 from discovery_queue import build_queue
 from explore_filters import (
@@ -31,7 +31,7 @@ from explore_filters import (
     walk_progress_line,
 )
 from landing import render_landing
-from markets import HERO_MARKET_CODE, eligible_counts_by_market
+from markets import HERO_MARKET_CODE, eligible_counts_by_market, latest_snapshot_label
 from nav_pages import NAV_PAGES, normalize_nav_page
 from overflow_menu import render_overflow_menu
 from saved_compare import compare_partner_options, render_compare_two
@@ -435,28 +435,14 @@ def _saved_row_key(card: dict) -> str:
     return f"{card['market_code']}::{card['ticker']}"
 
 
-def _saved_row_label(card: dict) -> str:
-    company = card.get("company_name") or card.get("ticker") or "Unknown"
-    ticker = card.get("ticker") or "—"
-    sector = sector_headline(card)
-    fresh = freshness_line(card) or ""
-    lines = [f"{company} · {ticker}", sector]
-    if fresh:
-        lines.append(fresh)
-    return "\n".join(lines)
-
-
 def _render_saved_list_row(card: dict) -> None:
     company = card.get("company_name") or card.get("ticker") or "Unknown"
-    ticker = card.get("ticker") or "—"
-    sector = sector_headline(card)
-    fresh = freshness_line(card) or ""
+    subtitle = saved_row_subtitle(card)
     st.markdown(
         f"""
 <div class="ss-saved-row">
-  <p class="ss-saved-name">{html.escape(company)} · <span class="ss-saved-ticker">{html.escape(ticker)}</span></p>
-  <p class="ss-saved-sector">{html.escape(sector)}</p>
-  {f'<p class="ss-saved-fresh">{html.escape(fresh)}</p>' if fresh else ''}
+  <p class="ss-saved-name">{html.escape(company)}</p>
+  <p class="ss-saved-sector">{html.escape(subtitle)}</p>
 </div>
 """,
         unsafe_allow_html=True,
@@ -483,16 +469,30 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
             st.session_state["saved_compare_key"] = None
             st.rerun()
     else:
+        snapshot_label = latest_snapshot_label(saved_cards)
+        if snapshot_label:
+            st.markdown(
+                f'<p class="ss-saved-list-fresh">Fundamentals as of '
+                f"{html.escape(snapshot_label)}</p>",
+                unsafe_allow_html=True,
+            )
         for card in saved_cards:
             row_key = _saved_row_key(card)
-            st.markdown('<div class="ss-saved-list-item"></div>', unsafe_allow_html=True)
-            if st.button(
-                _saved_row_label(card),
-                key=f"saved_open_{row_key}",
-                use_container_width=True,
-            ):
-                st.session_state["saved_focus_key"] = row_key
-                st.rerun()
+            company = card.get("company_name") or card.get("ticker") or "Unknown"
+            subtitle = saved_row_subtitle(card)
+            row_text, row_action = st.columns([5, 1])
+            with row_text:
+                st.markdown(
+                    f'<div class="ss-saved-list-row">'
+                    f'<p class="ss-saved-name">{html.escape(company)}</p>'
+                    f'<p class="ss-saved-sector">{html.escape(subtitle)}</p>'
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            with row_action:
+                if st.button("Open", key=f"saved_open_{row_key}", use_container_width=True):
+                    st.session_state["saved_focus_key"] = row_key
+                    st.rerun()
         return
 
     market_code, ticker = focus_key.split("::", 1)

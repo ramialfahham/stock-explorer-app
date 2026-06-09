@@ -164,6 +164,13 @@ def sector_headline(card: dict) -> str:
     return sector
 
 
+def saved_row_subtitle(card: dict) -> str:
+    """Second line for Saved list rows: ticker and sector only."""
+    ticker = card.get("ticker") or "—"
+    sector = card.get("sector") or "Unknown sector"
+    return f"{ticker} · {sector}"
+
+
 def sector_gloss_line(sector: str | None) -> str:
     if not sector:
         return DEFAULT_SECTOR_GLOSS
