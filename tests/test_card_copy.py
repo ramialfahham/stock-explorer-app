@@ -11,14 +11,15 @@ if str(FRONTEND) not in sys.path:
     sys.path.insert(0, str(FRONTEND))
 
 from card_copy import (  # noqa: E402
-    company_plain_summary_line,
-    company_summary_has_full_description,
-    first_sentence,
+    BUSINESS_SUMMARY_PREVIEW_WORDS,
+    business_summary_is_truncated,
+    business_summary_preview,
     metric_analogy,
     metric_gloss,
     metric_label,
     metric_learn_text,
     saved_row_subtitle,
+    truncate_words,
 )
 
 
@@ -51,53 +52,45 @@ def test_metric_label_annual_operating_margin() -> None:
     assert metric_label("ebit_margin_pct", card) == "Operating margin (annual)"
 
 
-def test_first_sentence_stops_at_period() -> None:
-    abnb = (
-        "Airbnb, Inc., together with its subsidiaries, operates a platform "
-        "for stays and experiences. It connects hosts and guests worldwide."
-    )
-    assert first_sentence(abnb).startswith("Airbnb, Inc.")
-    assert first_sentence(abnb).endswith(".")
+def test_truncate_words_short_text_unchanged() -> None:
+    text = "One two three four five."
+    preview, truncated = truncate_words(text, 10)
+    assert preview == text
+    assert truncated is False
 
 
-def test_company_plain_summary_line_with_founded_year() -> None:
+def test_truncate_words_adds_ellipsis() -> None:
+    text = " ".join(f"word{i}" for i in range(25))
+    preview, truncated = truncate_words(text, 20)
+    assert truncated is True
+    assert preview.endswith("…")
+    assert len(preview.split()) == 20
+
+
+def test_business_summary_preview_uses_original_wording() -> None:
     card = {
         "business_summary": (
-            "NVIDIA Corporation provides graphics and compute products. "
-            "It serves gaming, data center, and automotive markets."
-        ),
-        "company_founded_year": 1993,
-    }
-    line = company_plain_summary_line(card)
-    assert line is not None
-    assert line.startswith("Founded 1993 · NVIDIA Corporation")
-
-
-def test_company_plain_summary_line_without_founded_year() -> None:
-    card = {
-        "business_summary": (
-            "NVIDIA Corporation provides graphics and compute products. "
-            "It serves gaming, data center, and automotive markets."
+            "NVIDIA Corporation provides graphics and compute products for gaming "
+            "and professional markets and is a leader in accelerated computing "
+            "and artificial intelligence."
         ),
     }
-    line = company_plain_summary_line(card)
-    assert line is not None
-    assert not line.startswith("Founded")
-    assert line.startswith("NVIDIA Corporation")
+    preview = business_summary_preview(card, max_words=12)
+    assert preview is not None
+    assert preview.startswith("NVIDIA Corporation provides graphics")
+    assert preview.endswith("…")
 
 
-def test_company_plain_summary_line_empty_when_no_summary() -> None:
-    assert company_plain_summary_line({}) is None
-    assert company_plain_summary_line({"business_summary": "   "}) is None
+def test_business_summary_preview_empty_when_no_summary() -> None:
+    assert business_summary_preview({}) is None
+    assert business_summary_preview({"business_summary": "   "}) is None
 
 
-def test_company_summary_has_full_description() -> None:
+def test_business_summary_is_truncated() -> None:
     long_card = {
-        "business_summary": (
-            "Airbnb, Inc. operates a platform for stays. "
-            "Additional detail about markets and history follows here."
-        ),
+        "business_summary": " ".join(f"word{i}" for i in range(30)),
     }
-    short_card = {"business_summary": "One sentence only."}
-    assert company_summary_has_full_description(long_card) is True
-    assert company_summary_has_full_description(short_card) is False
+    short_card = {"business_summary": "Short company blurb."}
+    assert business_summary_is_truncated(long_card) is True
+    assert business_summary_is_truncated(short_card) is False
+    assert BUSINESS_SUMMARY_PREVIEW_WORDS == 20

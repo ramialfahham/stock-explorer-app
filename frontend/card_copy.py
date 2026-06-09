@@ -316,7 +316,8 @@ def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str |
 
 STALE_SNAPSHOT_DAYS = 7
 
-_FOUNDED_YEAR_MIN = 1800
+# Yahoo longBusinessSummary preview length on the card face (tap to expand).
+BUSINESS_SUMMARY_PREVIEW_WORDS = 20
 
 
 def business_summary_full(card: dict) -> str | None:
@@ -327,49 +328,38 @@ def business_summary_full(card: dict) -> str | None:
     return text or None
 
 
-def first_sentence(text: str) -> str:
-    """Return the first sentence from Yahoo longBusinessSummary-style prose."""
+def truncate_words(text: str, max_words: int) -> tuple[str, bool]:
+    """Return normalized text truncated to max_words; bool is True when shortened."""
     normalized = " ".join(text.split())
     if not normalized:
-        return ""
-    period_space = normalized.find(". ")
-    if period_space == -1:
-        return normalized.rstrip(".")
-    return normalized[: period_space + 1].strip()
+        return "", False
+    words = normalized.split()
+    if len(words) <= max_words:
+        return normalized, False
+    preview = " ".join(words[:max_words]).rstrip(".,;:")
+    return f"{preview}…", True
 
 
-def _valid_founded_year(raw: object | None) -> int | None:
-    if raw is None:
+def business_summary_preview(
+    card: dict,
+    *,
+    max_words: int = BUSINESS_SUMMARY_PREVIEW_WORDS,
+) -> str | None:
+    """Card-face preview from Yahoo text — original wording, word-limited."""
+    full = business_summary_full(card)
+    if not full:
         return None
-    try:
-        year = int(raw)
-    except (TypeError, ValueError):
-        return None
-    if year < _FOUNDED_YEAR_MIN or year > date.today().year:
-        return None
-    return year
+    preview, _ = truncate_words(full, max_words)
+    return preview or None
 
 
-def company_plain_summary_line(card: dict) -> str | None:
-    """One scannable plain-language line for the card face (Tier 2 gloss)."""
-    raw = business_summary_full(card)
-    if not raw:
-        return None
-    sentence = first_sentence(raw)
-    if not sentence:
-        return None
-    founded = _valid_founded_year(card.get("company_founded_year"))
-    if founded is not None:
-        return f"Founded {founded} · {sentence}"
-    return sentence
-
-
-def company_summary_has_full_description(card: dict) -> bool:
-    """True when Yahoo text is materially longer than the plain first sentence."""
+def business_summary_is_truncated(
+    card: dict,
+    *,
+    max_words: int = BUSINESS_SUMMARY_PREVIEW_WORDS,
+) -> bool:
     full = business_summary_full(card)
     if not full:
         return False
-    sentence = first_sentence(full)
-    if not sentence:
-        return False
-    return len(full.strip()) > len(sentence) + 15
+    _, truncated = truncate_words(full, max_words)
+    return truncated

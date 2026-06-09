@@ -21,8 +21,8 @@ from card_copy import (
     benchmark_indicator,
     benchmark_indicator_label,
     business_summary_full,
-    company_plain_summary_line,
-    company_summary_has_full_description,
+    business_summary_is_truncated,
+    business_summary_preview,
     format_metric_value,
     freshness_line,
     sector_gloss_line,
@@ -135,19 +135,17 @@ def _learn_panel_html(card: dict) -> str:
 
 
 def _company_summary_html(card: dict) -> str:
-    plain = company_plain_summary_line(card)
-    if not plain:
-        return ""
-    block = f'<p class="ss-company-summary">{_esc(plain)}</p>'
-    if not company_summary_has_full_description(card):
-        return block
     full = business_summary_full(card)
     if not full:
-        return block
+        return ""
+    preview = business_summary_preview(card)
+    if not preview:
+        return ""
+    if not business_summary_is_truncated(card):
+        return f'<p class="ss-company-summary">{_esc(full)}</p>'
     return (
-        f"{block}"
         f'<details class="ss-company-about">'
-        f"<summary>Full description</summary>"
+        f'<summary class="ss-company-summary">{_esc(preview)}</summary>'
         f'<p class="ss-company-summary-full">{_esc(full)}</p>'
         f"</details>"
     )
