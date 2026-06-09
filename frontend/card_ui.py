@@ -82,7 +82,7 @@ def _benchmark_compare_body(card: dict) -> str:
     return f'<p class="ss-median-primer">{_esc(MEDIAN_PRIMER)}</p>{bench_list}'
 
 
-def _metric_learn_blocks() -> str:
+def _metric_learn_blocks(card: dict) -> str:
     blocks: list[str] = []
     for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
         blocks.append(
@@ -96,8 +96,8 @@ def _metric_learn_blocks() -> str:
     return "".join(blocks)
 
 
-def _metric_definitions_body() -> str:
-    return f'<div class="ss-metric-learn-list">{_metric_learn_blocks()}</div>'
+def _metric_definitions_body(card: dict) -> str:
+    return f'<div class="ss-metric-learn-list">{_metric_learn_blocks(card)}</div>'
 
 
 def _esc(value: object) -> str:
@@ -125,7 +125,7 @@ def _learn_panel_html(card: dict) -> str:
         f"{compare_section}"
         f'<div class="ss-learn-section">'
         f'<p class="ss-learn-heading">What each metric means</p>'
-        f"{_metric_definitions_body()}"
+        f"{_metric_definitions_body(card)}"
         f"</div>"
         f"</div>"
         f"</details>"
