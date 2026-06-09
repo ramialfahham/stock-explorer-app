@@ -36,6 +36,7 @@ from live_quote import (
     live_quote_button_label,
     yahoo_finance_url,
 )
+from disclosure_html import disclosure_html
 from metric_school import render_metric_micro_checks, render_metric_playgrounds
 
 
@@ -150,17 +151,13 @@ def _company_summary_html(card: dict) -> str:
         return ""
     if not business_summary_is_truncated(card):
         return f'<p class="ss-company-summary">{_esc(full)}</p>'
-    return (
-        f'<div class="ss-company-about-wrap">'
-        f'<p class="ss-company-summary-preview">{_esc(preview)}</p>'
-        f'<details class="ss-company-about">'
-        f'<summary class="ss-company-summary-toggle">'
-        f'<span class="ss-company-summary-more">Read full description</span>'
-        f'<span class="ss-company-summary-less">Show less</span>'
-        f"</summary>"
-        f'<p class="ss-company-summary-full">{_esc(full)}</p>'
-        f"</details>"
-        f"</div>"
+    return disclosure_html(
+        _esc(preview or ""),
+        f'<p class="ss-company-summary-full">{_esc(full)}</p>',
+        more_label="Read full description",
+        less_label="Show less",
+        wrap_class="ss-company-about-wrap ss-disclosure-wrap",
+        details_class="ss-company-about ss-disclosure",
     )
 
 

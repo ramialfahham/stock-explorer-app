@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass
 
 import streamlit as st
 import yfinance as yf
 
+from disclosure_html import disclosure_html, is_truncated, preview_words
 from live_quote import yfinance_symbol
 
 _SESSION_KEY = "_saved_news"
 _MAX_HEADLINES = 3
+_HEADLINE_PREVIEW_WORDS = 12
 
 
 @dataclass(frozen=True)
@@ -33,11 +36,87 @@ def _store() -> dict[str, list[NewsHeadline] | NewsError]:
     return st.session_state.setdefault(_SESSION_KEY, {})
 
 
+def parse_yfinance_news_item(item: dict) -> NewsHeadline | None:
+    """Normalize Yahoo news payloads (legacy flat and nested content shapes)."""
+    content = item.get("content") if isinstance(item.get("content"), dict) else {}
+    title = str(item.get("title") or content.get("title") or "").strip()
+    if not title:
+        return None
+    link = str(
+        item.get("link")
+        or content.get("canonicalUrl")
+        or content.get("clickThroughUrl")
+        or content.get("url")
+        or ""
+    ).strip()
+    publisher = str(
+        item.get("publisher")
+        or content.get("provider")
+        or content.get("source")
+        or "Source"
+    ).strip()
+    return NewsHeadline(title=title, publisher=publisher, link=link)
+
+
+def parse_yfinance_news(items: list[dict], *, limit: int = _MAX_HEADLINES) -> list[NewsHeadline]:
+    headlines: list[NewsHeadline] = []
+    for item in items:
+        parsed = parse_yfinance_news_item(item)
+        if parsed is not None:
+            headlines.append(parsed)
+        if len(headlines) >= limit:
+            break
+    return headlines
+
+
+def headline_title_html(headline: NewsHeadline) -> str:
+    title = html.escape(headline.title)
+    if headline.link:
+        return f'<a href="{html.escape(headline.link)}" target="_blank" rel="noopener">{title}</a>'
+    return title
+
+
+def headline_item_html(
+    headline: NewsHeadline,
+    *,
+    max_words: int = _HEADLINE_PREVIEW_WORDS,
+) -> str:
+    publisher = html.escape(headline.publisher)
+    title_html = headline_title_html(headline)
+    if not is_truncated(headline.title, max_words=max_words):
+        return (
+            f'<div class="ss-saved-news-item">'
+            f'<p class="ss-saved-news-line">{title_html} · '
+            f'<span class="ss-saved-news-pub">{publisher}</span></p>'
+            f"</div>"
+        )
+
+    preview = html.escape(preview_words(headline.title, max_words=max_words))
+    full_body = (
+        f'<p class="ss-saved-news-line ss-disclosure-full">'
+        f"{title_html} · <span class=\"ss-saved-news-pub\">{publisher}</span></p>"
+    )
+    block = disclosure_html(
+        preview,
+        full_body,
+        more_label="Read full headline",
+        less_label="Show less",
+    )
+    return f'<div class="ss-saved-news-item">{block}</div>'
+
+
+def headlines_block_html(headlines: list[NewsHeadline]) -> str:
+    if not headlines:
+        return ""
+    items = "".join(headline_item_html(h) for h in headlines)
+    return f'<div class="ss-saved-news-list">{items}</div>'
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def _fetch_news(symbol: str) -> list[dict]:
     ticker = yf.Ticker(symbol)
     raw = ticker.news or []
-    return raw[:_MAX_HEADLINES]
+    return raw[: _MAX_HEADLINES * 2]
 
 
 def fetch_saved_news(card: dict) -> None:
@@ -49,19 +128,15 @@ def fetch_saved_news(card: dict) -> None:
         _store()[key] = NewsError("Could not load headlines right now.")
         return
 
-    headlines: list[NewsHeadline] = []
-    for item in items:
-        title = str(item.get("title") or "").strip()
-        if not title:
-            continue
-        publisher = str(item.get("publisher") or "Source").strip()
-        link = str(item.get("link") or "").strip()
-        headlines.append(NewsHeadline(title=title, publisher=publisher, link=link))
-
+    headlines = parse_yfinance_news(items, limit=_MAX_HEADLINES)
     if headlines:
         _store()[key] = headlines
     else:
         _store()[key] = NewsError("No recent headlines found for this ticker.")
+
+
+def clear_cached_news(card: dict) -> None:
+    _store().pop(_cache_key(card), None)
 
 
 def get_cached_news(card: dict) -> list[NewsHeadline] | NewsError | None:
@@ -69,26 +144,28 @@ def get_cached_news(card: dict) -> list[NewsHeadline] | NewsError | None:
 
 
 def render_saved_news(card: dict, *, widget_key_prefix: str = "saved") -> None:
-    """Show 2–3 headlines when user requests them on Saved focus view."""
+    """Load and show up to three headlines on Saved focus view (not on Discover)."""
     market = card.get("market_code") or "unknown"
     ticker = card.get("ticker") or "unknown"
-    button_key = f"{widget_key_prefix}_news_{market}_{ticker}"
+    retry_key = f"{widget_key_prefix}_news_retry_{market}_{ticker}"
 
     st.markdown('<p class="ss-saved-news-heading">Recent headlines</p>', unsafe_allow_html=True)
-    if st.button("Load headlines", key=button_key, use_container_width=True):
-        fetch_saved_news(card)
-        st.rerun()
 
     cached = get_cached_news(card)
     if cached is None:
-        st.caption("Headlines load on demand — not on Discover cards.")
-        return
+        fetch_saved_news(card)
+        cached = get_cached_news(card)
+        if cached is None:
+            st.caption("Loading headlines…")
+            return
+
     if isinstance(cached, NewsError):
         st.caption(cached.message)
+        if st.button("Try again", key=retry_key):
+            clear_cached_news(card)
+            fetch_saved_news(card)
+            st.rerun()
         return
 
-    for headline in cached:
-        if headline.link:
-            st.markdown(f"- [{headline.title}]({headline.link}) · _{headline.publisher}_")
-        else:
-            st.markdown(f"- {headline.title} · _{headline.publisher}_")
+    st.markdown(headlines_block_html(cached), unsafe_allow_html=True)
+    st.caption("Headlines from Yahoo Finance — Saved tab only, cached about an hour.")
