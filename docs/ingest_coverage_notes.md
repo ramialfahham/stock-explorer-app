@@ -7,6 +7,7 @@ From `python scripts/audit_yfinance_coverage.py --sample-size 5` on all active m
 | Field | Typical hit rate (5-ticker sample) |
 |-------|-------------------------------------|
 | forwardPE, operatingMargins, revenueGrowth, ebitda | ~80–100% |
+| quarterly 4Q operating profit (intl) | varies — see `docs/intl-quarterly-row-labels.md` |
 | Total Revenue / Free Cash Flow (statements) | 100% |
 | **netDebt** | **0%** in prior sample (use totalDebt − totalCash in dbt) |
 | **totalDebt + totalCash** | ~80–100% when netDebt missing |

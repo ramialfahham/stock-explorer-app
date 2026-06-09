@@ -21,6 +21,17 @@ TTM_QUARTER_FIXTURE = {
     "qtr_total_revenue_1": 100.0,
     "qtr_total_revenue_2": 100.0,
     "qtr_total_revenue_3": 100.0,
+    "qtr_operating_revenue_0": None,
+    "qtr_operating_revenue_1": None,
+    "qtr_operating_revenue_2": None,
+    "qtr_operating_revenue_3": None,
+    "qtr_operating_expense_0": None,
+    "qtr_operating_expense_1": None,
+    "qtr_operating_expense_2": None,
+    "qtr_operating_expense_3": None,
+    "stmt_operating_income": None,
+    "stmt_operating_revenue": None,
+    "stmt_operating_expense": None,
 }
 
 

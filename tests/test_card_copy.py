@@ -13,6 +13,7 @@ if str(FRONTEND) not in sys.path:
 from card_copy import (  # noqa: E402
     metric_analogy,
     metric_gloss,
+    metric_label,
     metric_learn_text,
     saved_row_subtitle,
 )
@@ -40,3 +41,8 @@ def test_metric_analogy_net_cash() -> None:
 def test_saved_row_subtitle_ticker_and_sector() -> None:
     card = {"ticker": "AAPL", "sector": "Technology"}
     assert saved_row_subtitle(card) == "AAPL · Technology"
+
+
+def test_metric_label_annual_operating_margin() -> None:
+    card = {"ebit_margin_basis": "annual_latest"}
+    assert metric_label("ebit_margin_pct", card) == "Operating margin (annual)"

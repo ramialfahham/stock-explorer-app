@@ -16,6 +16,7 @@ final as (
         m.business_summary,
         m.forward_pe,
         m.ebit_margin_pct,
+        m.ebit_margin_basis,
         m.revenue_growth_yoy_pct,
         m.net_debt_to_ebitda,
         m.fcf_margin_pct,

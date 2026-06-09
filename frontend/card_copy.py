@@ -164,28 +164,47 @@ def sector_headline(card: dict) -> str:
     return sector
 
 
-def metric_gloss(metric: str, value: float | None) -> str:
+def metric_label(metric: str, card: dict | None = None) -> str:
+    if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
+        return "Operating margin (annual)"
+    return METRIC_LABELS[metric]
+
+
+def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> str:
     """Card-face gloss; value-aware where the story depends on the number."""
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return "Net cash — cash on hand exceeds debt"
+    if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
+        return "Operating profit as share of sales (latest annual)"
     return METRIC_GLOSS[metric]
 
 
-def metric_analogy(metric: str, value: float | None) -> str:
+def metric_analogy(metric: str, value: float | None, card: dict | None = None) -> str:
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return (
             "Cash on the balance sheet exceeds debt — a net cash position, "
             "not leverage to repay."
         )
+    if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
+        return (
+            "For each dollar of annual sales, this is the slice kept as operating "
+            "profit before interest and taxes — one fiscal year, not four quarters."
+        )
     return METRIC_ANALOGY[metric]
 
 
-def metric_learn_text(metric: str, value: float | None) -> str:
+def metric_learn_text(metric: str, value: float | None, card: dict | None = None) -> str:
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return (
             "Net debt is total debt minus cash. When cash exceeds debt, the ratio "
             "is negative — a net cash position. Yahoo's EBITDA is still in the "
             "denominator; read the sign as cash vs debt, not years to repay."
+        )
+    if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
+        return (
+            "Yahoo did not provide four quarters of operating profit for this ticker. "
+            "This card uses the latest annual operating profit divided by annual "
+            "total revenue — comparable in spirit to margin, but not trailing twelve months."
         )
     return METRIC_LEARN[metric]
 

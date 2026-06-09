@@ -15,6 +15,7 @@ from card_copy import (
     METRIC_LABELS,
     metric_analogy,
     metric_gloss,
+    metric_label,
     metric_learn_text,
     VISIBLE_METRICS,
     benchmark_compare_available,
@@ -67,7 +68,7 @@ def _benchmark_compare_body(card: dict) -> str:
                 label = benchmark_indicator_label(card, metric, median_key) or ""
                 bench_items.append(
                     f"<li>"
-                    f'<span class="ss-benchmark-metric">{_esc(METRIC_LABELS[metric])}</span> '
+                    f'<span class="ss-benchmark-metric">{_esc(metric_label(metric, card))}</span> '
                     f'<span class="ss-bench-indicator" title="{_esc(label)}" '
                     f'aria-label="{_esc(label)}">{_esc(indicator)}</span> '
                     f'<span class="ss-bench-vs">vs median</span>'
@@ -85,12 +86,13 @@ def _benchmark_compare_body(card: dict) -> str:
 def _metric_learn_blocks(card: dict) -> str:
     blocks: list[str] = []
     for metric in VISIBLE_METRICS + DEEP_DIVE_METRICS:
+        value = card.get(metric)
         blocks.append(
             f'<details class="ss-metric-learn-item">'
-            f"<summary>{_esc(METRIC_LABELS[metric])}</summary>"
-            f'<p class="ss-metric-analogy">{_esc(metric_analogy(metric, card.get(metric)))}</p>'
-            f'<p class="ss-metric-gloss-inline">{_esc(metric_gloss(metric, card.get(metric)))}</p>'
-            f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, card.get(metric)))}</p>'
+            f"<summary>{_esc(metric_label(metric, card))}</summary>"
+            f'<p class="ss-metric-analogy">{_esc(metric_analogy(metric, value, card))}</p>'
+            f'<p class="ss-metric-gloss-inline">{_esc(metric_gloss(metric, value, card))}</p>'
+            f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, value, card))}</p>'
             f"</details>"
         )
     return "".join(blocks)
@@ -151,9 +153,9 @@ def _company_summary_html(card: dict) -> str:
 
 
 def _metric_cell_html(card: dict, metric: str) -> str:
-    label = METRIC_LABELS[metric]
+    label = metric_label(metric, card)
     value = format_metric_value(metric, card.get(metric))
-    gloss = metric_gloss(metric, card.get(metric))
+    gloss = metric_gloss(metric, card.get(metric), card)
     indicator = _bench_indicator_html(card, metric)
     gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'
     value_row = (

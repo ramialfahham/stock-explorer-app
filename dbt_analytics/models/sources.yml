@@ -109,3 +109,25 @@ sources:
             description: Third quarter back Total Revenue (raw).
           - name: qtr_total_revenue_3
             description: Fourth quarter back Total Revenue (raw).
+          - name: qtr_operating_revenue_0
+            description: Most recent quarter Operating Revenue (raw bank fallback).
+          - name: qtr_operating_revenue_1
+            description: Prior quarter Operating Revenue (raw bank fallback).
+          - name: qtr_operating_revenue_2
+            description: Third quarter back Operating Revenue (raw bank fallback).
+          - name: qtr_operating_revenue_3
+            description: Fourth quarter back Operating Revenue (raw bank fallback).
+          - name: qtr_operating_expense_0
+            description: Most recent quarter Operating Expense (raw bank fallback).
+          - name: qtr_operating_expense_1
+            description: Prior quarter Operating Expense (raw bank fallback).
+          - name: qtr_operating_expense_2
+            description: Third quarter back Operating Expense (raw bank fallback).
+          - name: qtr_operating_expense_3
+            description: Fourth quarter back Operating Expense (raw bank fallback).
+          - name: stmt_operating_income
+            description: Latest annual operating profit row (raw, label fallbacks).
+          - name: stmt_operating_revenue
+            description: Latest annual Operating Revenue (raw bank fallback).
+          - name: stmt_operating_expense
+            description: Latest annual Operating Expense (raw bank fallback).

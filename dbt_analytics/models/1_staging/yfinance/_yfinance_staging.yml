@@ -156,6 +156,39 @@ models:
       - name: qtr_total_revenue_3
         description: >
           Total Revenue three quarters back (index 3); TTM denominator.
+      - name: qtr_operating_revenue_0
+        description: >
+          Operating Revenue Q0 for bank-style statements when Operating Income is absent.
+      - name: qtr_operating_revenue_1
+        description: >
+          Operating Revenue one quarter back (index 1); bank fallback for TTM op profit.
+      - name: qtr_operating_revenue_2
+        description: >
+          Operating Revenue two quarters back (index 2); bank fallback for TTM op profit.
+      - name: qtr_operating_revenue_3
+        description: >
+          Operating Revenue three quarters back (index 3); bank fallback for TTM op profit.
+      - name: qtr_operating_expense_0
+        description: >
+          Operating Expense Q0 paired with Operating Revenue for dbt-derived op profit.
+      - name: qtr_operating_expense_1
+        description: >
+          Operating Expense one quarter back (index 1); bank fallback for TTM op profit.
+      - name: qtr_operating_expense_2
+        description: >
+          Operating Expense two quarters back (index 2); bank fallback for TTM op profit.
+      - name: qtr_operating_expense_3
+        description: >
+          Operating Expense three quarters back (index 3); bank fallback for TTM op profit.
+      - name: stmt_operating_income
+        description: >
+          Latest annual operating profit (fallback Yahoo row labels).
+      - name: stmt_operating_revenue
+        description: >
+          Latest annual Operating Revenue when operating profit row is absent.
+      - name: stmt_operating_expense
+        description: >
+          Latest annual Operating Expense when operating profit row is absent.
       - name: info_revenue_growth
         description: >
           Raw Yahoo revenueGrowth decimal; feeds revenue_growth_yoy_pct.

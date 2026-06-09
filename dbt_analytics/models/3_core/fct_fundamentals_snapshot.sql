@@ -37,5 +37,16 @@ select
     qtr_total_revenue_0,
     qtr_total_revenue_1,
     qtr_total_revenue_2,
-    qtr_total_revenue_3
+    qtr_total_revenue_3,
+    qtr_operating_revenue_0,
+    qtr_operating_revenue_1,
+    qtr_operating_revenue_2,
+    qtr_operating_revenue_3,
+    qtr_operating_expense_0,
+    qtr_operating_expense_1,
+    qtr_operating_expense_2,
+    qtr_operating_expense_3,
+    stmt_operating_income,
+    stmt_operating_revenue,
+    stmt_operating_expense
 from latest
