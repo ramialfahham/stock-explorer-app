@@ -36,25 +36,48 @@ def _store() -> dict[str, list[NewsHeadline] | NewsError]:
     return st.session_state.setdefault(_SESSION_KEY, {})
 
 
+def _url_from_field(raw: object) -> str:
+    if isinstance(raw, dict):
+        return str(raw.get("url") or "").strip()
+    if raw:
+        return str(raw).strip()
+    return ""
+
+
+def _publisher_label(raw: object) -> str:
+    if isinstance(raw, dict):
+        return str(raw.get("displayName") or raw.get("name") or "Source").strip()
+    if raw:
+        text = str(raw).strip()
+        if text.startswith("{") and "displayName" in text:
+            return "Source"
+        return text
+    return "Source"
+
+
+def _article_url(item: dict, content: dict) -> str:
+    candidates = [
+        _url_from_field(content.get("clickThroughUrl")),
+        _url_from_field(content.get("canonicalUrl")),
+        _url_from_field(item.get("link")),
+        _url_from_field(content.get("url")),
+    ]
+    for url in candidates:
+        if "finance.yahoo.com" in url:
+            return url
+    return next((url for url in candidates if url), "")
+
+
 def parse_yfinance_news_item(item: dict) -> NewsHeadline | None:
     """Normalize Yahoo news payloads (legacy flat and nested content shapes)."""
     content = item.get("content") if isinstance(item.get("content"), dict) else {}
     title = str(item.get("title") or content.get("title") or "").strip()
     if not title:
         return None
-    link = str(
-        item.get("link")
-        or content.get("canonicalUrl")
-        or content.get("clickThroughUrl")
-        or content.get("url")
-        or ""
-    ).strip()
-    publisher = str(
-        item.get("publisher")
-        or content.get("provider")
-        or content.get("source")
-        or "Source"
-    ).strip()
+    link = _article_url(item, content)
+    publisher = _publisher_label(
+        item.get("publisher") or content.get("provider") or content.get("source")
+    )
     return NewsHeadline(title=title, publisher=publisher, link=link)
 
 
@@ -71,8 +94,12 @@ def parse_yfinance_news(items: list[dict], *, limit: int = _MAX_HEADLINES) -> li
 
 def headline_title_html(headline: NewsHeadline) -> str:
     title = html.escape(headline.title)
-    if headline.link:
-        return f'<a href="{html.escape(headline.link)}" target="_blank" rel="noopener">{title}</a>'
+    link = headline.link.strip()
+    if link.startswith(("http://", "https://")):
+        return (
+            f'<a href="{html.escape(link)}" target="_blank" '
+            f'rel="noopener noreferrer">{title}</a>'
+        )
     return title
 
 

@@ -35,15 +35,46 @@ def test_parse_yfinance_news_item_nested_content_shape() -> None:
     item = {
         "content": {
             "title": "Nested headline title",
-            "canonicalUrl": "https://example.com/nested",
-            "provider": "Bloomberg",
+            "provider": {
+                "displayName": "Bloomberg",
+                "url": "https://www.bloomberg.com/",
+                "sourceId": "bloomberg",
+            },
+            "canonicalUrl": {
+                "url": "https://finance.yahoo.com/news/nested-headline-title-123.html",
+                "site": "finance",
+            },
+            "clickThroughUrl": {
+                "url": "https://finance.yahoo.com/news/nested-headline-title-123.html",
+                "site": "finance",
+            },
         }
     }
     headline = parse_yfinance_news_item(item)
     assert headline is not None
     assert headline.title == "Nested headline title"
-    assert headline.link == "https://example.com/nested"
+    assert headline.link == "https://finance.yahoo.com/news/nested-headline-title-123.html"
     assert headline.publisher == "Bloomberg"
+    assert "{" not in headline.publisher
+
+
+def test_parse_yfinance_news_item_does_not_stringify_provider_dict() -> None:
+    item = {
+        "content": {
+            "title": "Story",
+            "provider": {
+                "displayName": "MT Newswires",
+                "url": "https://www.mtnewswires.com/",
+            },
+            "clickThroughUrl": {
+                "url": "https://finance.yahoo.com/markets/stocks/articles/story-123.html",
+            },
+        }
+    }
+    headline = parse_yfinance_news_item(item)
+    assert headline is not None
+    assert headline.publisher == "MT Newswires"
+    assert headline.link.startswith("https://finance.yahoo.com/")
 
 
 def test_parse_yfinance_news_skips_empty_and_limits() -> None:

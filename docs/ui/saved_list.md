@@ -41,7 +41,7 @@ Each row is **HTML + a separate Open button** — not a single `st.button` carry
 |------|--------|
 | Row structure | `st.columns([5, 1])` — text block left, **Open** right |
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
-| Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) + Company Snapshot (same metrics as Discover) |
+| Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) then Company Snapshot — **no duplicate name/sector row** above the card |
 | Empty state | One `st.info` — no fake rows |
 | Compare | **Removed** — no saved-company compare UI |
 
@@ -55,15 +55,12 @@ Headlines load automatically when the user opens a saved company (Yahoo Finance,
 ┌─────────────────────────────────────────────┐
 │ ← Back to list                              │
 ├─────────────────────────────────────────────┤
-│ Apple Inc.                                  │
-│ AAPL · Technology                           │
-├─────────────────────────────────────────────┤
 │ RECENT HEADLINES                            │
-│ Apple reports… · Reuters                    │  ← short title = direct link
-│ Long headline preview words…                │  ← long title = preview only
-│ Read full headline                          │  ← gold toggle (not the preview)
+│ Short title · Reuters          (Yahoo link) │
 ├─────────────────────────────────────────────┤
-│ … Company Snapshot card …                   │
+│ Airbus · AIR.PA                             │  ← card identity (once)
+│ Industrials (8 companies)                   │
+│ … summary, metrics …                        │
 └─────────────────────────────────────────────┘
 ```
 
