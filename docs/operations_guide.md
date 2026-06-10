@@ -43,7 +43,8 @@ If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` loc
 
 After a successful export, deploy or refresh the UI: [`streamlit_deploy.md`](streamlit_deploy.md).
 
-News (Phase 2): separate workflow, daily, does not block fundamentals export.
+**Saved-tab headlines:** fetched on demand when the user opens a saved company (yfinance,
+session cache ~1 hour). Not part of the weekly fundamentals pipeline and not shown on Discover.
 
 ---
 

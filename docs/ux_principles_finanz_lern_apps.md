@@ -50,6 +50,9 @@ No streaks, XP, or leaderboards in v1. Optional “understood this metric” che
 - Cache expensive fetches (`@st.cache_data`)
 - Stable widget keys per ticker + context prefix
 - Set `st.set_page_config` first to avoid layout jump
+- **List rows:** use HTML for left-aligned copy + invisible overlay `st.button` — never visible
+  button labels for multi-line row text (Streamlit centers labels)
+- **Nav row:** use `st.container(horizontal=True)` for tabs + ⋯ — `st.columns` stacks below 640px viewport
 
 ---
 
@@ -78,20 +81,20 @@ growth YoY, net debt/EBITDA, FCF margin) — do not swap to EPS/KGV/KBV/ROE/D/E 
 
 Per north_star and this doc:
 
-- **Vertical list** of saved companies (name, ticker, sector, freshness)
-- **Single focus** — one Company Snapshot at a time when a row is opened
+- **Vertical list** — bordered rows, left-aligned name + ticker · sector; fundamentals as-of once at tab top
+- **Single focus** — one Company Snapshot at a time when a row is tapped
+- **Headlines on focus** — up to 3 recent items (yfinance, session cache); disclosure for long titles
 - **No** horizontal N-column comparison matrix in v1
 - Optional later: compare **two** saved companies in a vertical 5×2 table (mobile width)
-
-Phase 2 stickiness: 2–3 headlines per saved company on Saved tab only — separate from fundamentals CI.
 
 ---
 
 ## Discover default scope (doc alignment)
 
 - **Filter default:** All markets · All sectors (north_star v2.3)
-- **Walk ordering:** US S&P 500 first when “Surprise me worldwide” is off (`HERO_MARKET_CODE`)
-- Roadmap “default S&P 500” refers to walk bias, not hiding other markets from filters
+- **Walk ordering:** round-robin across markets in scope; queue starts at US S&P 500 when in scope (`HERO_MARKET_CODE`)
+- **No browse list** on Discover — walk within filters or use Search for lookup
+- **Removed:** “Surprise me worldwide” checkbox — use **All markets** in Filters popover
 
 ---
 
