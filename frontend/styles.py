@@ -479,31 +479,15 @@ section[data-testid="stSidebar"] {
     margin: 0;
     line-height: 1.35;
 }
+.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] a[data-testid="stLinkButton"] {
+    font-size: var(--ss-caption-size) !important;
+    min-height: 2rem !important;
+    padding: 0.25rem 0.5rem !important;
+    text-decoration: none !important;
+}
 .ss-freshness {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
-}
-.ss-yahoo-finance-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 2rem;
-    padding: 0.25rem 0.5rem;
-    font-size: var(--ss-caption-size);
-    font-weight: 600;
-    color: var(--ss-text);
-    text-decoration: none;
-    border: 1px solid var(--ss-border);
-    border-radius: 0.35rem;
-    box-sizing: border-box;
-}
-.ss-yahoo-finance-btn:hover {
-    color: var(--ss-accent);
-    border-color: var(--ss-accent);
-}
-.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] .ss-yahoo-finance-btn {
-    margin-top: 0;
 }
 
 /* Saved list */
