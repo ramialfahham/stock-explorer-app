@@ -727,18 +727,23 @@ section[data-testid="stSidebar"] {
     border: 1px solid var(--ss-border) !important;
 }
 
-/* Nav row: Discover / Saved / Search + overflow menu */
+/* Nav row: Discover / Saved / Search + overflow menu (single line on mobile) */
 .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] {
     align-items: center !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 0 0.45rem !important;
     gap: 0.35rem !important;
 }
+.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:first-child,
 .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
     min-width: 0 !important;
     flex: 1 1 auto !important;
+    width: auto !important;
 }
+.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:last-child,
 .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
     flex: 0 0 auto !important;
     width: auto !important;
@@ -754,6 +759,7 @@ section[data-testid="stSidebar"] {
     font-weight: 600 !important;
     min-height: 2.35rem !important;
 }
+.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:last-child button,
 .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:last-child button {
     font-size: 1.05rem !important;
     padding: 0 !important;
@@ -769,6 +775,21 @@ section[data-testid="stSidebar"] {
     align-items: center !important;
     justify-content: center !important;
     margin: 0 !important;
+}
+@media (max-width: 640px) {
+    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+    }
+    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"] {
+        width: auto !important;
+    }
+    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
+        flex: 1 1 0 !important;
+    }
+    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
+        flex: 0 0 auto !important;
+    }
 }
 
 [data-testid="stTextInput"] input {

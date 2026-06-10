@@ -26,7 +26,7 @@
 |---|--------|--------|-------|
 | 1 | Brand | `_render_brand_header()` | Product name only — no market name |
 | 2 | Tagline | `_render_brand_header()` | One line under brand |
-| 3 | Nav | `_render_bottom_nav()` | Segmented control: Discover / Saved / Search; **⋯** popover for session actions |
+| 3 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
 | 4 | Filters | `_render_explore_filters()` | **Discover tab only** — one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()` |
 | 5 | Stats | `_render_scope_stats()` | Discover: `{remaining} left · {saved} saved`; Saved/Search: `{saved} saved` only |
 
@@ -91,6 +91,7 @@ Popover content order:
 ## 480px smoke
 
 - [ ] Brand + tagline + nav visible without scrolling
+- [ ] **⋯** menu inline with Discover / Saved / Search (not on its own row)
 - [ ] Discover: Filters row + stats + top of card (or list) fit without horizontal scroll
 - [ ] Save / Not now reachable when a card is shown
 
