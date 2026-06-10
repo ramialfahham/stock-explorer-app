@@ -16,22 +16,25 @@ User scans saved companies and opens **one** at a time to continue learning.
 
 ## List row wireframe (480px)
 
-Each row is **HTML + a separate Open button** — not a single `st.button` carrying all copy.
+Each row is a **single full-width secondary button** — tap anywhere on the bordered field. No separate **Open** control.
 
 ```
 ┌─────────────────────────────────────────────┐
 │ Fundamentals as of June 8, 2026             │  ← once at tab top (list mode only)
 ├─────────────────────────────────────────────┤
-│ Apple Inc.                          [Open] │
-│ AAPL · Technology                           │
-├─────────────────────────────────────────────┤
-│ HSBC Holdings                       [Open] │
-│ HSBA · Financial Services                   │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Apple Inc.                              │ │  ← whole row tappable
+│ │ AAPL · Technology                       │ │
+│ └─────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────┐ │
+│ │ HSBC Holdings                           │ │
+│ │ HSBA · Financial Services               │ │
+│ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 
-**Line 1 (`.ss-saved-name`):** company display name — largest text in the row.  
-**Line 2 (`.ss-saved-sector`):** `{ticker} · {sector}` via `saved_row_subtitle()` — no dates, no metrics.
+**Line 1:** company display name (bold in button label).  
+**Line 2:** `{ticker} · {sector}` via `saved_row_subtitle()` — newline in the same button label.
 
 ---
 
@@ -39,7 +42,7 @@ Each row is **HTML + a separate Open button** — not a single `st.button` carry
 
 | Rule | Detail |
 |------|--------|
-| Row structure | `st.columns([5, 1])` — text block left, **Open** right |
+| Row structure | One `st.button` per row, `use_container_width=True`, `type="secondary"`; subtle border via `.ss-saved-list-items` CSS |
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
 | Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) then Company Snapshot — **no duplicate name/sector row** above the card |
 | Empty state | One `st.info` — no fake rows |
@@ -68,8 +71,11 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 
 ---
 
+## Anti-patterns (do not ship)
+
 - **Auto-opening focus view** when the user has only one save (breaks “Back to list”).
-- **Never put 3+ text lines inside an `st.button` label** (Streamlit renders button labels poorly; multi-line hacks break on mobile).
+- **Separate Open button column** — wastes vertical space; row itself is the control.
+- **Never put 3+ text lines inside an `st.button` label** (two lines: name + ticker·sector is OK).
 - **Never repeat “As of …” on every row** — clutters the learning list.
 - **Never use the full card or metric grid in list mode** — list is for picking, not reading numbers.
 - **Never horizontal-scroll tables** of saved companies on mobile.
@@ -80,8 +86,8 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 ## 480px smoke
 
 - [ ] No horizontal scroll on the list
-- [ ] Company name + ticker · sector readable without expanding a row
-- [ ] **Open** tappable without overlapping text
+- [ ] Company name + ticker · sector readable in each row
+- [ ] Whole row tappable (bordered field), no tiny Open button
 - [ ] Tab open shows list first (1 or N saves)
 
 ---

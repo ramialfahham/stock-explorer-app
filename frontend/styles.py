@@ -512,6 +512,32 @@ section[data-testid="stSidebar"] {
     color: var(--ss-caption);
     margin: 0 0 0.65rem;
 }
+/* Saved list — full-width clickable rows (no separate Open button) */
+:has(.ss-saved-list-items) [data-testid="stButton"] > button[kind="secondary"] {
+    width: 100%;
+    min-height: 3.1rem;
+    margin: 0 0 0.45rem;
+    padding: 0.55rem 0.85rem;
+    text-align: left;
+    justify-content: flex-start;
+    white-space: pre-line;
+    line-height: 1.35;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--ss-text) !important;
+    background: transparent !important;
+    border: 1px solid var(--ss-border) !important;
+    border-radius: 0.4rem;
+}
+:has(.ss-saved-list-items) [data-testid="stButton"] > button[kind="secondary"]:hover {
+    border-color: var(--ss-accent) !important;
+    color: var(--ss-accent) !important;
+}
+:has(.ss-saved-list-items) [data-testid="stButton"] > button[kind="secondary"] p {
+    font-size: inherit;
+    line-height: inherit;
+    text-align: left;
+}
 .ss-saved-list-row {
     border-bottom: 1px solid var(--ss-border);
     padding: 0.5rem 0 0.45rem;
