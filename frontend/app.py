@@ -396,14 +396,22 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
             row_key = _saved_row_key(card)
             company = card.get("company_name") or card.get("ticker") or "Unknown"
             subtitle = saved_row_subtitle(card)
-            if st.button(
-                f"{company}\n{subtitle}",
-                key=f"saved_row_{row_key}",
-                use_container_width=True,
-                type="secondary",
-            ):
-                st.session_state["saved_focus_key"] = row_key
-                st.rerun()
+            with st.container():
+                st.markdown(
+                    f'<div class="ss-saved-list-entry">'
+                    f'<p class="ss-saved-name">{html.escape(company)}</p>'
+                    f'<p class="ss-saved-sector">{html.escape(subtitle)}</p>'
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    company,
+                    key=f"saved_row_{row_key}",
+                    use_container_width=True,
+                    type="secondary",
+                ):
+                    st.session_state["saved_focus_key"] = row_key
+                    st.rerun()
         return
 
     market_code, ticker = focus_key.split("::", 1)

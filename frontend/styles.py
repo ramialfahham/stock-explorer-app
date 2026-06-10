@@ -496,31 +496,41 @@ section[data-testid="stSidebar"] {
     color: var(--ss-caption);
     margin: 0 0 0.65rem;
 }
-/* Saved list — full-width clickable rows (no separate Open button) */
-:has(.ss-saved-list-items) [data-testid="stButton"] > button[kind="secondary"] {
-    width: 100%;
-    min-height: 3.1rem;
+/* Saved list — left-aligned HTML row + invisible full-row tap target */
+:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) {
+    position: relative;
     margin: 0 0 0.45rem;
+}
+:has(.ss-saved-list-items) .ss-saved-list-entry {
+    border: 1px solid var(--ss-border);
+    border-radius: 0.4rem;
     padding: 0.55rem 0.85rem;
     text-align: left;
-    justify-content: flex-start;
-    white-space: pre-line;
-    line-height: 1.35;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--ss-text) !important;
+    pointer-events: none;
+}
+:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry):hover .ss-saved-list-entry {
+    border-color: var(--ss-accent);
+}
+:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) [data-testid="stMarkdown"] {
+    margin: 0;
+}
+:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) [data-testid="stButton"] {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    margin: 0;
+    min-height: 3.1rem;
+}
+:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) [data-testid="stButton"] > button {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 3.1rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    border: none !important;
     background: transparent !important;
-    border: 1px solid var(--ss-border) !important;
-    border-radius: 0.4rem;
-}
-:has(.ss-saved-list-items) [data-testid="stButton"] > button[kind="secondary"]:hover {
-    border-color: var(--ss-accent) !important;
-    color: var(--ss-accent) !important;
-}
-:has(.ss-saved-list-items) [data-testid="stButton"] > button[kind="secondary"] p {
-    font-size: inherit;
-    line-height: inherit;
-    text-align: left;
+    box-shadow: none !important;
 }
 .ss-saved-list-row {
     border-bottom: 1px solid var(--ss-border);
