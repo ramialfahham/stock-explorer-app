@@ -13,7 +13,7 @@ An **explore-and-learn** stock app for **finance-curious beginners** — people 
 prior knowledge who want to **understand companies**, not execute trades.
 
 Each **Company Snapshot** is an analyst-grade overview at low barrier: five fundamental metrics,
-plain language, optional depth. **Discover** is scoped exploration (filter, browse, optional walk);
+plain language, optional depth. **Discover** is scoped exploration (filter + walk, or **Search** for lookup);
 **Saved** is the return habit — your learning list on this device.
 
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
@@ -102,7 +102,6 @@ without scrolling; Save remains reachable.
 |------|----------|
 | Default scope | **All markets · All sectors** — not the full mixed worldwide queue |
 | Filters | Market (registry markets or All), optional sector; client-side on exported mart |
-| Browse | Scrollable list in scope — pick a company to open the same snapshot |
 | Walk | **Next company** advances within the filtered queue; position copy is scope-aware (e.g. `3 of 47`) — market/sector live in filters and card sector header, not repeated on the card meta line |
 | Surprise me worldwide | Explicit opt-in — restores mixed round-robin across all markets |
 | Cards per session | **No limit** |
@@ -116,14 +115,14 @@ without scrolling; Save remains reachable.
 
 - Adds ticker to **Saved**.
 - Removes from scoped discover pool.
-- Entry point for optional on-demand quote and external research links.
+- Entry point for headlines and external research (Yahoo Finance link on card footer).
 
 ### Not now (Skip)
 
 **Meaning:** “Not for me **right now**” — not “bad stock,” not permanent rejection.
 
 - **Deprioritize** in scoped walk; ticker can resurface after many other cards.
-- Always reachable via **Search** or **Browse**.
+- Always reachable via **Search**.
 
 Neither action deletes pipeline data.
 
@@ -159,7 +158,7 @@ Intentional lookup by ticker or name. Same Company Snapshot layout if card-eligi
 
 **On expand (Tier 3):** per-metric blocks — **analogy**, then fuller `METRIC_LEARN` copy — in
 “Understand these numbers”; sector median context in “How we compare to similar companies.”
-Optional interactive playgrounds and micro-checks follow the Kennzahlen-Schule pattern in
+Optional interactive playgrounds follow the Kennzahlen-Schule pattern in
 [`ux_principles_finanz_lern_apps.md`](ux_principles_finanz_lern_apps.md).
 
 Keep copy concise. The card must remain scannable in under 30 seconds.

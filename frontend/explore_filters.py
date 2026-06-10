@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from card_copy import format_snapshot_date
 from markets import MARKET_DISPLAY_NAMES, market_display_name
 
 ALL_MARKETS = "all"
@@ -163,14 +162,6 @@ def walk_meta_line(
     if sector != ALL_SECTORS:
         return f"{position} of {total} in {market_label} · {sector}"
     return f"{position} of {total} in {market_label}"
-
-
-def browse_row_subtitle(card: dict[str, Any]) -> str:
-    sector = card.get("sector") or "Unknown sector"
-    snapshot = format_snapshot_date(card.get("snapshot_date"))
-    if snapshot:
-        return f"{sector} · {snapshot}"
-    return sector
 
 
 def cards_lack_business_summary(cards: list[dict[str, Any]]) -> bool:

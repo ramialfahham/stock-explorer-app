@@ -8,7 +8,7 @@ Derived from premortem analysis and [`north_star.md`](north_star.md). **Product 
 |---|-----------|------------------|
 | 1 | First-time user saves one company on first visit and finds it after hard refresh | **Shipped** — localStorage Save/Not now, landing page |
 | 2 | Weekly pipeline green; UI shows data freshness date | **Partial** — `snapshot_date` on card + browse rows; run export after merge for production data |
-| 3 | Discover feels intentional — scoped explore, not opaque global queue | **Shipped (v2.3)** — S&P 500 default, filters, browse + walk, menu pool stats |
+| 3 | Discover feels intentional — scoped explore, not opaque global queue | **Shipped (v2.3)** — filters + walk + Search; menu pool stats |
 | 4 | Less than one day per month on infra firefighting | **Ongoing** — monitor CI + Supabase migrate |
 
 ---
@@ -30,7 +30,7 @@ Derived from premortem analysis and [`north_star.md`](north_star.md). **Product 
 | Visible metric gloss | One line under each metric value |
 | Median primer + benchmark dedupe | No color coding; compare panel in expand |
 | Company business summary | Pipeline → mart → card blurb (`business_summary`) |
-| On-demand live quote | yfinance tap on footer; not in mart |
+| Yahoo Finance footer link | Opens company quote page on finance.yahoo.com in new tab |
 | localStorage mount fix | Single `local_storage_manager` mount per run (#56) |
 | Hero market (S&P 500) | US-first walk when “Surprise me worldwide” is off |
 
@@ -43,7 +43,7 @@ Derived from premortem analysis and [`north_star.md`](north_star.md). **Product 
 | Hero metric spacing | Mobile stack + padding |
 | Landing revisit | **How Stock Explorer works** in menu (does not clear Save) |
 | Market + sector filters | Default S&P 500; client-side on mart export |
-| Browse + scoped walk | List in expand; scope-aware position copy; **Not now** label |
+| Scoped walk | **Next company** within filters; scope-aware position copy; **Not now** label |
 | north_star v1.2 | Explore model, Saved habit, Saved-only news deferral |
 
 ---
@@ -97,7 +97,7 @@ flowchart LR
 - Menu **How Stock Explorer works** reopens landing without clearing Save
 - **Saved tab:** vertical learning list → open one snapshot; no horizontal scroll; no matrix + selectbox stack
 - Search tab: ticker lookup still renders eligible snapshot
-- On-demand live quote button still works on card footer
+- Card footer: freshness date + **Yahoo Finance** link opens correct quote page in new tab
 
 ---
 
