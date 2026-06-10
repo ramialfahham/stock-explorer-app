@@ -230,10 +230,10 @@ def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
             )
 
     with link_col:
-        st.markdown(
-            f'<a class="ss-yahoo-finance-btn" href="{html.escape(yahoo_url)}" '
-            f'target="_blank" rel="noopener noreferrer">Yahoo Finance ↗</a>',
-            unsafe_allow_html=True,
+        st.link_button(
+            "Yahoo Finance",
+            yahoo_url,
+            use_container_width=True,
         )
 
 
