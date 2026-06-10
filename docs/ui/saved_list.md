@@ -16,7 +16,7 @@ User scans saved companies and opens **one** at a time to continue learning.
 
 ## List row wireframe (480px)
 
-Each row is a **single full-width secondary button** — tap anywhere on the bordered field. No separate **Open** control.
+Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with an invisible full-row tap layer. No separate **Open** control and **no visible button label** (Streamlit centers button text).
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -33,8 +33,8 @@ Each row is a **single full-width secondary button** — tap anywhere on the bor
 └─────────────────────────────────────────────┘
 ```
 
-**Line 1:** company display name (bold in button label).  
-**Line 2:** `{ticker} · {sector}` via `saved_row_subtitle()` — newline in the same button label.
+**Line 1 (`.ss-saved-name`):** company display name — bold, left-aligned.  
+**Line 2 (`.ss-saved-sector`):** `{ticker} · {sector}` via `saved_row_subtitle()` — caption colour, left-aligned.
 
 ---
 
@@ -42,7 +42,7 @@ Each row is a **single full-width secondary button** — tap anywhere on the bor
 
 | Rule | Detail |
 |------|--------|
-| Row structure | One `st.button` per row, `use_container_width=True`, `type="secondary"`; subtle border via `.ss-saved-list-items` CSS |
+| Row structure | `st.container` per row: HTML `.ss-saved-list-entry` + invisible overlay `st.button` (company name for screen readers only) |
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
 | Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) then Company Snapshot — **no duplicate name/sector row** above the card |
 | Empty state | One `st.info` — no fake rows |
@@ -75,7 +75,7 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 
 - **Auto-opening focus view** when the user has only one save (breaks “Back to list”).
 - **Separate Open button column** — wastes vertical space; row itself is the control.
-- **Never put 3+ text lines inside an `st.button` label** (two lines: name + ticker·sector is OK).
+- **Never put row copy inside a visible `st.button` label** — Streamlit centers it; use HTML + invisible tap layer.
 - **Never repeat “As of …” on every row** — clutters the learning list.
 - **Never use the full card or metric grid in list mode** — list is for picking, not reading numbers.
 - **Never horizontal-scroll tables** of saved companies on mobile.
