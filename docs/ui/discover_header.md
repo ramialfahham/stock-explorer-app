@@ -10,7 +10,7 @@
 ```
 ┌─────────────────────────────────────────────┐
 │ Stock Explorer                              │  1. Brand
-│ Understand companies, one card at a time    │  2. Tagline
+│ Understand companies through five…          │  2. Tagline (`PRODUCT_TAGLINE`)
 ├─────────────────────────────────────────────┤
 │ [ Discover | Saved | Search ]          [⋯] │  3. Nav (+ overflow)
 ├─────────────────────────────────────────────┤
