@@ -225,16 +225,15 @@ def _render_bottom_nav(*, saved_count: int, client) -> str:
         )
 
     st.markdown('<div class="ss-nav-row-marker"></div>', unsafe_allow_html=True)
-    tabs_col, menu_col = st.columns([6, 1], vertical_alignment="center", gap="small")
-    with tabs_col:
-        page = st.segmented_control(
-            "Navigation",
-            options=list(NAV_PAGES),
-            default=prior_active,
-            label_visibility="collapsed",
-            key="bottom_nav",
-        )
-    with menu_col:
+    with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+        with st.container(width="stretch"):
+            page = st.segmented_control(
+                "Navigation",
+                options=list(NAV_PAGES),
+                default=prior_active,
+                label_visibility="collapsed",
+                key="bottom_nav",
+            )
         with st.popover("⋯"):
             cards = _ensure_all_cards(client)
             render_overflow_menu(
