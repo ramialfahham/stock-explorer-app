@@ -18,7 +18,7 @@ behind explicit user action (expand, tab, or tap) — not on first paint.
 ### Active user paradox
 
 Beginners skip long tutorials. Learning happens through **safe interaction**: hypothetical
-scenarios, playgrounds, and micro-checks tied to real company data — not static walls of text.
+scenarios and playgrounds tied to real company data — not static walls of text.
 
 ### Bloomberg principle (responsible density)
 
@@ -60,7 +60,6 @@ For each of the five fundamentals:
 1. **Analogy** — one beginner metaphor (doc: “Amortisationszeit” for P/E)
 2. **Definition** — short plain-language explanation (`METRIC_LEARN`)
 3. **Playground** — low-cardinality inputs; hypothetical numbers only
-4. **Micro-check** — one radio question using **this company’s** exported values; neutral feedback
 
 Port **patterns** onto Stock Explorer’s five metrics (forward P/E, operating margin, revenue
 growth YoY, net debt/EBITDA, FCF margin) — do not swap to EPS/KGV/KBV/ROE/D/E from the doc examples.

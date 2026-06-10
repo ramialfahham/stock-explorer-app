@@ -21,7 +21,6 @@ from discovery_queue import build_queue
 from explore_filters import (
     ALL_MARKETS,
     ALL_SECTORS,
-    browse_row_subtitle,
     cards_lack_business_summary,
     default_market_filter,
     filter_pool,
@@ -61,7 +60,6 @@ def _init_state() -> None:
         "sector_shown": {},
         "saved_focus_key": None,
         "search_selected": None,
-        "browse_selected_key": None,
         "active_page": "Discover",
         "explore_market": default_market_filter(),
         "explore_sector": ALL_SECTORS,
@@ -155,7 +153,6 @@ def _reset_walk_state() -> None:
     st.session_state["queue_index"] = 0
     st.session_state["market_index"] = 0
     st.session_state["sector_shown"] = {}
-    st.session_state["browse_selected_key"] = None
 
 
 def _start_over() -> None:
@@ -272,14 +269,12 @@ def _render_sticky_actions(client, card: dict) -> None:
     if col_save.button("Save", type="primary", use_container_width=True, key="discover_save"):
         append_interaction(card, "save")
         st.session_state["queue_index"] = idx + 1
-        st.session_state["browse_selected_key"] = None
         _refresh_queue(client, interactions=get_interactions())
         st.rerun()
 
     if col_skip.button("Not now", use_container_width=True, key="discover_skip"):
         append_interaction(card, "skip")
         st.session_state["queue_index"] = idx + 1
-        st.session_state["browse_selected_key"] = None
         st.session_state["market_index"] = st.session_state["market_index"] + 1
         sector = card.get("sector") or "Unknown"
         key = (card["market_code"], sector)
@@ -292,7 +287,6 @@ def _render_sticky_actions(client, card: dict) -> None:
 
 def _on_filter_change() -> None:
     st.session_state["queue_index"] = 0
-    st.session_state["browse_selected_key"] = None
     st.session_state["market_index"] = 0
     st.session_state["sector_shown"] = {}
 
@@ -335,68 +329,30 @@ def _render_explore_filters(client) -> None:
         )
 
 
-def _render_browse_list(cards: list[dict]) -> None:
-    if not cards:
-        return
-
-    st.markdown('<p class="ss-browse-heading">Browse in this scope</p>', unsafe_allow_html=True)
-    sorted_cards = sorted(
-        cards,
-        key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower(),
-    )
-    for card in sorted_cards[:60]:
-        key = _card_key(card)
-        label = card.get("company_name") or card.get("ticker") or "Unknown"
-        ticker = card.get("ticker") or "—"
-        subtitle = browse_row_subtitle(card)
-        row_text, row_action = st.columns([4, 1])
-        with row_text:
-            st.markdown(
-                f'<p class="ss-browse-name">{html.escape(label)} · '
-                f'<span class="ss-browse-ticker">{html.escape(ticker)}</span></p>'
-                f'<p class="ss-browse-sub">{html.escape(subtitle)}</p>',
-                unsafe_allow_html=True,
-            )
-        with row_action:
-            if st.button("Open", key=f"browse_{key[0]}_{key[1]}", use_container_width=True):
-                st.session_state["browse_selected_key"] = key
-                st.rerun()
-
-
 def _render_discover_tab(client) -> bool:
-    """Render discover card + browse. Filters and queue sync run in _discovery_page."""
+    """Render discover walk card. Filters and queue sync run in _discovery_page."""
     queue = st.session_state["queue"]
 
     if not queue:
         st.info("No companies left in this scope — try another market, sector, or clear filters.")
         return False
 
-    market, sector = _explore_filters()
-    browse_key = st.session_state.get("browse_selected_key")
-    card: dict | None = None
     idx = st.session_state["queue_index"]
 
-    if browse_key:
-        card = next((c for c in queue if _card_key(c) == browse_key), None)
-        if card is None:
-            st.session_state["browse_selected_key"] = None
-    if card is None:
-        if idx >= len(queue):
-            st.info("Walk complete in this scope.")
-            if st.button(
-                "Start over in this scope",
-                type="primary",
-                use_container_width=True,
-                key="discover_start_over",
-            ):
-                _start_over()
-                st.rerun()
-            return False
-        card = queue[idx]
+    if idx >= len(queue):
+        st.info("Walk complete in this scope.")
+        if st.button(
+            "Start over in this scope",
+            type="primary",
+            use_container_width=True,
+            key="discover_start_over",
+        ):
+            _start_over()
+            st.rerun()
+        return False
 
-    scope_meta = None
-    if not browse_key and idx < len(queue):
-        scope_meta = walk_progress_line(position=idx + 1, total=len(queue))
+    card = queue[idx]
+    scope_meta = walk_progress_line(position=idx + 1, total=len(queue))
 
     render_stock_card(
         card,
@@ -404,20 +360,10 @@ def _render_discover_tab(client) -> bool:
         widget_key_prefix="discover",
     )
 
-    if not browse_key:
-        if st.button("Next company", use_container_width=True, key="discover_next"):
-            st.session_state["queue_index"] = min(idx + 1, len(queue) - 1)
-            st.rerun()
+    if st.button("Next company", use_container_width=True, key="discover_next"):
+        st.session_state["queue_index"] = min(idx + 1, len(queue) - 1)
+        st.rerun()
 
-    cards = _ensure_all_cards(client)
-    browse_pool = filter_pool(
-        cards,
-        get_interactions(),
-        market_code=market,
-        sector=sector,
-    )
-    with st.expander(f"Browse {len(browse_pool)} companies in this scope", expanded=False):
-        _render_browse_list(browse_pool)
     return True
 
 
@@ -554,16 +500,9 @@ def _discovery_page(client) -> None:
 
     if show_actions and active == "Discover":
         queue = st.session_state["queue"]
-        browse_key = st.session_state.get("browse_selected_key")
         idx = st.session_state["queue_index"]
-        if browse_key:
-            card = next((c for c in queue if _card_key(c) == browse_key), None)
-        elif idx < len(queue):
-            card = queue[idx]
-        else:
-            card = None
-        if card:
-            _render_sticky_actions(client, card)
+        if idx < len(queue):
+            _render_sticky_actions(client, queue[idx])
 
 
 def main() -> None:

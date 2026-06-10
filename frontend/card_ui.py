@@ -29,15 +29,9 @@ from card_copy import (
     sector_headline,
 )
 from markets import market_display_name
-from live_quote import (
-    LiveQuoteError,
-    fetch_live_quote,
-    get_cached_quote,
-    live_quote_button_label,
-    yahoo_finance_url,
-)
 from disclosure_html import disclosure_html
-from metric_school import render_metric_micro_checks, render_metric_playgrounds
+from live_quote import yahoo_finance_url
+from metric_school import render_metric_playgrounds
 
 
 def _bench_indicator_html(card: dict, metric: str) -> str:
@@ -224,12 +218,9 @@ def build_card_html(
 def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
     fresh = freshness_line(card)
     yahoo_url = yahoo_finance_url(card)
-    market_code = card.get("market_code") or "unknown"
-    ticker = card.get("ticker") or "unknown"
-    button_key = f"{widget_key_prefix}_live_quote_{market_code}_{ticker}"
 
     st.markdown('<div class="ss-card-footer-shell"></div>', unsafe_allow_html=True)
-    fresh_col, quote_col, link_col = st.columns([1.1, 1.2, 0.9])
+    fresh_col, link_col = st.columns([2, 1])
 
     with fresh_col:
         if fresh:
@@ -238,23 +229,11 @@ def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
                 unsafe_allow_html=True,
             )
 
-    with quote_col:
-        if st.button(
-            live_quote_button_label(card),
-            key=button_key,
-            use_container_width=True,
-        ):
-            fetch_live_quote(card)
-            st.rerun()
-        cached = get_cached_quote(card)
-        if isinstance(cached, LiveQuoteError):
-            st.caption(cached.message)
-
     with link_col:
-        st.link_button(
-            "Yahoo ↗",
-            yahoo_url,
-            use_container_width=True,
+        st.markdown(
+            f'<a class="ss-yahoo-finance-btn" href="{html.escape(yahoo_url)}" '
+            f'target="_blank" rel="noopener noreferrer">Yahoo Finance ↗</a>',
+            unsafe_allow_html=True,
         )
 
 
@@ -272,6 +251,4 @@ def render_stock_card(
     if show_metric_school:
         with st.expander("Practice with hypothetical numbers", expanded=False):
             render_metric_playgrounds(card, widget_key_prefix=widget_key_prefix)
-        with st.expander("Quick check — test your understanding", expanded=False):
-            render_metric_micro_checks(card, widget_key_prefix=widget_key_prefix)
     render_card_footer(card, widget_key_prefix=widget_key_prefix)
