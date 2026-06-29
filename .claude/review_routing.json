@@ -1,0 +1,22 @@
+{
+  "_comment": "Which reviewers are REQUIRED for which staged files. 'always' run on every substantive commit. Patterns use fnmatch (a single * also matches across /). Tuned for stock-swipe-app: dbt project in dbt_analytics/, Python ingestion in ingestion/, Streamlit app in frontend/, Supabase export/migrations in supabase/. Commits whose files ALL match artifact_only are exempt (bookkeeping), except anything in artifact_only_never.",
+  "always": ["scope-auditor"],
+  "paths": {
+    "*.sql": ["analytics-engineer-reviewer"],
+    "*.csv": ["analytics-engineer-reviewer"],
+    "*dbt_project.yml": ["analytics-engineer-reviewer"],
+    "*schema.yml": ["analytics-engineer-reviewer"],
+    "dbt_analytics/*.yml": ["analytics-engineer-reviewer"],
+    "scripts/*": ["cto-reviewer"],
+    "tests/*": ["cto-reviewer"],
+    ".github/workflows/*": ["cto-reviewer"],
+    "requirements*.txt": ["cto-reviewer"],
+    "*hooks/*": ["cto-reviewer"],
+    ".mcp.json": ["cto-reviewer"],
+    "frontend/*": ["cto-reviewer"],
+    "ingestion/*": ["data-engineer-reviewer"],
+    "supabase/*": ["data-engineer-reviewer"]
+  },
+  "artifact_only": [".claude/task/*", ".claude/active_work.md"],
+  "artifact_only_never": [".claude/task/contract.md"]
+}
