@@ -1,101 +1,44 @@
-"""Plain-language metric lines for beginners (north_star)."""
+"""Plain-language metric lines for beginners (north_star).
 
+Metric display definitions (label, format, direction, tier/order, and the plain-language
+gloss / analogy / learn copy) come from `frontend/metrics.json`, generated from the
+`metric_catalogue` seed by `scripts/export_metric_definitions_json.py`. The seed is the single
+source of truth; do not hand-edit metrics.json or reintroduce hardcoded metric dicts here.
+"""
+
+import json
 from datetime import date
+from pathlib import Path
 
-METRIC_HELP = {
-    "forward_pe": "Forward P/E compares today's share price to expected earnings over the next year.",
-    "ebit_margin_pct": "Operating margin (TTM) shows operating profit as a share of sales over the last four quarters.",
-    "revenue_growth_yoy_pct": "Revenue growth YoY (quarter) shows how fast sales grew vs the same quarter last year.",
-    "net_debt_to_ebitda": "Net debt / EBITDA uses Yahoo balance-sheet debt/cash and EBITDA — periods may differ.",
-    "fcf_margin_pct": "FCF margin shows free cash left from each dollar of revenue after running the business.",
-}
+_METRICS_JSON = Path(__file__).resolve().parent / "metrics.json"
 
-METRIC_GLOSS = {
-    "forward_pe": "Price vs expected next-year earnings",
-    "ebit_margin_pct": "Operating profit as share of sales (TTM)",
-    "revenue_growth_yoy_pct": "Sales growth vs same quarter last year",
-    "net_debt_to_ebitda": "Net debt vs Yahoo EBITDA",
-    "fcf_margin_pct": "Free cash left from each sales dollar (latest annual statements)",
-}
 
-METRIC_ANALOGY = {
-    "forward_pe": (
-        "Think payback time: how many years of expected earnings are priced into one share today."
-    ),
-    "ebit_margin_pct": (
-        "For every dollar of sales, this is the slice kept as operating profit before interest and taxes."
-    ),
-    "revenue_growth_yoy_pct": (
-        "Compared with a year ago — is the business growing, flat, or shrinking?"
-    ),
-    "net_debt_to_ebitda": (
-        "If operating profit stayed steady, about how many years to repay net debt from cash generation?"
-    ),
-    "fcf_margin_pct": (
-        "After running the business, how much cash is left from each sales dollar — not the same as accounting profit."
-    ),
-}
+def _load_metrics() -> list[dict]:
+    with _METRICS_JSON.open(encoding="utf-8") as f:
+        return json.load(f)["metrics"]
 
-METRIC_LEARN = {
-    "forward_pe": (
-        "P/E (price-to-earnings) divides the share price by earnings per share. "
-        "Forward P/E uses analyst estimates for next year's earnings, not last year's results. "
-        "A higher number often means investors expect faster growth — or are paying a premium today."
-    ),
-    "ebit_margin_pct": (
-        "This card sums Operating Income and Total Revenue from the last four quarterly "
-        "financial statements, then divides — a trailing twelve-month (TTM) operating margin. "
-        "It is not Yahoo's single-quarter operatingMargins snapshot."
-    ),
-    "revenue_growth_yoy_pct": (
-        "Year-over-year (YoY) growth compares revenue in the latest reported quarter with the "
-        "same quarter one year ago (Yahoo revenueGrowth). One quarter can be noisy — look for a "
-        "pattern over time when you dig deeper."
-    ),
-    "net_debt_to_ebitda": (
-        "Net debt is total debt minus cash on hand (Yahoo). EBITDA is Yahoo's reported EBITDA figure — "
-        "often trailing, not necessarily matched to the same instant as the balance sheet. "
-        "Use this as a rough leverage signal, not a precise accounting ratio."
-    ),
-    "fcf_margin_pct": (
-        "Free cash flow (FCF) is cash left after running and investing in the business. "
-        "This card computes FCF margin from the latest annual cash flow and income statements — "
-        "not Yahoo's trailing Key Statistics ratio. Run the metric audit script to compare."
-    ),
-}
 
-METRIC_LABELS = {
-    "forward_pe": "Forward P/E",
-    "ebit_margin_pct": "Operating margin (TTM)",
-    "revenue_growth_yoy_pct": "Rev growth YoY (quarter)",
-    "net_debt_to_ebitda": "Net debt / EBITDA",
-    "fcf_margin_pct": "FCF margin (annual)",
-}
+_METRICS = _load_metrics()
+_BY_ID = {m["metric_id"]: m for m in _METRICS}
 
-ALL_METRICS = (
-    "forward_pe",
-    "ebit_margin_pct",
-    "revenue_growth_yoy_pct",
-    "net_debt_to_ebitda",
-    "fcf_margin_pct",
-)
+ALL_METRICS = tuple(m["metric_id"] for m in _METRICS)
+VISIBLE_METRICS = tuple(m["metric_id"] for m in _METRICS if m["importance_tier"] == 1)
+DEEP_DIVE_METRICS = tuple(m["metric_id"] for m in _METRICS if m["importance_tier"] == 2)
 
-VISIBLE_METRICS = (
-    "forward_pe",
-    "ebit_margin_pct",
-    "revenue_growth_yoy_pct",
-)
-DEEP_DIVE_METRICS = (
-    "net_debt_to_ebitda",
-    "fcf_margin_pct",
-)
+METRIC_LABELS = {m["metric_id"]: m["label"] for m in _METRICS}
+METRIC_GLOSS = {m["metric_id"]: m["gloss"] for m in _METRICS}
+METRIC_ANALOGY = {m["metric_id"]: m["analogy"] for m in _METRICS}
+METRIC_LEARN = {m["metric_id"]: m["learn"] for m in _METRICS}
 
-BENCHMARK_METRICS = (
-    ("forward_pe", "sector_median_forward_pe", "lower"),
-    ("ebit_margin_pct", "sector_median_ebit_margin_pct", "higher"),
-    ("revenue_growth_yoy_pct", "sector_median_revenue_growth_yoy_pct", "higher"),
-    ("net_debt_to_ebitda", "sector_median_net_debt_to_ebitda", "lower"),
-    ("fcf_margin_pct", "sector_median_fcf_margin_pct", "higher"),
+_METRIC_FORMAT = {m["metric_id"]: m["format"] for m in _METRICS}
+_METRIC_BASIS_COLUMN = {m["metric_id"]: (m["basis_column"] or None) for m in _METRICS}
+
+# (metric, sector-median column, short direction) — derived from the catalogue.
+_DIRECTION_SHORT = {"higher_better": "higher", "lower_better": "lower", "neutral": "neutral"}
+BENCHMARK_METRICS = tuple(
+    (m["metric_id"], f"sector_median_{m['metric_id']}", _DIRECTION_SHORT.get(m["direction"], "neutral"))
+    for m in _METRICS
+    if m["benchmarkable"]
 )
 
 PEER_THRESHOLD = 8
@@ -258,14 +201,18 @@ def freshness_line(card: dict) -> str | None:
     return line
 
 
+_VALUE_FORMATTERS = {
+    "percent_1": lambda value: f"{value:.1f}%",
+    "ratio_1": lambda value: f"{value:.1f}",
+    "ratio_2": lambda value: f"{value:.2f}",
+}
+
+
 def format_metric_value(metric: str, value: float | None) -> str:
     if value is None:
         return "—"
-    if metric in ("ebit_margin_pct", "revenue_growth_yoy_pct", "fcf_margin_pct"):
-        return f"{value:.1f}%"
-    if metric == "forward_pe":
-        return f"{value:.1f}"
-    return f"{value:.2f}"
+    formatter = _VALUE_FORMATTERS[_METRIC_FORMAT.get(metric, "ratio_2")]
+    return formatter(value)
 
 
 def benchmark_position(
