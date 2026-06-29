@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Compare mart_stock_cards metrics to live yfinance (see docs/metric_audit.md)."""
+"""Compare mart_stock_cards metrics to fresh yfinance, recomputed via dbt (see docs/metric_audit.md).
+
+Metric-layer Phase 2: there is NO Python re-implementation of any metric formula. To validate the
+mart, this fetches fresh fundamentals for a sample, lands them as a temporary raw parquet set,
+rebuilds int_stock__card_metrics through dbt into a throwaway DuckDB, and compares those
+dbt-computed values to the mart. The dbt model stays the single source of the formulas.
+Offline mode (CI smoke) skips the live fetch + dbt rebuild and reports only mart-side facts.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +14,11 @@ import argparse
 import csv
 import json
 import random
+import shutil
+import subprocess
 import sys
+import tempfile
+from collections import defaultdict
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -23,13 +34,7 @@ if str(SCRIPTS) not in sys.path:
 from ingestion.registry import load_markets
 from ingestion.yfinance.ingest import _fetch_fundamentals_row
 from ingestion.yfinance.rate_limit import is_rate_limited
-from metric_formulas import (
-    compute_card_metrics_from_raw,
-    pct_drift,
-    reference_fcf_margin_from_info,
-    reference_operating_margin_info,
-    reference_operating_margin_ttm,
-)
+from ingestion.yfinance.symbols import to_yfinance_ticker
 
 DEFAULT_ALWAYS = ("ABNB", "NVDA", "AAPL", "ALB")
 MART_COLUMNS = (
@@ -53,6 +58,28 @@ METRIC_KEYS = (
     "net_debt_to_ebitda",
     "fcf_margin_pct",
 )
+
+# Raw fundamentals parquet schema (must match dbt sources.yml yf_fundamentals).
+FUNDAMENTALS_COLUMNS = (
+    "market_code", "ticker", "snapshot_date",
+    "info_forward_pe", "info_operating_margins", "info_revenue_growth",
+    "info_net_debt", "info_total_debt", "info_total_cash", "info_ebitda",
+    "info_sector", "info_currency", "info_long_name", "info_business_summary", "info_founded_year",
+    "stmt_total_revenue", "stmt_free_cash_flow", "stmt_fiscal_period_end", "stmt_currency",
+    "qtr_operating_income_0", "qtr_operating_income_1", "qtr_operating_income_2", "qtr_operating_income_3",
+    "qtr_total_revenue_0", "qtr_total_revenue_1", "qtr_total_revenue_2", "qtr_total_revenue_3",
+    "qtr_operating_revenue_0", "qtr_operating_revenue_1", "qtr_operating_revenue_2", "qtr_operating_revenue_3",
+    "qtr_operating_expense_0", "qtr_operating_expense_1", "qtr_operating_expense_2", "qtr_operating_expense_3",
+    "stmt_operating_income", "stmt_operating_revenue", "stmt_operating_expense",
+)
+INT_MODEL_RELATION = "intermediate.int_stock__card_metrics"
+
+
+def pct_drift(mart: float | None, fresh: float | None) -> float | None:
+    """Signed percentage difference of the mart value from the freshly recomputed value."""
+    if mart is None or fresh is None or fresh == 0:
+        return None
+    return (mart - fresh) / abs(fresh) * 100
 
 
 def _parse_date(raw: object) -> date | None:
@@ -87,11 +114,10 @@ def _load_mart_from_duckdb(db_path: Path) -> list[dict]:
 
 
 def _load_mart_from_supabase() -> list[dict]:
-    from supabase import create_client
-
     import os
 
     from dotenv import load_dotenv
+    from supabase import create_client
 
     load_dotenv()
     url = os.getenv("SUPABASE_URL")
@@ -120,7 +146,6 @@ def _pick_sample(
     always_tickers: tuple[str, ...],
     seed: int,
 ) -> list[dict]:
-    by_key = {(r["market_code"], r["ticker"]): r for r in mart_rows}
     chosen: list[dict] = []
     seen: set[tuple[str, str]] = set()
 
@@ -145,12 +170,10 @@ def _pick_sample(
     return chosen
 
 
-def _fetch_live_row(market_code: str, ticker: str, markets: dict) -> dict | None:
+def _fetch_live_raw(market_code: str, ticker: str, markets: dict) -> dict | None:
     market = markets.get(market_code)
     if market is None:
         return None
-    from ingestion.yfinance.symbols import to_yfinance_ticker
-
     yf_symbol = to_yfinance_ticker(ticker, market.exchange_suffix)
     try:
         return _fetch_fundamentals_row(
@@ -165,7 +188,88 @@ def _fetch_live_row(market_code: str, ticker: str, markets: dict) -> dict | None
         return None
 
 
-def _audit_row(mart: dict, live_raw: dict | None) -> dict:
+def _build_fresh_metrics_via_dbt(raw_rows: list[dict]) -> dict[tuple[str, str], dict]:
+    """Land fresh raw, rebuild int_stock__card_metrics via dbt, return {(market, ticker): metrics}.
+
+    Returns {} (and warns) if the rebuild fails — the audit then reports no drift for those rows.
+    """
+    if not raw_rows:
+        return {}
+
+    import pandas as pd
+
+    by_market: dict[str, list[dict]] = defaultdict(list)
+    for row in raw_rows:
+        by_market[row["market_code"]].append(row)
+
+    with tempfile.TemporaryDirectory(prefix="metric_audit_") as tmp_name:
+        tmp = Path(tmp_name)
+        raw_root = tmp / "raw"
+        for market_code, rows in by_market.items():
+            market_dir = raw_root / market_code
+            market_dir.mkdir(parents=True)
+            funds = pd.DataFrame(rows).reindex(columns=list(FUNDAMENTALS_COLUMNS))
+            funds.to_parquet(market_dir / "yf_fundamentals.parquet", index=False)
+            consts = pd.DataFrame(
+                [
+                    {
+                        "market_code": market_code,
+                        "ticker": row["ticker"],
+                        "company_name": row.get("info_long_name") or row["ticker"],
+                        "refreshed_at": "",
+                        "source": "audit",
+                        "ingested_at": "",
+                    }
+                    for row in rows
+                ]
+            )
+            consts.to_parquet(market_dir / "yf_constituents.parquet", index=False)
+
+        duckdb_path = tmp / "audit.duckdb"
+        profiles_dir = tmp / "profiles"
+        profiles_dir.mkdir()
+        (profiles_dir / "profiles.yml").write_text(
+            "dbt_analytics:\n"
+            "  target: dev\n"
+            "  outputs:\n"
+            "    dev:\n"
+            "      type: duckdb\n"
+            f"      path: {duckdb_path.as_posix()}\n"
+            "      threads: 4\n",
+            encoding="utf-8",
+        )
+
+        dbt_exe = shutil.which("dbt") or "dbt"
+        cmd = [
+            dbt_exe, "run", "--select", "+int_stock__card_metrics",
+            "--project-dir", str(ROOT / "dbt_analytics"),
+            "--profiles-dir", str(profiles_dir),
+            "--vars", json.dumps(
+                {"raw_path": raw_root.as_posix(), "active_market_codes": sorted(by_market)}
+            ),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            tail = "\n".join((result.stdout or "").splitlines()[-10:])
+            print(f"  warning: dbt rebuild failed (exit {result.returncode}):\n{tail}", file=sys.stderr)
+            return {}
+
+        conn = duckdb.connect(str(duckdb_path), read_only=True)
+        try:
+            cols = ", ".join(("market_code", "ticker", *METRIC_KEYS))
+            rows = conn.execute(f"select {cols} from {INT_MODEL_RELATION}").fetchall()
+            names = [desc[0] for desc in conn.description]
+        finally:
+            conn.close()
+
+    fresh: dict[tuple[str, str], dict] = {}
+    for row in rows:
+        record = dict(zip(names, row, strict=True))
+        fresh[(record["market_code"], record["ticker"])] = record
+    return fresh
+
+
+def _base_audit_row(mart: dict) -> dict:
     out: dict = {
         "market_code": mart["market_code"],
         "ticker": mart["ticker"],
@@ -175,43 +279,20 @@ def _audit_row(mart: dict, live_raw: dict | None) -> dict:
         "snapshot_age_days": _snapshot_age_days(mart.get("snapshot_date")),
         "business_summary_present": bool(str(mart.get("business_summary") or "").strip()),
     }
-
     for metric in METRIC_KEYS:
         out[f"mart_{metric}"] = mart.get(metric)
+    return out
 
-    if live_raw is None:
-        out["live_fetch_ok"] = False
+
+def _audit_row(mart: dict, fresh: dict | None, *, fetch_ok: bool) -> dict:
+    out = _base_audit_row(mart)
+    out["live_fetch_ok"] = fetch_ok
+    out["dbt_rebuild_ok"] = fresh is not None
+    if fresh is None:
         return out
-
-    live_metrics = compute_card_metrics_from_raw(live_raw)
-    out["live_fetch_ok"] = True
     for metric in METRIC_KEYS:
-        out[f"live_{metric}"] = live_metrics.get(metric)
-        out[f"drift_pct_{metric}"] = pct_drift(mart.get(metric), live_metrics.get(metric))
-
-    import yfinance as yf
-    from ingestion.yfinance.symbols import to_yfinance_ticker
-
-    market = _market_lookup().get(mart["market_code"])
-    if market is not None:
-        yf_symbol = to_yfinance_ticker(mart["ticker"], market.exchange_suffix)
-        yf_ticker = yf.Ticker(yf_symbol)
-        info = yf_ticker.info or {}
-        out["reference_fcf_margin_info"] = reference_fcf_margin_from_info(info)
-        out["reference_forward_pe"] = info.get("forwardPE")
-        out["reference_operating_margin_info"] = reference_operating_margin_info(info)
-        out["reference_operating_margin_ttm"] = reference_operating_margin_ttm(
-            {"_yf_ticker": yf_ticker}
-        )
-        out["drift_pct_ebit_margin_vs_info"] = pct_drift(
-            mart.get("ebit_margin_pct"),
-            out["reference_operating_margin_info"],
-        )
-        out["drift_pct_ebit_margin_vs_ttm"] = pct_drift(
-            mart.get("ebit_margin_pct"),
-            out["reference_operating_margin_ttm"],
-        )
-
+        out[f"fresh_{metric}"] = fresh.get(metric)
+        out[f"drift_pct_{metric}"] = pct_drift(mart.get(metric), fresh.get(metric))
     return out
 
 
@@ -219,6 +300,7 @@ def _summarize(rows: list[dict]) -> dict:
     summary: dict[str, object] = {
         "rows": len(rows),
         "live_fetch_ok": sum(1 for r in rows if r.get("live_fetch_ok")),
+        "dbt_rebuild_ok": sum(1 for r in rows if r.get("dbt_rebuild_ok")),
         "business_summary_fill_rate": round(
             sum(1 for r in rows if r.get("business_summary_present")) / max(len(rows), 1),
             3,
@@ -228,14 +310,18 @@ def _summarize(rows: list[dict]) -> dict:
         drifts = [r[f"drift_pct_{metric}"] for r in rows if r.get(f"drift_pct_{metric}") is not None]
         if drifts:
             summary[f"median_drift_pct_{metric}"] = round(sorted(drifts)[len(drifts) // 2], 2)
-            summary[f"max_drift_pct_{metric}"] = round(max(drifts), 2)
+            summary[f"max_drift_pct_{metric}"] = round(max(drifts, key=abs), 2)
     return summary
 
 
 def _write_csv(path: Path, rows: list[dict]) -> None:
     if not rows:
         return
-    fieldnames = list(rows[0].keys())
+    fieldnames: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in fieldnames:
+                fieldnames.append(key)
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -249,25 +335,18 @@ def _check_failures(rows: list[dict], *, max_drift_pct: float, pilot_tickers: se
             continue
         for metric in METRIC_KEYS:
             drift = row.get(f"drift_pct_{metric}")
-            if drift is not None and drift > max_drift_pct:
+            if drift is not None and abs(drift) > max_drift_pct:
                 failures.append(
                     f"{row['ticker']} {metric}: drift {drift:.1f}% "
-                    f"(mart={row.get(f'mart_{metric}')} live={row.get(f'live_{metric}')})"
+                    f"(mart={row.get(f'mart_{metric}')} fresh={row.get(f'fresh_{metric}')})"
                 )
     return failures
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Audit mart metrics vs live yfinance")
-    parser.add_argument(
-        "--source",
-        choices=("duckdb", "supabase"),
-        default="duckdb",
-    )
-    parser.add_argument(
-        "--duckdb-path",
-        default=str(ROOT / "storage" / "stock_data.db"),
-    )
+    parser = argparse.ArgumentParser(description="Audit mart metrics vs fresh yfinance recomputed via dbt")
+    parser.add_argument("--source", choices=("duckdb", "supabase"), default="duckdb")
+    parser.add_argument("--duckdb-path", default=str(ROOT / "storage" / "stock_data.db"))
     parser.add_argument("--sample-size", type=int, default=30)
     parser.add_argument(
         "--always",
@@ -278,12 +357,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--offline",
         action="store_true",
-        help="Skip live yfinance fetches (CI mode)",
+        help="Skip live yfinance fetch + dbt rebuild (CI mode); report mart-side facts only",
     )
-    parser.add_argument(
-        "--output-dir",
-        default=str(ROOT / "storage" / "audit"),
-    )
+    parser.add_argument("--output-dir", default=str(ROOT / "storage" / "audit"))
     parser.add_argument(
         "--fail-on-drift",
         action="store_true",
@@ -315,11 +391,27 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"Auditing {len(sample)} tickers from {len(mart_rows)} eligible mart rows")
 
-    markets = _market_lookup()
-    audit_rows: list[dict] = []
-    for mart in sample:
-        live_raw = None if args.offline else _fetch_live_row(mart["market_code"], mart["ticker"], markets)
-        audit_rows.append(_audit_row(mart, live_raw))
+    if args.offline:
+        audit_rows = [_base_audit_row(mart) for mart in sample]
+    else:
+        markets = _market_lookup()
+        fetched: dict[tuple[str, str], bool] = {}
+        raw_rows: list[dict] = []
+        for mart in sample:
+            key = (mart["market_code"], mart["ticker"])
+            raw = _fetch_live_raw(mart["market_code"], mart["ticker"], markets)
+            fetched[key] = raw is not None
+            if raw is not None:
+                raw_rows.append(raw)
+        fresh_metrics = _build_fresh_metrics_via_dbt(raw_rows)
+        audit_rows = [
+            _audit_row(
+                mart,
+                fresh_metrics.get((mart["market_code"], mart["ticker"])),
+                fetch_ok=fetched[(mart["market_code"], mart["ticker"])],
+            )
+            for mart in sample
+        ]
 
     summary = _summarize(audit_rows)
     output_dir = Path(args.output_dir)
@@ -329,7 +421,7 @@ def main(argv: list[str] | None = None) -> int:
     json_path = output_dir / f"metric_audit_{stamp}.json"
     _write_csv(csv_path, audit_rows)
     json_path.write_text(
-        json.dumps({"summary": summary, "rows": audit_rows}, indent=2),
+        json.dumps({"summary": summary, "rows": audit_rows}, indent=2, default=str),
         encoding="utf-8",
     )
 

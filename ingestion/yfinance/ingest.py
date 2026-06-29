@@ -235,51 +235,6 @@ def _fetch_fundamentals_row(
     return call_with_retry(_load)
 
 
-def _effective_net_debt(row: dict[str, object]) -> object | None:
-    """Match dbt net-debt coalesce: netDebt, else totalDebt - totalCash."""
-    net_debt = row.get("info_net_debt")
-    if net_debt is not None:
-        return net_debt
-    total_debt = row.get("info_total_debt")
-    total_cash = row.get("info_total_cash")
-    if total_debt is not None and total_cash is not None:
-        return total_debt - total_cash
-    return None
-
-
-def _has_operating_margin_inputs(row: dict[str, object]) -> bool:
-    import sys
-    from pathlib import Path
-
-    repo_root = Path(__file__).resolve().parents[2]
-    scripts_dir = repo_root / "scripts"
-    if str(scripts_dir) not in sys.path:
-        sys.path.insert(0, str(scripts_dir))
-    from metric_formulas import operating_margin_pct
-
-    margin, _basis = operating_margin_pct(row)
-    return margin is not None
-
-
-def _is_card_eligible_raw(row: dict[str, object]) -> bool:
-    """Mirror dbt five-metric gate on raw landed fields."""
-    info_ok = all(
-        row.get(col) is not None
-        for col in (
-            "info_forward_pe",
-            "info_revenue_growth",
-            "info_ebitda",
-        )
-    ) and _effective_net_debt(row) is not None
-    stmt_ok = (
-        row.get("stmt_free_cash_flow") is not None
-        and row.get("stmt_total_revenue") is not None
-        and row.get("stmt_total_revenue") != 0
-    )
-    margin_ok = _has_operating_margin_inputs(row)
-    return info_ok and stmt_ok and margin_ok
-
-
 def _fetch_fundamentals(
     market: Market,
     local_tickers: list[str],
@@ -290,7 +245,7 @@ def _fetch_fundamentals(
     tickers = local_tickers[:max_tickers] if max_tickers else local_tickers
     snapshot_date = datetime.now(timezone.utc).date()
     rows: list[dict[str, object]] = []
-    stats = {"fundamentals_ok": 0, "fundamentals_failed": 0, "fundamentals_eligible": 0}
+    stats = {"fundamentals_ok": 0, "fundamentals_failed": 0}
 
     for local_ticker in tickers:
         yf_symbol = to_yfinance_ticker(local_ticker, market.exchange_suffix)
@@ -298,8 +253,6 @@ def _fetch_fundamentals(
             row = _fetch_fundamentals_row(market, local_ticker, yf_symbol, snapshot_date)
             rows.append(row)
             stats["fundamentals_ok"] += 1
-            if _is_card_eligible_raw(row):
-                stats["fundamentals_eligible"] += 1
         except Exception as exc:  # noqa: BLE001
             stats["fundamentals_failed"] += 1
             label = "rate-limited" if is_rate_limited(exc) else "error"
