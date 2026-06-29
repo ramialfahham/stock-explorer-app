@@ -4,66 +4,65 @@ _The next session is handed exactly this file. Keep it current._
 
 ## Current task
 
-**Project evaluation → improvement.** The owner is unhappy with the project's state; the lead, concrete
-complaint is the **UI: inconsistent design/formatting, cluttered**. We agreed to fix foundations first,
-then the UI. In flight: **metric layer Phase 2** — PR #132 (branch `feat/metric-layer-phase2`).
+**Project evaluation → redesign.** Owner's lead complaint was a cluttered/inconsistent UI; digging in
+revealed the bigger truth: **it's a dashboard, not a learning tool.** The work now is reshaping the
+product into a beginner **financial-literacy** tool — sector-aware metrics + AI-written, plain-language
+"reads" with a health verdict — on top of the metric layer we built. In flight: the
+**equity-analyst-reviewer** (PR #133), then the **metric-catalogue enrichment**.
 
 ## Status
 
-**Metric layer — Phase 1 MERGED (#131); Phase 2 PR open, awaiting CI + merge:**
-https://github.com/ramialfahham/stock-swipe-app/pull/132
-- Phase 1 (#131, merged): `metric_catalogue` seed = SSoT → `metrics.json` → `card_copy.py`; card
-  byte-identical. The metric layer foundation is in `main`.
-- Phase 2 (#132): deletes `scripts/metric_formulas.py` (the Python formula mirror) + the ingestion
-  `fundamentals_eligible` counter; reworks `audit_mart_vs_yfinance.py` to validate the mart by
-  re-running dbt on fresh raw (no Python formula). Verified locally: 73 pytest, dbt-rerun proven
-  end-to-end. No dbt model / mart / Supabase change.
+- **Metric layer: Phases 1 + 2 MERGED** (#131, #132). `metric_catalogue` seed = single source →
+  `metrics.json` → `card_copy.py`; dbt model is the only place metrics compute; no Python mirror; the
+  audit re-runs dbt on fresh raw.
+- **UI redesign mock: approved look** (one cohesive card, scan→deep tiers, one disclosure pattern,
+  label chips for basis, words-not-arrows benchmarks). NOT yet implemented — waits on the metric model.
+- **equity-analyst-reviewer: PR #133 open** — a finance-domain blinded reviewer; routes
+  `*metric_catalogue.csv`, `docs/metric_layer.md`, `docs/data_contract.md` to it.
 
-## Next concrete action
+## Decisions locked this session (the important ones)
 
-Owner reviews + merges #132 (do NOT self-merge). **That completes the metric layer.** Then the main
-event — the **UI redesign** (the owner's actual complaint), now sitting on a clean single metric source:
-1. Build a redesigned-card MOCK first: one cohesive surface, one disclosure pattern, consistent labels
-   incl. the deferred `(TTM)` dynamic-suffix, a real spacing/type scale, words-not-arrows benchmarks.
-2. Iterate on the mock, then implement in Streamlit consuming `metrics.json`.
-(See the full UI diagnosis below under Context — it's grounded in screenshots of the real card.)
+- **Stay on yfinance** (no paid data source). Accept its limits: no ROIC / Tier 1 / Net Interest Margin /
+  ARR / multi-year history. Use **ROE not ROIC**; financials get **ROE + P/B + margin**; pre-revenue get
+  **cash runway**. (Verified in yahoo `info`: returnOnEquity, priceToBook, profitMargins, marketCap,
+  freeCashflow present everywhere incl. banks; debtToEquity/currentRatio/EV missing-or-garbage for financials.)
+- **The nonsense magnitudes are REAL data, not corrupt** — metrics mis-applied to the wrong company type
+  (financials, pre-revenue, loss-makers, near-zero denominators). **Do not clip/hide** — route to the
+  right lens. Applicability is a first-class property of a metric.
+- **Architecture: a Sector/Lifecycle Router** — operating company / financial / pre-revenue — each with
+  yfinance-available metrics, its own eligibility, rendering, and AI prompt.
+- **Perspective taxonomy:** valuation · profitability · growth · solvency · liquidity · cash · returns.
+  Two perspectives to ADD: **Returns (ROE)** and **Liquidity (current ratio)**; fix brittle metrics
+  (net-debt/EBITDA → **debt-to-equity + interest coverage**; P/E + loss-proof **P/S, EV/EBITDA, FCF yield**).
+- **AI assessments:** educational, **NEVER advice** (no buy/sell/price-target); true-beginner language;
+  reason only from the given numbers; end with a financial-health verdict (🟢/🟡/🔴).
 
-## UI redesign brief (grounded in screenshots of the real card)
+## Next concrete actions (in order)
 
-The card is what feels "cluttered/inconsistent". Concrete findings:
-- **Fragmented into ~5 slabs**, not one card: identity box → an orphaned "‣ Understand these numbers"
-  link floating in the gap → metrics box → a bordered "Practice with hypothetical numbers" box → footer.
-- **Two disclosure paradigms** on one card: custom HTML `<details>` (gold ▸) vs Streamlit `st.expander`.
-- **Basis-leak labels:** "Operating margin (TTM)", "Rev growth YoY (quarter)", "FCF margin (annual)" —
-  expose differing time bases on the card face. (The `(TTM)` dynamic-suffix fix was deferred to here.)
-- **Tiny ambiguous ↑/↓ benchmark arrows** (direction carries no valence). Replace with words.
-- **No spacing scale** (~20 ad-hoc rem values) and **type scale not enforced** (~10 hardcoded sizes) in
-  `frontend/styles.py`; plus duplicate/dead CSS (e.g. `.ss-browse-*` from the removed browse list).
-Direction: design-system cleanup WITHIN Streamlit first (tokens, one disclosure pattern, one surface,
-words-not-arrows, fix the label leak) — not a Streamlit rewrite yet. Mock first, then implement.
-
-## Decisions locked this session
-
-- Metric layer = a dbt-seed `metric_catalogue` (football pattern), built BEFORE the UI mock so the mock
-  consumes a single source. See [[no-duplicate-sources]].
-- Phase 1 is a ZERO-text-change port; the (TTM) label-leak fix is deferred to the UI work (touches
-  metric_school.py — a UX wording change).
-- Drift guard is a Python test, not a dbt singular test — repo's §1.1 SQL-structure gate (WITH-first)
-  is incompatible with football's jinja introspection style.
+1. Merge PR #133 (reviewer). Then sync main.
+2. **Catalogue enrichment PR** (reviewed by equity-analyst): rename `metric_group → perspective`; add
+   columns `calculation`, `interpretation`, `applicability`; populate the existing 5. **Drafted content
+   is owner-reviewed (in the chat) — ready to write.** Update `_seeds.yml`, export script, tests, docs.
+3. **Add the new metrics** (ROE, current ratio, P/B, P/S, EV/EBITDA, FCF yield, cash runway) — new raw
+   fields in ingestion (yahoo info: returnOnEquity, debtToEquity, currentRatio, priceToBook, marketCap,
+   sharesOutstanding) + dbt compute + catalogue rows.
+4. **Sector/Lifecycle Router** (classify company type → metric set + eligibility + rendering + AI prompt).
+5. **AI assessment generator** (Python step after dbt/export; Claude; store to Supabase; not-advice).
+6. **UI redesign** implemented in Streamlit, consuming all of the above.
 
 ## Do NOT
 
-- Do not commit/push to `main`; do not `gh pr merge`. Agent commits need `gitleaks` on PATH (the
-  pre-commit hook); export it from the WinGet Packages dir if a commit hook fails to find it.
-- Do not reword metric copy (labels/gloss/analogy/learn) — owner content (§6); port verbatim.
-- Do not enable ruff-format or broaden the dbt MCP beyond read-only without asking.
+- Commit/push `main`; `gh pr merge`. Agent commits need `gitleaks` on PATH (export from the WinGet
+  Packages dir if a commit hook can't find it).
+- Emit buy/sell/hold/price-target/advice anywhere — the app and the AI reads are educational only.
+- Reword metric copy/definitions without owner sign-off (§6).
+- Use ROIC / Tier 1 / NIM / ARR / multi-year metrics — yfinance can't source them reliably.
+- Clip or hide outlier magnitudes — route to the correct lens instead.
 
 ## Context / open items
 
-- **Backend fragility (track B):** the deployed app at https://stock-explorer.streamlit.app/ runs on a
-  **free-tier Supabase** that pauses after ~7 days idle (DNS drops → the app shows repeated "Could not
-  load cards" errors, and renders that error 4× — a real bug: `_ensure_all_cards` is called repeatedly
-  per render). It was restored this session (857 eligible cards, healthy coverage). Will recur — decide
-  keep-alive vs paid tier vs accept manual restore.
-- A separate branch `docs/refresh-june-2026` holds unrelated in-flight docs work (other chat); leave it.
-- Throwaway render harness lives in the session scratchpad (`card_preview.py`); not in the repo.
+- **Backend (track B):** free-tier Supabase pauses after ~7 days idle → app shows repeated
+  "Could not load cards" (rendered 4× — a real bug in `_ensure_all_cards`). Restored this session.
+  Decide keep-alive vs paid tier.
+- `docs/refresh-june-2026` is unrelated in-flight docs work (other chat) — leave it.
+- This handover was badly stale before today's rewrite; keep it current after each PR.
