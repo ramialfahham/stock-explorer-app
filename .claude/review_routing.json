@@ -15,7 +15,10 @@
     ".mcp.json": ["cto-reviewer"],
     "frontend/*": ["cto-reviewer"],
     "ingestion/*": ["data-engineer-reviewer"],
-    "supabase/*": ["data-engineer-reviewer"]
+    "supabase/*": ["data-engineer-reviewer"],
+    "*metric_catalogue.csv": ["equity-analyst-reviewer"],
+    "docs/metric_layer.md": ["equity-analyst-reviewer"],
+    "docs/data_contract.md": ["equity-analyst-reviewer"]
   },
   "artifact_only": [".claude/task/*", ".claude/active_work.md"],
   "artifact_only_never": [".claude/task/contract.md"]
