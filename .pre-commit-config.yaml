@@ -1,0 +1,43 @@
+# Local commit hooks. One-time setup: `pip install -r requirements-dev.txt` then `pre-commit install`.
+# Adapted from dbt-agent-kit's template for this repo:
+#   - paths point at dbt_analytics/ (not the generic models/);
+#   - sqlfluff is pinned to 3.5.0 to match requirements.txt and runs only on the `manual`
+#     stage (it needs `dbt deps` + a profile + DBT_RAW_PATH; CI is the real sqlfluff gate);
+#   - no-commit-to-branch replaces scripts/install_git_hooks.py;
+#   - gitleaks runs from a system-installed binary (CI re-checks via .github/workflows/secret-scan.yml);
+#   - ruff is intentionally omitted for now (separate PR with a deliberate formatting pass).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-yaml
+        args: [--unsafe]   # allow GitHub Actions ${{ }} syntax
+      - id: check-json
+        exclude: ^dbt_analytics/target/
+      - id: end-of-file-fixer
+        exclude: \.(svg|png|jpe?g)$
+      - id: trailing-whitespace
+        exclude: \.(md|svg)$
+        args: [--markdown-linebreak-ext=md]
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
+
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged secret scan)
+        entry: gitleaks protect --staged --redact --config .gitleaks.toml
+        language: system
+        pass_filenames: false
+
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.5.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^dbt_analytics/(models|tests)/.*\.sql$
+        args: [--config, .sqlfluff]
+        additional_dependencies: ['sqlfluff-templater-dbt==3.5.0']
+        stages: [manual]

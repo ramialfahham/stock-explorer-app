@@ -15,7 +15,7 @@ How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`]
 
 Never commit directly to `main`.
 
-**One-time setup:** `python scripts/install_git_hooks.py` — pre-commit hook rejects commits on `main`.
+**One-time setup:** `pip install -r requirements-dev.txt && pre-commit install` — installs the pre-commit hooks (`no-commit-to-branch` rejects commits on `main`, plus a staged gitleaks secret scan). See [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 
 **GitHub (recommended):** branch protection on `main` — require PR, disallow direct push.
 

@@ -1,0 +1,10 @@
+# gitleaks config. Extends the built-in rules; add repo-specific false positives below.
+[extend]
+useDefault = true
+
+[allowlist]
+  description = "Repo-specific false positives"
+  regexes = [
+    # Example: a dbt source() call whose raw table name trips the generic-api-key rule.
+    # '''source\(['"]my_source['"],\s*['"]raw_\w+['"]\)''',
+  ]

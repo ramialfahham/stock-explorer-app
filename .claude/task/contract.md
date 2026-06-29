@@ -1,26 +1,29 @@
 # Task contract
 
-objective: Adopt the dbt-agent-kit plugin guardrails as this repo's canonical agent setup, retiring the superseded Cursor-era material without duplicating sources.
+objective: Adopt the three optional dbt-agent-kit extras — gitleaks secret-scan, a pre-commit framework, and a read-only dbt MCP — tuned to this repo.
 
 scope_paths:
-  - CLAUDE.md
-  - .claude/**
-  - docs/working_agreement.md
-  - .cursor/rules/**
-  - README.md
+  - .gitleaks.toml
+  - .mcp.json
+  - .pre-commit-config.yaml
+  - requirements-dev.txt
+  - .github/workflows/secret-scan.yml
+  - scripts/install_git_hooks.py
   - docs/development_workflow.md
+  - README.md
+  - .claude/**
 
 decisions_reserved:
-  - Whether to add the optional extras (gitleaks secret-scan, .pre-commit-config.yaml, read-only dbt MCP) — owner wants these as a separate explicit approval.
-  - Any change to the dbt layer rules, engineering standards, or product/UX content in docs/ — out of scope here.
+  - (none) — owner approved adopting all three; gitleaks = CI step + local system-binary hook; ruff = skipped this change.
 
 done_when:
-  - CLAUDE.md, .claude/working-agreement.md (verbatim plugin template), .claude/review_routing.json (tuned to repo folders), and .claude/active_work.md exist.
-  - Exactly one agent-process working agreement (.claude/working-agreement.md); docs/working_agreement.md reduced to a redirect + the project-specific UX PR gate, with no broken inbound links.
-  - .cursor/rules/ removed and its two inbound references (README.md, docs/development_workflow.md) fixed.
-  - Review cycle recorded in .claude/task/review.md and committed on chore/adopt-guardrails; PR opened to main (not merged).
+  - .gitleaks.toml, .mcp.json (read-only dbt tools only), .pre-commit-config.yaml exist and are valid; requirements-dev.txt adds pre-commit.
+  - gitleaks runs in CI (new secret-scan.yml) and as a local pre-commit hook (system gitleaks binary).
+  - pre-commit's no-commit-to-branch replaces scripts/install_git_hooks.py (removed); check_not_on_main.py stays for CI; doc references fixed.
+  - sqlfluff pre-commit hook tuned to dbt_analytics/(models|tests), pinned 3.5.0, manual stage. ruff intentionally omitted.
+  - Review cycle recorded in .claude/task/review.md (scope-auditor + cto-reviewer, required by .mcp.json / scripts / requirements / workflow) and committed on chore/guardrail-extras; PR opened to main (not merged).
 
-impact_map: (none) — documentation/config and Claude Code setup only; no dbt models, ingestion, or consumption outputs change. No CI behavior changes (no edits to .github/workflows/ or scripts/).
+impact_map: (none) — adds local/CI tooling and an editor-side read-only MCP; no dbt models, ingestion, or runtime/export behavior changes. CI gains a secret-scan job; the existing validate job is untouched.
 
 amendments:
-  - 2026-06-29 — initial contract; reflects owner's pivot from "merge into docs/" to "plugin setup is canonical, Cursor retired".
+  - 2026-06-29 — initial contract for the optional extras (separate, approved follow-up to the guardrail adoption in PR #127).
