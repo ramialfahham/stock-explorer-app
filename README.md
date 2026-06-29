@@ -32,14 +32,15 @@ Nothing runs on a developer machine in production.
 
 ```
 stock-swipe-app/
+├── CLAUDE.md                  # Entry doc for Claude Code — points to guardrails + docs
+├── .claude/                   # dbt-agent-kit guardrails: working-agreement.md, review_routing.json, active_work.md, task/
 ├── docs/
-│   ├── working_agreement.md     # Agent behaviour (non-negotiable, general template)
-│   ├── layering.md              # dbt layer rules (general template)
-│   ├── engineering_standards.md # Naming, testing, CI (general template)
-│   ├── project_context.md       # Stock-specific extensions to the templates
+│   ├── working_agreement.md     # UX PR gate + redirect (agent process now in .claude/)
+│   ├── layering.md              # dbt layer rules
+│   ├── engineering_standards.md # Naming, testing, CI
+│   ├── project_context.md       # Stock-specific extensions
 │   ├── market_registry.yml      # Active markets (registry-driven)
 │   └── supabase_setup.md        # Supabase project + secrets checklist
-├── .cursor/rules/             # Cursor rules mirroring working_agreement.md
 ├── supabase/migrations/       # SQL schema (applied via apply_supabase_migrations.py)
 ├── scripts/                   # Migrations, layer contract, registry sync, connection check
 ├── dbt_analytics/             # dbt project (1_staging → 5_marts)
@@ -109,11 +110,13 @@ stock-swipe-app/
 
 ## Standards (non-negotiable)
 
-General templates (do not edit for project-specific rules — use `project_context.md` instead):
+Agent process / guardrails: [`CLAUDE.md`](CLAUDE.md) → [`.claude/working-agreement.md`](.claude/working-agreement.md) (from the [`dbt-agent-kit`](https://github.com/ramialfahham/dbt-agent-kit) plugin).
 
-- [`docs/working_agreement.md`](docs/working_agreement.md)
-- [`docs/layering.md`](docs/layering.md)
-- [`docs/engineering_standards.md`](docs/engineering_standards.md)
+Engineering standards:
+
+- [`docs/layering.md`](docs/layering.md) — dbt layer rules
+- [`docs/engineering_standards.md`](docs/engineering_standards.md) — naming, testing, CI
+- [`docs/working_agreement.md`](docs/working_agreement.md) — UX PR gate (frontend changes)
 
 Stock-specific extensions:
 

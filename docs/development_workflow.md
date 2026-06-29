@@ -1,6 +1,6 @@
 # Development workflow — Stock Swipe App
 
-How to change this repo safely. Agent behavior: [`working_agreement.md`](working_agreement.md).
+How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`](../.claude/working-agreement.md) (UX PR gate: [`working_agreement.md`](working_agreement.md)).
 
 ---
 
@@ -115,6 +115,6 @@ python scripts/check_supabase_connection.py
 
 ## Ingestion skill (future)
 
-When fundamentals ingestion stabilizes, add `.cursor/skills/stock-swipe-ingestion/SKILL.md`
+When fundamentals ingestion stabilizes, add `.claude/skills/stock-swipe-ingestion/SKILL.md`
 pointing agents at registry, raw-only rule, parquet paths, and market activation checklist.
 Do not derive metrics in Python.
