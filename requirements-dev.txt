@@ -1,0 +1,4 @@
+# Local dev tooling (not needed at runtime or in the data pipeline).
+# Install: pip install -r requirements-dev.txt && pre-commit install
+-r requirements.txt
+pre-commit==4.0.1
