@@ -4,25 +4,27 @@ _The next session is handed exactly this file. Keep it current._
 
 ## Current task
 
-Adopt the three optional dbt-agent-kit extras (gitleaks, pre-commit, read-only dbt MCP) —
-branch `chore/guardrail-extras`, PR #128.
+Repair the #128 pre-commit config — branch `fix/precommit-check-json-jsonc`. Two fixes:
+(1) check-json JSONC false-positive on `.devcontainer/devcontainer.json`;
+(2) `.gitleaks.toml` empty `[allowlist]` rejected by gitleaks 8.30.1 (blocked every local commit).
 
 ## Status
 
-**Awaiting CI + owner merge.** PR open: https://github.com/ramialfahham/stock-swipe-app/pull/128
+**Awaiting CI + owner merge.** PR being opened from `fix/precommit-check-json-jsonc`.
 
-- The base guardrail adoption (PR #127) is **merged**; repo auto-deletes head branches on merge now.
-- #128 adds: `.gitleaks.toml`, `.github/workflows/secret-scan.yml` (gitleaks in CI),
-  `.pre-commit-config.yaml` (hygiene + staged gitleaks + `no-commit-to-branch`; sqlfluff manual,
-  pinned 3.5.0; ruff deferred), `.mcp.json` (read-only dbt MCP), `requirements-dev.txt` (adds
-  pre-commit). Removes `scripts/install_git_hooks.py` (superseded); `docs/development_workflow.md`
-  reference updated. Review recorded (scope-auditor + cto-reviewer).
+- Guardrail adoption (#127) and the extras (#128) are both **merged**; repo auto-deletes head branches.
+- Local enablement is done: `pre-commit` installed in `.venv`, `gitleaks` 8.30.1 installed (needs a
+  PERMANENT PATH entry — Dev Mode reinstall or GUI PATH edit — the `set PATH` test was session-only).
+  The read-only dbt MCP still needs a desktop-app restart to load `.mcp.json`.
+- Verified: `pre-commit run check-json --all-files` passes; `gitleaks ... --config .gitleaks.toml`
+  loads and reports no leaks.
+- Known follow-up (NOT in this PR): the gitleaks hook uses the deprecated `gitleaks protect`
+  subcommand — modernize to `gitleaks git` in a separate change.
 
 ## Next concrete action
 
-Owner reviews + merges #128 (do NOT self-merge). After merge: sync local `main` (origin auto-deletes
-the branch). One-time local enablement: `pip install -r requirements-dev.txt && pre-commit install`,
-and install the `gitleaks` binary (e.g. `winget install gitleaks`) for the local hook.
+Owner reviews + merges this PR (do NOT self-merge). After merge: sync local `main`. Then make the
+`gitleaks` PATH entry permanent so the local secret-scan hook resolves `gitleaks` at commit time.
 
 ## Decisions locked this session
 
