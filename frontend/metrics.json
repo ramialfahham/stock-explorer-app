@@ -1,0 +1,79 @@
+{
+  "metrics": [
+    {
+      "metric_id": "forward_pe",
+      "label": "Forward P/E",
+      "description": "Price relative to expected next-year earnings; sourced from ticker.info forwardPE.",
+      "format": "ratio_1",
+      "metric_group": "valuation",
+      "direction": "lower_better",
+      "basis_column": "",
+      "gloss": "Price vs expected next-year earnings",
+      "analogy": "Think payback time: how many years of expected earnings are priced into one share today.",
+      "learn": "P/E (price-to-earnings) divides the share price by earnings per share. Forward P/E uses analyst estimates for next year's earnings, not last year's results. A higher number often means investors expect faster growth — or are paying a premium today.",
+      "importance_tier": 1,
+      "display_order": 1,
+      "benchmarkable": true
+    },
+    {
+      "metric_id": "ebit_margin_pct",
+      "label": "Operating margin (TTM)",
+      "description": "TTM operating income divided by TTM total revenue (four quarterly statements), times 100; falls back to latest annual when four quarters are unavailable, with the basis recorded in ebit_margin_basis. Not Yahoo's single-quarter operatingMargins.",
+      "format": "percent_1",
+      "metric_group": "quality",
+      "direction": "higher_better",
+      "basis_column": "ebit_margin_basis",
+      "gloss": "Operating profit as share of sales (TTM)",
+      "analogy": "For every dollar of sales, this is the slice kept as operating profit before interest and taxes.",
+      "learn": "This card sums Operating Income and Total Revenue from the last four quarterly financial statements, then divides — a trailing twelve-month (TTM) operating margin. It is not Yahoo's single-quarter operatingMargins snapshot.",
+      "importance_tier": 1,
+      "display_order": 2,
+      "benchmarkable": true
+    },
+    {
+      "metric_id": "revenue_growth_yoy_pct",
+      "label": "Rev growth YoY (quarter)",
+      "description": "Latest reported quarter revenue versus the same quarter a year ago (ticker.info revenueGrowth, times 100).",
+      "format": "percent_1",
+      "metric_group": "momentum",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Sales growth vs same quarter last year",
+      "analogy": "Compared with a year ago — is the business growing, flat, or shrinking?",
+      "learn": "Year-over-year (YoY) growth compares revenue in the latest reported quarter with the same quarter one year ago (Yahoo revenueGrowth). One quarter can be noisy — look for a pattern over time when you dig deeper.",
+      "importance_tier": 1,
+      "display_order": 3,
+      "benchmarkable": true
+    },
+    {
+      "metric_id": "net_debt_to_ebitda",
+      "label": "Net debt / EBITDA",
+      "description": "Net debt (info_net_debt, or info_total_debt minus info_total_cash) divided by Yahoo EBITDA; periods may differ. A rough leverage signal, not a precise accounting ratio.",
+      "format": "ratio_2",
+      "metric_group": "solvency",
+      "direction": "lower_better",
+      "basis_column": "",
+      "gloss": "Net debt vs Yahoo EBITDA",
+      "analogy": "If operating profit stayed steady, about how many years to repay net debt from cash generation?",
+      "learn": "Net debt is total debt minus cash on hand (Yahoo). EBITDA is Yahoo's reported EBITDA figure — often trailing, not necessarily matched to the same instant as the balance sheet. Use this as a rough leverage signal, not a precise accounting ratio.",
+      "importance_tier": 2,
+      "display_order": 4,
+      "benchmarkable": true
+    },
+    {
+      "metric_id": "fcf_margin_pct",
+      "label": "FCF margin (annual)",
+      "description": "Free cash flow divided by total revenue (latest annual cash flow and income statements), times 100.",
+      "format": "percent_1",
+      "metric_group": "cash",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Free cash left from each sales dollar (latest annual statements)",
+      "analogy": "After running the business, how much cash is left from each sales dollar — not the same as accounting profit.",
+      "learn": "Free cash flow (FCF) is cash left after running and investing in the business. This card computes FCF margin from the latest annual cash flow and income statements — not Yahoo's trailing Key Statistics ratio. Run the metric audit script to compare.",
+      "importance_tier": 2,
+      "display_order": 5,
+      "benchmarkable": true
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+version: 2
+
+seeds:
+  - name: metric_catalogue
+    description: >
+      Single source of truth for every card metric — one row per (metric_id, entity). Captures the
+      formula as a spec (base_relation + numerator_expr / denominator_expr over the base's real
+      columns), the display format, the display taxonomy (metric_group, importance_tier,
+      display_order, direction), the benchmarkable flag and basis column, and the plain-language
+      copy (gloss / analogy / learn). int_stock__card_metrics computes each metric once; this seed
+      defines and documents it. The frontend reads frontend/metrics.json, generated from this seed by
+      scripts/export_metric_definitions_json.py. Integrity is guarded by tests/test_metric_catalogue.py
+      (catalogue metrics are computed in the model; the regenerated JSON matches the committed file).
+    config:
+      column_types:
+        importance_tier: integer
+        display_order: integer
+    columns:
+      - name: metric_id
+        description: "Stable metric id; equals the metric column name in int_stock__card_metrics."
+        tests:
+          - not_null
+          - unique
+      - name: entity
+        description: "The entity the metric describes (one entity in this project)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["company"]
+      - name: label
+        description: "Card-face label."
+        tests: [not_null]
+      - name: description
+        description: "Plain-English definition: what the metric measures and its source."
+        tests: [not_null]
+      - name: base_relation
+        description: "The model the numerator/denominator spec resolves against."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["fct_fundamentals_snapshot"]
+      - name: format
+        description: "Display format token consumed by the frontend formatter."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["ratio_1", "ratio_2", "percent_1"]
+      - name: metric_group
+        description: "Analytical category (valuation -> quality -> momentum -> solvency -> cash)."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["valuation", "quality", "momentum", "solvency", "cash"]
+      - name: importance_tier
+        description: "1 = hero (visible three), 2 = balance (below the hero three)."
+        tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2]
+                quote: false
+      - name: direction
+        description: "Performance semantic: higher_better, lower_better, or neutral."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["higher_better", "lower_better", "neutral"]

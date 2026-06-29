@@ -103,6 +103,12 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 
 ### Card metrics — dbt formulas (v1)
 
+> **Single source of truth:** each metric's definition — formula spec, label, `format`, `direction`,
+> tier/order, and plain-language copy — lives in the [`metric_catalogue` seed](../dbt_analytics/seeds/metric_catalogue.csv)
+> (see [`metric_layer.md`](metric_layer.md)). The table below is the computed reference; the seed is
+> authoritative for display, labels, and format, and the frontend reads `frontend/metrics.json`
+> (generated from it). `int_stock__card_metrics` is where the metrics are computed, once.
+
 | # | Card metric | Formula | Primary inputs |
 |---|-------------|---------|----------------|
 | 1 | `forward_pe` | `info_forward_pe` | `ticker.info` |
