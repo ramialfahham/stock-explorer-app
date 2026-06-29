@@ -1,10 +1,9 @@
-# gitleaks config. Extends the built-in rules; add repo-specific false positives below.
+# gitleaks config. Extends the built-in rules.
+# To allow a repo-specific false positive, add an [[allowlists]] block with at least one
+# check (commits / paths / regexes / stopwords) — gitleaks 8.x rejects an empty allowlist.
+# Example:
+#   [[allowlists]]
+#     description = "dbt source() raw table names that trip the generic-api-key rule"
+#     regexes = ['''source\(['"]my_source['"],\s*['"]raw_\w+['"]\)''']
 [extend]
 useDefault = true
-
-[allowlist]
-  description = "Repo-specific false positives"
-  regexes = [
-    # Example: a dbt source() call whose raw table name trips the generic-api-key rule.
-    # '''source\(['"]my_source['"],\s*['"]raw_\w+['"]\)''',
-  ]

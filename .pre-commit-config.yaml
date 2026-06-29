@@ -16,7 +16,8 @@ repos:
       - id: check-yaml
         args: [--unsafe]   # allow GitHub Actions ${{ }} syntax
       - id: check-json
-        exclude: ^dbt_analytics/target/
+        # .devcontainer/devcontainer.json is JSONC (allows // comments) — strict check-json can't parse it.
+        exclude: ^(dbt_analytics/target/|\.devcontainer/)
       - id: end-of-file-fixer
         exclude: \.(svg|png|jpe?g)$
       - id: trailing-whitespace
