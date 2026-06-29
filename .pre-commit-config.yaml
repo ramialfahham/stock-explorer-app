@@ -30,7 +30,7 @@ repos:
     hooks:
       - id: gitleaks
         name: gitleaks (staged secret scan)
-        entry: gitleaks protect --staged --redact --config .gitleaks.toml
+        entry: gitleaks git --pre-commit --staged --redact --config .gitleaks.toml
         language: system
         pass_filenames: false
 

@@ -4,41 +4,35 @@ _The next session is handed exactly this file. Keep it current._
 
 ## Current task
 
-Repair the #128 pre-commit config — branch `fix/precommit-check-json-jsonc`. Two fixes:
-(1) check-json JSONC false-positive on `.devcontainer/devcontainer.json`;
-(2) `.gitleaks.toml` empty `[allowlist]` rejected by gitleaks 8.30.1 (blocked every local commit).
+Modernize the gitleaks pre-commit hook (`gitleaks protect` → `gitleaks git --pre-commit --staged`) —
+branch `chore/gitleaks-git-command`.
 
 ## Status
 
-**Awaiting CI + owner merge.** PR being opened from `fix/precommit-check-json-jsonc`.
+**Awaiting CI + owner merge.** PR being opened from `chore/gitleaks-git-command`.
 
-- Guardrail adoption (#127) and the extras (#128) are both **merged**; repo auto-deletes head branches.
-- Local enablement is done: `pre-commit` installed in `.venv`, `gitleaks` 8.30.1 installed (needs a
-  PERMANENT PATH entry — Dev Mode reinstall or GUI PATH edit — the `set PATH` test was session-only).
-  The read-only dbt MCP still needs a desktop-app restart to load `.mcp.json`.
-- Verified: `pre-commit run check-json --all-files` passes; `gitleaks ... --config .gitleaks.toml`
-  loads and reports no leaks.
-- Known follow-up (NOT in this PR): the gitleaks hook uses the deprecated `gitleaks protect`
-  subcommand — modernize to `gitleaks git` in a separate change.
+- Guardrail adoption (#127), extras (#128), and the pre-commit config repair (#129) are all **merged**;
+  repo auto-deletes head branches on merge.
+- Local enablement done: `pre-commit` installed in `.venv`; `gitleaks` 8.30.1 installed. The dbt MCP
+  activates on a desktop-app restart (owner said they'd restart).
+- This change swaps the hook to the non-deprecated `gitleaks git --pre-commit --staged`; verified the
+  command loads `.gitleaks.toml` and exits 0.
 
 ## Next concrete action
 
-Owner reviews + merges this PR (do NOT self-merge). After merge: sync local `main`. Then make the
-`gitleaks` PATH entry permanent so the local secret-scan hook resolves `gitleaks` at commit time.
+Owner reviews + merges this PR (do NOT self-merge). After merge: sync local `main`.
 
-## Decisions locked this session
+## Decisions locked / notes
 
-- All three extras adopted. gitleaks = CI step + local system-binary hook. ruff = deferred to its
-  own PR (avoid a mass first-run reformat). sqlfluff pre-commit hook = manual stage (CI stays the gate).
-- `scripts/install_git_hooks.py` removed; replaced by pre-commit `no-commit-to-branch`;
-  `check_not_on_main.py` stays for CI.
-- `.mcp.json` exposes read-only dbt tools only; `DBT_PATH` is Windows/venv-specific (accepted for solo setup).
+- `gitleaks` must be on the PERMANENT user PATH (Dev Mode reinstall or GUI PATH edit) so the local
+  pre-commit hook resolves it at commit time. The `set PATH` used during setup was session-only;
+  agent tool shells export the WinGet Packages path inline until the user makes it permanent.
 
 ## Do NOT
 
 - Do not commit/push to `main`; do not `gh pr merge`.
-- Do not enable ruff-format silently (it would reformat the existing Python en masse — must be its own PR).
-- Do not broaden the dbt MCP beyond read-only tools without asking.
+- Do not re-introduce a second working-agreement file or restate agent rules in `CLAUDE.md`.
+- Do not broaden the dbt MCP beyond read-only tools, or enable ruff-format, without asking.
 
 ## Context
 
