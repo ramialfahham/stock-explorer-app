@@ -61,8 +61,7 @@ def main(argv: list[str] | None = None) -> int:
             f"price_rows={stats['price_rows']} "
             f"fundamentals_rows={stats['fundamentals_rows']} "
             f"fundamentals_ok={stats['fundamentals_ok']} "
-            f"fundamentals_failed={stats['fundamentals_failed']} "
-            f"fundamentals_eligible={stats['fundamentals_eligible']}"
+            f"fundamentals_failed={stats['fundamentals_failed']}"
         )
 
     return 0

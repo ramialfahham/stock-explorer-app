@@ -1,13 +1,13 @@
 # Metric audit — mart vs live yfinance
 
-Compare [`mart_stock_cards`](../dbt_analytics/models/5_marts/mart_stock_cards.sql) values to a **fresh yfinance pull** using the same raw fields and dbt formulas. Use this before changing card metrics or labels.
+Compare [`mart_stock_cards`](../dbt_analytics/models/5_marts/mart_stock_cards.sql) values to a **fresh yfinance pull**, recomputed by **rebuilding `int_stock__card_metrics` through dbt** on the fresh raw. There is no second (Python) formula — the dbt model is the single source of every metric (see [`metric_layer.md`](metric_layer.md)). Use this before changing card metrics or labels.
 
 ## Run locally
 
 After a healthy `dbt build` (or weekly pipeline):
 
 ```bash
-# DuckDB mart (default) — live yfinance calls
+# DuckDB mart (default) — fresh yfinance fetch + dbt rebuild
 python scripts/audit_mart_vs_yfinance.py \
   --duckdb-path storage/stock_data.db \
   --sample-size 30 \
@@ -29,25 +29,19 @@ Reports are written to `storage/audit/metric_audit_<timestamp>.csv` and `.json`.
 
 | Column | Meaning |
 |--------|---------|
-| `mart_*` | Value on exported mart row |
-| `live_*` | Value recomputed from fresh yfinance using [`metric_formulas.py`](../scripts/metric_formulas.py) (same as dbt) |
-| `drift_pct_*` | Absolute percent difference vs live |
-| `reference_fcf_margin_info` | `freeCashflow / totalRevenue` from info — Yahoo-trailing style reference, not mart |
-| `reference_forward_pe` | Raw `forwardPE` from info |
-| `reference_operating_margin_info` | `operatingMargins × 100` from info — often **latest quarter**, not TTM |
-| `reference_operating_margin_ttm` | Sum of last 4Q Operating Income ÷ sum of last 4Q Total Revenue × 100 |
-| `drift_pct_ebit_margin_vs_info` | Mart operating margin vs info reference |
-| `drift_pct_ebit_margin_vs_ttm` | Mart operating margin vs TTM reference (target after pipeline fix) |
+| `mart_*` | Value on the exported mart row |
+| `fresh_*` | Value recomputed by rebuilding `int_stock__card_metrics` through dbt on a fresh yfinance pull (same formula, by construction) |
+| `drift_pct_*` | Signed percent difference of `mart_*` from `fresh_*` |
+| `dbt_rebuild_ok` | Whether the fresh dbt rebuild produced a row for this ticker |
+| `live_fetch_ok` | Whether the fresh yfinance fetch succeeded |
 | `snapshot_age_days` | Days since mart `snapshot_date` — large age explains stale forward P/E |
 | `business_summary_present` | Whether `longBusinessSummary` reached the mart |
 
-High drift on `live_*` with low `snapshot_age_days` → likely **formula/label mismatch**, not pipeline lag.
+High `drift_pct_*` with **low** `snapshot_age_days` → the mart and a fresh rebuild disagree on current data: investigate the export or a since-changed upstream — not the formula, which is identical (the same dbt model produced both).
 
-High drift with high `snapshot_age_days` → run export / wait for pipeline before changing dbt.
+High `drift_pct_*` with **high** `snapshot_age_days` → the mart is simply stale; run export / wait for the weekly pipeline.
 
-Large gap between `mart_fcf_margin_pct` and `reference_fcf_margin_info` → annual statement FCF margin vs trailing info ratio (known NVDA pattern).
-
-Large gap between `reference_operating_margin_info` and `reference_operating_margin_ttm` on the same ticker (e.g. ABNB ~3% vs ~15–21%) → mart uses info `operatingMargins` today; switch card metric to TTM from quarterly statements.
+Offline mode (`--offline`, the CI smoke) reports only the `mart_*`, `snapshot_age_days`, and `business_summary_present` columns — no fetch, no rebuild.
 
 ## Decision log (metric-by-metric)
 

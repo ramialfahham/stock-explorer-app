@@ -1,27 +1,26 @@
 # Review
 
-diff_sha256: e804c95230708e359d6658450a3705332cb4fa5cc2e9bc4dcd0b114695a49476
+diff_sha256: 6f74ad48f55a7a0b5eede4aed680cd575aa449a97a2729565d6c0dc298599477
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Every staged path is inside the contract's scope_paths (dbt_analytics/seeds/*, scripts/export_metric_definitions_json.py, frontend/metrics.json, frontend/card_copy.py, tests/test_metric_catalogue.py, docs/metric_layer.md, docs/data_contract.md, .claude/**). No out-of-scope edit; metric_school.py and metric_formulas.py were deliberately NOT touched.
-- Both as-built deviations from the original plan are recorded in the contract amendments: the drift guard is a Python test (SQL-structure-gate incompatibility), and the ebit_margin "(TTM)" dynamic-suffix cleanup is deferred to the UI work. No silent scope change.
-- §6 respected: metric wording ported verbatim from card_copy.py / data_contract.md — not invented or reworded. The only user-visible-behavior change (dynamic label suffix) was deferred, not made; the card renders byte-identically (verified via the render harness).
-- impact_map "(none)" holds: int_stock__card_metrics is untouched, so the marts and Supabase export are unchanged — no data/runtime change. New surface is a 5-row seed + its schema tests + one pytest file.
+- Every staged path is inside scope_paths (scripts/audit_mart_vs_yfinance.py, scripts/metric_formulas.py [del], ingestion/yfinance/ingest.py, ingestion/main.py, tests/test_audit_mart_vs_yfinance.py, tests/test_metric_formulas.py [del], docs/metric_audit.md, .claude/**). ingestion/main.py was added to scope via amendment (it printed the dropped counter); ci-validate.yml was deliberately NOT changed — the reworked audit keeps the --offline CLI so the existing smoke step still passes.
+- impact_map "(none)" holds: no dbt model / seed / mart / Supabase change; the audit and the dropped ingest counter are QA/observability only.
+- Raw-only ingestion contract preserved: ingest.py still appends every fetched row; only the in-memory eligibility counter (a dbt-gate mirror) and its helpers were removed — landed parquet is byte-unchanged.
+- Verified, not asserted: 73 pytest pass; the shipped dbt-rerun function returns correct metrics; no metric_formulas reference remains in code.
 
-## analytics-engineer-reviewer
+## data-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Seed grain (metric_id, entity) is correct and enforced (not_null + unique on metric_id; accepted_values on entity/format/metric_group/importance_tier/direction). dbt seed loads 5 rows; all 13 schema tests pass; dbt parse is clean (no deprecations — accepted_values use the 1.11 `arguments:` form).
-- The numerator/denominator spec matches int_stock__card_metrics over fct_fundamentals_snapshot's real columns: forward_pe = info_forward_pe; ebit_margin = sum(qtr_operating_income_0..3)/sum(qtr_total_revenue_0..3) (the canonical TTM definition — the model's annual fallback + revenue/expense coalesce are availability handling, correctly kept out of the spec); revenue_growth = info_revenue_growth*100; net_debt_to_ebitda = coalesce(info_net_debt, info_total_debt-info_total_cash)/info_ebitda; fcf_margin = stmt_free_cash_flow*100/stmt_total_revenue.
-- metric_group (valuation→quality→momentum→solvency→cash), importance_tier (hero three = 1), and display_order match north_star and data_contract; direction matches the existing benchmark directions. format tokens reproduce format_metric_value exactly (asserted).
-- No compute change → no metric value drift. Known limitation (noted, Phase 2): the formula spec is documentation, not executed/resolvability-checked against the relation, and there is no strict model→catalogue introspection guard yet.
+- ingest.py no longer computes any metric/eligibility: _effective_net_debt / _has_operating_margin_inputs / _is_card_eligible_raw and the fundamentals_eligible counter are gone; the raw fetch+land path (_fetch_fundamentals_row → rows.append → parquet) is untouched, so ingestion output is identical minus a console stat. main.py print updated to match.
+- The audit's temporary raw matches the dbt source schema: yf_fundamentals.parquet is reindexed to FUNDAMENTALS_COLUMNS (the full sources.yml yf_fundamentals column set, missing→null), and yf_constituents.parquet carries the (market_code, ticker, company_name, refreshed_at, source, ingested_at) columns dim_stock needs. active_market_codes is overridden to just the sampled markets so the raw_parquet_union only reads what's present.
+- Live fetch reuses the proven ingestion fetch; the dbt rebuild was verified end-to-end (correct forward_pe/ebit/net_debt/fcf for two synthetic tickers). No daily_prices needed (not an ancestor of int_stock__card_metrics).
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- export_metric_definitions_json.py is pure/deterministic, no secrets, fails loud on duplicate/empty ids; its output (frontend/metrics.json) is committed and byte-locked by test_metric_catalogue.py — editing the seed without regenerating fails CI, which is the intended no-drift behavior.
-- card_copy.py refactor preserves the public API: parity asserted on ALL_METRICS/VISIBLE/DEEP/BENCHMARK_METRICS/METRIC_LABELS, format_metric_value outputs, and the value-aware overrides; the full 77-test pytest suite passes; the rendered card is byte-identical. metrics.json is loaded via Path(__file__).parent (deploy-safe — Streamlit Cloud ships the repo). Dead METRIC_HELP removed.
-- No CI/runtime behavior change beyond +1 cheap dbt seed and +1 pytest file; the SQL-structure and documentation gates pass (doc gate covers models only; the seed is exempt). No model/.github/requirements change.
-- Drift guard is a static regex parse of int_stock__card_metrics aliases (catalogue→model); acknowledged as not the strict model→catalogue introspection (deferred to Phase 2), but combined with the JSON equality lock and schema tests it covers the realistic drift paths for a 5-metric, hand-maintained model.
+- metric_formulas.py (the Python formula mirror) is deleted with no remaining code references; the dbt model is now the only place metrics are computed.
+- The reworked audit invokes dbt via subprocess (shutil.which("dbt"); temp profiles.yml → temp DuckDB; temp raw under TemporaryDirectory, auto-cleaned) and **uses `dbt run` not `dbt build`** to avoid pulling in descendant singular tests (learned during the round-trip proof). It fails OPEN — a failed rebuild prints a warning and yields no drift rows rather than crashing the audit.
+- CLI/behaviour preserved: --source/--duckdb-path/--offline/--sample-size/--fail-on-drift unchanged, so the CI offline smoke (`--offline --sample-size 5`) still runs with no fetch/rebuild. pct_drift is a small inlined signed-percent helper (no formula); fail-on-drift and the summary use absolute drift. No secrets; default=str on JSON dump handles dates.
+- Verified: offline unit test (mart-side only, no drift columns) + live-path dbt-rerun integration test pass; full suite 73 green. Risk (accepted): live mode needs dbt on PATH — fine for a dev/pipeline QA tool; offline CI never invokes dbt.
