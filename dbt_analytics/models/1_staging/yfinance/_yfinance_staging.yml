@@ -207,6 +207,18 @@ models:
       - name: info_return_on_equity
         description: >
           Raw Yahoo returnOnEquity decimal (e.g. 0.18 = 18%); feeds computed roe_pct (data-only).
+      - name: info_current_ratio
+        description: >
+          Raw Yahoo currentRatio; feeds computed current_ratio (data-only).
+      - name: info_price_to_book
+        description: >
+          Raw Yahoo priceToBook; feeds computed price_to_book (data-only).
+      - name: info_price_to_sales
+        description: >
+          Raw Yahoo priceToSalesTrailing12Months; feeds computed price_to_sales (data-only).
+      - name: info_ev_to_ebitda
+        description: >
+          Raw Yahoo enterpriseToEbitda; feeds computed ev_to_ebitda (data-only).
       - name: info_sector
         description: >
           Raw Yahoo sector label for grouping and sector benchmarks.
