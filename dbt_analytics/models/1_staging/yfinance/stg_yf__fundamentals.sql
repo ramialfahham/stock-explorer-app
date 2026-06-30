@@ -19,6 +19,8 @@ renamed as (
         cast(s.info_price_to_book as double) as info_price_to_book,
         cast(s.info_price_to_sales as double) as info_price_to_sales,
         cast(s.info_ev_to_ebitda as double) as info_ev_to_ebitda,
+        cast(s.info_free_cashflow as double) as info_free_cashflow,
+        cast(s.info_market_cap as double) as info_market_cap,
         cast(s.info_sector as varchar) as info_sector,
         cast(s.info_currency as varchar) as info_currency,
         cast(s.info_long_name as varchar) as info_long_name,

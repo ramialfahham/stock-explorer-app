@@ -165,6 +165,12 @@ models:
       - name: info_ev_to_ebitda
         description: >
           Deduped raw enterpriseToEbitda.
+      - name: info_free_cashflow
+        description: >
+          Deduped raw freeCashflow (trailing).
+      - name: info_market_cap
+        description: >
+          Deduped raw marketCap (current).
       - name: info_sector
         description: >
           Deduped raw sector label.

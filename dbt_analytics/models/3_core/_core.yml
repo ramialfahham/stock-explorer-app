@@ -163,6 +163,12 @@ models:
       - name: info_ev_to_ebitda
         description: >
           Yahoo enterpriseToEbitda on latest snapshot; feeds computed ev_to_ebitda (data-only).
+      - name: info_free_cashflow
+        description: >
+          Yahoo freeCashflow (trailing) on latest snapshot; fcf_yield_pct numerator (data-only).
+      - name: info_market_cap
+        description: >
+          Yahoo marketCap (current) on latest snapshot; fcf_yield_pct denominator (data-only).
       - name: info_sector
         description: >
           Yahoo sector on latest snapshot; coalesced with dim_stock.sector in metrics.

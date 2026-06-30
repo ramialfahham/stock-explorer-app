@@ -219,6 +219,12 @@ models:
       - name: info_ev_to_ebitda
         description: >
           Raw Yahoo enterpriseToEbitda; feeds computed ev_to_ebitda (data-only).
+      - name: info_free_cashflow
+        description: >
+          Raw Yahoo freeCashflow (trailing); fcf_yield_pct numerator (data-only).
+      - name: info_market_cap
+        description: >
+          Raw Yahoo marketCap (current); fcf_yield_pct denominator (data-only).
       - name: info_sector
         description: >
           Raw Yahoo sector label for grouping and sector benchmarks.

@@ -70,6 +70,8 @@ Metrics are ordered by **analytical relevance** (valuation → profitability →
 | `info_price_to_book` | `priceToBook` | `price_to_book` (data-only) |
 | `info_price_to_sales` | `priceToSalesTrailing12Months` | `price_to_sales` (data-only) |
 | `info_ev_to_ebitda` | `enterpriseToEbitda` | `ev_to_ebitda` (data-only) |
+| `info_free_cashflow` | `freeCashflow` | `fcf_yield_pct` numerator (data-only) |
+| `info_market_cap` | `marketCap` | `fcf_yield_pct` denominator (data-only) |
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
 | `info_long_name` | `longName` | Company name fallback |
@@ -132,6 +134,9 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 - `price_to_book` = `info_price_to_book` (Yahoo `priceToBook`).
 - `price_to_sales` = `info_price_to_sales` (Yahoo `priceToSalesTrailing12Months`).
 - `ev_to_ebitda` = `info_ev_to_ebitda` (Yahoo `enterpriseToEbitda`).
+- `fcf_yield_pct` = `info_free_cashflow / info_market_cap * 100` (Yahoo `freeCashflow` ÷ `marketCap`). Uses
+  Yahoo's trailing free cash flow — distinct from the annual `stmt_free_cash_flow` used by `fcf_margin_pct`
+  — so the cash figure matches the period of the current `marketCap` denominator.
 
 **Operating margin:** prefer TTM — sum four quarters of operating profit and **Total Revenue**
 from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks (see
