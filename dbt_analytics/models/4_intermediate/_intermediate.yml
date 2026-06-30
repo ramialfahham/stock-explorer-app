@@ -91,6 +91,22 @@ models:
         description: >
           Return on equity percent: info_return_on_equity × 100. Nullable; may be negative (loss-makers).
           Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: current_ratio
+        description: >
+          Current assets / current liabilities (Yahoo currentRatio passthrough). Data-only — not in
+          eligibility, the metric catalogue, or the Supabase export yet.
+      - name: price_to_book
+        description: >
+          Price / book value per share (Yahoo priceToBook passthrough). Data-only — not in eligibility,
+          the metric catalogue, or the Supabase export yet.
+      - name: price_to_sales
+        description: >
+          Price / sales per share, trailing twelve months (Yahoo priceToSalesTrailing12Months passthrough).
+          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: ev_to_ebitda
+        description: >
+          Enterprise value / EBITDA (Yahoo enterpriseToEbitda passthrough). Data-only — not in
+          eligibility, the metric catalogue, or the Supabase export yet.
       - name: is_card_eligible
         description: >
           True when all five card metrics are non-null; false excludes ticker from discovery queue.
@@ -172,6 +188,10 @@ unit_tests:
               info_net_debt: 1000.0,
               info_ebitda: 500.0,
               info_return_on_equity: 0.18,
+              info_current_ratio: 1.5,
+              info_price_to_book: 8.0,
+              info_price_to_sales: 5.0,
+              info_ev_to_ebitda: 15.0,
               info_sector: Technology,
               info_currency: USD,
               stmt_total_revenue: 200.0,
@@ -206,6 +226,10 @@ unit_tests:
             net_debt_to_ebitda: 2.0,
             fcf_margin_pct: 25.0,
             roe_pct: 18.0,
+            current_ratio: 1.5,
+            price_to_book: 8.0,
+            price_to_sales: 5.0,
+            ev_to_ebitda: 15.0,
             missing_metrics: [],
           }
   - name: card_metrics_ineligible_when_net_debt_missing

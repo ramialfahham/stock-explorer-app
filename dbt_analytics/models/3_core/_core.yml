@@ -151,6 +151,18 @@ models:
       - name: info_return_on_equity
         description: >
           Yahoo returnOnEquity decimal on latest snapshot; feeds computed roe_pct (×100, data-only).
+      - name: info_current_ratio
+        description: >
+          Yahoo currentRatio on latest snapshot; feeds computed current_ratio (data-only).
+      - name: info_price_to_book
+        description: >
+          Yahoo priceToBook on latest snapshot; feeds computed price_to_book (data-only).
+      - name: info_price_to_sales
+        description: >
+          Yahoo priceToSalesTrailing12Months on latest snapshot; feeds computed price_to_sales (data-only).
+      - name: info_ev_to_ebitda
+        description: >
+          Yahoo enterpriseToEbitda on latest snapshot; feeds computed ev_to_ebitda (data-only).
       - name: info_sector
         description: >
           Yahoo sector on latest snapshot; coalesced with dim_stock.sector in metrics.

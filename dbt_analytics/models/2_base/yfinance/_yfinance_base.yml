@@ -153,6 +153,18 @@ models:
       - name: info_return_on_equity
         description: >
           Deduped raw returnOnEquity decimal.
+      - name: info_current_ratio
+        description: >
+          Deduped raw currentRatio.
+      - name: info_price_to_book
+        description: >
+          Deduped raw priceToBook.
+      - name: info_price_to_sales
+        description: >
+          Deduped raw priceToSalesTrailing12Months.
+      - name: info_ev_to_ebitda
+        description: >
+          Deduped raw enterpriseToEbitda.
       - name: info_sector
         description: >
           Deduped raw sector label.
