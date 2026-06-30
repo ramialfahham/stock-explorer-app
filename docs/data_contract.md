@@ -65,6 +65,7 @@ Metrics are ordered by **analytical relevance** (valuation → profitability →
 | `info_total_debt` | `totalDebt` | Used with `info_total_cash` when `netDebt` is null |
 | `info_total_cash` | `totalCash` | Used with `info_total_debt` when `netDebt` is null |
 | `info_ebitda` | `ebitda` | `net_debt_to_ebitda` (denominator) |
+| `info_return_on_equity` | `returnOnEquity` | `roe_pct` (data-only; computed in dbt, not yet carded/exported) |
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
 | `info_long_name` | `longName` | Company name fallback |
@@ -117,6 +118,11 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 | 3 | `revenue_growth_yoy_pct` | `info_revenue_growth * 100` | `ticker.info` |
 | 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
 | 5 | `fcf_margin_pct` | `stmt_free_cash_flow / stmt_total_revenue * 100` | cashflow + income_stmt |
+
+**Data-only metrics (computed in dbt, not yet on the card):** `roe_pct` = `info_return_on_equity * 100`
+(Yahoo `returnOnEquity`), computed once in `int_stock__card_metrics`. **Not** part of `is_card_eligible`,
+the `metric_catalogue`, `frontend/metrics.json`, or the Supabase export — staged for the Sector/Lifecycle
+Router to catalogue, gate, and display per company type. Nullable; may be negative (loss-makers); not clipped.
 
 **Operating margin:** prefer TTM — sum four quarters of operating profit and **Total Revenue**
 from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks (see

@@ -96,6 +96,7 @@ def _write_market_fixtures(market_code: str) -> None:
                 "info_total_debt": None,
                 "info_total_cash": None,
                 "info_ebitda": 20_000_000_000.0,
+                "info_return_on_equity": 0.18,
                 "info_sector": "Technology",
                 "info_currency": "USD",
                 "info_long_name": f"CI Fixture {ticker}",

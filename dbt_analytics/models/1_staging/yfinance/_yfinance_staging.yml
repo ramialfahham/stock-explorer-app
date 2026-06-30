@@ -204,6 +204,9 @@ models:
       - name: info_ebitda
         description: >
           Raw Yahoo ebitda from ticker.info; denominator for net_debt_to_ebitda.
+      - name: info_return_on_equity
+        description: >
+          Raw Yahoo returnOnEquity decimal (e.g. 0.18 = 18%); feeds computed roe_pct (data-only).
       - name: info_sector
         description: >
           Raw Yahoo sector label for grouping and sector benchmarks.

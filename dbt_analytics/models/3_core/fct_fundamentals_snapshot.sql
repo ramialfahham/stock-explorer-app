@@ -22,6 +22,7 @@ select
     info_total_debt,
     info_total_cash,
     info_ebitda,
+    info_return_on_equity,
     info_sector,
     info_currency,
     info_long_name,

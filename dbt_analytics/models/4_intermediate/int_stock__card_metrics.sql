@@ -128,7 +128,8 @@ metrics as (
                 and s.stmt_total_revenue is not null
                 and s.stmt_total_revenue != 0
                 then s.stmt_free_cash_flow / s.stmt_total_revenue * 100.0
-        end as fcf_margin_pct
+        end as fcf_margin_pct,
+        s.info_return_on_equity * 100.0 as roe_pct
     from resolved as s
     left join stocks as st
         on s.market_code = st.market_code
