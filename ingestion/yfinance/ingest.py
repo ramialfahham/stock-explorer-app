@@ -36,6 +36,8 @@ INFO_FIELDS = {
     "info_price_to_book": "priceToBook",
     "info_price_to_sales": "priceToSalesTrailing12Months",
     "info_ev_to_ebitda": "enterpriseToEbitda",
+    "info_free_cashflow": "freeCashflow",
+    "info_market_cap": "marketCap",
     "info_sector": "sector",
     "info_currency": "currency",
     "info_long_name": "longName",

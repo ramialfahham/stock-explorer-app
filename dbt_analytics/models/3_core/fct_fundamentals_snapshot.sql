@@ -27,6 +27,8 @@ select
     info_price_to_book,
     info_price_to_sales,
     info_ev_to_ebitda,
+    info_free_cashflow,
+    info_market_cap,
     info_sector,
     info_currency,
     info_long_name,

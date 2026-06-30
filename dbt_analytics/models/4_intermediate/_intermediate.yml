@@ -107,6 +107,12 @@ models:
         description: >
           Enterprise value / EBITDA (Yahoo enterpriseToEbitda passthrough). Data-only — not in
           eligibility, the metric catalogue, or the Supabase export yet.
+      - name: fcf_yield_pct
+        description: >
+          Free cash flow yield percent: info_free_cashflow / info_market_cap × 100 (Yahoo trailing
+          freeCashflow over current marketCap; guarded against null/zero market cap). Nullable (null for
+          financials with no freeCashflow); not clipped. Data-only — not in eligibility, the metric
+          catalogue, or the Supabase export yet.
       - name: is_card_eligible
         description: >
           True when all five card metrics are non-null; false excludes ticker from discovery queue.
@@ -192,6 +198,8 @@ unit_tests:
               info_price_to_book: 8.0,
               info_price_to_sales: 5.0,
               info_ev_to_ebitda: 15.0,
+              info_free_cashflow: 50.0,
+              info_market_cap: 1000.0,
               info_sector: Technology,
               info_currency: USD,
               stmt_total_revenue: 200.0,
@@ -230,6 +238,7 @@ unit_tests:
             price_to_book: 8.0,
             price_to_sales: 5.0,
             ev_to_ebitda: 15.0,
+            fcf_yield_pct: 5.0,
             missing_metrics: [],
           }
   - name: card_metrics_ineligible_when_net_debt_missing

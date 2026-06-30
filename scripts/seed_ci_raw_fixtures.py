@@ -101,6 +101,8 @@ def _write_market_fixtures(market_code: str) -> None:
                 "info_price_to_book": 8.0,
                 "info_price_to_sales": 5.0,
                 "info_ev_to_ebitda": 15.0,
+                "info_free_cashflow": 5_000_000_000.0,
+                "info_market_cap": 100_000_000_000.0,
                 "info_sector": "Technology",
                 "info_currency": "USD",
                 "info_long_name": f"CI Fixture {ticker}",

@@ -1,78 +1,70 @@
 # Review
 
-diff_sha256: a54b58f66a05ebf10011ef75fea7051f78091fcd3f9d52b547839fc0e88508f7
+diff_sha256: 61a1277d24fb11e2c0bbd24371e15fe9bcb9b4dfc37cb00b6b5fa554fbdf9a60
 
-_Data-only ratio metrics (current ratio, P/B, P/S, EV/EBITDA), branch `feat/ratio-metrics-data`. Five
-blinded reviewers (cold, read-only, per `.claude/review_routing.json`) against the staged diff._
+_FCF yield (data-only), branch `feat/fcf-yield-data`. Five blinded reviewers (cold, read-only, per
+`.claude/review_routing.json`) against the staged diff._
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Eligibility drift: the eligibility CTE (int_stock__card_metrics.sql) still enumerates exactly the
-  original five metrics in both missing_metrics and is_card_eligible; the four new passthroughs are not
-  referenced, so the 25-ticker baseline and export shape are structurally unchanged.
-- Silent §6 metric-copy authoring (the #135 lesson): every new description in _intermediate.yml and
-  data_contract.md is a factual field/formula mapping ("metric = Yahoo key", "passthrough", "data-only");
-  no label/gloss/analogy/applicability wording was authored. The lone evaluative phrase ("may be
-  negative") is on roe_pct, unchanged from the merged baseline.
-- Reserved display-surface decisions: grep of metric_catalogue.csv, frontend/metrics.json, and both marts
-  found zero occurrences of the four new names — catalogue/metrics.json/card/export left to the Router.
-- Scope containment: all 11 reviewed-diff files are in scope_paths; review.md/active_work.md correctly
-  handled as the post-commit artifact step.
+- FCF numerator fork (trailing freeCashflow vs annual stmt_free_cash_flow): verified in contract
+  decisions_reserved it is recorded as an explicit OWNER decision this session, not a silent builder pick;
+  data_contract.md states only the factual period-matching rationale (no beginner/interpretive caveat),
+  so the #135 §6 copy-authoring trap is avoided.
+- Eligibility + display boundary: read int_stock__card_metrics.sql directly — missing_metrics and
+  is_card_eligible still list exactly the original five; fcf_yield_pct is computed but excluded from both;
+  metric_catalogue.csv, metrics.json, card_copy, and mart_stock_cards untouched. All 11 staged files in
+  scope_paths (review.md correctly the unstaged artifact).
 
 ## analytics-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Reach / consumption-shape unchanged: mart_stock_cards uses an explicit column list that omits the four
-  new columns (not select *); mart_stock_eligibility_gaps references none; repo-wide grep finds the four
-  names only in the 11 in-scope files (absent from the catalogue seed, frontend, export script). The
-  columns die at the intermediate layer — export-health/eligibility-baseline cannot move.
-- Layer placement + eligibility-invariance + test coverage: staging casts only; base propagates via
-  select *; core adds explicit selects; intermediate adds four passthroughs with NO ×100 (correct — these
-  are ratios, unlike the decimal×100 roe_pct/revenue_growth); the eligibility CTE still gates on exactly
-  the five; the extended T1 unit test feeds the four info_* inputs and asserts the four equal-valued
-  outputs (a ×100 slip or wrong source column would fail it). Doc gate satisfied (every new column documented).
+- Divide-by-zero / null honesty: the case guards `info_market_cap is not null and != 0` before dividing
+  (CASE short-circuits → no divide on zero/null denominator); a null numerator (banks) propagates to null
+  as intended. Shape is identical to the already-tested net_debt_to_ebitda / fcf_margin_pct guards.
+- Layer placement: raw fields propagate staging (cast) → base (select *) → core (passthrough select), and
+  the guarded ratio sits in 4_intermediate alongside the other card ratios — no compute leaked into
+  staging/core, per layering.md.
+- Eligibility / grain containment + second-FCF risk: missing_metrics/is_card_eligible still enumerate the
+  five; the new nullable column adds no rows; marts build without it. The distinct trailing-FCF figure
+  (vs annual stmt FCF) is an owner-resolved choice, documented factually in data_contract + _intermediate.yml,
+  feeding separate metrics with no cross-use.
 
 ## data-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Idempotency / write-mode: ingest still does full-overwrite to_parquet(index=False); the four new fields
-  are additive columns on the same write path — a re-run cannot duplicate/truncate.
-- Completeness honesty + parsing safety: the four entries ride the existing dict-key passthrough
-  row[col] = info.get(key) (not new parsing/merge logic, so no offline-payload fixtures owed); a missing
-  Yahoo key yields an honest None; the per-ticker try/except still fails loudly. Keys verified live on AAPL.
-- Reach stated with evidence: schema doc updated same-branch (data_contract raw mappings + computed-metric
-  list); flow lands as four passthroughs in int_stock__card_metrics; eligibility CTE references only the
-  five; grep of 5_marts/ and export_to_supabase.py for the four names → no matches (data-only); CI fixtures
-  feed the new staging casts offline. Cost/scope knobs (LOOKBACK_DAYS, BATCH_SIZE, cadence, the single
-  ticker.info call) untouched.
+- Parsing-vs-passthrough: the two INFO_FIELDS entries ride the existing info.get(key) passthrough (no new
+  parsing/merge), so no offline payload fixtures owed; the CI fixture carries both new fields.
+- Idempotency + completeness honesty: parquet write unchanged (full-overwrite, same grain) so re-run can't
+  duplicate/truncate; missing freeCashflow (banks) → honest null, row still written, guarded denominator
+  yields null fcf_yield_pct.
+- Cost/scope + reach: no LOOKBACK/BATCH/cadence/fan-out change (free riders on the existing ticker.info
+  call); raw columns documented same-branch; fcf_yield_pct absent from the five-metric eligibility set and
+  the mart_stock_cards export columns — export shape + baseline unchanged.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Re-run/interruption + fail-closed integrity: _write_market_fixtures uses mkdir(exist_ok=True) +
-  to_parquet full-overwrite (no append) — idempotent; the four added dict literals don't alter that. The
-  script feeds dbt build and fails CLOSED (omitting the columns would error the build — the exact failure
-  the change prevents); no .github/workflows/hook/dependency/secret/CI-cadence change; minimal edit.
-- Guard-gate non-regression + value/test consistency: the four columns flow to int but mart_stock_cards
-  does not select them, so check_eligibility_baseline (5/market) and check_export_health (100%) stay green;
-  values (1.5, 8.0, 5.0, 15.0) are plausible positive floats fixtured like the existing decimal
-  info_return_on_equity, not load-bearing for the unit test (which mocks fct_fundamentals_snapshot
-  directly), and passthrough-no-×100 matches the int SQL.
+- (territory: scripts/seed_ci_raw_fixtures.py) Re-run/fail-closed integrity: the two added dict literals
+  ride the deterministic full-overwrite fixture generator (idempotent); they are required so the new
+  staging casts have source columns — omitting them would fail CI's dbt build (fails CLOSED). No
+  workflow/hook/dependency/secret/cadence change; minimal edit.
+- Value plausibility / test independence: FCF 5e9 / market cap 1e11 → 5% is a plausible yield; the fixture
+  is not load-bearing for the unit test (which mocks fct_fundamentals_snapshot directly with 50.0/1000.0 →
+  5.0); eligibility baseline + export-health unaffected (fcf_yield_pct not in the mart).
 
 ## equity-analyst-reviewer
 VERDICT: PASS
 risks_checked:
-- Missing ×100 scaling (highest-value defect for this slice): verified each field is genuinely a
-  ratio/multiple in Yahoo's API, NOT a decimal fraction like returnOnEquity — currentRatio (~1.5x),
-  priceToBook, priceToSalesTrailing12Months, enterpriseToEbitda — so the passthrough with no ×100 is
-  arithmetically correct; the unit-test expectations equal their inputs, confirming a true passthrough.
-- Field→name accuracy: each mapping is financially correct — currentRatio = current assets/current
-  liabilities; priceToBook = price/book per share; priceToSalesTrailing12Months = price/sales TTM
-  (correctly market-cap-based, not EV/sales); enterpriseToEbitda = EV/EBITDA. No mismatched description.
-- Advice / threshold leakage: zero buy/sell/hold, "higher/lower is better," or invented thresholds in the
-  routed data_contract.md or the .yml descriptions — purely neutral/technical, consistent with deferring
-  interpretation copy to the Router; no fabricated numbers (fixtures are explicit synthetic mocks).
-- Inert-data safety: confirmed the four metrics render NOTHING — absent from metric_catalogue.csv,
-  frontend/metrics.json, the eligibility CTE, and mart_stock_cards (explicit select) — so a beginner sees
-  none of this copy; the factual mapping is safe to land.
+- Formula + source soundness: `freeCashflow / marketCap × 100` is the textbook FCF yield; ×100 correctly
+  renders the dimensionless ratio as a percent (unit test 50/1000×100=5.0, fixture 5e9/1e11×100=5.0). Both
+  inputs are company-level, same-currency fields from the same ticker.info dict → dimensionally sound, no
+  FX/grain mismatch (this vindicates the owner's trailing-source choice). The data_contract "trailing vs
+  annual stmt_free_cash_flow" distinction is genuinely accurate (ticker.info vs ticker.cashflow), neutral,
+  no advice/threshold language.
+- Negative-numerator behavior (FLAG for the Router, not a defect here): info_free_cashflow is routinely
+  negative for cash-burners, so fcf_yield_pct can be negative — arithmetically correct, honestly
+  signed/null (never a misleading 0), and NOT displayed/interpreted in this data-only slice. The Router's
+  deferred applicability copy MUST state "negative for cash-burners" (the data_contract note omits a
+  negativity caveat, unlike the sibling roe_pct line). Recorded in active_work.md for the Router step.

@@ -1,14 +1,13 @@
 # Task contract
 
-objective: Add FOUR new metrics as DATA-ONLY (handover step 1, continuing after ROE/#135): the clean
-  single-field Yahoo `info` passthroughs — **current ratio, P/B, P/S, EV/EBITDA**. Land the raw fields
-  through ingestion → staging → base → core and surface each as a passthrough metric in
-  `int_stock__card_metrics` (no `* 100`; they are ratios already). Exactly the proven ROE/#135 pattern.
-  **No display surface:** no catalogue row, no metrics.json, no card_copy/UI, no Supabase export, and
-  **no change to eligibility** (`is_card_eligible` / `missing_metrics` stay the existing five). These land
-  as inert data for the Sector Router (handover step 2) to catalogue, gate, and display per company type.
-  Field names verified live on AAPL: currentRatio, priceToBook, priceToSalesTrailing12Months,
-  enterpriseToEbitda (all present floats). Approved plan: ~/.claude/plans/linear-yawning-honey.md.
+objective: Add **FCF yield as DATA-ONLY** (handover step 1, after ROE/#135 and the four ratios/#136).
+  FCF yield = free cash flow ÷ market value × 100 (a cash-return-on-price). **Owner decision on the
+  numerator:** Yahoo's trailing `freeCashflow` over Yahoo's current `marketCap`, so cash and price are the
+  same period (the latest annual-statement FCF over today's market cap would be a stale mismatch for a
+  yield). Land the two raw fields through ingestion → staging → base → core and compute `fcf_yield_pct` in
+  `int_stock__card_metrics` with a guarded division (same shape as `net_debt_to_ebitda`). **No display
+  surface:** no catalogue row, metrics.json, card_copy/UI, Supabase export, or eligibility change. Approved
+  plan: ~/.claude/plans/linear-yawning-honey.md. Keys verified live (AAPL has both; banks→null FCF→null yield).
 
 scope_paths:
   - ingestion/yfinance/ingest.py
@@ -24,55 +23,51 @@ scope_paths:
   - .claude/task/contract.md
 
 review_artifacts (NOT in the reviewed diff — separate artifact-only/gate-exempt commit after the reviewed
-  commit, per the dbt-agent-kit two-commit pattern; review.md records the reviewed diff's hash):
+  commit; review.md records the reviewed diff's hash):
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - "Add the new sector-aware metrics" and this metric set are owner-locked (active_work.md). The technical
-    field mappings + passthrough computes implement that locked decision (no new §6 call).
-  - DEFERRED to the Sector Router / later PRs (NOT decided here): each metric's catalogue row, metrics.json
-    entry, display tier/order, per-sector eligibility, and beginner-facing interpretation/applicability
-    copy. **No interpretive wording is authored in this PR** (the #135 lesson: authoring metric copy is §6).
-  - Also deferred: FCF yield (compute, needs marketCap), cash runway (compute, Router-entangled),
-    debt-to-equity + interest coverage (the brittle-net-debt/EBITDA fix).
+  - The metric "FCF yield" is owner-locked (active_work.md); the FCF-source choice (Yahoo trailing
+    freeCashflow vs annual stmt FCF) was an open §6/definition fork — **owner chose Yahoo trailing
+    freeCashflow** this session.
+  - DEFERRED to the Sector Router (NOT decided here): fcf_yield_pct's catalogue row, metrics.json entry,
+    display, per-sector eligibility, and beginner-facing applicability copy. No interpretive copy authored
+    in this PR (data_contract stays factual — the #135 §6 lesson).
+  - Also deferred: cash runway (Router); debt-to-equity + interest coverage (brittle-metric fix).
 
 technical_definition (factual; no beginner copy):
-  - current_ratio  = info_current_ratio  (Yahoo currentRatio)                    — passthrough
-  - price_to_book  = info_price_to_book  (Yahoo priceToBook)                     — passthrough
-  - price_to_sales = info_price_to_sales (Yahoo priceToSalesTrailing12Months)    — passthrough
-  - ev_to_ebitda   = info_ev_to_ebitda   (Yahoo enterpriseToEbitda)              — passthrough
-  - All ratios already (no ×100); int compute is `s.info_<x> as <metric>`. Nullable; not clipped. NOT in
-    is_card_eligible / missing_metrics.
+  - raw: info_free_cashflow ← Yahoo freeCashflow (trailing); info_market_cap ← Yahoo marketCap (current).
+  - compute: `case when info_market_cap is not null and info_market_cap != 0 then info_free_cashflow /
+    info_market_cap * 100.0 end as fcf_yield_pct`. Nullable (null for financials/missing); not clipped.
+    NOT in is_card_eligible / missing_metrics.
+  - Introduces a second FCF figure (distinct from stmt_free_cash_flow used by fcf_margin_pct); documented
+    factually in data_contract.md (margin = annual statement; yield = trailing FCF vs current market cap).
 
 done_when:
-  - ingestion: 4 `INFO_FIELDS` entries (info_current_ratio/price_to_book/price_to_sales/ev_to_ebitda).
-  - dbt: 4 staging casts; 4 core select columns; 4 passthrough metrics in int_stock__card_metrics' metrics
-    CTE; eligibility/missing_metrics CTEs UNCHANGED (still the five).
-  - docs (doc gate): the 4 new raw columns documented in _yfinance_staging.yml, _yfinance_base.yml,
-    _core.yml; the 4 new metric columns documented in _intermediate.yml.
-  - test: T1 unit test extended — 4 `info_*` in `given` → 4 metric values in `expect` (current_ratio 1.5,
-    price_to_book 8.0, price_to_sales 5.0, ev_to_ebitda 15.0).
-  - CI fixtures: seed_ci_raw_fixtures.py emits the 4 fields (else CI dbt build fails on the new staging
-    casts; storage/raw is gitignored, regenerated each run).
-  - data_contract.md: 4 ticker.info mapping rows + the 4 metrics listed in the data-only note (factual, no
-    caveat).
+  - ingestion: 2 INFO_FIELDS entries (info_free_cashflow, info_market_cap).
+  - dbt: 2 staging casts; 2 core select columns; the guarded fcf_yield_pct compute in int_stock__card_metrics;
+    eligibility/missing_metrics CTEs UNCHANGED (still the five).
+  - docs (doc gate): the 2 new raw columns documented in _yfinance_staging.yml/_yfinance_base.yml/_core.yml;
+    fcf_yield_pct documented in _intermediate.yml.
+  - test: T1 unit test extended — info_free_cashflow 50.0 + info_market_cap 1000.0 in `given` →
+    fcf_yield_pct 5.0 in `expect` (exercises the division ×100 + guard).
+  - CI fixtures: seed_ci_raw_fixtures.py emits the 2 fields (free_cashflow 5e9, market_cap 1e11 → 5.0).
+  - data_contract.md: 2 ticker.info rows + fcf_yield_pct in the data-only note, with the factual
+    trailing-vs-annual-FCF rationale.
   - Verify green: dbt parse; regenerate fixtures + dbt build; dbt docs generate + check_dbt_documentation;
     check_layer_contract; check_dbt_sql_structure; sqlfluff; check_eligibility_baseline (stays 25) +
-    check_export_health (stays 100%); pytest tests/ (73). Card byte-identical (catalogue/metrics.json untouched).
-  - After the reviewed commit (artifact-only commits): record review.md, advance active_work.md; PR to main
-    (NOT merged).
+    check_export_health (stays 100%); pytest tests/ (73); duckdb spot-check fcf_yield_pct computes (null
+    where freeCashflow null). Card byte-identical.
+  - After the reviewed commit (artifact-only): record review.md, advance active_work.md; PR to main (NOT merged).
 
 impact_map:
-  - 4 new raw columns flow ingestion → staging → base(`select *`) → core → int (4 passthrough metrics).
-    mart_stock_cards does NOT select them, so the Supabase export shape, export-health, and eligibility
-    baseline are unchanged.
-  - frontend untouched: card_copy reads metrics.json (unchanged) → ALL_METRICS unchanged → card
-    byte-identical; no "—" cells (catalogue not touched).
-  - storage/raw is gitignored (no committed parquet). CI regenerates fixtures from seed_ci_raw_fixtures.py.
-  - Required reviewers (routing): scope-auditor + analytics-engineer (sql/yml) + data-engineer (ingestion)
-    + cto (scripts) + equity-analyst (docs/data_contract.md).
+  - 2 new raw columns flow ingestion → staging → base(`select *`) → core → int (1 guarded compute).
+    mart_stock_cards does NOT select fcf_yield_pct, so export shape, export-health, and eligibility baseline
+    are unchanged. frontend untouched (card byte-identical). storage/raw gitignored (CI regenerates fixtures).
+  - Required reviewers: scope-auditor + analytics-engineer (sql/yml) + data-engineer (ingestion) + cto
+    (scripts) + equity-analyst (docs/data_contract.md — checks the FCF-source choice + factual note).
 
 amendments:
-  - 2026-06-30 — supersedes the merged ROE contract (#135). Scope = the 4 passthrough metrics, per the
-    approved plan (linear-yawning-honey.md) and run through the plan-mode Explore→Plan→Execute spine.
+  - 2026-06-30 — supersedes the merged ratio-metrics contract (#136). Scope = FCF yield data-only, per the
+    approved plan and the owner's trailing-freeCashflow numerator choice; run through the plan-mode spine.
