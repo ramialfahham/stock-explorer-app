@@ -7,18 +7,28 @@ _The next session is handed exactly this file. Keep it current._
 **Project evaluation → redesign.** Owner's lead complaint was a cluttered/inconsistent UI; digging in
 revealed the bigger truth: **it's a dashboard, not a learning tool.** The work now is reshaping the
 product into a beginner **financial-literacy** tool — sector-aware metrics + AI-written, plain-language
-"reads" with a health verdict — on top of the metric layer we built. In flight: the
-**equity-analyst-reviewer** (PR #133), then the **metric-catalogue enrichment**.
+"reads" with a health verdict — on top of the metric layer we built. Just shipped: the
+**metric-catalogue enrichment** (PR open). Next: **add the new sector-aware metrics**.
 
 ## Status
 
 - **Metric layer: Phases 1 + 2 MERGED** (#131, #132). `metric_catalogue` seed = single source →
   `metrics.json` → `card_copy.py`; dbt model is the only place metrics compute; no Python mirror; the
   audit re-runs dbt on fresh raw.
+- **equity-analyst-reviewer: MERGED** (#133). Finance-domain blinded reviewer; routing sends
+  `*metric_catalogue.csv`, `docs/metric_layer.md`, `docs/data_contract.md` to it.
+- **Catalogue enrichment: PR OPEN — [#134](https://github.com/ramialfahham/stock-swipe-app/pull/134)**
+  (branch `feat/metric-catalogue-enrichment`). Renamed the seed
+  column `metric_group → perspective` (quality→profitability, momentum→growth); added three analytical
+  columns `calculation` / `interpretation` / `applicability`; populated the 5 existing metrics with
+  owner-approved text. Rippled the rename through `_seeds.yml`, the export script, `frontend/metrics.json`,
+  `tests/test_metric_catalogue.py`, `docs/metric_layer.md`, `docs/data_contract.md`, and the
+  `{% docs card_metrics %}` block in `dbt_analytics/models/_docs.md`. Verified (`dbt parse` / `seed` /
+  `test` on `metric_catalogue`, `pytest tests/` 73 passed) and the full review cycle PASSED
+  (scope-auditor + analytics-engineer + cto + equity-analyst). **Schema + the 5 existing metrics only —
+  NO new metrics / router / AI / UI** (those are the next steps).
 - **UI redesign mock: approved look** (one cohesive card, scan→deep tiers, one disclosure pattern,
   label chips for basis, words-not-arrows benchmarks). NOT yet implemented — waits on the metric model.
-- **equity-analyst-reviewer: PR #133 open** — a finance-domain blinded reviewer; routes
-  `*metric_catalogue.csv`, `docs/metric_layer.md`, `docs/data_contract.md` to it.
 
 ## Decisions locked this session (the important ones)
 
@@ -28,27 +38,26 @@ product into a beginner **financial-literacy** tool — sector-aware metrics + A
   freeCashflow present everywhere incl. banks; debtToEquity/currentRatio/EV missing-or-garbage for financials.)
 - **The nonsense magnitudes are REAL data, not corrupt** — metrics mis-applied to the wrong company type
   (financials, pre-revenue, loss-makers, near-zero denominators). **Do not clip/hide** — route to the
-  right lens. Applicability is a first-class property of a metric.
+  right lens. Applicability is a first-class property of a metric (now a catalogue column).
 - **Architecture: a Sector/Lifecycle Router** — operating company / financial / pre-revenue — each with
   yfinance-available metrics, its own eligibility, rendering, and AI prompt.
 - **Perspective taxonomy:** valuation · profitability · growth · solvency · liquidity · cash · returns.
-  Two perspectives to ADD: **Returns (ROE)** and **Liquidity (current ratio)**; fix brittle metrics
+  Now the seed's `perspective` column (5 of 7 values used so far). Two perspectives to ADD with the new
+  metrics: **Returns (ROE)** and **Liquidity (current ratio)**; fix brittle metrics
   (net-debt/EBITDA → **debt-to-equity + interest coverage**; P/E + loss-proof **P/S, EV/EBITDA, FCF yield**).
 - **AI assessments:** educational, **NEVER advice** (no buy/sell/price-target); true-beginner language;
   reason only from the given numbers; end with a financial-health verdict (🟢/🟡/🔴).
 
 ## Next concrete actions (in order)
 
-1. Merge PR #133 (reviewer). Then sync main.
-2. **Catalogue enrichment PR** (reviewed by equity-analyst): rename `metric_group → perspective`; add
-   columns `calculation`, `interpretation`, `applicability`; populate the existing 5. **Drafted content
-   is owner-reviewed (in the chat) — ready to write.** Update `_seeds.yml`, export script, tests, docs.
-3. **Add the new metrics** (ROE, current ratio, P/B, P/S, EV/EBITDA, FCF yield, cash runway) — new raw
+1. **Add the new metrics** (ROE, current ratio, P/B, P/S, EV/EBITDA, FCF yield, cash runway) — new raw
    fields in ingestion (yahoo info: returnOnEquity, debtToEquity, currentRatio, priceToBook, marketCap,
-   sharesOutstanding) + dbt compute + catalogue rows.
-4. **Sector/Lifecycle Router** (classify company type → metric set + eligibility + rendering + AI prompt).
-5. **AI assessment generator** (Python step after dbt/export; Claude; store to Supabase; not-advice).
-6. **UI redesign** implemented in Streamlit, consuming all of the above.
+   sharesOutstanding) + dbt compute + catalogue rows. Populate the enriched schema for each
+   (perspective/calculation/interpretation/applicability); the `liquidity` and `returns` perspectives are
+   already accepted by the seed test.
+2. **Sector/Lifecycle Router** (classify company type → metric set + eligibility + rendering + AI prompt).
+3. **AI assessment generator** (Python step after dbt/export; Claude; store to Supabase; not-advice).
+4. **UI redesign** implemented in Streamlit, consuming all of the above.
 
 ## Do NOT
 
@@ -62,7 +71,7 @@ product into a beginner **financial-literacy** tool — sector-aware metrics + A
 ## Context / open items
 
 - **Backend (track B):** free-tier Supabase pauses after ~7 days idle → app shows repeated
-  "Could not load cards" (rendered 4× — a real bug in `_ensure_all_cards`). Restored this session.
+  "Could not load cards" (rendered 4× — a real bug in `_ensure_all_cards`). Restored earlier.
   Decide keep-alive vs paid tier.
 - `docs/refresh-june-2026` is unrelated in-flight docs work (other chat) — leave it.
-- This handover was badly stale before today's rewrite; keep it current after each PR.
+- Keep this handover current after each PR.
