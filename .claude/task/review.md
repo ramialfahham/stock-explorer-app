@@ -1,85 +1,76 @@
 # Review
 
-diff_sha256: 3d83611c1566a044d08524b85da33e06ad1afe242b5030db352aaff739f87718
+diff_sha256: c0c7cd0a5727b0ba2c34c7c6037add5fca4cc737654ea2c01a402ef876f0e9c4
 
-_Metric-catalogue enrichment (handover step 2), branch `feat/metric-catalogue-enrichment`. Four blinded
-reviewers run cold/read-only against the staged diff, per `.claude/review_routing.json`
-(scope-auditor always; analytics-engineer for csv/yml; cto for scripts/tests/frontend; equity-analyst
-for the metric_catalogue.csv + metric docs)._
+_ROE data-only slice, branch `feat/roe-metric-data`. Five blinded reviewers (cold, read-only, per
+`.claude/review_routing.json`) against the staged diff. The data_contract `roe_pct` note is the plain
+factual data-only note (no interpretive caveat); ROE's applicability/interpretation wording is DEFERRED
+to the Sector Router step per the owner (see the equity-analyst CPO ANSWER below)._
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Owner-content fidelity: compared all five metrics' calculation/interpretation/applicability cells and
-  the perspective values in metric_catalogue.csv against the verbatim owner_approved_content in
-  contract.md — every string matches exactly (em-dashes, ÷/×/≈, escaped quotes around "cheap"/"cash"
-  included); no silent rewording of §6 content, and _seeds.yml accepted_values equals the approved
-  7-value taxonomy.
-- Doc-sync completeness (the prior cycle's FAIL, now closed): repo-wide grep for the old taxonomy
-  (metric_group/quality/momentum) found no stale references in any code/doc/seed/test/{% docs %} block;
-  both ordering statements (docs/data_contract.md:55 and the {% docs card_metrics %} block at
-  dbt_analytics/models/_docs.md:17) were updated together, and _TEXT_FIELDS, _VALID_PERSPECTIVES, and
-  frontend/metrics.json are all consistent.
-- Scope + impact: all nine reviewed-diff files are listed in scope_paths; review.md/active_work.md are
-  correctly excluded (two-commit artifact pattern). No decisions_reserved item decided; no new
-  mechanism/dependency. Independently confirmed no model refs the seed (no DAG impact) and
-  frontend/card_copy.py reads none of the changed keys (rendered card byte-identical).
+- Eligibility/export silent-leak: roe_pct (int_stock__card_metrics.sql) is computed but absent from the
+  eligibility CTE (still exactly the five metrics in both missing_metrics and is_card_eligible) and from
+  mart_stock_cards' explicit column list — so is_card_eligible, the Supabase export shape, and the
+  eligibility baseline are genuinely unchanged, matching the data-only intent.
+- Deferred-decision leak: none of decisions_reserved (ROE beginner copy, catalogue row, metrics.json
+  entry, display tier/order, per-sector gating, Supabase export) appears in the diff; the only definition
+  is the technical roe_pct = info_return_on_equity * 100, implementing the owner-locked "use ROE" decision.
+- Doc-sync: data_contract.md is updated in the same branch (raw-field mapping row + data-only note); every
+  new model output column is documented in its yml (info_return_on_equity in staging/base/core, roe_pct in
+  intermediate). The ux_principles "do not swap to ROE" line stays true because this slice adds no display.
 
 ## analytics-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Rename blast radius (reach): grepped the repo for `metric_group` — every surviving reference is in this
-  PR's contract/patch or the out-of-scope active_work.md handover; zero remain in any SQL model, schema
-  yml, export script, frontend, or doc. The three taxonomy-ordering/field-list lines (data_contract.md:55,
-  metric_layer.md, and the `{% docs card_metrics %}` block in _docs.md) were all updated consistently; the
-  only stale quality/momentum hits are unrelated prose ("dbt quality", "Cash quality").
-- Seeds-are-code, no output/grain change: `metric_catalogue` is not `ref()`'d by any model (no DAG node),
-  so the seed change cannot alter computed output; int_stock__card_metrics computes the 5 metrics
-  independently and its aliases still cover all 5 catalogue ids. CSV integrity verified (20-col header, all
-  5 rows = 20 cols despite embedded quotes/em-dashes/÷×≈; perspective mapped quality→profitability,
-  momentum→growth, others unchanged). `dbt seed` INSERT 5 clean.
-- Tests strengthened, not deleted: _seeds.yml adds not_null to perspective + the 3 new cols and the
-  7-value accepted_values (free-text cols correctly get none); the Python test renames to
-  _VALID_PERSPECTIVES, reads `perspective`, adds non-empty checks. dbt test --select metric_catalogue
-  17/17; pytest 5/5.
-- Consumption may not compute + card invariance: the export script is pure select/strip/sort (computes
-  nothing); regenerated metrics.json byte-identical (no-drift lock green); card_copy.py reads none of the
-  changed/added keys, so the rendered card is byte-unchanged.
+- Layer placement + raw propagation: roe_pct = s.info_return_on_equity * 100.0 lives in 4_intermediate
+  (mirroring revenue_growth_yoy_pct), not in staging/base/core; the raw field rides the canonical path
+  staging (cast) → base (select *) → core (explicit select) with no business logic in the wrong layer.
+- Downstream reach / output invariance: the eligibility CTE still lists exactly the five metrics; both
+  marts project explicitly and omit roe_pct (export shape unchanged), and sector_benchmarks never
+  aggregates it; the new output column is covered by the extended T1 unit test (info_return_on_equity:
+  0.18 → roe_pct: 18.0); every new output column is documented (doc gate satisfied). dbt build PASS=90.
+
+## data-engineer-reviewer
+VERDICT: PASS
+risks_checked:
+- Idempotency / write-mode + transitional reach: ingest writes full-overwrite parquet (to_parquet,
+  index=False) unchanged; the new field is a pure info.get passthrough (no parsing/merge change). Prod
+  data_pipeline.yml ingests before dbt build (and CI seeds fixtures before build), so the new staging cast
+  never faces a parquet lacking the column.
+- Completeness honesty + reach containment: missing returnOnEquity lands as honest null (info.get → None →
+  null cast → null roe_pct), loss-maker negatives not clipped; roe_pct is excluded from
+  missing_metrics/is_card_eligible and every mart, so the export shape is verifiably unchanged; the raw
+  column is documented same-branch and covered by the CI fixture. No cost/cadence/fan-out knob touched.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Fail-closed CI guard integrity: tests/test_metric_catalogue.py runs in CI (ci-validate.yml);
-  test_regenerated_json_matches_committed regenerates into a tempdir and asserts exact equality vs the
-  committed metrics.json. Verified the committed JSON key order matches the new _TEXT_FIELDS order across
-  all 5 metrics, so the no-drift lock covers the added fields and the rename — un-regenerated drift fails CI.
-- Rename did not no-op the assertion: test_catalogue_values_well_formed uses direct row["perspective"]
-  indexing (KeyError if the column vanished) plus a (row.get(field) or "").strip() check for the 3 new
-  fields (catches missing and blank) — a real assertion swapped for another real assertion.
-- Re-run/interruption safety: export_metric_definitions_json.py reads CSV, dedups metric_id (raises on
-  dup), sorts by display_order, writes the full output via a single write_text — idempotent, no
-  partial-append on mid-run death, source seed never mutated.
-- No new mechanism / secrets / cost: no dependency, hook, workflow step, token, or CI-permission change;
-  the 5-line _TEXT_FIELDS edit + test-constant rename use only stdlib + existing pytest.
+- Guard integrity / fail-closed: the new staging cast cast(s.info_return_on_equity as double) would turn
+  CI's dbt build RED if the fixture omitted the column, so adding "info_return_on_equity": 0.18 to
+  seed_ci_raw_fixtures.py is the minimal edit that keeps the gate green without weakening it (still fails
+  closed for a genuine omission). No .github/workflows, hook, dependency, or plugin-config change.
+- Re-run/idempotency + plausibility: _write_market_fixtures is a deterministic full-overwrite (mkdir
+  exist_ok + to_parquet), idempotent on re-run; 0.18 is a plausible decimal ROE fixtured like the sibling
+  decimal info_revenue_growth: 0.08, yielding roe_pct = 18.0 to match the unit test. No secrets; no CI cost
+  change.
 
 ## equity-analyst-reviewer
-VERDICT: PASS
-risks_checked:
-- P/E direction absolutism (the role's explicit landmine): forward_pe direction=lower_better would
-  mislead if presented as an absolute, but the interpretation explicitly frames a higher P/E as possibly
-  "priced for quality/growth" and "Always read next to growth," and the applicability says a low value
-  from negative earnings is "meaningless, not 'cheap'" — the copy actively defuses the absolute; the flag
-  (unchanged, owner-approved) drives only relative benchmark wording.
-- Applicability completeness on the highest-value edge cases: cross-checked each metric's applicability
-  against its numerator/denominator and the `case … != 0` guards in int_stock__card_metrics.sql.
-  net_debt_to_ebitda flags both the financials trap (customer/policyholder "cash") and EBITDA≈0;
-  ebit_margin_pct/fcf_margin_pct flag pre-revenue (revenue≈0) and financials; forward_pe flags
-  negative/near-zero forecast earnings. Accurate and complete for the denominators the model divides by.
-- Owner approval verbatim (rule 7): byte-compared all 15 calculation/interpretation/applicability strings
-  in metric_catalogue.csv against contract.md owner_approved_content — exact match including every glyph
-  (÷ × − ≈ ≠ — and curly quotes); metrics.json identical to the CSV; perspective/direction mappings match
-  the approved rename.
-- Educational-never-advice + no fabrication: scanned every new field for buy/sell/hold, price targets,
-  "good buy", "you should", invented thresholds/percentiles — none. The strongest phrases (fcf "strongest
-  single health signal"; the P/E lower_better flag) are diagnostic/relative claims, not recommendations;
-  calculations match the SQL with no false precision.
+VERDICT: ESCALATE
+questions:
+- ROE's most dangerous distortion (negative shareholder equity → spuriously POSITIVE ROE; leverage
+  inflation per DuPont) is not in the shipped data_contract caveat, which states only "nullable; may be
+  negative (loss-makers); not clipped." The value is arithmetically correct and currently INERT (verified:
+  roe_pct is in no catalogue row, frontend/metrics.json, Supabase mart_stock_cards, or the eligibility CTE
+  — nothing renders it), and the contract DEFERS ROE's interpretation/applicability copy to the Sector
+  Router. Should the owner: (a) accept landing ROE as inert data now with the applicability caveat deferred
+  wholesale to the Router step that first displays it; or (b) require a one-line negative-equity/leverage
+  caveat in the data_contract roe_pct note in THIS slice?
+
+CPO ANSWER: (a) Defer. Owner decided this session to ship roe_pct as inert data-only and defer ROE's full
+applicability/interpretation wording (negative-equity sign trap, leverage/DuPont, breaks-for-financials)
+to the Sector Router step that first displays it — keeping all ROE wording decisions in one place with
+owner sign-off there. roe_pct remains not carded, not catalogued, not in eligibility, and not exported in
+this slice, so nothing surfaces the un-caveated value to a user until the Router lands. (A one-line caveat
+was briefly added then reverted per this decision; the reviewed diff is the plain factual data-only note.)
