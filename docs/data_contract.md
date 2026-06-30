@@ -52,7 +52,7 @@ Base path: `storage/raw/{market_code}/` (dbt var `raw_path`, default `../storage
 Ingestion calls `yf.Ticker(yf_symbol)` per constituent. Land **raw columns** below into
 `yf_fundamentals.parquet`. dbt computes card metrics and eligibility — never in Python.
 
-Metrics are ordered by **analytical relevance** (valuation → quality → momentum → solvency → cash).
+Metrics are ordered by **analytical relevance** (valuation → profitability → growth → solvency → cash).
 
 ### From `ticker.info`
 
@@ -103,8 +103,9 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
 
 ### Card metrics — dbt formulas (v1)
 
-> **Single source of truth:** each metric's definition — formula spec, label, `format`, `direction`,
-> tier/order, and plain-language copy — lives in the [`metric_catalogue` seed](../dbt_analytics/seeds/metric_catalogue.csv)
+> **Single source of truth:** each metric's definition — formula spec, label, `format`, `perspective`,
+> `direction`, tier/order, the analytical definition (`calculation` / `interpretation` /
+> `applicability`), and plain-language copy — lives in the [`metric_catalogue` seed](../dbt_analytics/seeds/metric_catalogue.csv)
 > (see [`metric_layer.md`](metric_layer.md)). The table below is the computed reference; the seed is
 > authoritative for display, labels, and format, and the frontend reads `frontend/metrics.json`
 > (generated from it). `int_stock__card_metrics` is where the metrics are computed, once.

@@ -14,7 +14,7 @@ Missing any metric excludes the ticker from the Streamlit discovery queue. See `
 
 {% docs card_metrics %}
 
-Five metrics power the stock swipe card (valuation → quality → momentum → solvency → cash).
+Five metrics power the stock swipe card (valuation → profitability → growth → solvency → cash).
 All are computed in `int_stock__card_metrics` from the latest fundamentals snapshot and
 constituent dimension. No fallbacks (e.g. ROIC) when a primary Yahoo field is null.
 
