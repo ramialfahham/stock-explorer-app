@@ -5,9 +5,10 @@ seeds:
     description: >
       Single source of truth for every card metric — one row per (metric_id, entity). Captures the
       formula as a spec (base_relation + numerator_expr / denominator_expr over the base's real
-      columns), the display format, the display taxonomy (metric_group, importance_tier,
-      display_order, direction), the benchmarkable flag and basis column, and the plain-language
-      copy (gloss / analogy / learn). int_stock__card_metrics computes each metric once; this seed
+      columns), the analytical definition (calculation / interpretation / applicability), the display
+      format, the display taxonomy (perspective, importance_tier, display_order, direction), the
+      benchmarkable flag and basis column, and the plain-language copy (gloss / analogy / learn).
+      int_stock__card_metrics computes each metric once; this seed
       defines and documents it. The frontend reads frontend/metrics.json, generated from this seed by
       scripts/export_metric_definitions_json.py. Integrity is guarded by tests/test_metric_catalogue.py
       (catalogue metrics are computed in the model; the regenerated JSON matches the committed file).
@@ -34,6 +35,15 @@ seeds:
       - name: description
         description: "Plain-English definition: what the metric measures and its source."
         tests: [not_null]
+      - name: calculation
+        description: "How the metric is computed, in plain language — the analytical definition."
+        tests: [not_null]
+      - name: interpretation
+        description: "What a higher or lower value means for the company; beginner-facing reasoning."
+        tests: [not_null]
+      - name: applicability
+        description: "When the metric breaks or misleads (financials, pre-revenue, loss-makers, near-zero denominators)."
+        tests: [not_null]
       - name: base_relation
         description: "The model the numerator/denominator spec resolves against."
         tests:
@@ -47,12 +57,13 @@ seeds:
           - accepted_values:
               arguments:
                 values: ["ratio_1", "ratio_2", "percent_1"]
-      - name: metric_group
-        description: "Analytical category (valuation -> quality -> momentum -> solvency -> cash)."
+      - name: perspective
+        description: "Analytical lens. Full taxonomy: valuation, profitability, growth, solvency, liquidity, cash, returns (this PR populates five)."
         tests:
+          - not_null
           - accepted_values:
               arguments:
-                values: ["valuation", "quality", "momentum", "solvency", "cash"]
+                values: ["valuation", "profitability", "growth", "solvency", "liquidity", "cash", "returns"]
       - name: importance_tier
         description: "1 = hero (visible three), 2 = balance (below the hero three)."
         tests:

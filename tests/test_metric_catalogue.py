@@ -30,7 +30,15 @@ INT_MODEL = REPO / "dbt_analytics" / "models" / "4_intermediate" / "int_stock__c
 
 _VALID_FORMATS = {"ratio_1", "ratio_2", "percent_1"}
 _VALID_DIRECTIONS = {"higher_better", "lower_better", "neutral"}
-_VALID_GROUPS = {"valuation", "quality", "momentum", "solvency", "cash"}
+_VALID_PERSPECTIVES = {
+    "valuation",
+    "profitability",
+    "growth",
+    "solvency",
+    "liquidity",
+    "cash",
+    "returns",
+}
 
 
 def _catalogue_rows() -> list[dict[str, str]]:
@@ -53,8 +61,10 @@ def test_catalogue_values_well_formed() -> None:
         mid = row["metric_id"]
         assert row["format"] in _VALID_FORMATS, f"{mid}: bad format {row['format']!r}"
         assert row["direction"] in _VALID_DIRECTIONS, f"{mid}: bad direction {row['direction']!r}"
-        assert row["metric_group"] in _VALID_GROUPS, f"{mid}: bad metric_group {row['metric_group']!r}"
+        assert row["perspective"] in _VALID_PERSPECTIVES, f"{mid}: bad perspective {row['perspective']!r}"
         assert (row.get("label") or "").strip(), f"{mid}: empty label"
+        for field in ("calculation", "interpretation", "applicability"):
+            assert (row.get(field) or "").strip(), f"{mid}: empty {field}"
 
 
 def test_every_catalogue_metric_is_computed_in_the_model() -> None:

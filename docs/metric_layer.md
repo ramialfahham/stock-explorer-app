@@ -7,9 +7,10 @@
 
 **`dbt_analytics/seeds/metric_catalogue.csv` is the single source of truth for every card metric** —
 `metric_id`, formula spec (`base_relation` / `numerator_expr` / `denominator_expr`), `description`,
-display `format`, the display taxonomy (`metric_group`, `importance_tier`, `display_order`,
-`direction`), the `benchmarkable` flag, the `basis_column`, and the plain-language copy
-(`gloss` / `analogy` / `learn`). No prose document defines a metric; docs *reference* the seed.
+the analytical definition (`calculation` / `interpretation` / `applicability`), display `format`,
+the display taxonomy (`perspective`, `importance_tier`, `display_order`, `direction`), the
+`benchmarkable` flag, the `basis_column`, and the plain-language copy (`gloss` / `analogy` / `learn`).
+No prose document defines a metric; docs *reference* the seed.
 
 | You need… | Go to |
 |---|---|
@@ -48,7 +49,8 @@ start with `WITH`, which that jinja style can't satisfy — so the equivalent gu
 ## Adding a metric
 
 1. Add the computation to `int_stock__card_metrics` (one place).
-2. Add the `metric_catalogue` row (id, label, formula spec, format, group/tier/order, direction, copy).
+2. Add the `metric_catalogue` row (id, label, formula spec, `calculation` / `interpretation` /
+   `applicability`, format, `perspective`/tier/order, direction, copy).
 3. Regenerate the JSON: `python scripts/export_metric_definitions_json.py`.
 4. `dbt build` + `pytest tests/test_metric_catalogue.py` pass once all exist.
 

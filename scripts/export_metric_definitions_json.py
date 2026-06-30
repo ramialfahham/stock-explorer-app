@@ -22,8 +22,11 @@ from pathlib import Path
 _TEXT_FIELDS = (
     "label",
     "description",
+    "calculation",
+    "interpretation",
+    "applicability",
     "format",
-    "metric_group",
+    "perspective",
     "direction",
     "basis_column",
     "gloss",
