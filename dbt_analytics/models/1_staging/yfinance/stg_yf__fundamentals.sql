@@ -14,6 +14,7 @@ renamed as (
         cast(s.info_total_debt as double) as info_total_debt,
         cast(s.info_total_cash as double) as info_total_cash,
         cast(s.info_ebitda as double) as info_ebitda,
+        cast(s.info_return_on_equity as double) as info_return_on_equity,
         cast(s.info_sector as varchar) as info_sector,
         cast(s.info_currency as varchar) as info_currency,
         cast(s.info_long_name as varchar) as info_long_name,

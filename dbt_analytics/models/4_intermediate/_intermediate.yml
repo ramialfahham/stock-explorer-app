@@ -87,6 +87,10 @@ models:
       - name: fcf_margin_pct
         description: >
           FCF margin percent: stmt_free_cash_flow / stmt_total_revenue × 100. Null when revenue zero or fields missing.
+      - name: roe_pct
+        description: >
+          Return on equity percent: info_return_on_equity × 100. Nullable; may be negative (loss-makers).
+          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
       - name: is_card_eligible
         description: >
           True when all five card metrics are non-null; false excludes ticker from discovery queue.
@@ -167,6 +171,7 @@ unit_tests:
               info_revenue_growth: 0.08,
               info_net_debt: 1000.0,
               info_ebitda: 500.0,
+              info_return_on_equity: 0.18,
               info_sector: Technology,
               info_currency: USD,
               stmt_total_revenue: 200.0,
@@ -200,6 +205,7 @@ unit_tests:
             revenue_growth_yoy_pct: 8.0,
             net_debt_to_ebitda: 2.0,
             fcf_margin_pct: 25.0,
+            roe_pct: 18.0,
             missing_metrics: [],
           }
   - name: card_metrics_ineligible_when_net_debt_missing

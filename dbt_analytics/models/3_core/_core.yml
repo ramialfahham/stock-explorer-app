@@ -148,6 +148,9 @@ models:
       - name: info_ebitda
         description: >
           Yahoo ebitda on latest snapshot; null or zero blocks net_debt_to_ebitda.
+      - name: info_return_on_equity
+        description: >
+          Yahoo returnOnEquity decimal on latest snapshot; feeds computed roe_pct (×100, data-only).
       - name: info_sector
         description: >
           Yahoo sector on latest snapshot; coalesced with dim_stock.sector in metrics.

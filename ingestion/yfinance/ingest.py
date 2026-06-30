@@ -31,6 +31,7 @@ INFO_FIELDS = {
     "info_total_debt": "totalDebt",
     "info_total_cash": "totalCash",
     "info_ebitda": "ebitda",
+    "info_return_on_equity": "returnOnEquity",
     "info_sector": "sector",
     "info_currency": "currency",
     "info_long_name": "longName",

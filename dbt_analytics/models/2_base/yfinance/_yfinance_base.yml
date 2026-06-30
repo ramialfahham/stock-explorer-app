@@ -150,6 +150,9 @@ models:
       - name: info_ebitda
         description: >
           Deduped raw ebitda.
+      - name: info_return_on_equity
+        description: >
+          Deduped raw returnOnEquity decimal.
       - name: info_sector
         description: >
           Deduped raw sector label.
