@@ -14,8 +14,9 @@ Learning tool, **not** investment advice; batch fundamentals, **not** real-time 
 > **sleeps when idle** — a cold visit may show a "waking up" screen for ~30s. The
 > recording below shows the interaction regardless.
 
-<!-- media pending: add docs/media/swipe-demo.gif, then uncomment the line below -->
-<!-- ![Discover a company, save or move on](docs/media/swipe-demo.gif) -->
+<img src="docs/media/discover-card.png" width="400" alt="A company snapshot — save it to your learning list or move on">
+
+<!-- optional: add docs/media/swipe-demo.gif for a short motion capture of save / not-now -->
 
 ## Architecture
 
