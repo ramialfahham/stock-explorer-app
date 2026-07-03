@@ -1,6 +1,85 @@
-# Stock Swipe App
+# Stock Explorer
 
-A card-based stock dashboard. Users are shown stock cards per session and interact with them (save / skip).
+An explore-and-learn stock app for finance-curious beginners — it turns company
+fundamentals into plain-language "snapshots" you scan one at a time, save, or skip.
+Learning tool, **not** investment advice; batch fundamentals, **not** real-time trading.
+
+[![ci-validate](https://github.com/ramialfahham/stock-swipe-app/actions/workflows/ci-validate.yml/badge.svg)](https://github.com/ramialfahham/stock-swipe-app/actions/workflows/ci-validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Status: prototype](https://img.shields.io/badge/status-prototype-orange)
+
+**▶ Live demo (prototype):** https://stock-explorer.streamlit.app/
+
+> Work in progress. The demo runs on Streamlit Community Cloud's free tier, which
+> **sleeps when idle** — a cold visit may show a "waking up" screen for ~30s. The
+> recording below shows the interaction regardless.
+
+<!-- media pending: add docs/media/swipe-demo.gif, then uncomment the line below -->
+<!-- ![Discover a company, save or move on](docs/media/swipe-demo.gif) -->
+
+## Architecture
+
+The durable core is a batch data pipeline; the UI is a deliberately thin, swappable
+layer that reads a clean data contract out of Supabase.
+
+```mermaid
+flowchart TD
+    subgraph core["Durable core — data engine"]
+        direction TB
+        A["yfinance<br/>index-constituent fundamentals"] --> B["Python ingestion<br/>raw parquet"]
+        B --> C["dbt transforms<br/>ephemeral DuckDB · 1_staging → 5_marts"]
+        C --> D["Eligibility gate<br/>five-metric data contract"]
+        D --> E[("Supabase / Postgres<br/>card marts")]
+    end
+    E -->|"stable data contract"| F
+    subgraph ui["Swappable UI — replaceable without touching the engine"]
+        direction TB
+        F["Streamlit prototype<br/>discovery queue · save / not-now"]
+    end
+    G["GitHub Actions<br/>weekly schedule"] -.orchestrates.-> core
+```
+
+Nothing runs on a developer machine in production — the pipeline is scheduled in CI and
+the app reads only the exported marts.
+
+## Highlights
+
+- **Fundamentals as beginner snapshots** — one company at a time, plain-language gloss on
+  each metric, with optional depth via progressive disclosure.
+- **Five-metric eligibility contract** — a company enters the pool only when all its
+  headline fundamentals are present; no fallbacks or substitute proxies, because
+  incomplete data erodes trust.
+- **Registry-driven markets** — the active market set lives in
+  [`docs/market_registry.yml`](docs/market_registry.yml), not hard-coded.
+- **Deterministic discovery queue** — round-robin across markets, unseen-first,
+  sector-balanced ([`discovery_queue.py`](frontend/discovery_queue.py)). Ordering, not
+  a black-box recommender.
+- **Automated weekly refresh** — ingestion → dbt → export runs on schedule in GitHub
+  Actions, gated by dbt tests, a layer contract, and secret scanning.
+
+## Design decisions
+
+The reasoning and trade-offs behind the core — deeper context lives in
+[`docs/`](docs/) and is linked, not restated.
+
+- **Data source — yfinance, batch, not real-time.** Free and broad, with no API key, at
+  the cost of being unofficial and occasionally gappy. The pipeline refreshes weekly and
+  the app never shows a live quote; the eligibility gate absorbs missing fields rather
+  than papering over them. See [`docs/project_context.md`](docs/project_context.md).
+- **Transform on ephemeral DuckDB.** dbt builds against a throwaway DuckDB in CI — no
+  warehouse to run or pay for, fast local iteration — then exports the finished marts to
+  Supabase, which holds the only durable state. Layer rules:
+  [`docs/layering.md`](docs/layering.md).
+- **Eligibility as a first-class contract.** Rather than filling gaps with proxies, a
+  company is simply absent until complete. Fewer, trustworthy cards over more, shaky ones.
+  See [`docs/data_contract.md`](docs/data_contract.md).
+- **A thin, swappable frontend.** Streamlit was chosen for fast prototype iteration, and
+  the UI is intentionally decoupled — it consumes the Supabase card marts through a stable
+  data contract, so it can be replaced (a different framework, another language) without
+  touching the engine. The frontend is treated as the least permanent part of the system.
+- **No accounts in v1.** Save / not-now persist in the browser's localStorage. Zero signup
+  friction and no personal data to hold, traded against no cross-device sync — deferred,
+  not designed out (the `user_interactions` table is reserved for it).
 
 ## Stack
 
@@ -9,24 +88,7 @@ A card-based stock dashboard. Users are shown stock cards per session and intera
 | Ingestion | Python + yfinance |
 | Transform | dbt-core + dbt-duckdb (ephemeral DuckDB) |
 | Warehouse | Supabase (Postgres) |
-| Frontend | Streamlit Community Cloud |
-
-## Architecture
-
-```
-GitHub Actions (scheduled)
-  → Python ingestion (yfinance → raw parquet)
-  → dbt transforms (ephemeral DuckDB)
-  → export marts to Supabase
-
-Supabase (Postgres)
-  → processed stock data (anon read); user_interactions table reserved for future auth
-
-Streamlit Community Cloud
-  → reads card marts via anon key; save/skip in browser localStorage (v1, no signup)
-```
-
-Nothing runs on a developer machine in production.
+| Frontend | Streamlit Community Cloud (prototype — swappable) |
 
 ## Project layout
 
@@ -102,11 +164,14 @@ stock-swipe-app/
    python scripts/export_to_supabase.py
    ```
 
-8. **Streamlit app** (requires Supabase Auth enabled):
+8. **Streamlit app**
 
    ```bash
-   streamlit run frontend/app.py
+   streamlit run streamlit_app.py
    ```
+
+   Reads Supabase via the anon key; save / not-now persist in browser localStorage.
+   No login required.
 
 ## Standards (non-negotiable)
 
