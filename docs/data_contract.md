@@ -108,6 +108,28 @@ Also persist `stmt_currency` if available on the statement object.
 
 These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion.
 
+### From the balance sheet
+
+Point-in-time (a stock, not a flow), so use the **latest annual column** from
+`ticker.balance_sheet` — no TTM summing. yfinance canonicalises row labels to a fixed key set, so one
+label per line resolves across markets (only equity keeps a second real fallback; see
+[`intl-balance-sheet-row-labels.md`](intl-balance-sheet-row-labels.md)).
+Landed **data-only** for the Sector/Lifecycle Router to compute statement-based metrics
+(debt-to-equity, current ratio, working capital, tangible-book valuation, net cash) — not yet in
+`is_card_eligible`, the metric catalogue, `frontend/metrics.json`, or the Supabase export.
+
+| Raw column (parquet) | Statement row label (first-match fallback) | Statement |
+|----------------------|---------------------------------------------|-----------|
+| `stmt_stockholders_equity` | `Stockholders Equity` → `Common Stock Equity` (common equity attributable to the parent; excludes minority interest) | balance_sheet |
+| `stmt_total_debt` | `Total Debt` | balance_sheet |
+| `stmt_current_assets` | `Current Assets` | balance_sheet |
+| `stmt_current_liabilities` | `Current Liabilities` | balance_sheet |
+| `stmt_cash_and_equivalents` | `Cash And Cash Equivalents` (narrow; excludes short-term investments) | balance_sheet |
+| `stmt_tangible_book_value` | `Tangible Book Value` | balance_sheet |
+
+Nullable — e.g. financials have no current/non-current split, so `stmt_current_assets` /
+`stmt_current_liabilities` are null for banks. Not clipped.
+
 ### Card metrics — dbt formulas (v1)
 
 > **Single source of truth:** each metric's definition — formula spec, label, `format`, `perspective`,

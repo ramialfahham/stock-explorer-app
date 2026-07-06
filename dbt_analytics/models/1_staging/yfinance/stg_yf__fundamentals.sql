@@ -48,7 +48,13 @@ renamed as (
         cast(s.qtr_operating_expense_3 as double) as qtr_operating_expense_3,
         cast(s.stmt_operating_income as double) as stmt_operating_income,
         cast(s.stmt_operating_revenue as double) as stmt_operating_revenue,
-        cast(s.stmt_operating_expense as double) as stmt_operating_expense
+        cast(s.stmt_operating_expense as double) as stmt_operating_expense,
+        cast(s.stmt_stockholders_equity as double) as stmt_stockholders_equity,
+        cast(s.stmt_total_debt as double) as stmt_total_debt,
+        cast(s.stmt_current_assets as double) as stmt_current_assets,
+        cast(s.stmt_current_liabilities as double) as stmt_current_liabilities,
+        cast(s.stmt_cash_and_equivalents as double) as stmt_cash_and_equivalents,
+        cast(s.stmt_tangible_book_value as double) as stmt_tangible_book_value
     from source_data as s
 )
 

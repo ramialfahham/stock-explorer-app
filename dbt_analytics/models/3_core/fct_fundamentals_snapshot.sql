@@ -56,5 +56,11 @@ select
     qtr_operating_expense_3,
     stmt_operating_income,
     stmt_operating_revenue,
-    stmt_operating_expense
+    stmt_operating_expense,
+    stmt_stockholders_equity,
+    stmt_total_debt,
+    stmt_current_assets,
+    stmt_current_liabilities,
+    stmt_cash_and_equivalents,
+    stmt_tangible_book_value
 from latest

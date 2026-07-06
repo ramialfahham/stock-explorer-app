@@ -11,6 +11,7 @@ import yfinance as yf
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import raw_dir
 from ingestion.registry import Market
+from ingestion.yfinance.balance_sheet import land_balance_sheet_fields
 from ingestion.yfinance.quarterly import (
     OPERATING_EXPENSE_ROW,
     OPERATING_INCOME_FALLBACK_ROWS,
@@ -237,6 +238,7 @@ def _fetch_fundamentals_row(
         row["stmt_operating_expense"] = stmt_op_exp
 
         row.update(land_quarterly_ttm_fields(ticker))
+        row.update(land_balance_sheet_fields(ticker))
         return row
 
     return call_with_retry(_load)
