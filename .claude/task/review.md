@@ -1,70 +1,54 @@
 # Review
 
-diff_sha256: 61a1277d24fb11e2c0bbd24371e15fe9bcb9b4dfc37cb00b6b5fa554fbdf9a60
+diff_sha256: 0db6330bd7c17535128d8c228e39f6a70f191e8ae4d699be078d6146a81bad21
 
-_FCF yield (data-only), branch `feat/fcf-yield-data`. Five blinded reviewers (cold, read-only, per
-`.claude/review_routing.json`) against the staged diff._
+_Company-type classifier (data-only, Slice 1 of the Sector/Lifecycle Router), branch
+`feat/company-type-classifier`. Three blinded reviewers (cold, read-only, per
+`.claude/review_routing.json`: scope-auditor always; analytics-engineer for the `.sql`/`.yml`;
+equity-analyst for `data_contract.md`) against the staged diff. The diff was amended once after a
+first PASS round to add the `FIN0` precedence unit-test row; all three reviewers re-ran against
+this final staged diff and the hash above matches it._
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- FCF numerator fork (trailing freeCashflow vs annual stmt_free_cash_flow): verified in contract
-  decisions_reserved it is recorded as an explicit OWNER decision this session, not a silent builder pick;
-  data_contract.md states only the factual period-matching rationale (no beginner/interpretive caveat),
-  so the #135 §6 copy-authoring trap is avoided.
-- Eligibility + display boundary: read int_stock__card_metrics.sql directly — missing_metrics and
-  is_card_eligible still list exactly the original five; fcf_yield_pct is computed but excluded from both;
-  metric_catalogue.csv, metrics.json, card_copy, and mart_stock_cards untouched. All 11 staged files in
-  scope_paths (review.md correctly the unstaged artifact).
+- Eligibility/export leak: `int_stock__card_metrics` chains `select *` through resolved/metrics, so
+  a downstream `select *` could have leaked `company_type` to the export. Read both marts —
+  `mart_stock_cards.sql` (10-31) and `mart_stock_eligibility_gaps.sql` (6-13) use explicit column
+  lists excluding `company_type`, and the `eligibility` CTE (156-177) still gates on exactly the
+  five metrics. "Not exported / baseline 25 unchanged / card byte-identical" holds.
+- Owner authority + doc-sync: the three-type taxonomy, REITs→operating, and the `<= 0` / null-is-a-
+  data-gap rule are §6 owner calls — all recorded in `decisions_reserved` and corroborated by the
+  approved plan (`noble-forging-beaver.md`) and `active_work.md` (lines 43, 51). `data_contract.md`
+  is updated in-branch, factual, matching the SQL exactly; nothing reserved was decided silently;
+  deferred items (per-type sets, eligibility rework, catalogue/display, bank metrics, copy) stay out.
 
 ## analytics-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Divide-by-zero / null honesty: the case guards `info_market_cap is not null and != 0` before dividing
-  (CASE short-circuits → no divide on zero/null denominator); a null numerator (banks) propagates to null
-  as intended. Shape is identical to the already-tested net_debt_to_ebitda / fcf_margin_pct guards.
-- Layer placement: raw fields propagate staging (cast) → base (select *) → core (passthrough select), and
-  the guarded ratio sits in 4_intermediate alongside the other card ratios — no compute leaked into
-  staging/core, per layering.md.
-- Eligibility / grain containment + second-FCF risk: missing_metrics/is_card_eligible still enumerate the
-  five; the new nullable column adds no rows; marts build without it. The distinct trailing-FCF figure
-  (vs annual stmt FCF) is an owner-resolved choice, documented factually in data_contract + _intermediate.yml,
-  feeding separate metrics with no cross-use.
-
-## data-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- Parsing-vs-passthrough: the two INFO_FIELDS entries ride the existing info.get(key) passthrough (no new
-  parsing/merge), so no offline payload fixtures owed; the CI fixture carries both new fields.
-- Idempotency + completeness honesty: parquet write unchanged (full-overwrite, same grain) so re-run can't
-  duplicate/truncate; missing freeCashflow (banks) → honest null, row still written, guarded denominator
-  yields null fcf_yield_pct.
-- Cost/scope + reach: no LOOKBACK/BATCH/cadence/fan-out change (free riders on the existing ticker.info
-  call); raw columns documented same-branch; fcf_yield_pct absent from the five-metric eligibility set and
-  the mart_stock_cards export columns — export shape + baseline unchanged.
-
-## cto-reviewer
-VERDICT: PASS
-risks_checked:
-- (territory: scripts/seed_ci_raw_fixtures.py) Re-run/fail-closed integrity: the two added dict literals
-  ride the deterministic full-overwrite fixture generator (idempotent); they are required so the new
-  staging casts have source columns — omitting them would fail CI's dbt build (fails CLOSED). No
-  workflow/hook/dependency/secret/cadence change; minimal edit.
-- Value plausibility / test independence: FCF 5e9 / market cap 1e11 → 5% is a plausible yield; the fixture
-  is not load-bearing for the unit test (which mocks fct_fundamentals_snapshot directly with 50.0/1000.0 →
-  5.0); eligibility baseline + export-health unaffected (fcf_yield_pct not in the mart).
+- Downstream reach (traced, not asserted): `company_type` is added only to the `metrics` CTE
+  (142-149); `eligibility`/`missing_metrics` (156-177) are unchanged (five metrics); both consumers
+  select explicit lists omitting `company_type`; no join was added (the `left join dim_stock`
+  pre-existed) → no grain/row-count change. Eligibility baseline + export shape/health structurally
+  unchanged.
+- Layer placement + tests: a derived closed-enum label correctly sits in 4_intermediate (refs only
+  core, never a mart); `s.info_sector` and `s.stmt_total_revenue` both resolve on the snapshot; the
+  literal `'Financial Services'` is the source sector label (not an opaque category id), owner-
+  approved in the contract, with no `dim_sector` to reference. The unit test exercises every branch
+  incl. `FIN0` (financial + 0 revenue → financial precedence) and `NUL` (null → operating);
+  `not_null` + `accepted_values` present.
 
 ## equity-analyst-reviewer
 VERDICT: PASS
 risks_checked:
-- Formula + source soundness: `freeCashflow / marketCap × 100` is the textbook FCF yield; ×100 correctly
-  renders the dimensionless ratio as a percent (unit test 50/1000×100=5.0, fixture 5e9/1e11×100=5.0). Both
-  inputs are company-level, same-currency fields from the same ticker.info dict → dimensionally sound, no
-  FX/grain mismatch (this vindicates the owner's trailing-source choice). The data_contract "trailing vs
-  annual stmt_free_cash_flow" distinction is genuinely accurate (ticker.info vs ticker.cashflow), neutral,
-  no advice/threshold language.
-- Negative-numerator behavior (FLAG for the Router, not a defect here): info_free_cashflow is routinely
-  negative for cash-burners, so fcf_yield_pct can be negative — arithmetically correct, honestly
-  signed/null (never a misleading 0), and NOT displayed/interpreted in this data-only slice. The Router's
-  deferred applicability copy MUST state "negative for cash-burners" (the data_contract note omits a
-  negativity caveat, unlike the sibling roe_pct line). Recorded in active_work.md for the Router step.
+- Financial precedence for zero/missing-revenue financials: the `financial` branch is evaluated
+  before `pre_revenue` (SQL 142-149), so a bank/insurer with `stmt_total_revenue` = 0, negative, or
+  null is classified `financial` and never leaks into `pre_revenue` — financially correct (Yahoo's
+  "Total Revenue" row is unreliable/absent for financials, whose income is net interest + fees).
+  Locked by the `FIN0` unit-test row so a regression fails CI.
+- Applicability / advice-line integrity: `data_contract.md` (141-152) and the yml description are
+  strictly mechanical rule statements (three values, first-match order, "null revenue = data gap →
+  operating"); no interpretive/threshold-as-fact claim, no direction, no good/bad or buy/sell/advice,
+  and no `metric_catalogue`/`metrics.json`/beginner copy. Interpretive copy is correctly deferred per
+  the contract, and the owner decisions are recorded in `contract.md` — §6 satisfied for a data-only
+  classifier.

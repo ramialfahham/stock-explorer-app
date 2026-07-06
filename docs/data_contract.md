@@ -138,6 +138,19 @@ These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion
   Yahoo's trailing free cash flow — distinct from the annual `stmt_free_cash_flow` used by `fcf_margin_pct`
   — so the cash figure matches the period of the current `marketCap` denominator.
 
+**Company-type classification (data-only):** `company_type` is computed once in
+`int_stock__card_metrics`, alongside the metrics, to label each snapshot for the Sector/Lifecycle
+Router. It is **not** part of `is_card_eligible`, the `metric_catalogue`, `frontend/metrics.json`, or
+the Supabase export yet. Always non-null — evaluated in order, first match wins:
+
+1. `financial` — when `coalesce(info_sector, dim_stock.sector) = 'Financial Services'`.
+2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`.
+3. `operating` — else (the default). A **null** `stmt_total_revenue` is treated as a data gap and
+   stays `operating`, not `pre_revenue`.
+
+`financial` takes precedence over `pre_revenue`. The Router will use `company_type` to drive
+per-type metric sets, eligibility, and display — out of scope here.
+
 **Operating margin:** prefer TTM — sum four quarters of operating profit and **Total Revenue**
 from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks (see
 `docs/intl-quarterly-row-labels.md`) and **Operating Revenue − Operating Expense** when needed.

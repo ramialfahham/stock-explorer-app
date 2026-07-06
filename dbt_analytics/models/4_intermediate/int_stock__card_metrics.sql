@@ -138,7 +138,15 @@ metrics as (
             when s.info_market_cap is not null
                 and s.info_market_cap != 0
                 then s.info_free_cashflow / s.info_market_cap * 100.0
-        end as fcf_yield_pct
+        end as fcf_yield_pct,
+        case
+            when coalesce(s.info_sector, st.sector) = 'Financial Services'
+                then 'financial'
+            when s.stmt_total_revenue is not null
+                and s.stmt_total_revenue <= 0
+                then 'pre_revenue'
+            else 'operating'
+        end as company_type
     from resolved as s
     left join stocks as st
         on s.market_code = st.market_code
