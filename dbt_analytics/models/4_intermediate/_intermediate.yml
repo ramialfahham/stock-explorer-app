@@ -113,6 +113,19 @@ models:
           freeCashflow over current marketCap; guarded against null/zero market cap). Nullable (null for
           financials with no freeCashflow); not clipped. Data-only — not in eligibility, the metric
           catalogue, or the Supabase export yet.
+      - name: company_type
+        description: >
+          Lifecycle/sector classification for the Sector Router: financial when
+          coalesce(info_sector, dim_stock.sector) = 'Financial Services'; else pre_revenue when
+          stmt_total_revenue is present and <= 0; else operating. Always resolves to one of the three
+          (non-null). A null stmt_total_revenue is treated as a data gap (operating), not pre_revenue.
+          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet; the Sector
+          Router will use it to drive per-type metric sets, eligibility, and display.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["operating", "financial", "pre_revenue"]
       - name: is_card_eligible
         description: >
           True when all five card metrics are non-null; false excludes ticker from discovery queue.
@@ -563,6 +576,30 @@ unit_tests:
             ebit_margin_pct: null,
             missing_metrics: [ebit_margin_pct],
           }
+  - name: card_metrics_company_type_classification
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: FIN, snapshot_date: "2026-01-01", info_sector: Financial Services, stmt_total_revenue: 5000.0}
+          - {market_code: us_sp500, ticker: FIN0, snapshot_date: "2026-01-01", info_sector: Financial Services, stmt_total_revenue: 0.0}
+          - {market_code: us_sp500, ticker: PRE, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0}
+          - {market_code: us_sp500, ticker: OPS, snapshot_date: "2026-01-01", info_sector: Technology, stmt_total_revenue: 200.0}
+          - {market_code: us_sp500, ticker: NUL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: null}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: FIN, company_name: Bank Co, sector: Financial Services, currency: USD}
+          - {market_code: us_sp500, ticker: FIN0, company_name: Bank Zero Co, sector: Financial Services, currency: USD}
+          - {market_code: us_sp500, ticker: PRE, company_name: Biotech Co, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: OPS, company_name: Tech Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: NUL, company_name: Energy Co, sector: Energy, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: FIN, company_type: financial}
+        - {market_code: us_sp500, ticker: FIN0, company_type: financial}
+        - {market_code: us_sp500, ticker: PRE, company_type: pre_revenue}
+        - {market_code: us_sp500, ticker: OPS, company_type: operating}
+        - {market_code: us_sp500, ticker: NUL, company_type: operating}
   - name: sector_medians_null_when_seven_eligible_peers
     model: int_stock__sector_benchmarks
     given:
