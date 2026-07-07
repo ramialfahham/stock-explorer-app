@@ -214,3 +214,21 @@ models:
       - name: stmt_tangible_book_value
         description: >
           Latest-annual tangible book value (balance sheet); data-only, feeds price-to-tangible-book.
+      - name: stmt_operating_cash_flow
+        description: >
+          Latest-annual operating cash flow (cash-flow statement); data-only, feeds computed FCF = OCF + capex.
+      - name: stmt_capital_expenditure
+        description: >
+          Latest-annual capital expenditure (cash-flow statement; negative = outflow); data-only, feeds computed FCF.
+      - name: stmt_interest_expense
+        description: >
+          Latest-annual interest expense (income statement; positive magnitude); data-only, feeds interest coverage.
+      - name: stmt_net_income
+        description: >
+          Latest-annual net income (income statement); data-only, feeds statement-based ROE / net margin.
+      - name: info_dividend_yield
+        description: >
+          Yahoo dividendYield (decimal) on latest snapshot; data-only, returns/income lens.
+      - name: info_payout_ratio
+        description: >
+          Yahoo payoutRatio (decimal) on latest snapshot; data-only.

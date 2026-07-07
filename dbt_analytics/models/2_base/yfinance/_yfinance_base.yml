@@ -216,3 +216,21 @@ models:
       - name: stmt_tangible_book_value
         description: >
           Deduped latest-annual tangible book value from the balance sheet.
+      - name: stmt_operating_cash_flow
+        description: >
+          Deduped latest-annual operating cash flow.
+      - name: stmt_capital_expenditure
+        description: >
+          Deduped latest-annual capital expenditure (negative = outflow).
+      - name: stmt_interest_expense
+        description: >
+          Deduped latest-annual interest expense (positive magnitude).
+      - name: stmt_net_income
+        description: >
+          Deduped latest-annual net income.
+      - name: info_dividend_yield
+        description: >
+          Deduped raw dividendYield (decimal).
+      - name: info_payout_ratio
+        description: >
+          Deduped raw payoutRatio (decimal).
