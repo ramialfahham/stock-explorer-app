@@ -21,6 +21,8 @@ renamed as (
         cast(s.info_ev_to_ebitda as double) as info_ev_to_ebitda,
         cast(s.info_free_cashflow as double) as info_free_cashflow,
         cast(s.info_market_cap as double) as info_market_cap,
+        cast(s.info_dividend_yield as double) as info_dividend_yield,
+        cast(s.info_payout_ratio as double) as info_payout_ratio,
         cast(s.info_sector as varchar) as info_sector,
         cast(s.info_currency as varchar) as info_currency,
         cast(s.info_long_name as varchar) as info_long_name,
@@ -54,7 +56,11 @@ renamed as (
         cast(s.stmt_current_assets as double) as stmt_current_assets,
         cast(s.stmt_current_liabilities as double) as stmt_current_liabilities,
         cast(s.stmt_cash_and_equivalents as double) as stmt_cash_and_equivalents,
-        cast(s.stmt_tangible_book_value as double) as stmt_tangible_book_value
+        cast(s.stmt_tangible_book_value as double) as stmt_tangible_book_value,
+        cast(s.stmt_operating_cash_flow as double) as stmt_operating_cash_flow,
+        cast(s.stmt_capital_expenditure as double) as stmt_capital_expenditure,
+        cast(s.stmt_interest_expense as double) as stmt_interest_expense,
+        cast(s.stmt_net_income as double) as stmt_net_income
     from source_data as s
 )
 

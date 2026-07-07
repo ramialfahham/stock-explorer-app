@@ -8,9 +8,9 @@ _The next session is handed exactly this file. Keep it current._
 + a health verdict. The keystone is the **Sector/Lifecycle Router**, built in slices. This session
 brought a **major correction — "do it right":** compute from **period-matched financial statements,
 not Yahoo `info` scalar shortcuts**, and design per-type metric sets from an explicit **metric-assignment
-matrix** (below). Slice 1 (the `company_type` classifier) is **MERGED (#139)**; Slice 2 (the
-balance-sheet ingestion foundation — the missing third statement) is **PR OPEN
-[#140](https://github.com/ramialfahham/stock-swipe-app/pull/140)**.
+matrix** (below). Slice 1 (classifier) **MERGED (#139)**; Slice 2 (balance-sheet foundation) **MERGED
+(#140)**; Slice 2b (statement completion) is **PR OPEN
+[#141](https://github.com/ramialfahham/stock-swipe-app/pull/141)**.
 
 ## Status
 
@@ -18,13 +18,16 @@ balance-sheet ingestion foundation — the missing third statement) is **PR OPEN
   computed in `int_stock__card_metrics`, still nothing rendered).
 - **Sector Router — Slice 1 (`company_type` classifier) MERGED (#139).** `financial` (info_sector =
   'Financial Services'), `pre_revenue` (stmt_total_revenue present & ≤ 0; null → operating), else `operating`.
-- **Sector Router — Slice 2 (balance-sheet ingestion foundation) PR OPEN
-  [#140](https://github.com/ramialfahham/stock-swipe-app/pull/140)** (branch `feat/balance-sheet-ingestion`).
-  6 raw balance-sheet lines landed **data-only**: `stmt_stockholders_equity`, `stmt_total_debt`,
-  `stmt_current_assets`, `stmt_current_liabilities`, `stmt_cash_and_equivalents`, `stmt_tangible_book_value`.
-  New module `ingestion/yfinance/balance_sheet.py` (mirrors `quarterly.py`; point-in-time, latest annual, no
-  TTM). Verified (build 93; all gates; eligibility 25 + export 100% unchanged; pytest 80). **5-reviewer cycle
-  all PASS** (it caught real defects — see below).
+- **Sector Router — Slice 2 (balance-sheet foundation) MERGED (#140).** 6 raw balance-sheet lines,
+  data-only: `stmt_stockholders_equity` (excl. minority interest), `stmt_total_debt`, `stmt_current_assets`,
+  `stmt_current_liabilities`, `stmt_cash_and_equivalents` (narrow), `stmt_tangible_book_value`. New module
+  `ingestion/yfinance/balance_sheet.py` (mirrors `quarterly.py`; point-in-time, latest annual, no TTM).
+- **Sector Router — Slice 2b (statement completion) PR OPEN
+  [#141](https://github.com/ramialfahham/stock-swipe-app/pull/141)** (branch `feat/statement-completion`).
+  6 raw fields, data-only: `stmt_operating_cash_flow`, `stmt_capital_expenditure` (negative = outflow),
+  `stmt_interest_expense` (positive), `stmt_net_income`, `info_dividend_yield`, `info_payout_ratio`. Inline
+  extractions (no new module — canonical labels; income/cashflow already fetched). Verified (build 93; all
+  gates; eligibility 25 + export 100% unchanged; pytest 80). 5-reviewer cycle all PASS, first round.
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -60,17 +63,20 @@ Approved plan: `~/.claude/plans/noble-forging-beaver.md` (the "do it right" vers
 it in one PR.
 
 1. **Slice 1 — company-type classifier: MERGED (#139).**
-2. **Slice 2 — balance-sheet ingestion foundation: PR OPEN [#140](https://github.com/ramialfahham/stock-swipe-app/pull/140).** (Merge, then continue.)
-3. **Slice 2b — complete the statements (data-only).** Cash flow: land **Operating Cash Flow + Capital
-   Expenditure** (dbt computes FCF = OCF − capex, replacing the `info.freeCashflow` scalar). Income: **Interest
-   Expense + Net Income**. `info`: **dividendYield, payoutRatio**. Cheaper than #140 — income/cashflow are
-   already fetched; mirror the `stmt_*` footprint (incl. the two schema mirrors — see Context).
-4. **Slice 3 — compute the correct per-type metrics, DATA-ONLY, from the statements.** `debt_to_equity`,
-   `interest_coverage` (operating); current ratio + working capital (from BS); tangible book /
-   `price_to_tangible_book` (P/TBV, financials); computed FCF; `cash_runway` (pre-revenue, from OCF/FCF burn);
-   `dividend_yield`. **§6 owner confirmations here:** the equity (excl. minority interest) + cash (narrow)
-   definitional choices baked into #140; the cash-runway definition (units + burn basis); whether to re-probe
-   the full universe before computing (the #140 probe was n=5/market).
+2. **Slice 2 — balance-sheet foundation: MERGED (#140).**
+3. **Slice 2b — statement completion: PR OPEN [#141](https://github.com/ramialfahham/stock-swipe-app/pull/141).** (Merge, then continue.)
+4. **Slice 3 — compute the correct per-type metrics, DATA-ONLY, from the statements** (all raw inputs from
+   #140 + #141 are now landed). `debt_to_equity`, `interest_coverage` (operating); current ratio + working
+   capital (from BS); tangible book / `price_to_tangible_book` (P/TBV, financials); computed FCF (= OCF +
+   Capex — **Capex is NEGATIVE**); `cash_runway` (pre-revenue, from OCF/FCF burn); `dividend_yield`.
+   - **Compute caveats (reviewer-flagged on #141):** `interest_coverage` must handle the interest-expense
+     sign defensively (`abs(stmt_interest_expense)` or validate — it's landed as-is, not normalized); a
+     statement ROE has an **attribution mismatch** — `stmt_net_income` includes non-controlling interest but
+     `stmt_stockholders_equity` excludes it, so use `Net Income Common Stockholders` for that ratio or
+     document the approximation.
+   - **§6 owner confirmations here:** the equity (excl. minority interest) + cash (narrow) definitional
+     choices baked into #140; the cash-runway definition (units + burn basis); whether to re-probe the full
+     universe before computing (the #140 probe was n=5/market).
 5. **Slice 4 — the Router mechanism.** Per-type metric sets (the matrix); **eligibility rework** (the hardcoded
    five-metric AND in `int_stock__card_metrics.sql:156-177` can't express sector-varying sets — likely a
    per-type required-set config); carry `company_type` into `mart_stock_cards`; per-type `card_ui`/`card_copy`

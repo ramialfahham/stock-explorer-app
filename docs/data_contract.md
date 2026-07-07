@@ -72,6 +72,8 @@ Metrics are ordered by **analytical relevance** (valuation → profitability →
 | `info_ev_to_ebitda` | `enterpriseToEbitda` | `ev_to_ebitda` (data-only) |
 | `info_free_cashflow` | `freeCashflow` | `fcf_yield_pct` numerator (data-only) |
 | `info_market_cap` | `marketCap` | `fcf_yield_pct` denominator (data-only) |
+| `info_dividend_yield` | `dividendYield` | Dividend yield, decimal (data-only) |
+| `info_payout_ratio` | `payoutRatio` | Payout ratio, decimal (data-only) |
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
 | `info_long_name` | `longName` | Company name fallback |
@@ -95,6 +97,10 @@ Use the **latest annual fiscal period** (most recent column) from:
 |----------------------|----------------------|-----------|
 | `stmt_total_revenue` | `Total Revenue` | income_stmt |
 | `stmt_free_cash_flow` | `Free Cash Flow` | cashflow |
+| `stmt_operating_cash_flow` | `Operating Cash Flow` | cashflow |
+| `stmt_capital_expenditure` | `Capital Expenditure` (negative = outflow) | cashflow |
+| `stmt_interest_expense` | `Interest Expense` (positive magnitude) | income_stmt |
+| `stmt_net_income` | `Net Income` | income_stmt |
 | `qtr_operating_income_0` … `_3` | Operating-profit row (fallback labels) | quarterly_income_stmt |
 | `qtr_total_revenue_0` … `_3` | `Total Revenue` | quarterly_income_stmt |
 | `qtr_operating_revenue_0` … `_3` | `Operating Revenue` | quarterly (UK banks) |
@@ -107,6 +113,11 @@ Use the **latest annual fiscal period** (most recent column) from:
 Also persist `stmt_currency` if available on the statement object.
 
 These fields feed **FCF margin** in dbt only. Do not compute ratios in ingestion.
+
+**Sign conventions & derived FCF (for downstream dbt, not computed here):** `stmt_capital_expenditure`
+is **negative** (a cash outflow), so a computed free cash flow is `stmt_operating_cash_flow +
+stmt_capital_expenditure` — a distinct, transparent FCF source from the pre-computed `stmt_free_cash_flow`
+row and the `info_free_cashflow` scalar. `stmt_interest_expense` is landed as a **positive** magnitude.
 
 ### From the balance sheet
 

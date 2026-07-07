@@ -29,6 +29,8 @@ select
     info_ev_to_ebitda,
     info_free_cashflow,
     info_market_cap,
+    info_dividend_yield,
+    info_payout_ratio,
     info_sector,
     info_currency,
     info_long_name,
@@ -62,5 +64,9 @@ select
     stmt_current_assets,
     stmt_current_liabilities,
     stmt_cash_and_equivalents,
-    stmt_tangible_book_value
+    stmt_tangible_book_value,
+    stmt_operating_cash_flow,
+    stmt_capital_expenditure,
+    stmt_interest_expense,
+    stmt_net_income
 from latest

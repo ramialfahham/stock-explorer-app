@@ -39,6 +39,8 @@ INFO_FIELDS = {
     "info_ev_to_ebitda": "enterpriseToEbitda",
     "info_free_cashflow": "freeCashflow",
     "info_market_cap": "marketCap",
+    "info_dividend_yield": "dividendYield",
+    "info_payout_ratio": "payoutRatio",
     "info_sector": "sector",
     "info_currency": "currency",
     "info_long_name": "longName",
@@ -48,6 +50,10 @@ INFO_FIELDS = {
 
 INCOME_ROW = "Total Revenue"
 CASHFLOW_ROW = "Free Cash Flow"
+OPERATING_CASH_FLOW_ROW = "Operating Cash Flow"
+CAPITAL_EXPENDITURE_ROW = "Capital Expenditure"
+INTEREST_EXPENSE_ROW = "Interest Expense"
+NET_INCOME_ROW = "Net Income"
 
 
 def _write_constituents_snapshot(market: Market, constituents: pd.DataFrame) -> None:
@@ -236,6 +242,15 @@ def _fetch_fundamentals_row(
         stmt_op_exp, _, _ = _latest_annual_statement_value(income, OPERATING_EXPENSE_ROW)
         row["stmt_operating_revenue"] = stmt_op_rev
         row["stmt_operating_expense"] = stmt_op_exp
+
+        ocf, _, _ = _latest_annual_statement_value(cashflow, OPERATING_CASH_FLOW_ROW)
+        capex, _, _ = _latest_annual_statement_value(cashflow, CAPITAL_EXPENDITURE_ROW)
+        interest_expense, _, _ = _latest_annual_statement_value(income, INTEREST_EXPENSE_ROW)
+        net_income, _, _ = _latest_annual_statement_value(income, NET_INCOME_ROW)
+        row["stmt_operating_cash_flow"] = ocf
+        row["stmt_capital_expenditure"] = capex
+        row["stmt_interest_expense"] = interest_expense
+        row["stmt_net_income"] = net_income
 
         row.update(land_quarterly_ttm_fields(ticker))
         row.update(land_balance_sheet_fields(ticker))

@@ -120,6 +120,12 @@ def _write_market_fixtures(market_code: str) -> None:
                 "stmt_current_liabilities": 20_000_000_000.0,
                 "stmt_cash_and_equivalents": 10_000_000_000.0,
                 "stmt_tangible_book_value": 35_000_000_000.0,
+                "stmt_operating_cash_flow": 8_000_000_000.0,
+                "stmt_capital_expenditure": -2_000_000_000.0,
+                "stmt_interest_expense": 500_000_000.0,
+                "stmt_net_income": 6_000_000_000.0,
+                "info_dividend_yield": 0.02,
+                "info_payout_ratio": 0.30,
                 **TTM_QUARTER_FIXTURE,
             }
             for i, ticker in enumerate(TICKERS, start=1)
