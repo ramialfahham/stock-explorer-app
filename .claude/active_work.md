@@ -165,10 +165,12 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
   `info_ev_to_ebitda`, `info_free_cashflow`, `info_market_cap`) — a pre-existing mirror gap, own cleanup PR.
   (b) `_numeric_columns`' `pd.Timestamp` sort is unguarded in BOTH `balance_sheet.py` and `quarterly.py` —
   optional try/except hardening (do both). (c) add a "first-wins when both equity labels present" unit test.
-- **Test-architecture cleanup (owner-requested, queued as a separate PR after 3b):** the flat `tests/` dir
-  mixes ingestion + frontend + tooling → subdirs/markers; `metric_catalogue` seed → dbt seed schema tests; some
-  `check_export_health` completeness → mart `data_tests`; write the taxonomy down. Separation is documented in
-  `engineering_standards.md §3` (ingestion→pytest · transformation→dbt · gates→scripts). Memory:
+- **Test-architecture cleanup: PR'd, NOT merged** (branch `chore/test-architecture-cleanup`, commit `fa55d4d`;
+  scope-auditor + cto PASS). Reorganized `tests/` into domain subdirs (`ingestion/`/`frontend/`/`tooling/`) +
+  centralized `tests/conftest.py` (sys.path) + wrote the taxonomy (`tests/README.md` + `engineering_standards.md`
+  §3 pointer). Behavior-preserving (pytest stays 80). **The seed→dbt / export→mart migration ideas were verified
+  NON-issues** (seed already dbt-tested; export-health is a real pipeline gate) → not done. Optional deferred: 4
+  non-empty seed tests + explicit not_null on mart metric cols (coverage; tiny future PR). Memory:
   `test-architecture-cleanup-planned`.
 - Run dbt via the repo `.venv` (global dbt broken). `storage/raw` is gitignored — CI regenerates fixtures from
   `scripts/seed_ci_raw_fixtures.py`; **local raw = the CI fixture set (25 rows, all Technology → all
