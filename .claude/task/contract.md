@@ -1,28 +1,20 @@
 # Task contract
 
-objective: **Slice 3a — statement enrichment for correct ROE + ROA (DATA-ONLY).** Add two raw statement
-  lines the corrected per-type returns metrics need: `stmt_total_assets` (balance sheet `Total Assets` →
-  ROA = net income / total assets, a leverage-neutral returns metric for financials) and
-  `stmt_net_income_common` (income `Net Income Common Stockholders` → a correctly-attributed statement
-  ROE = common income / common equity, resolving the #141 attribution mismatch). Data-only raw fields —
-  no compute, no display, no eligibility change (the metrics are Slice 3b). Approved plan:
-  ~/.claude/plans/logical-roaming-brook.md.
+objective: **Slice 3b — compute the per-type metrics from the statements (DATA-ONLY).** Turn the landed
+  statement lines (#140/#141/#142) into 13 computed columns in `int_stock__card_metrics` — the correct
+  per-type metrics the Sector/Lifecycle Router will display. Data-only: computed in the intermediate
+  `metrics` CTE like the existing `roe_pct`/ratios; NOT in `is_card_eligible`, `mart_stock_cards`, the metric
+  catalogue, or the export. Coexist with the existing info-scalar versions (`current_ratio`, `roe_pct`,
+  `fcf_*`); Slice 4 owns per-type gating/display. Approved plan: ~/.claude/plans/logical-roaming-brook.md.
 
 scope_paths:
-  - ingestion/yfinance/balance_sheet.py
-  - ingestion/yfinance/ingest.py
-  - dbt_analytics/models/1_staging/yfinance/stg_yf__fundamentals.sql
-  - dbt_analytics/models/1_staging/yfinance/_yfinance_staging.yml
-  - dbt_analytics/models/2_base/yfinance/_yfinance_base.yml
-  - dbt_analytics/models/3_core/fct_fundamentals_snapshot.sql
-  - dbt_analytics/models/3_core/_core.yml
+  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
+  - dbt_analytics/models/4_intermediate/_intermediate.yml
   - dbt_analytics/models/sources.yml
-  - scripts/audit_mart_vs_yfinance.py
-  - scripts/seed_ci_raw_fixtures.py
-  - scripts/probe_roa_total_assets.py
-  - tests/test_balance_sheet.py
+  - dbt_analytics/models/3_core/_core.yml
+  - dbt_analytics/models/2_base/yfinance/_yfinance_base.yml
+  - dbt_analytics/models/1_staging/yfinance/_yfinance_staging.yml
   - docs/data_contract.md
-  - docs/intl-balance-sheet-row-labels.md
   - .claude/task/contract.md
 
 review_artifacts (NOT in the reviewed diff — separate artifact-only commit after; review.md records the
@@ -31,54 +23,56 @@ review_artifacts (NOT in the reviewed diff — separate artifact-only commit aft
   - .claude/active_work.md
 
 decisions_reserved:
-  - **Owner decisions locked this session (metric review + external stress-test):** (1) statement ROE
-    computed correctly by ingesting `Net Income Common Stockholders` — the methodically-right fix, not a
-    documented approximation; (2) ROA adopted into the financial column (the one sourceable, bank-relevant
-    metric from the external review), computed from statements (`net income / total assets`) — the yfinance
-    `returnOnAssets` scalar is a probe cross-check only, not the source; (3) cash runway = cash / FCF-burn,
-    in months (Slice 3b).
-  - DEFERRED to **Slice 3b:** computing all metrics (debt-to-equity, interest coverage, current ratio,
-    working capital, P/TBV, net margin, ROA, statement ROE, dividend yield, computed FCF, cash runway, burn,
-    net-cash-to-EV). DEFERRED to **Slice 4:** per-type metric sets + eligibility rework + display + copy.
-  - No interpretive/beginner copy — `data_contract.md` stays factual (the #135 §6 lesson).
-  - The exact ROE numerator/denominator pairing (common-income ÷ common-equity vs parent ÷ parent, given
-    preferred stock) is finalized with the equity-analyst in Slice 3b — this slice only LANDS the raw line.
+  - Owner metric definitions locked (this session): statement ROE = common income ÷ common equity; ROA =
+    total net income ÷ total assets; cash_runway = cash ÷ FCF-burn in months; coexist (don't replace) the
+    info-scalar versions.
+  - **Discovered + corrected here:** yfinance 1.3.0 returns `dividendYield` **already in percent** (verified
+    live: MSFT 0.94 = 0.94%, JPM 1.78, KO 2.56, O 5.15), NOT a fraction — so `dividend_yield_pct =
+    info_dividend_yield` (no ×100), and the stale "(decimal)" descriptions on `info_dividend_yield` are
+    corrected to "(percent)". `payoutRatio` IS a fraction (verified: MSFT 0.21) — left as-is. The existing
+    `roe_pct = info_return_on_equity * 100` stays correct (returnOnEquity is a fraction: JPM 0.165).
+  - DEFERRED to **Slice 4:** per-type metric SETS (the matrix), eligibility rework, `mart_stock_cards` carry,
+    per-type display/copy, catalogue rows. The ROA/ROE numerator asymmetry (total vs common) and
+    period-end-vs-Yahoo-averaged denominators are documented; final catalogue copy is §6.
+  - No interpretive/beginner copy — `data_contract.md` + yml stay factual.
 
 technical_definition (factual; no beginner copy):
-  - 2 raw fields, annual, nullable, not clipped:
-    - `stmt_total_assets` ← balance_sheet `Total Assets` (added to `BALANCE_SHEET_FIELDS`; single canonical
-      label — 100% probe coverage incl. non-US `HSBA.L`)
-    - `stmt_net_income_common` ← income `Net Income Common Stockholders` (inline extraction; net income
-      attributable to common after minority interest + preferred dividends)
-  - `balance_sheet.py`: 1 fallback tuple + 1 `BALANCE_SHEET_FIELDS` entry. `ingest.py`: 1 row-label constant
-    + 1 inline `_latest_annual_statement_value(...)` on the already-fetched income frame. Canonical yfinance
-    labels — no fallback tuples beyond the single label.
-  - Propagate staging cast → base (`select *`) → core select; `sources.yml` + `FUNDAMENTALS_COLUMNS` mirrors
-    updated in lockstep. NOT in `is_card_eligible`/`missing_metrics`, NOT selected by `mart_stock_cards`.
-  - `scripts/probe_roa_total_assets.py`: read-only diagnostic (JPM/BAC/HSBA.L + operating control) — confirms
-    label coverage, the ROE attribution gap (2.4–5.3% banks, 0% control), and computed-vs-scalar
-    reconciliation. No pipeline effect.
+  - `int_stock__card_metrics.sql`: `computed_fcf` (= OCF + Capex, capex negative) added in the `resolved`
+    CTE; 13 computed columns added in the `metrics` CTE using the existing
+    `CASE WHEN <inputs not null> AND <denom> != 0 THEN … END` guard idiom:
+    - solvency (operating): `debt_to_equity`, `interest_coverage` (= eff_stmt_op / abs(interest))
+    - liquidity (operating): `current_ratio_stmt`, `working_capital`
+    - valuation (financial): `price_to_tangible_book` (= market_cap / tangible_book, guard tbv > 0)
+    - profitability: `net_margin_pct`
+    - returns: `roa_pct` (NI / total_assets), `statement_roe_pct` (NI_common / equity), `dividend_yield_pct`
+      (= info_dividend_yield, already percent)
+    - cash: `computed_fcf`; `cash_runway_months` + `burn_rate_monthly` (only when computed_fcf < 0)
+    - valuation (pre-rev): `net_cash_to_ev` (= (cash − debt) / EV, EV = market_cap + debt − cash)
+  - `_intermediate.yml`: 13 column docs + 4 unit tests (computed values incl. distinct ROA/ROE numerators;
+    interest-coverage abs() sign; runway/burn only when burning; null on zero/negative denominator).
+  - `data_contract.md`: 13 data-only metric formulas (factual) + the dividendYield percent correction. The 4
+    raw-field yml `dividendYield` "(decimal)" descriptions corrected to "(percent)" in lockstep.
+  - NOT added to `is_card_eligible`/`missing_metrics`; the `metrics` CTE explicit projection is the boundary
+    the new columns terminate at (they do NOT reach `mart_stock_cards`/`int_stock__sector_benchmarks`).
 
 done_when:
-  - `balance_sheet.py`: +`stmt_total_assets`. `ingest.py`: +`stmt_net_income_common` (constant + extraction).
-  - 2 staging casts + docs; base docs; 2 core selects + docs; `sources.yml` (2); `FUNDAMENTALS_COLUMNS` (2);
-    CI fixtures (2); `data_contract.md` (income + balance rows, factual); `intl-balance-sheet-row-labels.md`
-    (`Total Assets` fallback row); `test_balance_sheet.py` (field-set + value assertions).
-  - Verify green: regenerate fixtures + dbt build; doc/layer/structure/sqlfluff; check_eligibility_baseline
-    (**stays 25**) + check_export_health (**stays 100%**); pytest (all pass). Live sanity: probe landed values
-    match yfinance for JPM/BAC/HSBA.L/MSFT.
+  - 13 computed columns + computed_fcf; 13 yml docs; 4 unit tests; 13 data_contract formulas; dividendYield
+    percent correction (data_contract + 4 raw-field ymls).
+  - Verify green: dbt build (**PASS incl. 15 unit tests**) + doc/layer/structure/sqlfluff + eligibility-
+    baseline (**stays 25**) + export-health (**stays 100%**) + pytest (unchanged). Values spot-checked.
   - After the reviewed commit (artifact-only): record review.md, advance active_work.md; PR to main (NOT merged).
 
 impact_map:
-  - 2 raw columns flow ingestion → staging (cast) → base (`select *`) → core (passthrough). The two raw-schema
-    mirrors (`sources.yml`, `scripts/audit_mart_vs_yfinance.py` `FUNDAMENTALS_COLUMNS`) updated in lockstep
-    (the `.reindex` would otherwise silently drop them). Absent from eligibility and `mart_stock_cards` →
-    export shape/health and the eligibility baseline unchanged. **No new statement fetch** (balance sheet +
-    income already fetched) → no new cadence/fan-out/cost. frontend untouched.
+  - 13 additive computed columns on `int_stock__card_metrics` (existing grain). They pass through the
+    `eligibility` `select *` but are excluded from `missing_metrics`/`is_card_eligible` and from
+    `mart_stock_cards`'s explicit select → export shape/health + eligibility baseline unchanged. No raw
+    fields, no ingestion, no new fetch/cost. `int_stock__sector_benchmarks` untouched.
+  - dividendYield percent correction touches only descriptions (data_contract + 4 yml) — no data/logic change
+    to `info_dividend_yield` itself.
   - Required reviewers (per `.claude/review_routing.json`): scope-auditor + analytics-engineer
-    (`*.sql`/`dbt_analytics/*.yml`) + data-engineer (`ingestion/*`) + cto (`scripts/*`, `tests/*`) +
-    equity-analyst (`docs/data_contract.md`).
+    (`*.sql`/`dbt_analytics/*.yml`) + equity-analyst (`docs/data_contract.md`; also scrutinises the SQL
+    formulas). No ingestion/scripts/tests changes → no data-engineer / cto.
 
 amendments:
-  - 2026-07-07 — supersedes the merged statement-completion contract (#141). Scope = statement enrichment
-    (Slice 3a): 2 raw fields for correct ROE + ROA per approved plan logical-roaming-brook.md; data-only.
+  - 2026-07-07 — supersedes the merged statement-enrichment contract (#142). Scope = per-type metric compute
+    (Slice 3b): 13 data-only computed columns + the dividendYield percent-scale correction.

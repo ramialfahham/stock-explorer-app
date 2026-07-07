@@ -113,6 +113,70 @@ models:
           freeCashflow over current marketCap; guarded against null/zero market cap). Nullable (null for
           financials with no freeCashflow); not clipped. Data-only — not in eligibility, the metric
           catalogue, or the Supabase export yet.
+      - name: debt_to_equity
+        description: >
+          Leverage: stmt_total_debt / stmt_stockholders_equity (statement-based; equity excludes
+          minority interest). Guarded against null/zero equity. Operating-company solvency lens.
+          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: interest_coverage
+        description: >
+          Operating income (eff_stmt_op) / abs(stmt_interest_expense) — abs() defends against the
+          landed interest sign. Guarded against null/zero interest. Operating-company solvency lens.
+          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: current_ratio_stmt
+        description: >
+          Statement current ratio: stmt_current_assets / stmt_current_liabilities. Guarded against
+          null/zero liabilities; null for financials (no current split). Coexists with the info-scalar
+          current_ratio. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: working_capital
+        description: >
+          stmt_current_assets - stmt_current_liabilities (currency level). Null for financials.
+          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: price_to_tangible_book
+        description: >
+          Price-to-tangible-book: info_market_cap / stmt_tangible_book_value (both totals; guarded to
+          tangible book > 0). Point-in-time market cap vs latest-annual tangible book. Financials
+          valuation lens. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: net_margin_pct
+        description: >
+          Net margin percent: stmt_net_income / stmt_total_revenue * 100. Guarded against null/zero
+          revenue. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: roa_pct
+        description: >
+          Return on assets percent: stmt_net_income / stmt_total_assets * 100 (total net income over
+          total assets — leverage-neutral; the financials returns anchor). Guarded against null/zero
+          assets. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: statement_roe_pct
+        description: >
+          Statement ROE percent: stmt_net_income_common / stmt_stockholders_equity * 100 — common
+          income over common (parent-only) equity, both excluding minority interest (resolves the
+          consolidated-NI-over-parent-equity mismatch). Guarded against null/zero equity. Coexists with
+          the info-scalar roe_pct. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: dividend_yield_pct
+        description: >
+          Dividend yield percent: info_dividend_yield passthrough — Yahoo dividendYield is already in
+          percent (e.g. 0.94 = 0.94%), so no ×100. Data-only — not in eligibility, the metric
+          catalogue, or the Supabase export yet.
+      - name: computed_fcf
+        description: >
+          Transparent free cash flow: stmt_operating_cash_flow + stmt_capital_expenditure (capex is
+          negative). Distinct from the pre-packaged stmt_free_cash_flow / info_free_cashflow; the burn
+          basis for cash_runway_months. Data-only — not in eligibility, the metric catalogue, or the
+          Supabase export yet.
+      - name: cash_runway_months
+        description: >
+          Months of cash at the current burn: stmt_cash_and_equivalents / (-computed_fcf) * 12, only
+          when computed_fcf < 0 (burning); null otherwise. Pre-revenue survival lens. Data-only — not
+          in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: burn_rate_monthly
+        description: >
+          Monthly cash burn: -computed_fcf / 12, only when computed_fcf < 0; null otherwise (currency
+          level). Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+      - name: net_cash_to_ev
+        description: >
+          Net cash relative to enterprise value: (stmt_cash_and_equivalents - stmt_total_debt) /
+          (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents). Guarded against zero EV.
+          Pre-revenue valuation lens. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
       - name: company_type
         description: >
           Lifecycle/sector classification for the Sector Router: financial when
@@ -642,4 +706,133 @@ unit_tests:
             sector_peer_count: 8,
             sector_median_forward_pe: 13.5,
             sector_median_ebit_margin_pct: 20.0,
+          }
+  - name: card_metrics_statement_metrics_computed
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: SM1,
+              snapshot_date: "2026-01-01",
+              stmt_total_debt: 15000.0,
+              stmt_stockholders_equity: 40000.0,
+              stmt_current_assets: 30000.0,
+              stmt_current_liabilities: 20000.0,
+              stmt_cash_and_equivalents: 10000.0,
+              stmt_tangible_book_value: 50000.0,
+              stmt_total_assets: 80000.0,
+              stmt_net_income: 6000.0,
+              stmt_net_income_common: 5000.0,
+              stmt_total_revenue: 50000.0,
+              stmt_interest_expense: 500.0,
+              stmt_operating_income: 8000.0,
+              stmt_operating_cash_flow: 9000.0,
+              stmt_capital_expenditure: -2000.0,
+              info_market_cap: 100000.0,
+              info_dividend_yield: 2.5,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: SM1, company_name: SM Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: SM1,
+            debt_to_equity: 0.375,
+            interest_coverage: 16.0,
+            current_ratio_stmt: 1.5,
+            working_capital: 10000.0,
+            price_to_tangible_book: 2.0,
+            net_margin_pct: 12.0,
+            roa_pct: 7.5,
+            statement_roe_pct: 12.5,
+            dividend_yield_pct: 2.5,
+            computed_fcf: 7000.0,
+            cash_runway_months: null,
+            burn_rate_monthly: null,
+          }
+  - name: card_metrics_cash_runway_and_burn_when_fcf_negative
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: BURN,
+              snapshot_date: "2026-01-01",
+              stmt_operating_cash_flow: -1000.0,
+              stmt_capital_expenditure: -500.0,
+              stmt_cash_and_equivalents: 9000.0,
+              info_sector: Healthcare,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: BURN, company_name: Burn Co, sector: Healthcare, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: BURN,
+            computed_fcf: -1500.0,
+            cash_runway_months: 72.0,
+            burn_rate_monthly: 125.0,
+          }
+  - name: card_metrics_interest_coverage_uses_abs_interest
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: NEGI,
+              snapshot_date: "2026-01-01",
+              stmt_operating_income: 8000.0,
+              stmt_interest_expense: -500.0,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: NEGI, company_name: NegI Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: NEGI,
+            interest_coverage: 16.0,
+          }
+  - name: card_metrics_statement_metrics_null_on_bad_denominator
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: ZERO,
+              snapshot_date: "2026-01-01",
+              stmt_total_debt: 15000.0,
+              stmt_stockholders_equity: 0.0,
+              stmt_current_assets: 30000.0,
+              stmt_current_liabilities: 0.0,
+              stmt_tangible_book_value: -100.0,
+              stmt_total_assets: 0.0,
+              stmt_net_income: 6000.0,
+              info_market_cap: 100000.0,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: ZERO, company_name: Zero Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: ZERO,
+            debt_to_equity: null,
+            current_ratio_stmt: null,
+            price_to_tangible_book: null,
+            roa_pct: null,
           }

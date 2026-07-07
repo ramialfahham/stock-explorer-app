@@ -291,7 +291,7 @@ models:
           dividends) from the latest annual income statement.
       - name: info_dividend_yield
         description: >
-          Raw Yahoo dividendYield (decimal); returns/income lens (data-only).
+          Raw Yahoo dividendYield (already in percent, e.g. 0.94 = 0.94%); returns/income lens (data-only).
       - name: info_payout_ratio
         description: >
           Raw Yahoo payoutRatio (decimal); returns/income lens (data-only).

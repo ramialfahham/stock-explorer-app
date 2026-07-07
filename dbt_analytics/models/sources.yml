@@ -158,6 +158,6 @@ sources:
           - name: stmt_net_income_common
             description: Latest annual net income to common shareholders (after minority interest and preferred dividends).
           - name: info_dividend_yield
-            description: Raw Yahoo dividendYield (decimal).
+            description: Raw Yahoo dividendYield (already in percent, e.g. 0.94 = 0.94%).
           - name: info_payout_ratio
             description: Raw Yahoo payoutRatio (decimal).

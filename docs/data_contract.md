@@ -72,7 +72,7 @@ Metrics are ordered by **analytical relevance** (valuation → profitability →
 | `info_ev_to_ebitda` | `enterpriseToEbitda` | `ev_to_ebitda` (data-only) |
 | `info_free_cashflow` | `freeCashflow` | `fcf_yield_pct` numerator (data-only) |
 | `info_market_cap` | `marketCap` | `fcf_yield_pct` denominator (data-only) |
-| `info_dividend_yield` | `dividendYield` | Dividend yield, decimal (data-only) |
+| `info_dividend_yield` | `dividendYield` | Dividend yield, already in percent — e.g. 0.94 = 0.94% (data-only) |
 | `info_payout_ratio` | `payoutRatio` | Payout ratio, decimal (data-only) |
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
@@ -172,6 +172,19 @@ Nullable — e.g. financials have no current/non-current split, so `stmt_current
 - `fcf_yield_pct` = `info_free_cashflow / info_market_cap * 100` (Yahoo `freeCashflow` ÷ `marketCap`). Uses
   Yahoo's trailing free cash flow — distinct from the annual `stmt_free_cash_flow` used by `fcf_margin_pct`
   — so the cash figure matches the period of the current `marketCap` denominator.
+- `debt_to_equity` = `stmt_total_debt / stmt_stockholders_equity` (statement-based; equity excludes minority interest; guarded on zero equity).
+- `interest_coverage` = `eff_stmt_op / abs(stmt_interest_expense)` (operating income over interest; `abs()` defends the landed sign).
+- `current_ratio_stmt` = `stmt_current_assets / stmt_current_liabilities` (statement-based; coexists with the info-scalar `current_ratio`; null for financials).
+- `working_capital` = `stmt_current_assets - stmt_current_liabilities` (currency level; null for financials).
+- `price_to_tangible_book` = `info_market_cap / stmt_tangible_book_value` (both totals; guarded on tangible book > 0).
+- `net_margin_pct` = `stmt_net_income / stmt_total_revenue * 100`.
+- `roa_pct` = `stmt_net_income / stmt_total_assets * 100` (total net income over total assets; leverage-neutral).
+- `statement_roe_pct` = `stmt_net_income_common / stmt_stockholders_equity * 100` (common income over common equity — both exclude minority interest; coexists with the info-scalar `roe_pct`).
+- `dividend_yield_pct` = `info_dividend_yield` (Yahoo `dividendYield`, already in percent — e.g. 0.94 = 0.94%; no ×100).
+- `computed_fcf` = `stmt_operating_cash_flow + stmt_capital_expenditure` (capex negative; a transparent FCF distinct from `stmt_free_cash_flow` / `info_free_cashflow`; the burn basis for cash runway).
+- `cash_runway_months` = `stmt_cash_and_equivalents / (-computed_fcf) * 12` when `computed_fcf < 0` (null when not burning).
+- `burn_rate_monthly` = `-computed_fcf / 12` when `computed_fcf < 0` (null when not burning).
+- `net_cash_to_ev` = `(stmt_cash_and_equivalents - stmt_total_debt) / (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents)` (guarded on zero EV).
 
 **Company-type classification (data-only):** `company_type` is computed once in
 `int_stock__card_metrics`, alongside the metrics, to label each snapshot for the Sector/Lifecycle

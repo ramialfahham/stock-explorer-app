@@ -48,7 +48,12 @@ resolved as (
                     and s.stmt_operating_expense is not null
                     then s.stmt_operating_revenue - s.stmt_operating_expense
             end
-        ) as eff_stmt_op
+        ) as eff_stmt_op,
+        case
+            when s.stmt_operating_cash_flow is not null
+                and s.stmt_capital_expenditure is not null
+                then s.stmt_operating_cash_flow + s.stmt_capital_expenditure
+        end as computed_fcf
     from snapshot as s
 ),
 
@@ -139,6 +144,76 @@ metrics as (
                 and s.info_market_cap != 0
                 then s.info_free_cashflow / s.info_market_cap * 100.0
         end as fcf_yield_pct,
+        case
+            when s.stmt_total_debt is not null
+                and s.stmt_stockholders_equity is not null
+                and s.stmt_stockholders_equity != 0
+                then s.stmt_total_debt / s.stmt_stockholders_equity
+        end as debt_to_equity,
+        case
+            when s.eff_stmt_op is not null
+                and s.stmt_interest_expense is not null
+                and s.stmt_interest_expense != 0
+                then s.eff_stmt_op / abs(s.stmt_interest_expense)
+        end as interest_coverage,
+        case
+            when s.stmt_current_assets is not null
+                and s.stmt_current_liabilities is not null
+                and s.stmt_current_liabilities != 0
+                then s.stmt_current_assets / s.stmt_current_liabilities
+        end as current_ratio_stmt,
+        case
+            when s.stmt_current_assets is not null
+                and s.stmt_current_liabilities is not null
+                then s.stmt_current_assets - s.stmt_current_liabilities
+        end as working_capital,
+        case
+            when s.info_market_cap is not null
+                and s.stmt_tangible_book_value is not null
+                and s.stmt_tangible_book_value > 0
+                then s.info_market_cap / s.stmt_tangible_book_value
+        end as price_to_tangible_book,
+        case
+            when s.stmt_net_income is not null
+                and s.stmt_total_revenue is not null
+                and s.stmt_total_revenue != 0
+                then s.stmt_net_income / s.stmt_total_revenue * 100.0
+        end as net_margin_pct,
+        case
+            when s.stmt_net_income is not null
+                and s.stmt_total_assets is not null
+                and s.stmt_total_assets != 0
+                then s.stmt_net_income / s.stmt_total_assets * 100.0
+        end as roa_pct,
+        case
+            when s.stmt_net_income_common is not null
+                and s.stmt_stockholders_equity is not null
+                and s.stmt_stockholders_equity != 0
+                then s.stmt_net_income_common / s.stmt_stockholders_equity * 100.0
+        end as statement_roe_pct,
+        s.info_dividend_yield as dividend_yield_pct,
+        s.computed_fcf,
+        case
+            when s.computed_fcf is not null
+                and s.computed_fcf < 0
+                and s.stmt_cash_and_equivalents is not null
+                then s.stmt_cash_and_equivalents / (-s.computed_fcf) * 12.0
+        end as cash_runway_months,
+        case
+            when s.computed_fcf is not null
+                and s.computed_fcf < 0
+                then -s.computed_fcf / 12.0
+        end as burn_rate_monthly,
+        case
+            when s.info_market_cap is not null
+                and s.stmt_total_debt is not null
+                and s.stmt_cash_and_equivalents is not null
+                and (
+                    s.info_market_cap + s.stmt_total_debt - s.stmt_cash_and_equivalents
+                ) != 0
+                then (s.stmt_cash_and_equivalents - s.stmt_total_debt)
+                    / (s.info_market_cap + s.stmt_total_debt - s.stmt_cash_and_equivalents)
+        end as net_cash_to_ev,
         case
             when coalesce(s.info_sector, st.sector) = 'Financial Services'
                 then 'financial'
