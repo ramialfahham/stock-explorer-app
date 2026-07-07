@@ -8,12 +8,8 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 
 import duckdb
-
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "scripts"))
 
 import audit_mart_vs_yfinance as audit  # noqa: E402
 

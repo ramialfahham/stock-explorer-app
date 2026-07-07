@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import sys
 from datetime import date
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "frontend"))
 
 from explore_filters import ALL_MARKETS, ALL_SECTORS  # noqa: E402
 from markets import latest_snapshot_label  # noqa: E402

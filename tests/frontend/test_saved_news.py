@@ -2,13 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "frontend"
-sys.path.insert(0, str(FRONTEND))
-
 from saved_news import (  # noqa: E402
     NewsHeadline,
     headline_item_html,

@@ -22,7 +22,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 CATALOGUE = REPO / "dbt_analytics" / "seeds" / "metric_catalogue.csv"
 EXPORT = REPO / "scripts" / "export_metric_definitions_json.py"
 COMMITTED_JSON = REPO / "frontend" / "metrics.json"
@@ -77,7 +77,6 @@ def test_every_catalogue_metric_is_computed_in_the_model() -> None:
 
 def test_frontend_metrics_match_catalogue() -> None:
     """The Streamlit app's metric list (from metrics.json) equals the catalogue's metrics."""
-    sys.path.insert(0, str(REPO / "frontend"))
     import card_copy  # noqa: PLC0415
 
     assert set(card_copy.ALL_METRICS) == set(_catalogue_ids())

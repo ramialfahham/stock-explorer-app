@@ -2,13 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "frontend"
-sys.path.insert(0, str(FRONTEND))
-
 from disclosure_html import disclosure_html, is_truncated, preview_words  # noqa: E402
 
 
