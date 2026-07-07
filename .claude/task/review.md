@@ -1,86 +1,66 @@
 # Review
 
-diff_sha256: 22912387e1308d9e6a11261fcf3bf8ef9bad5ad08714b0a9f0572ace1b3e4bc2
+diff_sha256: 2fd979389a6128f83748b9daa03c17dd80189ab4b1947b9f55e228a70630f7ef
 
-_Balance-sheet ingestion foundation (Slice 2, DATA-ONLY), branch `feat/balance-sheet-ingestion`.
-Five blinded reviewers (cold, read-only, per `.claude/review_routing.json`: scope-auditor always;
-analytics-engineer for `.sql`/`.yml`; data-engineer for `ingestion/`; cto for `scripts/`/`tests/`;
-equity-analyst for `docs/data_contract.md`). All five re-ran against this final staged diff and PASS._
-
-_Iterative review — earlier rounds caught and fixed real defects, then all five re-reviewed this
-committed diff:_
-1. _equity-analyst: the equity fallback included `Total Equity Gross Minority Interest` (folds in
-   non-controlling interest → would overstate common equity / understate debt-to-equity) — dropped it._
-2. _equity-analyst: cash fell back to a broader "cash + short-term investments" line (conflation) —
-   narrowed to `Cash And Cash Equivalents` only._
-3. _scope-auditor: two raw-schema mirrors (`sources.yml`, `audit_mart_vs_yfinance.py`
-   `FUNDAMENTALS_COLUMNS`, whose `.reindex` would silently drop the new columns) were stale — updated
-   in lockstep._
-4. _equity-analyst: three fallback labels were not real yfinance keys and the "varies by market" framing
-   was inaccurate (yfinance canonicalises labels via camel2title) — tuples tightened to canonical keys,
-   framing reconciled across all four surfaces (module, probe, both docs)._
+_Statement completion (Slice 2b, DATA-ONLY), branch `feat/statement-completion`. Five blinded reviewers
+(cold, read-only, per `.claude/review_routing.json`: scope-auditor always; analytics-engineer for
+`.sql`/`.yml`; data-engineer for `ingestion/`; cto for `scripts/`; equity-analyst for `data_contract.md`).
+All five PASS on this diff, first round._
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- All 15 diff files are inside `scope_paths`; the two schema mirrors (`sources.yml`, `FUNDAMENTALS_COLUMNS`)
-  carry all 6 new columns. Hunted for other schema enumerations — `backfill_fundamentals_parquet_schema.py`
-  (finished migration over gitignored parquet) and `audit_yfinance_coverage.py::FIELD_LABELS`
-  (eligibility-only probe) confirmed NOT live doc-sync gaps.
-- decisions_reserved respected: docs record sourcing only, never assign a metric to a company type
-  (`intl-balance-sheet-row-labels.md` explicitly defers the per-type matrix to a later owner slice); the
-  financials-solvency ceiling is not decided; `data_contract.md` stays factual. DATA-ONLY invariant holds
-  (grep: 6 columns absent from marts + eligibility CTEs → baseline 25 / export 100% / card byte-identical).
+- All diff files in `scope_paths`; both schema mirrors (`sources.yml` + `FUNDAMENTALS_COLUMNS`) updated in
+  lockstep. DATA-ONLY verified by grep: the 6 names have 0 occurrences in `int_stock__card_metrics.sql`
+  (eligibility/missing_metrics) and 0 in `mart_stock_cards.sql` → baseline 25 / export shape untouched.
+- No §6 silent decision: no new mechanism/fetch (reuses the pre-existing `_latest_annual_statement_value`
+  on already-fetched income/cashflow frames), no metric computed; the sign-convention note is factual
+  sourcing rationale, not a metric assignment; `decisions_reserved` (per-type sets) not entered.
 
 ## analytics-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Layer placement: staging = pure `cast(... as double)`; base = `select *`; core = 6 bare passthrough
-  selects (no computation). No layer-contract pattern triggered; consistent with the `stmt_*`/`qtr_*`
-  precedent.
-- Reach traced, not asserted: the `metrics` CTE in `int_stock__card_metrics.sql` re-projects an explicit
-  list that drops the 6 columns; `eligibility`/`missing_metrics` reference only the original five; grep of
-  marts + `export_to_supabase.py` returns nothing. Doc gate satisfied (6 cols × sources/staging/base/core);
-  nullable BS cols carry no `not_null` (correct — null for financials). Baseline 25 / export 100% hold.
+- Reach traced: `resolved` does `select s.*` but the `metrics` CTE re-projects an explicit list that drops
+  all 6; eligibility / `mart_stock_cards` / `int_stock__sector_benchmarks` are downstream of that boundary →
+  cannot reach them. Grain unchanged at every layer; baseline 25 holds.
+- Layer placement pure (cast in staging, `select *` base, passthrough core); doc gate satisfied — 6 cols
+  declared in `sources.yml` + documented at staging/base/core; CI fixture keeps grain/eligibility intact.
 
 ## data-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Offline tests (no network) cover fallback order, null-skip-to-older-column, absent/None/empty statement,
-  operating + financial (bank → null current items) + missing balance sheet. Completeness honest: absent
-  line → honest null; cash narrow (no short-term-investment conflation); equity excludes minority interest.
-- Idempotency unchanged (full-overwrite parquet, same grain; `row.update(...)` only); both raw-schema
-  mirrors updated (the `FUNDAMENTALS_COLUMNS` `.reindex` would otherwise drop the columns). One extra
-  `ticker.balance_sheet` fetch/ticker — free rider on the existing per-ticker loop, owner-authorised.
+- No new fetch: `income`/`cashflow` are already fetched; the 4 new `_latest_annual_statement_value` calls
+  read the in-memory frames (zero new network calls/cadence/fan-out). Idempotent full-overwrite parquet;
+  deterministic fixtures. Absent line → honest null (capex null for some banks).
+- Untested inline extraction is a consistent extension of the untested `stmt_operating_*`/`stmt_total_revenue`
+  precedent (same unchanged helper, canonical single labels — no new parsing logic). Both mirrors updated
+  (the `.reindex` would otherwise drop the columns); code row-label constants match the doc mapping.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- No new dependency/service/hook/workflow step (grep of `.github` + requirements). Probe + module are
-  faithful mirrors of `probe_quarterly_op_labels.py` / `quarterly.py`; `FUNDAMENTALS_COLUMNS` is a plain
-  tuple extension; single-element fallback tuples commented as intentional.
-- Re-run/interruption safe: probe read-only + seeded (exit 0, in no workflow); fixture generator
-  deterministic full-overwrite. Fail-safe: the CI `--offline` audit path never touches `.reindex`; the
-  live path now retains the 6 columns rather than silently dropping them. No secrets / CI-permission change.
+- No new dependency/service/hook/workflow; `FUNDAMENTALS_COLUMNS` is a plain tuple extension, fixtures a
+  constant-dict extension. Re-run safe (deterministic full-overwrite). The `FUNDAMENTALS_COLUMNS` +6 makes
+  `.reindex` RETAIN the columns (correct fail-closed direction). No secrets/CI-permission change.
+- No cost delta: income/cashflow already fetched; dividend fields ride the existing single `ticker.info`
+  call. No CI-minute impact.
 
 ## equity-analyst-reviewer
 VERDICT: PASS
 risks_checked:
-- Cross-checked every canonical label against the installed yfinance `const.py` balance-sheet key list and
-  the `camel2title` transform: `stmt_stockholders_equity` = common equity attributable to the parent
-  (excludes `Total Equity Gross Minority Interest`); `stmt_cash_and_equivalents` = the narrow
-  `Cash And Cash Equivalents` (no conflation); `Tangible Book Value` is a currency total (not per-share).
-  "yfinance canonicalises labels" is literally accurate; all four surfaces are consistent (grep-clean).
-- Point-in-time (latest annual, no TTM) correct for a balance-sheet stock; financials null current-split is
-  honest (yfinance omits absent keys). Docs strictly factual — no advice/threshold/beginner copy, no
-  per-type "primary metric" claim; coverage honestly caveated (sample n=5/market stated). Diff is RAW
-  landing only — no metric defined/redefined (§6 owner content untouched).
+- Row-label canonicality verified against vendored yfinance `const.py` + `camel2title` (`NetIncome` →
+  `Net Income`, etc.; the "NI" acronym doesn't corrupt the label) — same proven mechanism as the merged
+  `Total Revenue` / `Free Cash Flow`. Sign conventions correct: `Capital Expenditure` negative → FCF =
+  OCF + capex; `Interest Expense` positive magnitude; the fixture signs (capex -2e9, interest +5e8) match
+  the doc (a real correctness check).
+- Docs strictly factual (mapping + sign conventions + a scoped "computed FCF = OCF + capex, not computed
+  here" note) — no advice/threshold/beginner copy, no per-type "primary metric" claim. Diff limited to RAW
+  landing; no metric defined/redefined (§6 untouched).
 
-## Non-blocking items recorded for later slices (not defects in this diff)
-- **Slice-3 owner confirmation:** the equity (excl. minority interest) and cash (narrow) definitional
-  choices, and whether to re-probe the full universe before computing on the fallback tuples (n=5 sample).
-- **Optional hardening:** a "first-wins when both equity labels present" unit test; wrap the
-  `_numeric_columns` `pd.Timestamp` sort in try/except (shared with `quarterly.py` — a non-regression;
-  do both modules).
-- **Pre-existing (not this slice):** `sources.yml` + `FUNDAMENTALS_COLUMNS` also omit the #135/#136
-  `info_*` data-only fields — a separate cleanup.
+## Non-blocking items recorded for Slice 3 (not defects here)
+- **Interest-expense sign documented but not enforced in code** (no `abs()`): Slice-3 `interest_coverage`
+  should compute defensively (`abs(stmt_interest_expense)` or validate the sign).
+- **Statement-ROE attribution mismatch:** `stmt_net_income` (Net Income) includes non-controlling interest,
+  while the Slice-2 equity lines deliberately exclude it — a naive `net_income / stockholders_equity` mixes
+  all-shareholder income over parent-only equity. Slice 3 should use `Net Income Common Stockholders` for
+  that ratio, or document the approximation.
