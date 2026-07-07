@@ -9,10 +9,11 @@ _The next session is handed exactly this file. Keep it current._
 brought a **major correction — "do it right":** compute from **period-matched financial statements,
 not Yahoo `info` scalar shortcuts**, and design per-type metric sets from an explicit **metric-assignment
 matrix** (below). **Slices 1–2b are all MERGED** (#139 classifier · #140 balance sheet · #141 statements)
-— **the entire raw data foundation is in.** Slice 3 (the compute) is being built in two PRs: **Slice 3a
-(statement enrichment — 2 more raw fields for correct ROA + ROE) is PR'd (not merged);** **Slice 3b —
-compute the per-type metrics — is the clear next step.** This session locked the metric DEFINITIONS
-(ROE/ROA/runway) and adjudicated an external metric review (see Decisions).
+— **the entire raw data foundation is in.** Slice 3 (the compute) is built in two PRs: **Slice 3a
+(statement enrichment) MERGED (#142)** and **Slice 3b (per-type metric compute) PR'd (not merged).**
+**Slice 4 — the Router mechanism (per-type sets + eligibility rework + display) — is the clear next step.**
+This session locked the metric DEFINITIONS, adjudicated an external review, and discovered + fixed the
+yfinance dividendYield percent-scale bug (see Decisions).
 
 ## Status
 
@@ -29,11 +30,16 @@ compute the per-type metrics — is the clear next step.** This session locked t
   (positive), `stmt_net_income`, `info_dividend_yield`, `info_payout_ratio`. Inline extractions (no new
   module — canonical labels; income/cashflow already fetched). **The three-statement raw data foundation is
   now complete.**
-- **Sector Router — Slice 3a (statement enrichment) PR'd, NOT merged** (branch `feat/statement-enrichment`,
-  commit `18bf9ae`; 5 blinded reviewers PASS). 2 more raw fields, data-only: `stmt_total_assets` (balance
-  sheet `Total Assets` → ROA) and `stmt_net_income_common` (income `Net Income Common Stockholders` → the
-  correctly-attributed ROE numerator, fixing the #141 mismatch). Probe (`scripts/probe_roa_total_assets.py`,
-  JPM/BAC/HSBA.L/MSFT): labels 100% incl. non-US; minority/preferred gap 2.4–5.3% banks, 0% operating.
+- **Sector Router — Slice 3a (statement enrichment) MERGED (#142).** 2 raw fields, data-only:
+  `stmt_total_assets` (balance sheet `Total Assets` → ROA) and `stmt_net_income_common` (income `Net Income
+  Common Stockholders` → the correctly-attributed ROE numerator, fixing the #141 mismatch). Probe
+  (`scripts/probe_roa_total_assets.py`, JPM/BAC/HSBA.L/MSFT): labels 100% incl. non-US; gap 2.4–5.3% banks, 0% operating.
+- **Sector Router — Slice 3b (per-type metric compute) PR'd, NOT merged** (branch
+  `feat/statement-metric-compute`, commit `d80b447`; 3 blinded reviewers PASS). 13 data-only computed columns
+  in `int_stock__card_metrics` (debt_to_equity, interest_coverage [abs-guarded], current_ratio_stmt,
+  working_capital, price_to_tangible_book, net_margin_pct, roa_pct, statement_roe_pct, dividend_yield_pct,
+  computed_fcf, cash_runway_months, burn_rate_monthly, net_cash_to_ev) + 4 unit tests. Coexist with the
+  info-scalars; eligibility/mart/export untouched (baseline 25, export 100%).
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -62,6 +68,12 @@ compute the per-type metrics — is the clear next step.** This session locked t
   beginner card (the honest-blank ceiling stands). Only **ROA** survived both filters (sourceable +
   beginner-legible) → adopted. Filter every future metric suggestion through: (1) sourceable from yfinance?
   (2) legible to a true beginner?
+- **yfinance `dividendYield` is PERCENT, not a fraction (discovered in 3b, verified live):** MSFT 0.94 =
+  0.94%, JPM 1.78, KO 2.56, O 5.15 — so `dividend_yield_pct = info_dividend_yield` (NO ×100), and the stale
+  "(decimal)" docs were corrected to "(percent)". `payoutRatio` IS still a fraction (MSFT 0.21);
+  `returnOnEquity`/`returnOnAssets` are fractions (so `roe_pct`/`roa_pct` ×100 stay correct). **Slice 4 must
+  add a persisted scale-regression guard** — a future yfinance version reverting dividendYield to a fraction
+  would ship a 100× error.
 - **Corrected: debt-to-equity + interest coverage are OPERATING-company solvency metrics, NOT bank metrics**
   (interest coverage is meaningless for a bank — interest is its cost of funds; debt-to-equity is weak for
   banks). The earlier "build the bank debt measures" framing was mine and was wrong; the matrix reassigns them
@@ -83,10 +95,9 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
 1. **Slice 1 — company-type classifier: MERGED (#139).**
 2. **Slice 2 — balance-sheet foundation: MERGED (#140).**
 3. **Slice 2b — statement completion: MERGED (#141).**
-4a. **Slice 3a — statement enrichment: PR'd, NOT merged** (branch `feat/statement-enrichment`, commit
-   `18bf9ae`). 2 raw fields (`stmt_total_assets`, `stmt_net_income_common`) for correct ROA + ROE; 5
-   reviewers PASS. **Merge it, then start 3b.**
-4b. **Slice 3b (← START HERE after 3a merges) — compute the per-type metrics, DATA-ONLY** in
+4a. **Slice 3a — statement enrichment: MERGED (#142).** 2 raw fields (`stmt_total_assets`, `stmt_net_income_common`).
+4b. **Slice 3b — per-type metric compute: PR'd, NOT merged** (`feat/statement-metric-compute`, `d80b447`;
+   3 reviewers PASS). Built (data-only) in
    `int_stock__card_metrics` (existing `CASE WHEN <inputs> AND <denom> != 0` guard idiom; coexist naming;
    eligibility gate lines 156-177 untouched). Metrics: `debt_to_equity`, `interest_coverage`
    (= `eff_stmt_op` ÷ **`abs(stmt_interest_expense)`** — landed unsigned), `current_ratio_stmt`,
@@ -102,14 +113,21 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
      averaging, per #140) → differ from Yahoo's averaged/TTM scalars by design; document when catalogued.
    - Add dbt **unit tests** per metric guard (null → null; zero denom → null; interest-coverage sign;
      runway/burn only when burning). Full 5-reviewer cycle; the equity-analyst scrutinises the formulas.
-5. **Slice 4 — the Router mechanism.** Per-type metric sets (the matrix); **eligibility rework** (the hardcoded
-   five-metric AND in `int_stock__card_metrics.sql:156-177` can't express sector-varying sets — likely a
-   per-type required-set config); carry `company_type` into `mart_stock_cards`; per-type `card_ui`/`card_copy`
-   display; **catalogue rows + owner-approved applicability/beginner copy**; recalibrate the eligibility
-   baseline. Sub-split operating (parity) → financial → pre-revenue.
+5. **Slice 4 (← START HERE) — the Router mechanism.** Per-type metric sets (the matrix); **eligibility rework**
+   (the hardcoded five-metric AND in `int_stock__card_metrics.sql` — now the `eligibility` CTE, shifted down by
+   the 3b columns — can't express sector-varying sets; likely a per-type required-set config); carry
+   `company_type` into `mart_stock_cards`; per-type `card_ui`/`card_copy` display; **catalogue rows +
+   owner-approved applicability/beginner copy**; recalibrate the eligibility baseline. Sub-split operating
+   (parity) → financial → pre-revenue.
    - **Copy the Router must author (§6, reviewer-flagged):** ROE (negative/thin equity → spuriously positive;
      breaks for financials); **FCF yield — NEGATIVE for cash-burners** (#137 flag); EV/EBITDA & P/B financials
      caveats.
+   - **Carry-ins from the 3b review (non-blocking there — address in Slice 4):** (a) **dividendYield scale
+     guard** — add a persisted assertion/fixture check so a future yfinance version reverting `dividendYield`
+     to a fraction is caught (else a 100× error); (b) **ROA/ROE numerator asymmetry** — ROA uses total NI,
+     statement ROE uses common NI; surface in the catalogue copy so beginners aren't confused that two
+     "return" metrics use different income lines; (c) **period-end vs Yahoo-averaged denominators** — statement
+     ROE/ROA/P-TBV use period-end balances, differing from Yahoo's scalars by design; add an applicability caveat.
 6. **Slice 5 — AI assessment generator** (Python after dbt/export; Claude; store to Supabase; not-advice).
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above.
 
@@ -147,6 +165,11 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
   `info_ev_to_ebitda`, `info_free_cashflow`, `info_market_cap`) — a pre-existing mirror gap, own cleanup PR.
   (b) `_numeric_columns`' `pd.Timestamp` sort is unguarded in BOTH `balance_sheet.py` and `quarterly.py` —
   optional try/except hardening (do both). (c) add a "first-wins when both equity labels present" unit test.
+- **Test-architecture cleanup (owner-requested, queued as a separate PR after 3b):** the flat `tests/` dir
+  mixes ingestion + frontend + tooling → subdirs/markers; `metric_catalogue` seed → dbt seed schema tests; some
+  `check_export_health` completeness → mart `data_tests`; write the taxonomy down. Separation is documented in
+  `engineering_standards.md §3` (ingestion→pytest · transformation→dbt · gates→scripts). Memory:
+  `test-architecture-cleanup-planned`.
 - Run dbt via the repo `.venv` (global dbt broken). `storage/raw` is gitignored — CI regenerates fixtures from
   `scripts/seed_ci_raw_fixtures.py`; **local raw = the CI fixture set (25 rows, all Technology → all
   `operating`)**, so financial/pre_revenue only surface on the full pipeline, not locally. Verify set: build +
