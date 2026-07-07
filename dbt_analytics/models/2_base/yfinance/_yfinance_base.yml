@@ -236,7 +236,7 @@ models:
           Deduped latest-annual net income attributable to common shareholders.
       - name: info_dividend_yield
         description: >
-          Deduped raw dividendYield (decimal).
+          Deduped raw dividendYield (already in percent, e.g. 0.94 = 0.94%).
       - name: info_payout_ratio
         description: >
           Deduped raw payoutRatio (decimal).
