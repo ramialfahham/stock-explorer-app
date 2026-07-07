@@ -216,6 +216,9 @@ models:
       - name: stmt_tangible_book_value
         description: >
           Deduped latest-annual tangible book value from the balance sheet.
+      - name: stmt_total_assets
+        description: >
+          Deduped latest-annual total assets from the balance sheet.
       - name: stmt_operating_cash_flow
         description: >
           Deduped latest-annual operating cash flow.
@@ -228,6 +231,9 @@ models:
       - name: stmt_net_income
         description: >
           Deduped latest-annual net income.
+      - name: stmt_net_income_common
+        description: >
+          Deduped latest-annual net income attributable to common shareholders.
       - name: info_dividend_yield
         description: >
           Deduped raw dividendYield (decimal).

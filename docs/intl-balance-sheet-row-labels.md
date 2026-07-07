@@ -21,6 +21,7 @@ report it instead of `Stockholders Equity`:
 | `stmt_current_liabilities` | `Current Liabilities` |
 | `stmt_cash_and_equivalents` | `Cash And Cash Equivalents` (narrow; excludes short-term investments) |
 | `stmt_tangible_book_value` | `Tangible Book Value` |
+| `stmt_total_assets` | `Total Assets` |
 
 Raw scalars only — no ratios are computed in ingestion (dbt owns debt-to-equity, current
 ratio, working capital, tangible-book valuation, etc.).
@@ -32,7 +33,7 @@ python scripts/probe_balance_sheet_labels.py --sample 5        # all active mark
 python scripts/probe_balance_sheet_labels.py --market uk_ftse100 --sample 20
 ```
 
-Live probe (2026-07-06, `--sample 5 --seed 42`, share of sample where a fallback label
+Live probe (2026-07-07, `--sample 5 --seed 42`, share of sample where a fallback label
 resolved to a value):
 
 | Field | us_sp500 | uk_ftse100 | jp_nikkei225 | au_asx200 | de_dax |
@@ -43,6 +44,7 @@ resolved to a value):
 | `stmt_current_liabilities` | 100% | 80% | 80% | 100% | 100% |
 | `stmt_cash_and_equivalents` | 100% | 100% | 100% | 100% | 100% |
 | `stmt_tangible_book_value` | 100% | 100% | 100% | 100% | 100% |
+| `stmt_total_assets` | 100% | 100% | 100% | 100% | 100% |
 
 Balance sheet present for 100% of the sample in every market; the fallback labels above
 resolved without needing market-specific additions.
@@ -56,5 +58,8 @@ resolved without needing market-specific additions.
 - `Tangible Book Value` is present in every market, so price-to-tangible-book is sourceable
   directly rather than derived from goodwill/intangibles. (Which metrics each company type
   actually shows is a later-slice owner decision — this doc only records sourcing.)
+- `Total Assets` resolves for 100% of every market's sample, **including financials** — banks
+  have no current/non-current split (so `stmt_current_*` are null for them) but do report total
+  assets, making ROA (net income / total assets) sourceable across all company types.
 - Sample size is small (5/market); the full universe is validated on the next pipeline
   re-ingest. Re-run the probe if coverage regresses.

@@ -57,10 +57,12 @@ renamed as (
         cast(s.stmt_current_liabilities as double) as stmt_current_liabilities,
         cast(s.stmt_cash_and_equivalents as double) as stmt_cash_and_equivalents,
         cast(s.stmt_tangible_book_value as double) as stmt_tangible_book_value,
+        cast(s.stmt_total_assets as double) as stmt_total_assets,
         cast(s.stmt_operating_cash_flow as double) as stmt_operating_cash_flow,
         cast(s.stmt_capital_expenditure as double) as stmt_capital_expenditure,
         cast(s.stmt_interest_expense as double) as stmt_interest_expense,
-        cast(s.stmt_net_income as double) as stmt_net_income
+        cast(s.stmt_net_income as double) as stmt_net_income,
+        cast(s.stmt_net_income_common as double) as stmt_net_income_common
     from source_data as s
 )
 

@@ -65,8 +65,10 @@ select
     stmt_current_liabilities,
     stmt_cash_and_equivalents,
     stmt_tangible_book_value,
+    stmt_total_assets,
     stmt_operating_cash_flow,
     stmt_capital_expenditure,
     stmt_interest_expense,
-    stmt_net_income
+    stmt_net_income,
+    stmt_net_income_common
 from latest

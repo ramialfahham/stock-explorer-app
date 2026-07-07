@@ -101,6 +101,7 @@ Use the **latest annual fiscal period** (most recent column) from:
 | `stmt_capital_expenditure` | `Capital Expenditure` (negative = outflow) | cashflow |
 | `stmt_interest_expense` | `Interest Expense` (positive magnitude) | income_stmt |
 | `stmt_net_income` | `Net Income` | income_stmt |
+| `stmt_net_income_common` | `Net Income Common Stockholders` (after minority interest & preferred dividends) | income_stmt |
 | `qtr_operating_income_0` … `_3` | Operating-profit row (fallback labels) | quarterly_income_stmt |
 | `qtr_total_revenue_0` … `_3` | `Total Revenue` | quarterly_income_stmt |
 | `qtr_operating_revenue_0` … `_3` | `Operating Revenue` | quarterly (UK banks) |
@@ -126,7 +127,7 @@ Point-in-time (a stock, not a flow), so use the **latest annual column** from
 label per line resolves across markets (only equity keeps a second real fallback; see
 [`intl-balance-sheet-row-labels.md`](intl-balance-sheet-row-labels.md)).
 Landed **data-only** for the Sector/Lifecycle Router to compute statement-based metrics
-(debt-to-equity, current ratio, working capital, tangible-book valuation, net cash) — not yet in
+(debt-to-equity, current ratio, working capital, tangible-book valuation, net cash, ROA) — not yet in
 `is_card_eligible`, the metric catalogue, `frontend/metrics.json`, or the Supabase export.
 
 | Raw column (parquet) | Statement row label (first-match fallback) | Statement |
@@ -137,6 +138,7 @@ Landed **data-only** for the Sector/Lifecycle Router to compute statement-based 
 | `stmt_current_liabilities` | `Current Liabilities` | balance_sheet |
 | `stmt_cash_and_equivalents` | `Cash And Cash Equivalents` (narrow; excludes short-term investments) | balance_sheet |
 | `stmt_tangible_book_value` | `Tangible Book Value` | balance_sheet |
+| `stmt_total_assets` | `Total Assets` | balance_sheet |
 
 Nullable — e.g. financials have no current/non-current split, so `stmt_current_assets` /
 `stmt_current_liabilities` are null for banks. Not clipped.

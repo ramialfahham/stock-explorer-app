@@ -8,9 +8,11 @@ _The next session is handed exactly this file. Keep it current._
 + a health verdict. The keystone is the **Sector/Lifecycle Router**, built in slices. This session
 brought a **major correction — "do it right":** compute from **period-matched financial statements,
 not Yahoo `info` scalar shortcuts**, and design per-type metric sets from an explicit **metric-assignment
-matrix** (below). Slice 1 (classifier) **MERGED (#139)**; Slice 2 (balance-sheet foundation) **MERGED
-(#140)**; Slice 2b (statement completion) is **PR OPEN
-[#141](https://github.com/ramialfahham/stock-swipe-app/pull/141)**.
+matrix** (below). **Slices 1–2b are all MERGED** (#139 classifier · #140 balance sheet · #141 statements)
+— **the entire raw data foundation is in.** Slice 3 (the compute) is being built in two PRs: **Slice 3a
+(statement enrichment — 2 more raw fields for correct ROA + ROE) is PR'd (not merged);** **Slice 3b —
+compute the per-type metrics — is the clear next step.** This session locked the metric DEFINITIONS
+(ROE/ROA/runway) and adjudicated an external metric review (see Decisions).
 
 ## Status
 
@@ -22,12 +24,16 @@ matrix** (below). Slice 1 (classifier) **MERGED (#139)**; Slice 2 (balance-sheet
   data-only: `stmt_stockholders_equity` (excl. minority interest), `stmt_total_debt`, `stmt_current_assets`,
   `stmt_current_liabilities`, `stmt_cash_and_equivalents` (narrow), `stmt_tangible_book_value`. New module
   `ingestion/yfinance/balance_sheet.py` (mirrors `quarterly.py`; point-in-time, latest annual, no TTM).
-- **Sector Router — Slice 2b (statement completion) PR OPEN
-  [#141](https://github.com/ramialfahham/stock-swipe-app/pull/141)** (branch `feat/statement-completion`).
-  6 raw fields, data-only: `stmt_operating_cash_flow`, `stmt_capital_expenditure` (negative = outflow),
-  `stmt_interest_expense` (positive), `stmt_net_income`, `info_dividend_yield`, `info_payout_ratio`. Inline
-  extractions (no new module — canonical labels; income/cashflow already fetched). Verified (build 93; all
-  gates; eligibility 25 + export 100% unchanged; pytest 80). 5-reviewer cycle all PASS, first round.
+- **Sector Router — Slice 2b (statement completion) MERGED (#141).** 6 raw fields, data-only:
+  `stmt_operating_cash_flow`, `stmt_capital_expenditure` (negative = outflow), `stmt_interest_expense`
+  (positive), `stmt_net_income`, `info_dividend_yield`, `info_payout_ratio`. Inline extractions (no new
+  module — canonical labels; income/cashflow already fetched). **The three-statement raw data foundation is
+  now complete.**
+- **Sector Router — Slice 3a (statement enrichment) PR'd, NOT merged** (branch `feat/statement-enrichment`,
+  commit `18bf9ae`; 5 blinded reviewers PASS). 2 more raw fields, data-only: `stmt_total_assets` (balance
+  sheet `Total Assets` → ROA) and `stmt_net_income_common` (income `Net Income Common Stockholders` → the
+  correctly-attributed ROE numerator, fixing the #141 mismatch). Probe (`scripts/probe_roa_total_assets.py`,
+  JPM/BAC/HSBA.L/MSFT): labels 100% incl. non-US; minority/preferred gap 2.4–5.3% banks, 0% operating.
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -44,6 +50,18 @@ matrix** (below). Slice 1 (classifier) **MERGED (#139)**; Slice 2 (balance-sheet
     growth. **NO sound solvency/liquidity/cash metric** — the real ones (CET1/Tier 1/NIM/asset quality) are
     unsourceable from yfinance → leave the solvency slot **honestly blank**, don't fake it.
   - **pre_revenue** — a balance-sheet **survival** story: cash, burn, runway, net cash vs EV, working capital.
+- **Metric definitions locked (this session, §6):** (1) **statement ROE computed correctly** — ingest
+  `Net Income Common Stockholders` so ROE = common income ÷ common equity (fixes the #141 attribution
+  mismatch; landed in Slice 3a). (2) **ROA adopted into the financial column** — the one sourceable,
+  bank-relevant metric from the external review; compute `net income ÷ total assets` from statements (the
+  `returnOnAssets` scalar is a probe cross-check only). (3) **cash_runway = cash ÷ FCF-burn, in months**
+  (FCF-burn = OCF + Capex when negative). (4) **coexist, don't replace** — new computed columns sit alongside
+  the existing info-scalar `current_ratio`/`roe_pct`/`fcf_*`; Slice 4 picks per-type display.
+- **External metric review adjudicated (this session):** an outside review (Gemini) proposed CET1/Tier 1/
+  LCR/NIM/ROIC/ARR/NRR/TAM etc. — all rejected as **unsourceable from yfinance** and/or too advanced for a
+  beginner card (the honest-blank ceiling stands). Only **ROA** survived both filters (sourceable +
+  beginner-legible) → adopted. Filter every future metric suggestion through: (1) sourceable from yfinance?
+  (2) legible to a true beginner?
 - **Corrected: debt-to-equity + interest coverage are OPERATING-company solvency metrics, NOT bank metrics**
   (interest coverage is meaningless for a bank — interest is its cost of funds; debt-to-equity is weak for
   banks). The earlier "build the bank debt measures" framing was mine and was wrong; the matrix reassigns them
@@ -59,24 +77,31 @@ matrix** (below). Slice 1 (classifier) **MERGED (#139)**; Slice 2 (balance-sheet
 
 ## Next concrete actions (the sliced Router — corrected)
 
-Approved plan: `~/.claude/plans/noble-forging-beaver.md` (the "do it right" version + the matrix). Don't land
-it in one PR.
+Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right" + matrix);
+`~/.claude/plans/logical-roaming-brook.md` (Slice 3a/3b: enrichment + compute). Don't land it in one PR.
 
 1. **Slice 1 — company-type classifier: MERGED (#139).**
 2. **Slice 2 — balance-sheet foundation: MERGED (#140).**
-3. **Slice 2b — statement completion: PR OPEN [#141](https://github.com/ramialfahham/stock-swipe-app/pull/141).** (Merge, then continue.)
-4. **Slice 3 — compute the correct per-type metrics, DATA-ONLY, from the statements** (all raw inputs from
-   #140 + #141 are now landed). `debt_to_equity`, `interest_coverage` (operating); current ratio + working
-   capital (from BS); tangible book / `price_to_tangible_book` (P/TBV, financials); computed FCF (= OCF +
-   Capex — **Capex is NEGATIVE**); `cash_runway` (pre-revenue, from OCF/FCF burn); `dividend_yield`.
-   - **Compute caveats (reviewer-flagged on #141):** `interest_coverage` must handle the interest-expense
-     sign defensively (`abs(stmt_interest_expense)` or validate — it's landed as-is, not normalized); a
-     statement ROE has an **attribution mismatch** — `stmt_net_income` includes non-controlling interest but
-     `stmt_stockholders_equity` excludes it, so use `Net Income Common Stockholders` for that ratio or
-     document the approximation.
-   - **§6 owner confirmations here:** the equity (excl. minority interest) + cash (narrow) definitional
-     choices baked into #140; the cash-runway definition (units + burn basis); whether to re-probe the full
-     universe before computing (the #140 probe was n=5/market).
+3. **Slice 2b — statement completion: MERGED (#141).**
+4a. **Slice 3a — statement enrichment: PR'd, NOT merged** (branch `feat/statement-enrichment`, commit
+   `18bf9ae`). 2 raw fields (`stmt_total_assets`, `stmt_net_income_common`) for correct ROA + ROE; 5
+   reviewers PASS. **Merge it, then start 3b.**
+4b. **Slice 3b (← START HERE after 3a merges) — compute the per-type metrics, DATA-ONLY** in
+   `int_stock__card_metrics` (existing `CASE WHEN <inputs> AND <denom> != 0` guard idiom; coexist naming;
+   eligibility gate lines 156-177 untouched). Metrics: `debt_to_equity`, `interest_coverage`
+   (= `eff_stmt_op` ÷ **`abs(stmt_interest_expense)`** — landed unsigned), `current_ratio_stmt`,
+   `working_capital` (from BS); `price_to_tangible_book` (= `info_market_cap` ÷ `stmt_tangible_book_value`);
+   `net_margin_pct`; `roa_pct` (= `stmt_net_income` ÷ `stmt_total_assets`); `statement_roe_pct`
+   (= `stmt_net_income_common` ÷ `stmt_stockholders_equity`); `dividend_yield_pct`; `computed_fcf` (= OCF +
+   Capex, **Capex NEGATIVE**); `cash_runway_months` + `burn_rate_monthly` (pre-rev, when computed_fcf < 0);
+   `net_cash_to_ev` (pre-rev; needs a computed EV — include if clean else defer). Plan:
+   `~/.claude/plans/logical-roaming-brook.md`.
+   - **3b review notes (from the 3a equity-analyst — carry in):** (a) **lock the ROA/ROE numerator asymmetry
+     explicitly** — ROA uses total NI ÷ total assets while ROE uses common NI ÷ common equity (each internally
+     consistent, but state it when computing); (b) statement ROE/ROA use **period-end** denominators (no
+     averaging, per #140) → differ from Yahoo's averaged/TTM scalars by design; document when catalogued.
+   - Add dbt **unit tests** per metric guard (null → null; zero denom → null; interest-coverage sign;
+     runway/burn only when burning). Full 5-reviewer cycle; the equity-analyst scrutinises the formulas.
 5. **Slice 4 — the Router mechanism.** Per-type metric sets (the matrix); **eligibility rework** (the hardcoded
    five-metric AND in `int_stock__card_metrics.sql:156-177` can't express sector-varying sets — likely a
    per-type required-set config); carry `company_type` into `mart_stock_cards`; per-type `card_ui`/`card_copy`

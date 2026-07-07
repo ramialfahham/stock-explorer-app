@@ -48,6 +48,11 @@ CASH_AND_EQUIVALENTS_FALLBACK_ROWS: tuple[str, ...] = (
 TANGIBLE_BOOK_VALUE_FALLBACK_ROWS: tuple[str, ...] = (
     "Tangible Book Value",
 )
+# Total assets — for ROA (net income / total assets), a leverage-neutral returns metric.
+# Single canonical label (yfinance key set); ~100% coverage incl. non-US (probe: JPM/BAC/HSBA.L).
+TOTAL_ASSETS_FALLBACK_ROWS: tuple[str, ...] = (
+    "Total Assets",
+)
 
 # Raw field name -> ordered fallback labels. Field names carry the ``stmt_`` prefix
 # (statement-sourced) and are distinct from the ``info_*`` scalar passthroughs.
@@ -58,6 +63,7 @@ BALANCE_SHEET_FIELDS: dict[str, tuple[str, ...]] = {
     "stmt_current_liabilities": CURRENT_LIABILITIES_FALLBACK_ROWS,
     "stmt_cash_and_equivalents": CASH_AND_EQUIVALENTS_FALLBACK_ROWS,
     "stmt_tangible_book_value": TANGIBLE_BOOK_VALUE_FALLBACK_ROWS,
+    "stmt_total_assets": TOTAL_ASSETS_FALLBACK_ROWS,
 }
 
 
