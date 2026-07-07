@@ -114,6 +114,12 @@ def _write_market_fixtures(market_code: str) -> None:
                 "stmt_free_cash_flow": 5_000_000_000.0,
                 "stmt_fiscal_period_end": SNAPSHOT,
                 "stmt_currency": "USD",
+                "stmt_stockholders_equity": 40_000_000_000.0,
+                "stmt_total_debt": 15_000_000_000.0,
+                "stmt_current_assets": 30_000_000_000.0,
+                "stmt_current_liabilities": 20_000_000_000.0,
+                "stmt_cash_and_equivalents": 10_000_000_000.0,
+                "stmt_tangible_book_value": 35_000_000_000.0,
                 **TTM_QUARTER_FIXTURE,
             }
             for i, ticker in enumerate(TICKERS, start=1)

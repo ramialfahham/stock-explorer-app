@@ -71,6 +71,8 @@ FUNDAMENTALS_COLUMNS = (
     "qtr_operating_revenue_0", "qtr_operating_revenue_1", "qtr_operating_revenue_2", "qtr_operating_revenue_3",
     "qtr_operating_expense_0", "qtr_operating_expense_1", "qtr_operating_expense_2", "qtr_operating_expense_3",
     "stmt_operating_income", "stmt_operating_revenue", "stmt_operating_expense",
+    "stmt_stockholders_equity", "stmt_total_debt", "stmt_current_assets",
+    "stmt_current_liabilities", "stmt_cash_and_equivalents", "stmt_tangible_book_value",
 )
 INT_MODEL_RELATION = "intermediate.int_stock__card_metrics"
 

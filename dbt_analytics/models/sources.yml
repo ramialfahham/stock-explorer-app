@@ -133,3 +133,15 @@ sources:
             description: Latest annual Operating Revenue (raw bank fallback).
           - name: stmt_operating_expense
             description: Latest annual Operating Expense (raw bank fallback).
+          - name: stmt_stockholders_equity
+            description: Latest annual common shareholders' equity (balance sheet).
+          - name: stmt_total_debt
+            description: Latest annual total debt (balance sheet).
+          - name: stmt_current_assets
+            description: Latest annual current assets (balance sheet); null for financials.
+          - name: stmt_current_liabilities
+            description: Latest annual current liabilities (balance sheet); null for financials.
+          - name: stmt_cash_and_equivalents
+            description: Latest annual cash and equivalents (balance sheet).
+          - name: stmt_tangible_book_value
+            description: Latest annual tangible book value (balance sheet).

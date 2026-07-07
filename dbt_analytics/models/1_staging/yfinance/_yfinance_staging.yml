@@ -252,3 +252,21 @@ models:
       - name: stmt_currency
         description: >
           Currency on the financial statement object when provided by Yahoo.
+      - name: stmt_stockholders_equity
+        description: >
+          Shareholders' equity from the latest annual balance sheet (fallback row labels).
+      - name: stmt_total_debt
+        description: >
+          Total debt from the latest annual balance sheet (fallback row labels).
+      - name: stmt_current_assets
+        description: >
+          Current assets from the latest annual balance sheet; null for financials (no current split).
+      - name: stmt_current_liabilities
+        description: >
+          Current liabilities from the latest annual balance sheet; null for financials (no current split).
+      - name: stmt_cash_and_equivalents
+        description: >
+          Cash and equivalents from the latest annual balance sheet (fallback row labels).
+      - name: stmt_tangible_book_value
+        description: >
+          Tangible book value from the latest annual balance sheet; enables price-to-tangible-book.

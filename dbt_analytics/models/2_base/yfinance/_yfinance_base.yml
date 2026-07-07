@@ -198,3 +198,21 @@ models:
       - name: stmt_currency
         description: >
           Deduped statement currency when present.
+      - name: stmt_stockholders_equity
+        description: >
+          Deduped latest-annual shareholders' equity from the balance sheet.
+      - name: stmt_total_debt
+        description: >
+          Deduped latest-annual total debt from the balance sheet.
+      - name: stmt_current_assets
+        description: >
+          Deduped latest-annual current assets; null for financials (no current split).
+      - name: stmt_current_liabilities
+        description: >
+          Deduped latest-annual current liabilities; null for financials (no current split).
+      - name: stmt_cash_and_equivalents
+        description: >
+          Deduped latest-annual cash and equivalents from the balance sheet.
+      - name: stmt_tangible_book_value
+        description: >
+          Deduped latest-annual tangible book value from the balance sheet.

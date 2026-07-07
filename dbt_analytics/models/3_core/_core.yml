@@ -196,3 +196,21 @@ models:
       - name: stmt_currency
         description: >
           Statement currency when returned by Yahoo on the cashflow/income objects.
+      - name: stmt_stockholders_equity
+        description: >
+          Latest-annual shareholders' equity (balance sheet); data-only, feeds debt-to-equity / book value.
+      - name: stmt_total_debt
+        description: >
+          Latest-annual total debt (balance sheet); data-only, feeds debt-to-equity / net cash.
+      - name: stmt_current_assets
+        description: >
+          Latest-annual current assets (balance sheet); data-only, feeds current ratio / working capital. Null for financials.
+      - name: stmt_current_liabilities
+        description: >
+          Latest-annual current liabilities (balance sheet); data-only, feeds current ratio / working capital. Null for financials.
+      - name: stmt_cash_and_equivalents
+        description: >
+          Latest-annual cash and equivalents (balance sheet); data-only, feeds net cash / runway.
+      - name: stmt_tangible_book_value
+        description: >
+          Latest-annual tangible book value (balance sheet); data-only, feeds price-to-tangible-book.
