@@ -145,6 +145,8 @@ sources:
             description: Latest annual cash and equivalents (balance sheet).
           - name: stmt_tangible_book_value
             description: Latest annual tangible book value (balance sheet).
+          - name: stmt_total_assets
+            description: Latest annual total assets (balance sheet).
           - name: stmt_operating_cash_flow
             description: Latest annual operating cash flow (cash-flow statement).
           - name: stmt_capital_expenditure
@@ -153,6 +155,8 @@ sources:
             description: Latest annual interest expense (positive magnitude).
           - name: stmt_net_income
             description: Latest annual net income.
+          - name: stmt_net_income_common
+            description: Latest annual net income to common shareholders (after minority interest and preferred dividends).
           - name: info_dividend_yield
             description: Raw Yahoo dividendYield (decimal).
           - name: info_payout_ratio

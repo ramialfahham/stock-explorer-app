@@ -58,6 +58,7 @@ def test_land_balance_sheet_fields_operating_company() -> None:
                 "Current Liabilities": [80.0, 70.0, 60.0],
                 "Cash And Cash Equivalents": [40.0, 35.0, 30.0],
                 "Tangible Book Value": [280.0, 230.0, 180.0],
+                "Total Assets": [900.0, 800.0, 700.0],
             }
         )
 
@@ -68,6 +69,7 @@ def test_land_balance_sheet_fields_operating_company() -> None:
     assert fields["stmt_current_liabilities"] == 80.0
     assert fields["stmt_cash_and_equivalents"] == 40.0
     assert fields["stmt_tangible_book_value"] == 280.0
+    assert fields["stmt_total_assets"] == 900.0
 
 
 def test_land_balance_sheet_fields_financial_has_null_current_items() -> None:
@@ -80,6 +82,7 @@ def test_land_balance_sheet_fields_financial_has_null_current_items() -> None:
                 "Total Debt": [500.0, 480.0, 460.0],
                 "Cash And Cash Equivalents": [340.0, 300.0, 280.0],
                 "Tangible Book Value": [278.0, 260.0, 240.0],
+                "Total Assets": [4000.0, 3800.0, 3600.0],
             }
         )
 
@@ -88,6 +91,7 @@ def test_land_balance_sheet_fields_financial_has_null_current_items() -> None:
     assert fields["stmt_current_assets"] is None
     assert fields["stmt_current_liabilities"] is None
     assert fields["stmt_tangible_book_value"] == 278.0
+    assert fields["stmt_total_assets"] == 4000.0
 
 
 def test_land_balance_sheet_fields_missing_balance_sheet() -> None:
@@ -102,5 +106,6 @@ def test_land_balance_sheet_fields_missing_balance_sheet() -> None:
         "stmt_current_liabilities",
         "stmt_cash_and_equivalents",
         "stmt_tangible_book_value",
+        "stmt_total_assets",
     }
     assert all(value is None for value in fields.values())

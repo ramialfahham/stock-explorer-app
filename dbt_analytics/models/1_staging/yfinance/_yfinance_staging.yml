@@ -270,6 +270,9 @@ models:
       - name: stmt_tangible_book_value
         description: >
           Tangible book value from the latest annual balance sheet; enables price-to-tangible-book.
+      - name: stmt_total_assets
+        description: >
+          Total assets from the latest annual balance sheet; enables ROA (net income / total assets).
       - name: stmt_operating_cash_flow
         description: >
           Operating cash flow from the latest annual cash-flow statement.
@@ -282,6 +285,10 @@ models:
       - name: stmt_net_income
         description: >
           Net income from the latest annual income statement.
+      - name: stmt_net_income_common
+        description: >
+          Net income attributable to common shareholders (after minority interest and preferred
+          dividends) from the latest annual income statement.
       - name: info_dividend_yield
         description: >
           Raw Yahoo dividendYield (decimal); returns/income lens (data-only).

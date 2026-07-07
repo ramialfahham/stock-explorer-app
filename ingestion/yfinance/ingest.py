@@ -54,6 +54,9 @@ OPERATING_CASH_FLOW_ROW = "Operating Cash Flow"
 CAPITAL_EXPENDITURE_ROW = "Capital Expenditure"
 INTEREST_EXPENSE_ROW = "Interest Expense"
 NET_INCOME_ROW = "Net Income"
+# Net income attributable to common shareholders (after minority interest + preferred
+# dividends) — the correctly-attributed numerator for a common ROE against common equity.
+NET_INCOME_COMMON_ROW = "Net Income Common Stockholders"
 
 
 def _write_constituents_snapshot(market: Market, constituents: pd.DataFrame) -> None:
@@ -247,10 +250,14 @@ def _fetch_fundamentals_row(
         capex, _, _ = _latest_annual_statement_value(cashflow, CAPITAL_EXPENDITURE_ROW)
         interest_expense, _, _ = _latest_annual_statement_value(income, INTEREST_EXPENSE_ROW)
         net_income, _, _ = _latest_annual_statement_value(income, NET_INCOME_ROW)
+        net_income_common, _, _ = _latest_annual_statement_value(
+            income, NET_INCOME_COMMON_ROW
+        )
         row["stmt_operating_cash_flow"] = ocf
         row["stmt_capital_expenditure"] = capex
         row["stmt_interest_expense"] = interest_expense
         row["stmt_net_income"] = net_income
+        row["stmt_net_income_common"] = net_income_common
 
         row.update(land_quarterly_ttm_fields(ticker))
         row.update(land_balance_sheet_fields(ticker))
