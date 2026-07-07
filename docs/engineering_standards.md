@@ -201,6 +201,14 @@ unit_tests:
 | `dbt build` / `dbt test` | PR + Tier C | Tests execute against fixtures or full data |
 | `check_pipeline_completeness.py` | Tier C (`data_pipeline.yml`) | Eligible card counts per active market — not SQL style |
 
+### Python tests and gates
+
+The rules above govern **dbt** tests. Python tests live in `tests/`, split by domain
+(`ingestion/`, `frontend/`, `tooling/`) with `sys.path` centralized in `tests/conftest.py` — see
+[`tests/README.md`](../tests/README.md) for the full "what we test where" taxonomy. In short:
+**ingestion, frontend, and tooling** are tested with pytest; **transformation logic stays in dbt**
+(unit + data + singular tests); whole-warehouse and project-lint checks are `scripts/check_*.py`.
+
 Generic dbt examples do not override this section.
 
 ---

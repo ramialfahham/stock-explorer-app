@@ -1,76 +1,59 @@
 # Review
 
-diff_sha256: bf1bd0f0fe592b285b253ea40ce3ff4a211c3e1ef9e94729dad47a306d61c720
+diff_sha256: 4e78767c3d81fe8598fccdf4bff3ad7fe5c9f8420eb686aa7c65c742bca8c424
 
-_Per-type metric compute (Slice 3b, DATA-ONLY), branch `feat/statement-metric-compute`. Blinded reviewers
-(cold, read-only, per `.claude/review_routing.json`): scope-auditor always; analytics-engineer for `.sql`/`.yml`;
-equity-analyst for `data_contract.md` (+ scrutinised the SQL formulas). No ingestion/scripts/tests touched →
-data-engineer + cto not required. All three PASS on this diff, first round. Adds 13 computed data-only columns
-to `int_stock__card_metrics`; corrects the yfinance dividendYield percent-scale docs._
+_Test-architecture cleanup (behavior-preserving), branch `chore/test-architecture-cleanup`. Blinded reviewers
+(cold, read-only, per `.claude/review_routing.json`): scope-auditor always; cto-reviewer for `tests/*`. No
+`dbt_analytics`/`scripts`/`ingestion`/`data_contract.md` touched → no analytics-engineer / data-engineer /
+equity-analyst. Both PASS on this diff, first round. Reorganizes 16 tests into domain subdirs + a centralized
+conftest + a taxonomy doc; `pytest tests/` stays 80 passed._
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- DATA-ONLY leak: grepped all 13 new column names across `5_marts/` + `int_stock__sector_benchmarks.sql` — zero
-  matches. The `eligibility` CTE gates on only the original 5 metrics and is untouched by the diff; both marts
-  (`mart_stock_cards`, `mart_stock_eligibility_gaps`) `select *` card_metrics into a CTE then project explicitly,
-  excluding the 13. Export shape + baseline provably unchanged.
-- dividendYield correction is descriptions-only: the sole `info_dividend_yield` cast (`stg_yf__fundamentals.sql`)
-  is NOT staged; `dividend_yield_pct` is a bare passthrough (no ×100). All 5 edits are prose; the percent-scale
-  finding + metric definitions are recorded as owner-locked in the contract's `decisions_reserved` (authority on
-  record, not reviewer-inferred).
-- Scope + routing: all 8 staged files in `scope_paths`; no ingestion/scripts/tests/frontend/supabase touched →
-  the 3-reviewer routing is correct (data-engineer/cto correctly absent). §6 items (per-type sets, eligibility
-  rework, mart carry, display, catalogue) all documented DEFERRED to Slice 4; none in the diff.
+- Scope discipline: enumerated all 20 staged paths (rename-aware) — every file is `tests/{conftest,README,
+  ingestion/,frontend/,tooling/}`, `docs/engineering_standards.md`, or `.claude/task/contract.md`. Zero files
+  under `dbt_analytics/`, `scripts/`, `ingestion/`, `supabase/`, `.github/`, or `frontend/` source → CI's
+  dbt/pipeline gates and the Streamlit app are provably untouched.
+- Behavior-preservation: diffed each deleted original against its staged destination (not just the R-header);
+  every removed line is `import sys`/`Path`/`ROOT`/`FRONTEND`/`SCRIPTS`/`sys.path.insert` boilerplate — no
+  assertion/fixture/import-target edit. The two contract-named exceptions are real & correct
+  (`test_audit_mart_vs_yfinance` keeps `import sys` for `sys.modules`; `test_metric_catalogue`
+  `parents[1]→parents[2]` for the deeper path + drops the redundant frontend insert).
+- Import-resolution soundness: conftest's `parents[1]` = repo root and inserts root + `frontend/` + `scripts/`
+  (the union every per-file block previously inserted), so stripping cannot break imports; no
+  `__init__.py`/`pytest.ini`/`pyproject` added → discovery semantics unchanged; no residual flat `tests/test_*.py`.
+- Routing correctness: required set = scope-auditor (always) + cto-reviewer (`tests/*`); `engineering_standards.md`
+  matches no path rule (adds no reviewer); absence of `*.sql`/`dbt_analytics/*.yml`/`data_contract.md`/`ingestion/`/
+  `scripts/` correctly excludes the other three reviewers. Matches the contract's impact_map.
+- No silent decision / doc-sync: the contract rewrite records supersession of #143 under recorded plan authority
+  and logs the layout choices as already owner-approved; the taxonomy is written in-branch (README + §3 pointer),
+  no stale doc left describing the old flat layout.
 
-## analytics-engineer-reviewer
+## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Re-projection boundary: traced all three consumers. `eligibility`'s `missing_metrics`/`is_card_eligible`
-  reference only the original 5 metrics and are untouched. The 13 columns pass through `eligibility` `select *`
-  but terminate at every downstream explicit projection — `mart_stock_cards` (5-metric projection,
-  `where is_card_eligible` unchanged), `int_stock__sector_benchmarks` (never projected past
-  `sector_medians`/`combined`), `mart_stock_eligibility_gaps` (identity-only). Export shape + baseline unchanged.
-- Compute + layer: 13 CASE expressions use the existing null-input + non-zero-denominator guard idiom;
-  `computed_fcf` resolves from the `resolved` CTE alias (not a self-alias); all source inputs exist in
-  `fct_fundamentals_snapshot`. Logic sits in the intermediate `metrics` CTE — not pushed to marts or down to core.
-- SQL structure + doc gate: max line 93 < 120; no inline/scalar subqueries; WITH/import-CTE rules hold; sqlfluff
-  clean. 1:1 reconciliation of the new SQL aliases ↔ yml docs — all 13 documented, no orphans.
-- Unit tests: hand-computed all 4 against the SQL (values match); they genuinely isolate distinct ROA (6000) vs
-  ROE (5000) numerators, the abs()-interest sign (−500 → +16.0), runway-only-when-burning, and null-on-
-  zero/negative denominator. Prior data_tests + 11 unit tests retained; §3 ≥1-test rule satisfied, none deleted.
+- conftest sys.path correctness & load order: `tests/conftest.py` is anchored at the test-tree root above every
+  subdir, so pytest imports it before collecting any subdir module; it idempotently prepends repo root (for the
+  `ingestion.yfinance.*` package — `__init__.py` confirmed), `frontend/`, and `scripts/`. Traced every moved
+  file's imports (card_copy, card_ui, disclosure_html, explore_filters, live_quote, metric_school, nav_pages,
+  markets, saved_news, supabase_cards, check_export_health, audit_mart_vs_yfinance, export_metric_definitions_json,
+  ingestion.yfinance.balance_sheet/quarterly) — all exist at an added path.
+- Retained-symbol correctness in the partially-stripped tooling tests: `test_metric_catalogue` keeps `sys`
+  (`sys.executable`) and `Path` (real file paths + `Path(tmp)`), and its `REPO parents[1]→parents[2]` is
+  arithmetically correct from `tests/tooling/` = repo root (seed CSV / export script / metrics.json / int-model
+  paths + `subprocess(cwd=REPO)` stay valid); `test_audit_mart_vs_yfinance` keeps `import sys` (used by
+  `sys.modules`) and safely drops `Path` (only in `__future__`-stringized annotations, never evaluated).
+- Discovery / collision safety: all 16 are `R` renames, no leftover flat `.py` (only the intentional new
+  `conftest.py` sits directly in `tests/`); no `pytest.ini`/`pyproject`/`setup.cfg`/`tox.ini`/prior conftest/
+  testpaths existed → CI's unchanged `python -m pytest tests/ -q` still auto-discovers subdirs under PEP 420; 0
+  `__init__.py` + 16 globally-unique basenames → default `prepend` import mode cannot hit an import-file-mismatch.
+- Platform-surface blast radius: diff touches only `tests/**`, `tests/README.md`, `docs/engineering_standards.md`,
+  and the contract — no requirements/lockfile, no workflow step, no secret/permission, no dbt model/seed/mart/
+  script — so CI dbt & pipeline gates, cost/run-frequency, and guardrail config are untouched; path inserts are
+  guarded (`if _path not in sys.path`) → re-run/interruption safe. "80 passed" is consistent with the trace.
 
-## equity-analyst-reviewer
-VERDICT: PASS
-risks_checked:
-- ROA-vs-ROE numerator asymmetry (highest-risk soundness question): `roa_pct` = total `stmt_net_income` /
-  `stmt_total_assets`; `statement_roe_pct` = `stmt_net_income_common` / `stmt_stockholders_equity`. Each
-  internally consistent — total assets financed by all capital providers (total-entity return on top), common
-  equity matched to common income. `net_margin_pct` correctly uses total bottom-line NI. Distinct numerators
-  exercised by the SM1 unit test. Financially sound.
-- interest_coverage: numerator `eff_stmt_op` (EBIT-like operating income), denominator `abs(stmt_interest_expense)`
-  — textbook EBIT/interest; interest landed positive, abs() defends sign variance; `!= 0` guard yields null (not
-  infinity) at zero interest. Proven by the −500 → 16.0 test.
-- dividendYield "already percent, no ×100": internally consistent + matches known yfinance 1.x behaviour; the
-  cross-checks that `payoutRatio` (0.21) and `returnOnEquity` (0.165) stay fractions are the right evidence; cited
-  yields realistic. `roe_pct = returnOnEquity × 100` correctly kept; "(decimal)"→"(percent)" applied in lockstep
-  across all 5 touchpoints.
-- EV / net_cash_to_ev: EV = market_cap + total_debt − cash; `net_cash_to_ev` = (cash − debt)/EV = −(net debt)/EV;
-  guarded on zero EV. Standard + internally consistent.
-- Guards + units: `price_to_tangible_book` strict `tbv > 0`; runway/burn only when `computed_fcf < 0`;
-  `computed_fcf = OCF + capex` matches the negative-capex sign; all ratio denominators guarded `!= 0`; the ZERO
-  row confirms nulls. Units consistent (percent, ratio, months, currency).
-- Docs factuality: strictly formulaic — no advice/threshold/"good-bad"/beginner copy, no per-type "primary metric"
-  claim (§6 reserved); lens labels are applicability, not advice. Each row repeats "not in eligibility, the metric
-  catalogue, or the export yet."
-
-## Non-blocking items recorded for Slice 4 (not defects here)
-- **dividendYield scale is a live-probe fact, not a persisted invariant (equity-analyst):** a future yfinance
-  version silently reverting `dividendYield` to a fraction would ship a 100× error. Add a lightweight persisted
-  assertion or fixture spot-check that catches a scale regression.
-- **ROA/ROE numerator asymmetry (equity-analyst):** ROA uses total NI, statement ROE uses common NI — surface in
-  the catalogue copy so a beginner isn't confused that two "return" metrics use different income lines.
-- **Point-in-time vs period-end vs Yahoo-averaged denominators (equity-analyst):** `price_to_tangible_book` /
-  `net_cash_to_ev` / `debt_to_equity` pair point-in-time market cap / period-end balance-sheet stocks against
-  period-end statement denominators, and `statement_roe_pct`/`roa_pct` use period-end (not average) balances — so
-  they differ slightly from Yahoo's own scalars by design. Add an applicability caveat when catalogued.
+## Non-blocking (optional follow-up, not defects here)
+- Optional dbt hardening deferred (coverage, not clarity): 4 non-empty `expression_is_true` seed tests on the
+  `metric_catalogue` text columns (closes the empty-string gap `not_null` misses); explicit `not_null` on
+  `mart_stock_cards`' 5 metric columns (currently implicit via `is_card_eligible=true`). A tiny separate PR if wanted.

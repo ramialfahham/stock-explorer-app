@@ -2,13 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "frontend"
-sys.path.insert(0, str(FRONTEND))
-
 from card_ui import _company_summary_html  # noqa: E402
 
 

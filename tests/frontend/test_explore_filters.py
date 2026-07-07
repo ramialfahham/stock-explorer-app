@@ -2,13 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-FRONTEND = ROOT / "frontend"
-sys.path.insert(0, str(FRONTEND))
-
 from explore_filters import (  # noqa: E402
     ALL_MARKETS,
     ALL_SECTORS,
