@@ -3,8 +3,9 @@
 
 The seed (dbt_analytics/seeds/metric_catalogue.csv) is the single source of truth for every
 card metric. This script reads it and writes frontend/metrics.json — the display definitions
-the Streamlit app binds to (label, format, direction, group/tier/order, benchmarkable, the
-basis column, and the plain-language copy). The catalogue is never modified here.
+the Streamlit app binds to (label, format, direction, group/tier/order, benchmarkable,
+applies_to per-type display membership, the basis column, and the plain-language copy). The
+catalogue is never modified here.
 
 Output must stay byte-identical unless a definition deliberately changes; tests/test_metric_definitions.py
 regenerates and asserts equality against the committed file (the no-drift lock).
@@ -62,6 +63,9 @@ def build_defs(catalogue_path: Path) -> list[dict[str, object]]:
             entry["importance_tier"] = _int_or_none(row.get("importance_tier"))
             entry["display_order"] = _int_or_none(row.get("display_order"))
             entry["benchmarkable"] = _truthy(row.get("benchmarkable"))
+            entry["applies_to"] = [
+                t for t in (row.get("applies_to") or "").strip().split("|") if t
+            ]
             rows.append(entry)
     if not rows:
         raise SystemExit("metric_catalogue: no metric rows found")

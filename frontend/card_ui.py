@@ -7,7 +7,6 @@ import html
 import streamlit as st
 
 from card_copy import (
-    ALL_METRICS,
     BENCHMARK_METRICS,
     MEDIAN_PRIMER,
     METRIC_ANALOGY,
@@ -25,6 +24,7 @@ from card_copy import (
     metric_gloss,
     metric_label,
     metric_learn_text,
+    metrics_for_card,
     sector_gloss_line,
     sector_headline,
 )
@@ -54,7 +54,7 @@ def _benchmark_compare_body(card: dict) -> str:
         return ""
 
     bench_items: list[str] = []
-    for metric in ALL_METRICS:
+    for metric in metrics_for_card(card):
         for m_key, median_key, _direction in BENCHMARK_METRICS:
             if m_key != metric:
                 continue
@@ -80,7 +80,7 @@ def _benchmark_compare_body(card: dict) -> str:
 
 def _metric_learn_blocks(card: dict) -> str:
     blocks: list[str] = []
-    for metric in ALL_METRICS:
+    for metric in metrics_for_card(card):
         value = card.get(metric)
         blocks.append(
             f'<details class="ss-metric-learn-item">'
@@ -191,7 +191,7 @@ def build_card_html(
     sector_head = sector_headline(card)
     sector_gloss = sector_gloss_line(card.get("sector"))
 
-    metrics_html = "".join(_metric_cell_html(card, m) for m in ALL_METRICS)
+    metrics_html = "".join(_metric_cell_html(card, m) for m in metrics_for_card(card))
 
     identity = (
         f'<section class="ss-card ss-card-identity">'

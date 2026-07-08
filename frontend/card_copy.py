@@ -33,6 +33,32 @@ METRIC_LEARN = {m["metric_id"]: m["learn"] for m in _METRICS}
 _METRIC_FORMAT = {m["metric_id"]: m["format"] for m in _METRICS}
 _METRIC_BASIS_COLUMN = {m["metric_id"]: (m["basis_column"] or None) for m in _METRICS}
 
+# Sector/Lifecycle Router: which company types render each metric (from the catalogue).
+DEFAULT_COMPANY_TYPE = "operating"
+_METRIC_APPLIES_TO = {m["metric_id"]: tuple(m.get("applies_to") or ()) for m in _METRICS}
+
+
+def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
+    """Metric ids to render for this card, in catalogue display order.
+
+    A metric shows only when it applies to the card's ``company_type`` **and** has a value —
+    so a lens that is blank for a type (e.g. bank solvency) or simply missing for a row is
+    omitted, never rendered as an em-dash. A missing/None ``company_type`` defaults to
+    ``operating`` (the classifier's own default and the current universe's majority).
+    """
+    company_type = card.get("company_type") or DEFAULT_COMPANY_TYPE
+    selected: list[str] = []
+    for definition in _METRICS:
+        metric_id = definition["metric_id"]
+        if company_type not in _METRIC_APPLIES_TO.get(metric_id, ()):
+            continue
+        if tier is not None and definition["importance_tier"] != tier:
+            continue
+        if card.get(metric_id) is None:
+            continue
+        selected.append(metric_id)
+    return tuple(selected)
+
 # (metric, sector-median column, short direction) — derived from the catalogue.
 _DIRECTION_SHORT = {"higher_better": "higher", "lower_better": "lower", "neutral": "neutral"}
 BENCHMARK_METRICS = tuple(

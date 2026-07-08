@@ -304,7 +304,11 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `revenue_growth_yoy_pct` | numeric | |
 | `net_debt_to_ebitda` | numeric | |
 | `fcf_margin_pct` | numeric | |
+| `debt_to_equity` | numeric | Operating-card solvency (statement-based); nullable. |
+| `current_ratio_stmt` | numeric | Operating-card liquidity (statement-based); nullable, null for financials. |
+| `statement_roe_pct` | numeric | Operating-card returns (statement-based, period-end); nullable. |
 | `is_card_eligible` | boolean | |
+| `company_type` | text | Sector/lifecycle class — `operating`, `financial`, or `pre_revenue`; always set (defaults to `operating`). Drives which metrics render per card type; does not affect `is_card_eligible`. |
 | `sector_peer_count` | integer | |
 | `sector_median_forward_pe` | numeric | nullable |
 | `sector_median_ebit_margin_pct` | numeric | nullable |
