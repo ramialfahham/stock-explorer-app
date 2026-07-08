@@ -1,56 +1,58 @@
 # Review
 
-diff_sha256: d85a3630a67b604efff3e1d7d79c9d35e4d248e11b1ad5749a6fee61a386c269
+diff_sha256: 02f810c7e0baaa18bd3ded9a85abd8313e60c1a505a1106fdb69629bfb84277f
 
-_Sector/Lifecycle Router — **Slice 4a** (per-type card render mechanism + `company_type` carry + grown
-operating card), branch `feat/sector-router-slice4a`. Blinded reviewers (cold, read-only, per
-`.claude/review_routing.json`): scope-auditor (always) · analytics-engineer (`*.sql`/`*.csv`/`dbt_analytics/*.yml`)
-· cto (`frontend/*`/`scripts/*`/`tests/*`) · data-engineer (`supabase/*`) · equity-analyst
-(`metric_catalogue.csv`/`data_contract.md`). **All five PASS.** Three cycles: (1) analytics FAIL (mart/seed
-test coverage) + equity FAIL (ROE copy: "two-year average" imprecision + "minority interest" jargon) +
-data-engineer PASS (w/ a done_when wording note); (2) fixes applied → analytics ESCALATE (non-blocking: add a
-negative-equity unit test), equity FAIL (residual jargon in the `description` field), scope ESCALATE (owner §6
-copy sign-off), cto PASS; (3) negative-equity unit test added, `description` jargon dropped, owner sign-off
-obtained (AskUserQuestion "Approve — ship as-is", 2026-07-08) → analytics/equity/scope PASS. The final diff
-`d85a3630` differs from the analytics/equity/cto/data-engineer reviewed hash (`d73c25cb`) only by the contract's
-self-contained sign-off wording — no code/content change. Verify: dbt build PASS=102, pytest 88, CI eligibility
-baseline unchanged (25), export-health 100%._
+_Sector/Lifecycle Router — **Slice 4b** (financial/bank card + per-type eligibility rework), branch
+`feat/sector-router-slice4b`. Blinded reviewers (cold, read-only, per `.claude/review_routing.json`):
+scope-auditor (always) · analytics-engineer (`*.sql`/`*.csv`/`dbt_analytics/*.yml`) · cto
+(`frontend/*`/`scripts/*`/`tests/*`) · data-engineer (`supabase/*`) · equity-analyst
+(`metric_catalogue.csv`/`data_contract.md`). **All five PASS.** Cycle 1: scope-auditor / analytics-engineer /
+cto / data-engineer PASS; equity-analyst ESCALATE (2 owner-judgment items) + an analytics non-blocking nit.
+Cycle 2 resolved both: (Q2) reworded `price_to_tangible_book` applicability ("meaningless or negative" -> "not
+shown" — the model guards tangible book > 0, so it's omitted not rendered negative); (Q1) **owner kept the
+P/E-based core three** (declined the P/TBV swap) via AskUserQuestion; fixed the stale "five-metric" prose in the
+gaps mart; **owner §6 copy sign-off** obtained (AskUserQuestion "Approve — ship as-is", 2026-07-08). The final
+diff `02f810c7` differs from the analytics/cto/data-engineer reviewed hash (`56eccecd`) only by copy/prose fixes
+(the P/TBV applicability + the gaps description + the contract amendment) — no logic/mechanism/schema change in
+their territories, so those PASSes stand. Verify: dbt build PASS=104, pytest 91, CI eligibility baseline 25->30,
+bank card renders 7 lens-grouped metrics (no em-dash), export-health 100%.
 
-## scope-auditor (final)
+## scope-auditor (cycle 2)
 VERDICT: PASS
 risks_checked:
-- §6 owner sign-off for the `statement_roe_pct`/`debt_to_equity` copy reword is now self-contained in the contract amendment with the explicit AskUserQuestion approval ("Approve — ship as-is", 2026-07-08) — no longer merely deferred to merge.
-- All 16 staged files remain inside `scope_paths`; no out-of-scope file modified; `seed_ci_raw_fixtures.py` correctly untouched (conditional path — fixtures already carry the balance-sheet inputs).
-- `applies_to` pipe-delimited format is documented (technical_definition) and guarded (`_seeds.yml` not_null + `test_metric_catalogue.py` subset check) — an acceptable implementation choice, not a silent owner decision.
+- §6 copy sign-off is self-contained in the contract amendment (4 bank-metric copy presented via AskUserQuestion, owner selected "Approve — ship as-is", 2026-07-08) — not silent.
+- Owner kept the P/E-based core three (declined the P/TBV swap) — documented in the amendment, not silently decided.
+- Scope integrity: exactly 16 files, all in `scope_paths`; the five eligibility-assumption sites all updated (int model + int/mart expression tests + singular assertion + LLOY/HSBA unit tests); catalogue narrowing correct; `data_contract.md` per-type + export table synced.
 
-## analytics-engineer-reviewer (cycle 3)
+## analytics-engineer (cycle 1)
 VERDICT: PASS
 risks_checked:
-- `card_metrics_statement_metrics_negative_equity` feeds nonzero-negative `stmt_stockholders_equity` (-30000), distinct from the zero-equity→null test — exercises the sign-varying branch the `!= 0` guard allows through; arithmetic verified (debt_to_equity −0.5; statement_roe_pct +20.0 = loss ÷ negative equity → spuriously positive, the documented caveat).
-- `applies_to` `not_null` in `_seeds.yml`; `mart_stock_cards_current_ratio_stmt_non_negative` (`>= 0 or null`) mart consistency test; `mart_stock_cards.sql` is a SELECT-only carry of the 3 metrics + `company_type` (no computation in the mart).
-- Catalogue `numerator_expr`/`denominator_expr` for all three new metrics match the SQL over the same annual-statement row set (no cross-window mismatch).
+- Per-type eligibility consistency across all sites: the `eligibility` CTE's `missing_metrics` + `is_card_eligible` CASE are mirrored byte-for-byte in the `_intermediate.yml`/`_marts.yml` `expression_is_true` tests and `assert_eligible_mart_rows_have_all_metrics.sql`; `assert_mart_row_count_matches_card_metrics.sql` is symmetric (untouched). No site still hardcodes the 5-AND.
+- Catalogue-vs-model formula fidelity: the 4 new rows' numerator/denominator_expr match `int_stock__card_metrics.sql` verbatim, all same-statement-window; the mart is a SELECT-only carry (no recompute); the 25->30 pool growth is hand-verified against the bank fixture's real inputs.
+- (Non-blocking nit, now fixed:) stale "five-metric" prose in the `mart_stock_eligibility_gaps` description -> "per-type eligibility gate".
 
-## cto-reviewer (cycle 2)
+## cto-reviewer (cycle 1)
 VERDICT: PASS
 risks_checked:
-- `applies_to` reuses the existing catalogue→metrics.json→card_copy bridge (same seed/generator/loader); `metrics_for_card()` is one pure function; all three `card_ui.py` loops migrated off `ALL_METRICS` (import removed). No parallel mechanism.
-- Fail-open verified by execution: missing/None `company_type` renders the full "operating" card (no silent suppression). `export_metric_definitions_json.py` idempotent (no-drift subprocess test); `export_to_supabase.py` upsert keys unchanged by the added nullable columns.
-- New tests non-vacuous (per-type omission; null→no em-dash via literal `ss-metric-value">—<` absence; missing-type default; tier split disjoint+complete); no dependency/CI/secret change. (Minor non-blocking: the `tier` param is test-only, mirroring the pre-existing unused `VISIBLE_METRICS`/`DEEP_DIVE_METRICS`.)
+- Operating-card parity: hand-verified the operating metrics' (perspective, display_order) pairs are monotonic in lockstep, so `metrics_for_card`'s new lens-then-order sort is provably identical to the old display_order sort for the operating card (corroborated by the unchanged `test_metrics_for_card_operating_includes_new_metrics_in_order`). Lens-sort reuses the existing CI-governed `perspective` vocabulary — no new column/renumber.
+- Re-run/interruption safety: `seed_ci_raw_fixtures.py` rewrites each parquet fresh (no append) so a re-run yields one bank per market, not cumulative; `export_to_supabase.py` upsert key is independent of the 4 new columns; migration 008 applies before export in `data_pipeline.yml`.
+- Fixture correctness: hand-verified the bank fixture's four metric values against the model SQL; `company_type='financial'` derives from `info_sector`; `debt_to_equity` excluded via `applies_to` (catalogue-driven), not null inputs. No dependency/workflow/secret change.
 
 ## data-engineer-reviewer (cycle 1)
 VERDICT: PASS
 risks_checked:
-- Migration `007_router_card_columns.sql` is additive + `add column if not exists` (matches the 004–006 convention); `apply_supabase_migrations.py` tracks applied files (no double-apply) and rolls back the whole file atomically on partial failure.
-- Export upsert is name-keyed (`{col: row[col] for col in EXPORT_COLUMNS}`) — adding columns can't misalign values; `on_conflict="market_code,ticker,snapshot_date"` unchanged. Transient-null handled (frontend defaults a missing `company_type` → operating, precedented by 004/006); `data_contract.md` export table synced with `EXPORT_COLUMNS`.
-- No `ingestion/` file in the diff — the loader territory is dormant; only the `supabase/*` path triggered this reviewer.
+- Migration 008 idempotency/convention: `add column if not exists` on 4 nullable numeric columns, header comment verbatim-matches 007, no overlap with 007's columns, sorts/applies after 007, double-guarded by `apply_supabase_migrations.py` filename tracking.
+- Export idempotency: `EXPORT_COLUMNS` extension is name-keyed (`{col: row[col] for col in EXPORT_COLUMNS}`), `on_conflict` unchanged and excludes the new columns; batch upserts re-runnable. Backfill null-safe (frontend `metrics_for_card` drops null metrics — no dash).
+- Schema contract sync verified column-for-column: `data_contract.md` export table + per-type eligibility prose match `EXPORT_COLUMNS` and the dbt CASE; baseline 25->30 arithmetically consistent (5 active markets × 1 bank). No `ingestion/` change.
 
-## equity-analyst-reviewer (cycle 3)
+## equity-analyst-reviewer (cycle 2)
 VERDICT: PASS
 risks_checked:
-- "minority interest" jargon removed from BOTH new-metric `description` fields (seed + `metrics.json` mirror; repo-wide grep clean), meaning preserved ("owners' stake" / "belonging to common shareholders"), no replacement jargon introduced.
-- "two-year average" → "Yahoo averages equity across the year" — an accurate paraphrase of standard ROE methodology (average of beginning + ending equity within one period), no new false precision.
-- All three new rows: `calculation` matches `int_stock__card_metrics.sql` exactly (with null/zero-equity guards), direction correct (debt_to_equity lower_better; current_ratio_stmt/statement_roe_pct higher_better), applicability complete (banks / negative-thin equity / near-zero denominators), no advice language.
+- `price_to_tangible_book` copy now accurately describes ABSENCE (null when tangible book <= 0, per the model's `> 0` guard) with "zero or negative" attributed to the input, plain English, no `≤` symbol — mirrored identically in seed + metrics.json.
+- Bank eligibility gate (P/E-based core three; P/TBV swap declined) is the owner's documented §6 call, not silently overridden.
+- All 4 new formulas (P/TBV, net margin, ROA, dividend yield) match `int_stock__card_metrics.sql` line-by-line; `roa_pct` copy surfaces the ROA/ROE numerator asymmetry + period-end basis; dividend passthrough pinned by a unit test; no advice language anywhere.
 
 ## Non-blocking / deferred to follow-on slices
-- **Value-aware negative-equity gloss** for `debt_to_equity`/`statement_roe_pct` (a "net cash"-style re-label when equity is negative, like `net_debt_to_ebitda`) — the applicability caveat already warns the beginner; a value-aware re-label is new §6 copy → deferred to 4b (analytics-engineer cycle-2 Q2).
-- Per-type **eligibility** rework + **ROA/ROE numerator-asymmetry** copy (ROA joins ROE on the financial card) + the **dividendYield scale-regression guard** land in 4b/4c per the approved plan. 4a keeps the five-metric AND untouched (baseline stable).
+- **Slice 4c (pre-revenue card):** the survival set (`cash_runway_months`, `burn_rate_monthly`, `net_cash_to_ev`, `working_capital`, + a cash level), its `applies_to = pre_revenue`, a per-type eligibility branch (pre_revenue currently rides the else/5-AND, so it stays ineligible until 4c), cash-first ordering, and the FCF-yield-negative copy.
+- **Full-pipeline baseline (843)** will rise as banks become eligible; `check_eligibility_baseline.py` fails only on drops, so it passes — refresh via `--write-baseline` on the next weekly pipeline (owner; not local).
+- Value-aware negative-equity gloss for `debt_to_equity`/`statement_roe_pct` (from 4a) remains a candidate — the applicability caveat already warns.

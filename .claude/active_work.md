@@ -12,9 +12,10 @@ matrix** (below). **Slices 1–2b are all MERGED** (#139 classifier · #140 bala
 — **the entire raw data foundation is in.** Slice 3 (the compute) is built in two PRs: **Slice 3a
 (statement enrichment) MERGED (#142)** and **Slice 3b (per-type metric compute) MERGED (#143).** The
 test-architecture cleanup (#144) also merged. **Slice 4a — the Router mechanism + grown operating card — is
-PR'd (#145, awaiting merge).** The next step is **Slice 4b (financial/bank card).**
-The most recent session built Slice 4a: the per-type render mechanism (`applies_to`), `company_type` carried
-end-to-end, and the operating card grown 5 → 8 with owner-signed copy — see Status + Next actions.
+MERGED (#145); Slice 4b — the financial/bank card + per-type eligibility rework — is PR'd (#146, awaiting merge).**
+The next step is **Slice 4c (pre-revenue card),** the last Router slice.
+The most recent session built Slice 4b: 4 bank metrics + the per-type eligibility `CASE` (banks now enter the
+pool, baseline 25 → 30) + a synthetic bank fixture — see Status + Next actions.
 
 ## Status
 
@@ -40,7 +41,7 @@ end-to-end, and the operating card grown 5 → 8 with owner-signed copy — see 
   working_capital, price_to_tangible_book, net_margin_pct, roa_pct, statement_roe_pct, dividend_yield_pct,
   computed_fcf, cash_runway_months, burn_rate_monthly, net_cash_to_ev) + 4 unit tests. Coexist with the
   info-scalars; eligibility/mart/export untouched (baseline 25, export 100%).
-- **Sector Router — Slice 4a (Router mechanism + grown operating card) PR'd (#145, awaiting merge).**
+- **Sector Router — Slice 4a (Router mechanism + grown operating card) MERGED (#145).**
   Per-type display via a catalogue `applies_to` column → `frontend/card_copy.metrics_for_card(card, tier)`
   (renders a metric only when `company_type ∈ applies_to` AND value non-null → omit, never `—`). `company_type`
   + the 3 new operating metric VALUES (`debt_to_equity`, `current_ratio_stmt`, `statement_roe_pct`) carried
@@ -49,6 +50,15 @@ end-to-end, and the operating card grown 5 → 8 with owner-signed copy — see 
   `statement_roe_pct`; owner-signed copy). **Eligibility untouched — five-metric AND stays, baseline 25.**
   Full 5-reviewer cycle all-PASS (3 cycles); dbt PASS=102, pytest 88. Deferred to 4b: value-aware
   negative-equity gloss for debt/equity + ROE (caveat already warns).
+- **Sector Router — Slice 4b (financial/bank card + per-type eligibility) PR'd (#146, awaiting merge).**
+  4 bank metrics catalogued (`price_to_tangible_book`, `net_margin_pct`, `roa_pct`, `dividend_yield_pct`;
+  `applies_to = financial`; owner-signed copy incl. the ROA/ROE numerator-asymmetry caveat); operating-only
+  metrics narrowed off banks; `statement_roe_pct` extended to `operating|financial`. **Eligibility reworked to a
+  per-type `CASE company_type`** (financial = `forward_pe + statement_roe_pct + net_margin_pct`; operating/
+  pre_revenue keep the 5-AND) — the **first eligible-pool change** (5 assumption sites updated incl. 2 stale
+  LLOY/HSBA unit tests). Values carried int → mart → Supabase (migration `008`). `metrics_for_card` now
+  lens-sorts (bank card lens-grouped; operating byte-identical). Synthetic bank fixture per market → **CI
+  baseline 25 → 30**; dividendYield scale-guard unit test. dbt PASS=104, pytest 91. Full 5-reviewer cycle all-PASS.
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -122,7 +132,7 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
      averaging, per #140) → differ from Yahoo's averaged/TTM scalars by design; document when catalogued.
    - Add dbt **unit tests** per metric guard (null → null; zero denom → null; interest-coverage sign;
      runway/burn only when burning). Full 5-reviewer cycle; the equity-analyst scrutinises the formulas.
-5a. **Slice 4a — Router mechanism + grown operating card: PR'd (#145, awaiting merge).** `applies_to` catalogue
+5a. **Slice 4a — Router mechanism + grown operating card: MERGED (#145).** `applies_to` catalogue
    column → `card_copy.metrics_for_card(card, tier)` (render iff `company_type ∈ applies_to` AND value non-null →
    omit, never `—`); `company_type` + the 3 operating metric VALUES carried int → mart → Supabase
    (`007_router_card_columns.sql` + export + `data_contract.md`); operating grown 5 → 8 (`debt_to_equity`,
@@ -134,22 +144,21 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
      + migration + `data_contract.md` are explicit); `applies_to` is pipe-delimited (`_seeds.yml` not_null +
      `test_metric_catalogue` subset check — `accepted_values` can't validate a compound cell); mart is
      SELECT-only, metrics computed once in `int_stock__card_metrics`.
-5b. **Slice 4b (← START HERE) — financial/bank card.** Catalogue `price_to_tangible_book`, `roa_pct`,
-   `dividend_yield_pct`, `net_margin_pct` (+ add `financial` to `statement_roe_pct`'s `applies_to`); narrow the
-   operating-only metrics off `financial`; **honestly-blank solvency/liquidity/cash** (omit, don't fake); a
-   **per-type eligibility branch** for financial (baseline WILL change — recalibrate on the FULL pipeline, not
-   locally: fixtures are all-operating). Owner-signed §6 copy incl. the caveats below.
-   - **§6 copy 4b must author (owner sign-off):** ROE (negative/thin equity → spuriously positive; means
-     something different for banks); EV/EBITDA & P/B financials caveats; **ROA/ROE numerator asymmetry** (ROA =
-     total NI ÷ total assets vs ROE = common NI ÷ common equity) surfaced in copy now that both render together;
-     **period-end vs Yahoo-averaged denominator** caveat; **value-aware negative-equity gloss** for debt/equity +
-     ROE (deferred from 4a — the applicability caveat already warns).
-   - **dividendYield scale-regression guard** — a persisted assertion/fixture check so a future yfinance version
-     reverting `dividendYield` to a fraction is caught (else a 100× error). Rides with 4b (div-yield renders here).
-5c. **Slice 4c — pre-revenue card.** Survival set: `cash_runway_months`, `burn_rate_monthly`, `net_cash_to_ev`,
-   `working_capital` (+ a cash level); `applies_to = pre_revenue`; narrow operating/financial metrics off
-   pre-revenue; per-type eligibility; cash-first ordering. Recalibrate baseline. Owner-signed copy; **FCF yield
-   NEGATIVE for cash-burners** (#137 flag) if surfaced.
+5b. **Slice 4b — financial/bank card + per-type eligibility: PR'd (#146, awaiting merge).** 4 bank metrics
+   catalogued (P/TBV, net_margin, roa, dividend_yield; owner-signed copy incl. the ROA/ROE asymmetry + period-end
+   caveats + a dividendYield scale-guard unit test); operating-only metrics narrowed off banks; per-type
+   eligibility `CASE` (financial core three = forward_pe + statement_roe_pct + net_margin_pct); bank fixture →
+   baseline 25 → 30; `metrics_for_card` lens-sort. **EV/EBITDA & P/B financial caveats were moot** (banks use
+   statement P/TBV, not those info-scalars). Value-aware negative-equity gloss for debt/equity + ROE still
+   deferred (caveat already warns). Owner **kept the P/E-based bank gate** (declined the P/TBV swap).
+5c. **Slice 4c (← START HERE) — pre-revenue card.** Survival set: `cash_runway_months`, `burn_rate_monthly`,
+   `net_cash_to_ev`, `working_capital` (+ a cash level); `applies_to = pre_revenue`; narrow operating/financial
+   metrics off pre-revenue; **add the pre_revenue eligibility branch** (it currently rides the else/5-AND → stays
+   ineligible until 4c); cash-first ordering; recalibrate baseline; owner-signed copy; **FCF yield NEGATIVE for
+   cash-burners** (#137 flag) if surfaced. **All the mechanism is in place from 4b** — the per-type eligibility
+   `CASE` (5 assumption sites: int model + int/mart expression tests + the `assert_eligible_mart_rows_have_all_metrics`
+   singular test + per-type unit tests), the `applies_to` narrowing pattern, the lens-sort, and the CIFIN bank-fixture
+   pattern (add a pre_revenue fixture the same way) — copy those.
 6. **Slice 5 — AI assessment generator** (Python after dbt/export; Claude; store to Supabase; not-advice).
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above.
 
