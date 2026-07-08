@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from card_copy import (  # noqa: E402
+    ALL_METRICS,
     BUSINESS_SUMMARY_PREVIEW_WORDS,
     business_summary_is_truncated,
     business_summary_preview,
@@ -10,6 +11,7 @@ from card_copy import (  # noqa: E402
     metric_gloss,
     metric_label,
     metric_learn_text,
+    metrics_for_card,
     saved_row_subtitle,
     truncate_words,
 )
@@ -86,3 +88,61 @@ def test_business_summary_is_truncated() -> None:
     assert business_summary_is_truncated(long_card) is True
     assert business_summary_is_truncated(short_card) is False
     assert BUSINESS_SUMMARY_PREVIEW_WORDS == 20
+
+
+# --- Sector/Lifecycle Router: per-type render rule (metrics_for_card) ---
+
+_NEW_OPERATING_METRICS = ("debt_to_equity", "current_ratio_stmt", "statement_roe_pct")
+# Solvency/liquidity metrics that stay operating-only across slices (banks never show them).
+_BANK_INAPPLICABLE = {"debt_to_equity", "current_ratio_stmt"}
+
+
+def _full_card(company_type: str | None = "operating") -> dict:
+    """A card with every catalogued metric populated (value 1.0)."""
+    card = {metric: 1.0 for metric in ALL_METRICS}
+    if company_type is None:
+        card.pop("company_type", None)
+    else:
+        card["company_type"] = company_type
+    return card
+
+
+def test_metrics_for_card_operating_includes_new_metrics_in_order() -> None:
+    metrics = metrics_for_card(_full_card("operating"))
+    for metric in _NEW_OPERATING_METRICS:
+        assert metric in metrics
+    order = [ALL_METRICS.index(m) for m in metrics]
+    assert order == sorted(order), "render order must follow catalogue display order"
+
+
+def test_metrics_for_card_financial_omits_bank_inapplicable() -> None:
+    metrics = metrics_for_card(_full_card("financial"))
+    assert _BANK_INAPPLICABLE.isdisjoint(metrics)
+    assert "forward_pe" in metrics  # valuation still applies to banks
+
+
+def test_metrics_for_card_pre_revenue_omits_bank_inapplicable() -> None:
+    metrics = metrics_for_card(_full_card("pre_revenue"))
+    assert _BANK_INAPPLICABLE.isdisjoint(metrics)
+
+
+def test_metrics_for_card_omits_null_valued_metric() -> None:
+    card = _full_card("operating")
+    card["current_ratio_stmt"] = None
+    metrics = metrics_for_card(card)
+    assert "current_ratio_stmt" not in metrics  # omitted, never rendered as an em-dash
+    assert "debt_to_equity" in metrics  # other operating metrics still present
+
+
+def test_metrics_for_card_missing_company_type_defaults_operating() -> None:
+    assert metrics_for_card(_full_card(None)) == metrics_for_card(_full_card("operating"))
+
+
+def test_metrics_for_card_tier_split() -> None:
+    card = _full_card("operating")
+    tier1 = metrics_for_card(card, tier=1)
+    tier2 = metrics_for_card(card, tier=2)
+    assert set(tier1).isdisjoint(tier2)
+    assert set(tier1) | set(tier2) == set(metrics_for_card(card))
+    assert "forward_pe" in tier1  # hero three
+    assert "statement_roe_pct" in tier2  # balance metric below the fold

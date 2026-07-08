@@ -32,6 +32,10 @@ models:
           name: mart_stock_cards_all_rows_eligible
           arguments:
             expression: is_card_eligible = true
+      - dbt_utils.expression_is_true:
+          name: mart_stock_cards_current_ratio_stmt_non_negative
+          arguments:
+            expression: current_ratio_stmt is null or current_ratio_stmt >= 0
     columns:
       - name: market_code
         description: >
@@ -76,11 +80,34 @@ models:
       - name: fcf_margin_pct
         description: >
           Card metric 5 — free cash flow margin percent (0–100 scale).
+      - name: debt_to_equity
+        description: >
+          Operating-card solvency metric — total debt / shareholders' equity (statement-based,
+          nullable). Rendered per company_type; not part of is_card_eligible.
+      - name: current_ratio_stmt
+        description: >
+          Operating-card liquidity metric — current assets / current liabilities (statement-based,
+          nullable; null for financials). Rendered per company_type; not part of is_card_eligible.
+      - name: statement_roe_pct
+        description: >
+          Operating-card returns metric — net income to common stockholders / shareholders' equity
+          × 100 (statement-based, period-end; nullable). Rendered per company_type; not part of
+          is_card_eligible.
       - name: is_card_eligible
         description: >
           Whether all five metrics are present; drives discovery queue inclusion.
         data_tests:
           - not_null
+      - name: company_type
+        description: >
+          Sector/lifecycle classification for the Router — operating, financial, or pre_revenue.
+          Always non-null (defaults to operating when revenue is a data gap). Drives which metrics
+          the card renders per company type; does not affect is_card_eligible in this slice.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["operating", "financial", "pre_revenue"]
       - name: sector_peer_count
         description: >
           Eligible peer count in sector; null when sector unknown or no benchmark row.

@@ -16,7 +16,12 @@
       "learn": "P/E (price-to-earnings) divides the share price by earnings per share. Forward P/E uses analyst estimates for next year's earnings, not last year's results. A higher number often means investors expect faster growth — or are paying a premium today.",
       "importance_tier": 1,
       "display_order": 1,
-      "benchmarkable": true
+      "benchmarkable": true,
+      "applies_to": [
+        "operating",
+        "financial",
+        "pre_revenue"
+      ]
     },
     {
       "metric_id": "ebit_margin_pct",
@@ -34,7 +39,12 @@
       "learn": "This card sums Operating Income and Total Revenue from the last four quarterly financial statements, then divides — a trailing twelve-month (TTM) operating margin. It is not Yahoo's single-quarter operatingMargins snapshot.",
       "importance_tier": 1,
       "display_order": 2,
-      "benchmarkable": true
+      "benchmarkable": true,
+      "applies_to": [
+        "operating",
+        "financial",
+        "pre_revenue"
+      ]
     },
     {
       "metric_id": "revenue_growth_yoy_pct",
@@ -52,7 +62,12 @@
       "learn": "Year-over-year (YoY) growth compares revenue in the latest reported quarter with the same quarter one year ago (Yahoo revenueGrowth). One quarter can be noisy — look for a pattern over time when you dig deeper.",
       "importance_tier": 1,
       "display_order": 3,
-      "benchmarkable": true
+      "benchmarkable": true,
+      "applies_to": [
+        "operating",
+        "financial",
+        "pre_revenue"
+      ]
     },
     {
       "metric_id": "net_debt_to_ebitda",
@@ -70,7 +85,54 @@
       "learn": "Net debt is total debt minus cash on hand (Yahoo). EBITDA is Yahoo's reported EBITDA figure — often trailing, not necessarily matched to the same instant as the balance sheet. Use this as a rough leverage signal, not a precise accounting ratio.",
       "importance_tier": 2,
       "display_order": 4,
-      "benchmarkable": true
+      "benchmarkable": true,
+      "applies_to": [
+        "operating",
+        "financial",
+        "pre_revenue"
+      ]
+    },
+    {
+      "metric_id": "debt_to_equity",
+      "label": "Debt / equity",
+      "description": "Total borrowings relative to shareholders' equity — the owners' stake — from the latest annual balance sheet.",
+      "calculation": "Total debt ÷ shareholders' equity (latest annual balance sheet).",
+      "interpretation": "Lower = less borrowed money per dollar of owners' capital, so more cushion in a downturn. Higher = more leverage, riskier when profits dip or rates rise.",
+      "applicability": "Distorted when equity is thin or negative — heavy buybacks can push equity below zero, and the ratio then flips or explodes and stops being meaningful. Not shown for banks.",
+      "format": "ratio_2",
+      "perspective": "solvency",
+      "direction": "lower_better",
+      "basis_column": "",
+      "gloss": "Borrowed money vs owners' money",
+      "analogy": "Like comparing a mortgage to home equity — how much of the company is borrowed versus owned.",
+      "learn": "Debt-to-equity divides total debt by shareholders' equity — the owners' stake — from the latest annual balance sheet. It is a second read on leverage alongside Net debt / EBITDA: how heavily the company leans on borrowing versus its own capital. Read a very high number, or negative equity, with care.",
+      "importance_tier": 2,
+      "display_order": 5,
+      "benchmarkable": false,
+      "applies_to": [
+        "operating"
+      ]
+    },
+    {
+      "metric_id": "current_ratio_stmt",
+      "label": "Current ratio",
+      "description": "Current assets relative to current liabilities, from the latest annual balance sheet — short-term resources against short-term bills.",
+      "calculation": "Current assets ÷ current liabilities (latest annual balance sheet).",
+      "interpretation": "Above 1 means short-term assets cover short-term bills. Higher = more comfortable near-term liquidity; below 1 can signal a cash crunch.",
+      "applicability": "Not defined for banks — their balance sheet has no current/non-current split. A very high ratio is not automatically good; it can mean cash sitting idle.",
+      "format": "ratio_2",
+      "perspective": "liquidity",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Short-term assets vs short-term bills",
+      "analogy": "Like checking your savings against next month's bills — can the company cover what is due soon?",
+      "learn": "The current ratio divides current assets (cash and things convertible to cash within a year) by current liabilities (bills due within a year), from the latest annual balance sheet. Above 1 means near-term resources cover near-term obligations. Banks do not report this split, so it shows only for operating companies.",
+      "importance_tier": 2,
+      "display_order": 6,
+      "benchmarkable": false,
+      "applies_to": [
+        "operating"
+      ]
     },
     {
       "metric_id": "fcf_margin_pct",
@@ -87,8 +149,34 @@
       "analogy": "After running the business, how much cash is left from each sales dollar — not the same as accounting profit.",
       "learn": "Free cash flow (FCF) is cash left after running and investing in the business. This card computes FCF margin from the latest annual cash flow and income statements — not Yahoo's trailing Key Statistics ratio. Run the metric audit script to compare.",
       "importance_tier": 2,
-      "display_order": 5,
-      "benchmarkable": true
+      "display_order": 7,
+      "benchmarkable": true,
+      "applies_to": [
+        "operating",
+        "financial",
+        "pre_revenue"
+      ]
+    },
+    {
+      "metric_id": "statement_roe_pct",
+      "label": "Return on equity",
+      "description": "Profit earned on owners' equity — profit belonging to common shareholders divided by their equity stake, from the latest annual statements.",
+      "calculation": "Net income to common stockholders ÷ shareholders' equity × 100 (latest annual statements; period-end equity).",
+      "interpretation": "Higher = more profit generated per dollar of owners' capital. A durable high ROE points to an efficient, profitable business.",
+      "applicability": "Misleads when equity is thin or negative — a loss over negative equity can read as a spuriously positive percentage. Uses profit to common shareholders and period-end equity — Yahoo averages equity across the year instead — so it differs from Yahoo's ROE by design. Means something different for banks.",
+      "format": "percent_1",
+      "perspective": "returns",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Profit earned on owners' money",
+      "analogy": "Like the interest rate the business earns on the capital shareholders have invested.",
+      "learn": "Return on equity (ROE) divides profit attributable to common shareholders by their equity stake, from the latest annual statements. It asks: for each dollar owners have in the business, how much profit did it earn this year? We use period-end equity, so it can differ from Yahoo's averaged figure. Watch out when equity is very small or negative — the percentage stops being meaningful.",
+      "importance_tier": 2,
+      "display_order": 8,
+      "benchmarkable": false,
+      "applies_to": [
+        "operating"
+      ]
     }
   ]
 }

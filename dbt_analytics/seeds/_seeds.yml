@@ -78,3 +78,9 @@ seeds:
           - accepted_values:
               arguments:
                 values: ["higher_better", "lower_better", "neutral"]
+      - name: applies_to
+        description: >
+          Pipe-delimited company types that render this metric (e.g. operating|financial|pre_revenue).
+          Drives the frontend per-type card. Value membership is validated in
+          tests/tooling/test_metric_catalogue.py (accepted_values cannot check a compound pipe-delimited cell).
+        tests: [not_null]

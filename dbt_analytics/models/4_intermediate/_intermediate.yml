@@ -836,3 +836,31 @@ unit_tests:
             price_to_tangible_book: null,
             roa_pct: null,
           }
+  - name: card_metrics_statement_metrics_negative_equity
+    # Negative equity is a legitimate (not clipped/nulled) signed output: debt_to_equity flips
+    # negative, and a loss over negative equity yields a spuriously POSITIVE ROE — the exact case
+    # the catalogue applicability copy warns beginners about. Guards only exclude equity == 0.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: NEGE,
+              snapshot_date: "2026-01-01",
+              stmt_total_debt: 15000.0,
+              stmt_stockholders_equity: -30000.0,
+              stmt_net_income_common: -6000.0,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: NEGE, company_name: NegE Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: NEGE,
+            debt_to_equity: -0.5,
+            statement_roe_pct: 20.0,
+          }

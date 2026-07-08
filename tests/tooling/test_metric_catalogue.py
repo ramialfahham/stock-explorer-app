@@ -39,6 +39,7 @@ _VALID_PERSPECTIVES = {
     "cash",
     "returns",
 }
+_VALID_COMPANY_TYPES = {"operating", "financial", "pre_revenue"}
 
 
 def _catalogue_rows() -> list[dict[str, str]]:
@@ -65,6 +66,9 @@ def test_catalogue_values_well_formed() -> None:
         assert (row.get("label") or "").strip(), f"{mid}: empty label"
         for field in ("calculation", "interpretation", "applicability"):
             assert (row.get(field) or "").strip(), f"{mid}: empty {field}"
+        applies_to = [t.strip() for t in (row.get("applies_to") or "").split("|") if t.strip()]
+        assert applies_to, f"{mid}: empty applies_to"
+        assert set(applies_to) <= _VALID_COMPANY_TYPES, f"{mid}: bad applies_to {row.get('applies_to')!r}"
 
 
 def test_every_catalogue_metric_is_computed_in_the_model() -> None:
