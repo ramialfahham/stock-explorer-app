@@ -12,6 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
 SNAPSHOT = date.today()
 TICKERS = [f"CI{i:02d}" for i in range(1, 6)]
+BANK_TICKER = "CIFIN"
+ALL_TICKERS = TICKERS + [BANK_TICKER]
 TTM_QUARTER_FIXTURE = {
     "qtr_operating_income_0": 25.0,
     "qtr_operating_income_1": 25.0,
@@ -33,6 +35,60 @@ TTM_QUARTER_FIXTURE = {
     "stmt_operating_revenue": None,
     "stmt_operating_expense": None,
 }
+
+
+def _bank_fundamentals(market_code: str) -> dict:
+    """One Financial Services fixture per market — bank-shaped so the financial card + eligibility
+    are locally verifiable. No current-asset/liability split and no EBITDA (as for real banks);
+    has tangible book, ROE, net margin, ROA and a percent dividend yield. The financial core three
+    (forward_pe + statement_roe_pct + net_margin_pct) are present, so it is card-eligible.
+    P/TBV = 200/55; net_margin = 12/80*100 = 15%; statement_roe = 11/60*100 ≈ 18.3%; roa = 12/800*100 = 1.5%.
+    """
+    return {
+        "market_code": market_code,
+        "ticker": BANK_TICKER,
+        "snapshot_date": SNAPSHOT,
+        "info_forward_pe": 11.0,
+        "info_operating_margins": None,
+        "info_revenue_growth": 0.05,
+        "info_net_debt": None,
+        "info_total_debt": None,
+        "info_total_cash": None,
+        "info_ebitda": None,
+        "info_return_on_equity": 0.18,
+        "info_current_ratio": None,
+        "info_price_to_book": 1.2,
+        "info_price_to_sales": None,
+        "info_ev_to_ebitda": None,
+        "info_free_cashflow": None,
+        "info_market_cap": 200_000_000_000.0,
+        "info_sector": "Financial Services",
+        "info_currency": "USD",
+        "info_long_name": f"CI Fixture {BANK_TICKER} Bank",
+        "info_business_summary": (
+            f"CI Fixture {BANK_TICKER} is a diversified bank offering retail and commercial banking services."
+        ),
+        "info_founded_year": 1990,
+        "stmt_total_revenue": 80_000_000_000.0,
+        "stmt_free_cash_flow": None,
+        "stmt_fiscal_period_end": SNAPSHOT,
+        "stmt_currency": "USD",
+        "stmt_stockholders_equity": 60_000_000_000.0,
+        "stmt_total_debt": 100_000_000_000.0,
+        "stmt_current_assets": None,
+        "stmt_current_liabilities": None,
+        "stmt_cash_and_equivalents": 50_000_000_000.0,
+        "stmt_tangible_book_value": 55_000_000_000.0,
+        "stmt_total_assets": 800_000_000_000.0,
+        "stmt_operating_cash_flow": None,
+        "stmt_capital_expenditure": None,
+        "stmt_interest_expense": None,
+        "stmt_net_income": 12_000_000_000.0,
+        "stmt_net_income_common": 11_000_000_000.0,
+        "info_dividend_yield": 3.5,
+        "info_payout_ratio": 0.4,
+        **{key: None for key in TTM_QUARTER_FIXTURE},
+    }
 
 
 def _load_active_markets() -> list[str]:
@@ -59,7 +115,7 @@ def _write_market_fixtures(market_code: str) -> None:
                 "source": "ci_fixture",
                 "ingested_at": now,
             }
-            for ticker in TICKERS
+            for ticker in ALL_TICKERS
         ]
     )
     constituents.to_parquet(out / "yf_constituents.parquet", index=False)
@@ -78,7 +134,7 @@ def _write_market_fixtures(market_code: str) -> None:
                 "dividends": 0.0,
                 "stock_splits": 0.0,
             }
-            for ticker in TICKERS
+            for ticker in ALL_TICKERS
         ]
     )
     prices.to_parquet(out / "yf_daily_prices.parquet", index=False)
@@ -132,6 +188,7 @@ def _write_market_fixtures(market_code: str) -> None:
             }
             for i, ticker in enumerate(TICKERS, start=1)
         ]
+        + [_bank_fundamentals(market_code)]
     )
     fundamentals.to_parquet(out / "yf_fundamentals.parquet", index=False)
 

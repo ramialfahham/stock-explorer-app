@@ -121,6 +121,33 @@ def test_metrics_for_card_financial_omits_bank_inapplicable() -> None:
     assert "forward_pe" in metrics  # valuation still applies to banks
 
 
+# The bank card (4b): 7 metrics, lens-grouped (valuation, valuation, profitability, growth, returns×3).
+_BANK_CARD = (
+    "forward_pe",
+    "price_to_tangible_book",
+    "net_margin_pct",
+    "revenue_growth_yoy_pct",
+    "statement_roe_pct",
+    "roa_pct",
+    "dividend_yield_pct",
+)
+
+
+def test_metrics_for_card_financial_is_the_bank_set_lens_grouped() -> None:
+    assert metrics_for_card(_full_card("financial")) == _BANK_CARD
+
+
+def test_metrics_for_card_financial_omits_operating_only_and_the_new_bank_metrics_are_financial() -> None:
+    financial = set(metrics_for_card(_full_card("financial")))
+    operating = set(metrics_for_card(_full_card("operating")))
+    # the 4 new bank metrics render on the bank card, not the operating card
+    for metric in ("price_to_tangible_book", "net_margin_pct", "roa_pct", "dividend_yield_pct"):
+        assert metric in financial and metric not in operating
+    # operating solvency/cash metrics are not on the bank card
+    for metric in ("ebit_margin_pct", "net_debt_to_ebitda", "fcf_margin_pct"):
+        assert metric in operating and metric not in financial
+
+
 def test_metrics_for_card_pre_revenue_omits_bank_inapplicable() -> None:
     metrics = metrics_for_card(_full_card("pre_revenue"))
     assert _BANK_INAPPLICABLE.isdisjoint(metrics)

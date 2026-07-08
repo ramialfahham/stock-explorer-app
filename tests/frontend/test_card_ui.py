@@ -49,3 +49,9 @@ def test_build_card_financial_omits_bank_inapplicable_no_dash() -> None:
     for label in ("Debt / equity", "Current ratio"):
         assert label not in html  # honestly blank for banks -> omitted
     assert 'ss-metric-value">—<' not in html  # never an un-valued em-dash cell
+
+
+def test_build_card_financial_shows_bank_metrics() -> None:
+    html = build_card_html(_card_with_all_metrics("financial"))
+    for label in ("Price / tangible book", "Net margin", "Return on assets", "Dividend yield"):
+        assert label in html

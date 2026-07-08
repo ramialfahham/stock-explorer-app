@@ -42,7 +42,6 @@
       "benchmarkable": true,
       "applies_to": [
         "operating",
-        "financial",
         "pre_revenue"
       ]
     },
@@ -88,7 +87,6 @@
       "benchmarkable": true,
       "applies_to": [
         "operating",
-        "financial",
         "pre_revenue"
       ]
     },
@@ -153,7 +151,6 @@
       "benchmarkable": true,
       "applies_to": [
         "operating",
-        "financial",
         "pre_revenue"
       ]
     },
@@ -175,7 +172,92 @@
       "display_order": 8,
       "benchmarkable": false,
       "applies_to": [
-        "operating"
+        "operating",
+        "financial"
+      ]
+    },
+    {
+      "metric_id": "price_to_tangible_book",
+      "label": "Price / tangible book",
+      "description": "Market value relative to tangible book value (equity minus goodwill and other intangibles), from the latest annual balance sheet.",
+      "calculation": "Market cap ÷ tangible book value (latest annual balance sheet).",
+      "interpretation": "Lower = you pay less per dollar of hard, tangible net worth. For banks it is a core valuation yardstick; below 1 can signal doubts about asset quality.",
+      "applicability": "Tangible book value is equity minus goodwill and other intangibles — a key yardstick for banks. Not shown when intangibles exceed equity (tangible book zero or negative) — the ratio would be meaningless.",
+      "format": "ratio_2",
+      "perspective": "valuation",
+      "direction": "lower_better",
+      "basis_column": "",
+      "gloss": "Price vs hard book value",
+      "analogy": "Like paying for a house versus its rebuild-from-scratch value — how far above (or below) the tangible net worth is the price?",
+      "learn": "Tangible book value strips goodwill and other intangibles out of shareholders' equity, leaving the hard net worth. Price-to-tangible-book divides market value by that figure. Banks are valued heavily on this — near or below 1 means the market is cautious about the balance sheet.",
+      "importance_tier": 1,
+      "display_order": 9,
+      "benchmarkable": false,
+      "applies_to": [
+        "financial"
+      ]
+    },
+    {
+      "metric_id": "net_margin_pct",
+      "label": "Net margin",
+      "description": "Bottom-line profit (after everything) as a percent of revenue, from the latest annual statements.",
+      "calculation": "Net income ÷ revenue × 100 (latest annual statements).",
+      "interpretation": "Higher = more of each revenue dollar survives to the bottom line after all costs, interest, and taxes.",
+      "applicability": "Profit after everything ÷ revenue. For a bank, \"revenue\" is net interest plus fees, so read this as overall profitability, not operating efficiency. Breaks for pre-revenue firms (revenue ≈ 0).",
+      "format": "percent_1",
+      "perspective": "profitability",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Bottom-line profit per sales dollar",
+      "analogy": "Of every dollar that comes in, how many cents are left as final profit after all the bills.",
+      "learn": "Net margin divides bottom-line net income by revenue. Unlike operating margin, it is after interest and taxes too — the final slice kept. For banks, where \"revenue\" means net interest income plus fees, it reads as overall profitability.",
+      "importance_tier": 1,
+      "display_order": 10,
+      "benchmarkable": false,
+      "applies_to": [
+        "financial"
+      ]
+    },
+    {
+      "metric_id": "roa_pct",
+      "label": "Return on assets",
+      "description": "Profit earned on the company's total assets — total net income over total assets, from the latest annual statements.",
+      "calculation": "Net income ÷ total assets × 100 (latest annual statements; period-end assets).",
+      "interpretation": "Higher = more profit squeezed from each dollar of assets. For banks — which sit on huge asset bases — it is a core efficiency gauge.",
+      "applicability": "A core efficiency gauge for banks (they run on huge asset bases). Uses total profit ÷ total assets, whereas Return on equity uses profit belonging to common shareholders ÷ their equity — the two \"return\" metrics use different profit lines by design. Period-end assets, not Yahoo's averaged figure.",
+      "format": "percent_1",
+      "perspective": "returns",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Profit earned on total assets",
+      "analogy": "Like the yield a business earns on everything it owns, not just the owners' slice.",
+      "learn": "Return on assets divides total profit by total assets (from the latest annual statements). It answers: for every dollar of assets, how much profit? Banks live on this because they operate enormous balance sheets. Note it uses total net income, while Return on equity uses profit belonging to common shareholders — different profit lines by design.",
+      "importance_tier": 2,
+      "display_order": 11,
+      "benchmarkable": false,
+      "applies_to": [
+        "financial"
+      ]
+    },
+    {
+      "metric_id": "dividend_yield_pct",
+      "label": "Dividend yield",
+      "description": "Annual dividend as a percent of the share price (Yahoo dividendYield, already in percent).",
+      "calculation": "Annual dividend per share ÷ share price × 100 (Yahoo dividendYield).",
+      "interpretation": "Higher = more cash returned per dollar invested — but a very high yield can mean a falling price or a payout under strain, not just generosity.",
+      "applicability": "Cash paid to shareholders as a percent of the share price. A very high yield can flag a falling price or a payout at risk, not just generosity. Absent when the company pays no dividend.",
+      "format": "percent_1",
+      "perspective": "returns",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Annual dividend vs share price",
+      "analogy": "Like the interest a savings account pays — except the dividend can be cut, and the share price moves.",
+      "learn": "Dividend yield is the annual dividend divided by the share price. It is the cash income a share throws off, before any price change. A high yield is not automatically good — it can rise simply because the price fell, or signal a dividend at risk.",
+      "importance_tier": 2,
+      "display_order": 12,
+      "benchmarkable": false,
+      "applies_to": [
+        "financial"
       ]
     }
   ]

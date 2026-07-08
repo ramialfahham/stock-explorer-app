@@ -217,18 +217,17 @@ substitute ROE, ROA, or hand-built ROIC.
 
 ## Card eligibility (dbt)
 
-A ticker is **`is_card_eligible = true`** when **all five** metrics are non-null:
+`is_card_eligible` uses **per-type required sets**, keyed on `company_type` (the Sector/Lifecycle Router):
 
-1. `forward_pe`
-2. `ebit_margin_pct`
-3. `revenue_growth_yoy_pct`
-4. `net_debt_to_ebitda`
-5. `fcf_margin_pct`
+- **operating** and **pre_revenue** — all five of `forward_pe`, `ebit_margin_pct`,
+  `revenue_growth_yoy_pct`, `net_debt_to_ebitda`, `fcf_margin_pct` non-null.
+- **financial** — `forward_pe`, `statement_roe_pct`, `net_margin_pct` non-null (the operating
+  solvency/cash metrics are unsourceable for banks). pre_revenue's own set lands in a later slice.
 
-Missing any metric → excluded from discovery queue.
+Missing any required metric → excluded from discovery queue.
 
 **`missing_metrics`** (DuckDB-only, on `int_stock__card_metrics` and `mart_stock_eligibility_gaps`):
-VARCHAR list of the five metric column names that are null for that snapshot.
+VARCHAR list of the `company_type`'s required metric column names that are null for that snapshot.
 Empty when eligible. Used for pipeline QA — **not** exported to Supabase.
 
 Field-level mapping and dbt formulas: **§ yfinance raw field mapping** above.
@@ -306,7 +305,11 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `fcf_margin_pct` | numeric | |
 | `debt_to_equity` | numeric | Operating-card solvency (statement-based); nullable. |
 | `current_ratio_stmt` | numeric | Operating-card liquidity (statement-based); nullable, null for financials. |
-| `statement_roe_pct` | numeric | Operating-card returns (statement-based, period-end); nullable. |
+| `statement_roe_pct` | numeric | Operating/financial-card returns (statement-based, period-end); nullable. |
+| `price_to_tangible_book` | numeric | Financial-card valuation; nullable. |
+| `net_margin_pct` | numeric | Financial-card profitability; nullable. |
+| `roa_pct` | numeric | Financial-card returns (statement-based, period-end); nullable. |
+| `dividend_yield_pct` | numeric | Financial-card income (Yahoo dividend yield, percent); nullable. |
 | `is_card_eligible` | boolean | |
 | `company_type` | text | Sector/lifecycle class — `operating`, `financial`, or `pre_revenue`; always set (defaults to `operating`). Drives which metrics render per card type; does not affect `is_card_eligible`. |
 | `sector_peer_count` | integer | |
