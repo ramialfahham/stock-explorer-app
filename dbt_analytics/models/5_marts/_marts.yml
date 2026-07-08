@@ -21,13 +21,20 @@ models:
       - dbt_utils.expression_is_true:
           arguments:
             expression: >-
-              is_card_eligible = (
-                forward_pe is not null
-                and ebit_margin_pct is not null
-                and revenue_growth_yoy_pct is not null
-                and net_debt_to_ebitda is not null
-                and fcf_margin_pct is not null
-              )
+              is_card_eligible = case company_type
+                when 'financial' then (
+                  forward_pe is not null
+                  and statement_roe_pct is not null
+                  and net_margin_pct is not null
+                )
+                else (
+                  forward_pe is not null
+                  and ebit_margin_pct is not null
+                  and revenue_growth_yoy_pct is not null
+                  and net_debt_to_ebitda is not null
+                  and fcf_margin_pct is not null
+                )
+              end
       - dbt_utils.expression_is_true:
           name: mart_stock_cards_all_rows_eligible
           arguments:
@@ -90,12 +97,30 @@ models:
           nullable; null for financials). Rendered per company_type; not part of is_card_eligible.
       - name: statement_roe_pct
         description: >
-          Operating-card returns metric — net income to common stockholders / shareholders' equity
-          × 100 (statement-based, period-end; nullable). Rendered per company_type; not part of
-          is_card_eligible.
+          Returns metric — net income to common stockholders / shareholders' equity × 100
+          (statement-based, period-end; nullable). On the operating and financial cards; required
+          for financial-card eligibility.
+      - name: price_to_tangible_book
+        description: >
+          Financial-card valuation metric — market cap / tangible book value (nullable). Rendered
+          for financials; not part of eligibility.
+      - name: net_margin_pct
+        description: >
+          Financial-card profitability metric — net income / revenue × 100 (nullable). Required for
+          financial-card eligibility.
+      - name: roa_pct
+        description: >
+          Financial-card returns metric — net income / total assets × 100 (statement-based,
+          period-end; nullable). Rendered for financials; not part of eligibility.
+      - name: dividend_yield_pct
+        description: >
+          Financial-card income metric — Yahoo dividend yield, already in percent (nullable; null
+          when no dividend). Rendered for financials; not part of eligibility.
       - name: is_card_eligible
         description: >
-          Whether all five metrics are present; drives discovery queue inclusion.
+          Whether the company_type's required metrics are present (per-type: operating/pre_revenue
+          on the five-metric set, financial on forward_pe + statement_roe_pct + net_margin_pct);
+          drives discovery queue inclusion.
         data_tests:
           - not_null
       - name: company_type
@@ -134,7 +159,7 @@ models:
 
   - name: mart_stock_eligibility_gaps
     description: >
-      **What:** QA mart of tickers failing the five-metric eligibility gate.
+      **What:** QA mart of tickers failing the per-type eligibility gate.
       **Grain:** One row per (market_code, ticker, snapshot_date) where NOT is_card_eligible.
       **Source:** int_stock__card_metrics.
       **Used by:** check_eligibility_gaps.py (ops/CI). Not exported to Supabase.

@@ -37,9 +37,16 @@ _METRIC_BASIS_COLUMN = {m["metric_id"]: (m["basis_column"] or None) for m in _ME
 DEFAULT_COMPANY_TYPE = "operating"
 _METRIC_APPLIES_TO = {m["metric_id"]: tuple(m.get("applies_to") or ()) for m in _METRICS}
 
+# Canonical analytical-lens order (matches the metric_catalogue `perspective` taxonomy). A card's
+# metrics group by lens, then display_order within a lens — so each per-type card reads coherently
+# from its own subset. This is identity-preserving for the operating card (its display_order already
+# follows lens order) and gives disjoint per-type sets (bank, pre-revenue) a lens-grouped order too.
+_LENS_ORDER = ("valuation", "profitability", "growth", "solvency", "liquidity", "cash", "returns")
+_LENS_RANK = {lens: rank for rank, lens in enumerate(_LENS_ORDER)}
+
 
 def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
-    """Metric ids to render for this card, in catalogue display order.
+    """Metric ids to render for this card, grouped by analytical lens then display order.
 
     A metric shows only when it applies to the card's ``company_type`` **and** has a value —
     so a lens that is blank for a type (e.g. bank solvency) or simply missing for a row is
@@ -47,7 +54,7 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
     ``operating`` (the classifier's own default and the current universe's majority).
     """
     company_type = card.get("company_type") or DEFAULT_COMPANY_TYPE
-    selected: list[str] = []
+    selected: list[dict] = []
     for definition in _METRICS:
         metric_id = definition["metric_id"]
         if company_type not in _METRIC_APPLIES_TO.get(metric_id, ()):
@@ -56,8 +63,11 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
             continue
         if card.get(metric_id) is None:
             continue
-        selected.append(metric_id)
-    return tuple(selected)
+        selected.append(definition)
+    selected.sort(
+        key=lambda d: (_LENS_RANK.get(d["perspective"], len(_LENS_ORDER)), d["display_order"] or 0)
+    )
+    return tuple(d["metric_id"] for d in selected)
 
 # (metric, sector-median column, short direction) — derived from the catalogue.
 _DIRECTION_SHORT = {"higher_better": "higher", "lower_better": "lower", "neutral": "neutral"}

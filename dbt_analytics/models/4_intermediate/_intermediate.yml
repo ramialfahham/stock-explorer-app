@@ -22,13 +22,20 @@ models:
       - dbt_utils.expression_is_true:
           arguments:
             expression: >-
-              is_card_eligible = (
-                forward_pe is not null
-                and ebit_margin_pct is not null
-                and revenue_growth_yoy_pct is not null
-                and net_debt_to_ebitda is not null
-                and fcf_margin_pct is not null
-              )
+              is_card_eligible = case company_type
+                when 'financial' then (
+                  forward_pe is not null
+                  and statement_roe_pct is not null
+                  and net_margin_pct is not null
+                )
+                else (
+                  forward_pe is not null
+                  and ebit_margin_pct is not null
+                  and revenue_growth_yoy_pct is not null
+                  and net_debt_to_ebitda is not null
+                  and fcf_margin_pct is not null
+                )
+              end
       - dbt_utils.expression_is_true:
           name: card_metrics_missing_metrics_consistent_with_eligibility
           arguments:
@@ -536,11 +543,15 @@ unit_tests:
               currency: GBP,
             }
     expect:
+      # HSBA is financial; per-type eligibility (4b) judges it on the financial core three
+      # (forward_pe + statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs
+      # (it targets the annual ebit_margin fallback), so it lacks statement ROE and net margin and is
+      # ineligible — but ebit_margin still falls back to the annual figure correctly.
       rows:
         - {
             market_code: uk_ftse100,
             ticker: HSBA,
-            is_card_eligible: true,
+            is_card_eligible: false,
             ebit_margin_pct: 20.0,
             ebit_margin_basis: annual_latest,
           }
@@ -588,11 +599,15 @@ unit_tests:
               currency: GBP,
             }
     expect:
+      # This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
+      # inputs. Under per-type eligibility (4b) LLOY is financial and judged on the financial core three
+      # (forward_pe + statement_roe_pct + net_margin_pct); lacking statement ROE and net margin it is
+      # ineligible — but ebit_margin is still computed correctly from operating revenue - expense.
       rows:
         - {
             market_code: uk_ftse100,
             ticker: LLOY,
-            is_card_eligible: true,
+            is_card_eligible: false,
             ebit_margin_pct: 25.0,
             ebit_margin_basis: ttm_quarterly,
           }
@@ -864,3 +879,37 @@ unit_tests:
             debt_to_equity: -0.5,
             statement_roe_pct: 20.0,
           }
+  - name: card_metrics_financial_eligibility_core_three
+    # Per-type eligibility (Router 4b): a financial is eligible on the core three (forward_pe +
+    # statement_roe_pct + net_margin_pct). BANKOK has all three -> eligible; BANKNO lacks revenue
+    # so net_margin_pct is null -> ineligible, even as a financial.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: BANKOK, snapshot_date: "2026-01-01", info_sector: 'Financial Services', info_forward_pe: 11.0, stmt_net_income_common: 11000.0, stmt_stockholders_equity: 60000.0, stmt_net_income: 12000.0, stmt_total_revenue: 80000.0}
+          - {market_code: us_sp500, ticker: BANKNO, snapshot_date: "2026-01-01", info_sector: 'Financial Services', info_forward_pe: 11.0, stmt_net_income_common: 11000.0, stmt_stockholders_equity: 60000.0, stmt_net_income: 12000.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: BANKOK, company_name: Bank OK, sector: 'Financial Services', currency: USD}
+          - {market_code: us_sp500, ticker: BANKNO, company_name: Bank No, sector: 'Financial Services', currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: BANKOK, company_type: financial, is_card_eligible: true}
+        - {market_code: us_sp500, ticker: BANKNO, company_type: financial, is_card_eligible: false}
+  - name: card_metrics_dividend_yield_pct_percent_passthrough
+    # Scale guard (carry-in): Yahoo dividendYield is ALREADY a percent (0.94 = 0.94%), so
+    # dividend_yield_pct passes it through 1:1 with no x100. This pins the transform; a stray x100
+    # surfaces here. (A live yfinance revert to a fraction is caught by audit_mart_vs_yfinance,
+    # which now compares dividend_yield_pct as a mart metric.)
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: DIV, snapshot_date: "2026-01-01", info_dividend_yield: 3.5, info_sector: Technology}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: DIV, company_name: Div Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}

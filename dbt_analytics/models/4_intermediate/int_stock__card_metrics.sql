@@ -229,25 +229,45 @@ metrics as (
 ),
 
 eligibility as (
+    -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a bank-appropriate
+    -- core three, since the operating solvency/cash metrics are unsourceable for them. Operating
+    -- and pre_revenue keep the original five-metric AND (pre_revenue's own set lands in slice 4c).
     select
         *,
-        list_filter(
-            list_value(
-                if(forward_pe is null, 'forward_pe', null),
-                if(ebit_margin_pct is null, 'ebit_margin_pct', null),
-                if(revenue_growth_yoy_pct is null, 'revenue_growth_yoy_pct', null),
-                if(net_debt_to_ebitda is null, 'net_debt_to_ebitda', null),
-                if(fcf_margin_pct is null, 'fcf_margin_pct', null)
-            ),
-            metric -> metric is not null
-        ) as missing_metrics,
-        (
-            forward_pe is not null
-            and ebit_margin_pct is not null
-            and revenue_growth_yoy_pct is not null
-            and net_debt_to_ebitda is not null
-            and fcf_margin_pct is not null
-        ) as is_card_eligible
+        case company_type
+            when 'financial' then list_filter(
+                list_value(
+                    if(forward_pe is null, 'forward_pe', null),
+                    if(statement_roe_pct is null, 'statement_roe_pct', null),
+                    if(net_margin_pct is null, 'net_margin_pct', null)
+                ),
+                metric -> metric is not null
+            )
+            else list_filter(
+                list_value(
+                    if(forward_pe is null, 'forward_pe', null),
+                    if(ebit_margin_pct is null, 'ebit_margin_pct', null),
+                    if(revenue_growth_yoy_pct is null, 'revenue_growth_yoy_pct', null),
+                    if(net_debt_to_ebitda is null, 'net_debt_to_ebitda', null),
+                    if(fcf_margin_pct is null, 'fcf_margin_pct', null)
+                ),
+                metric -> metric is not null
+            )
+        end as missing_metrics,
+        case company_type
+            when 'financial' then (
+                forward_pe is not null
+                and statement_roe_pct is not null
+                and net_margin_pct is not null
+            )
+            else (
+                forward_pe is not null
+                and ebit_margin_pct is not null
+                and revenue_growth_yoy_pct is not null
+                and net_debt_to_ebitda is not null
+                and fcf_margin_pct is not null
+            )
+        end as is_card_eligible
     from metrics
 )
 
