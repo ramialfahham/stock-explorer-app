@@ -13,7 +13,8 @@ REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
 SNAPSHOT = date.today()
 TICKERS = [f"CI{i:02d}" for i in range(1, 6)]
 BANK_TICKER = "CIFIN"
-ALL_TICKERS = TICKERS + [BANK_TICKER]
+PRE_REVENUE_TICKER = "CIPRE"
+ALL_TICKERS = TICKERS + [BANK_TICKER, PRE_REVENUE_TICKER]
 TTM_QUARTER_FIXTURE = {
     "qtr_operating_income_0": 25.0,
     "qtr_operating_income_1": 25.0,
@@ -87,6 +88,60 @@ def _bank_fundamentals(market_code: str) -> dict:
         "stmt_net_income_common": 11_000_000_000.0,
         "info_dividend_yield": 3.5,
         "info_payout_ratio": 0.4,
+        **{key: None for key in TTM_QUARTER_FIXTURE},
+    }
+
+
+def _pre_revenue_fundamentals(market_code: str) -> dict:
+    """One pre-revenue (loss-making, cash-burning) fixture per market so the survival card +
+    eligibility are locally verifiable. Revenue 0 -> pre_revenue; burning cash (negative OCF +
+    capex -> computed_fcf < 0); has cash, debt and market cap -> net_cash_to_market_cap present -> eligible.
+    net_cash_to_market_cap = (2100-100)/5000 = 0.4; runway = 2100/700*12 = 36 months;
+    burn = 700/12 ≈ 58.3M/mo; working_capital = 2500-400 = 2100M. Fails the operating/bank gates (no P/E).
+    """
+    return {
+        "market_code": market_code,
+        "ticker": PRE_REVENUE_TICKER,
+        "snapshot_date": SNAPSHOT,
+        "info_forward_pe": None,
+        "info_operating_margins": None,
+        "info_revenue_growth": None,
+        "info_net_debt": None,
+        "info_total_debt": None,
+        "info_total_cash": None,
+        "info_ebitda": None,
+        "info_return_on_equity": None,
+        "info_current_ratio": None,
+        "info_price_to_book": None,
+        "info_price_to_sales": None,
+        "info_ev_to_ebitda": None,
+        "info_free_cashflow": None,
+        "info_market_cap": 5_000_000_000.0,
+        "info_sector": "Healthcare",
+        "info_currency": "USD",
+        "info_long_name": f"CI Fixture {PRE_REVENUE_TICKER} Biotech",
+        "info_business_summary": (
+            f"CI Fixture {PRE_REVENUE_TICKER} is a clinical-stage biotech developing new therapies; not yet profitable."
+        ),
+        "info_founded_year": 2015,
+        "stmt_total_revenue": 0.0,
+        "stmt_free_cash_flow": None,
+        "stmt_fiscal_period_end": SNAPSHOT,
+        "stmt_currency": "USD",
+        "stmt_stockholders_equity": 2_000_000_000.0,
+        "stmt_total_debt": 100_000_000.0,
+        "stmt_current_assets": 2_500_000_000.0,
+        "stmt_current_liabilities": 400_000_000.0,
+        "stmt_cash_and_equivalents": 2_100_000_000.0,
+        "stmt_tangible_book_value": None,
+        "stmt_total_assets": 2_600_000_000.0,
+        "stmt_operating_cash_flow": -600_000_000.0,
+        "stmt_capital_expenditure": -100_000_000.0,
+        "stmt_interest_expense": None,
+        "stmt_net_income": -700_000_000.0,
+        "stmt_net_income_common": -700_000_000.0,
+        "info_dividend_yield": None,
+        "info_payout_ratio": None,
         **{key: None for key in TTM_QUARTER_FIXTURE},
     }
 
@@ -188,7 +243,7 @@ def _write_market_fixtures(market_code: str) -> None:
             }
             for i, ticker in enumerate(TICKERS, start=1)
         ]
-        + [_bank_fundamentals(market_code)]
+        + [_bank_fundamentals(market_code), _pre_revenue_fundamentals(market_code)]
     )
     fundamentals.to_parquet(out / "yf_fundamentals.parquet", index=False)
 

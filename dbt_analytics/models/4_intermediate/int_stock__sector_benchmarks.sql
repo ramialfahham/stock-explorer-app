@@ -1,10 +1,15 @@
 {% set peer_threshold = 8 %}
 
 with eligible as (
+    -- Benchmark peers are the types that carry the benchmarkable (operating) metrics. Pre-revenue
+    -- companies (survival metrics, none benchmarkable) are excluded so they cannot inflate a sector's
+    -- peer count or the >= 8 median gate for operating cards that share their sector (e.g. Healthcare).
+    -- operating and financial are sector-disjoint, so each sector's peer set stays single-type.
     select *
     from {{ ref('int_stock__card_metrics') }}
     where is_card_eligible
         and sector is not null
+        and company_type != 'pre_revenue'
 ),
 
 sector_counts as (

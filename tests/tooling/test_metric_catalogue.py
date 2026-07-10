@@ -28,7 +28,7 @@ EXPORT = REPO / "scripts" / "export_metric_definitions_json.py"
 COMMITTED_JSON = REPO / "frontend" / "metrics.json"
 INT_MODEL = REPO / "dbt_analytics" / "models" / "4_intermediate" / "int_stock__card_metrics.sql"
 
-_VALID_FORMATS = {"ratio_1", "ratio_2", "percent_1"}
+_VALID_FORMATS = {"ratio_1", "ratio_2", "percent_1", "currency_compact"}
 _VALID_DIRECTIONS = {"higher_better", "lower_better", "neutral"}
 _VALID_PERSPECTIVES = {
     "valuation",

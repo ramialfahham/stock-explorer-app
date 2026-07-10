@@ -28,6 +28,9 @@ models:
                   and statement_roe_pct is not null
                   and net_margin_pct is not null
                 )
+                when 'pre_revenue' then (
+                  net_cash_to_market_cap is not null
+                )
                 else (
                   forward_pe is not null
                   and ebit_margin_pct is not null
@@ -138,7 +141,7 @@ models:
       - name: working_capital
         description: >
           stmt_current_assets - stmt_current_liabilities (currency level). Null for financials.
-          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          On the pre-revenue card (catalogued + exported); not part of eligibility.
       - name: price_to_tangible_book
         description: >
           Price-to-tangible-book: info_market_cap / stmt_tangible_book_value (both totals; guarded to
@@ -173,25 +176,30 @@ models:
       - name: cash_runway_months
         description: >
           Months of cash at the current burn: stmt_cash_and_equivalents / (-computed_fcf) * 12, only
-          when computed_fcf < 0 (burning); null otherwise. Pre-revenue survival lens. Data-only — not
-          in eligibility, the metric catalogue, or the Supabase export yet.
+          when computed_fcf < 0 (burning); null otherwise. Pre-revenue survival lens. On the pre-revenue
+          card (catalogued + exported); not part of eligibility.
       - name: burn_rate_monthly
         description: >
           Monthly cash burn: -computed_fcf / 12, only when computed_fcf < 0; null otherwise (currency
-          level). Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          level). On the pre-revenue card (catalogued + exported); not part of eligibility.
       - name: net_cash_to_ev
         description: >
           Net cash relative to enterprise value: (stmt_cash_and_equivalents - stmt_total_debt) /
           (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents). Guarded against zero EV.
-          Pre-revenue valuation lens. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          Data-only — superseded on the pre-revenue card by net_cash_to_market_cap (which avoids the
+          negative-EV sign flip when net cash exceeds EV); not in the catalogue or export.
+      - name: net_cash_to_market_cap
+        description: >
+          Net cash relative to market cap: (stmt_cash_and_equivalents - stmt_total_debt) /
+          info_market_cap. Guarded against zero market cap. Monotonic (no sign flip). Pre-revenue-card
+          valuation metric; the pre_revenue eligibility metric; catalogued + exported.
       - name: company_type
         description: >
           Lifecycle/sector classification for the Sector Router: financial when
           coalesce(info_sector, dim_stock.sector) = 'Financial Services'; else pre_revenue when
           stmt_total_revenue is present and <= 0; else operating. Always resolves to one of the three
           (non-null). A null stmt_total_revenue is treated as a data gap (operating), not pre_revenue.
-          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet; the Sector
-          Router will use it to drive per-type metric sets, eligibility, and display.
+          Exported to the mart/Supabase (Sector Router) and drives per-type eligibility and card display.
         data_tests:
           - not_null
           - accepted_values:
@@ -199,7 +207,9 @@ models:
                 values: ["operating", "financial", "pre_revenue"]
       - name: is_card_eligible
         description: >
-          True when all five card metrics are non-null; false excludes ticker from discovery queue.
+          True when the company_type's required metrics are present (operating: the five-metric AND;
+          financial: forward_pe + statement_roe_pct + net_margin_pct; pre_revenue: net_cash_to_market_cap);
+          false excludes ticker from discovery queue.
       - name: missing_metrics
         description: >
           VARCHAR list of card metric column names that are null for this snapshot.
@@ -684,13 +694,13 @@ unit_tests:
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
     expect:
       rows:
         - {
@@ -705,14 +715,14 @@ unit_tests:
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
-          - {market_code: us_sp500, ticker: T8, sector: Technology, is_card_eligible: true, forward_pe: 17.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T8, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 17.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
     expect:
       rows:
         - {
@@ -913,3 +923,21 @@ unit_tests:
     expect:
       rows:
         - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
+  - name: card_metrics_pre_revenue_eligibility_net_cash
+    # Per-type eligibility (Router 4c): a pre_revenue company is eligible when net_cash_to_market_cap is
+    # computable (has market cap + cash + debt). PREOK has all three -> eligible; PRENO lacks market
+    # cap -> net_cash_to_market_cap null -> ineligible. Both classify pre_revenue (Healthcare, revenue 0).
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: PREOK, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, info_market_cap: 5000.0, stmt_cash_and_equivalents: 2100.0, stmt_total_debt: 100.0}
+          - {market_code: us_sp500, ticker: PRENO, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, stmt_cash_and_equivalents: 2100.0, stmt_total_debt: 100.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: PREOK, company_name: Pre OK, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: PRENO, company_name: Pre No, sector: Healthcare, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: PREOK, company_type: pre_revenue, is_card_eligible: true}
+        - {market_code: us_sp500, ticker: PRENO, company_type: pre_revenue, is_card_eligible: false}

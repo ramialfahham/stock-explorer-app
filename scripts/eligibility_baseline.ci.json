@@ -4,28 +4,28 @@
   "fail_drop_fraction": 0.15,
   "max_drop_fraction": 0.15,
   "updated_at": "2026-07-08",
-  "note": "CI fixture baseline (6 eligible per active market from seed_ci_raw_fixtures: 5 operating + 1 financial). Do not overwrite with --write-baseline.",
+  "note": "CI fixture baseline (7 eligible per active market from seed_ci_raw_fixtures: 5 operating + 1 financial + 1 pre_revenue). Do not overwrite with --write-baseline.",
   "markets": {
     "au_asx200": {
-      "baseline_eligible": 6,
+      "baseline_eligible": 7,
       "min_eligible": 5
     },
     "de_dax": {
-      "baseline_eligible": 6,
+      "baseline_eligible": 7,
       "min_eligible": 5
     },
     "jp_nikkei225": {
-      "baseline_eligible": 6,
+      "baseline_eligible": 7,
       "min_eligible": 5
     },
     "uk_ftse100": {
-      "baseline_eligible": 6,
+      "baseline_eligible": 7,
       "min_eligible": 5
     },
     "us_sp500": {
-      "baseline_eligible": 6,
+      "baseline_eligible": 7,
       "min_eligible": 5
     }
   },
-  "total_baseline_eligible": 30
+  "total_baseline_eligible": 35
 }

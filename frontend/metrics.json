@@ -19,8 +19,7 @@
       "benchmarkable": true,
       "applies_to": [
         "operating",
-        "financial",
-        "pre_revenue"
+        "financial"
       ]
     },
     {
@@ -41,8 +40,7 @@
       "display_order": 2,
       "benchmarkable": true,
       "applies_to": [
-        "operating",
-        "pre_revenue"
+        "operating"
       ]
     },
     {
@@ -64,8 +62,7 @@
       "benchmarkable": true,
       "applies_to": [
         "operating",
-        "financial",
-        "pre_revenue"
+        "financial"
       ]
     },
     {
@@ -86,8 +83,7 @@
       "display_order": 4,
       "benchmarkable": true,
       "applies_to": [
-        "operating",
-        "pre_revenue"
+        "operating"
       ]
     },
     {
@@ -150,8 +146,7 @@
       "display_order": 7,
       "benchmarkable": true,
       "applies_to": [
-        "operating",
-        "pre_revenue"
+        "operating"
       ]
     },
     {
@@ -258,6 +253,90 @@
       "benchmarkable": false,
       "applies_to": [
         "financial"
+      ]
+    },
+    {
+      "metric_id": "net_cash_to_market_cap",
+      "label": "Net cash vs price",
+      "description": "Net cash (cash minus debt) as a fraction of the market price (market cap), from the latest balance sheet.",
+      "calculation": "(Cash − total debt) ÷ market cap.",
+      "interpretation": "Higher = more of the market price is backed by spare cash. Above 1 means the company holds more net cash than its whole market price — it is trading below its cash.",
+      "applicability": "Cash minus debt, divided by the company's market price (market cap). A cushion for a company not yet profitable. Goes negative when debt exceeds cash (a net-debt position).",
+      "format": "ratio_2",
+      "perspective": "valuation",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Net cash as a share of the market price",
+      "analogy": "Like buying something and finding a chunk of the price is just cash in the drawer.",
+      "learn": "For a company that is not profitable yet, cash is the lifeline. This divides its net cash (cash minus debt) by its market price. A high figure — especially above 1 — means a large share of the price, or more than all of it, is simply cash on the balance sheet. Higher is safer here.",
+      "importance_tier": 1,
+      "display_order": 13,
+      "benchmarkable": false,
+      "applies_to": [
+        "pre_revenue"
+      ]
+    },
+    {
+      "metric_id": "working_capital",
+      "label": "Working capital",
+      "description": "Short-term assets minus short-term liabilities, from the latest annual balance sheet — the near-term cash cushion.",
+      "calculation": "Current assets − current liabilities (latest annual balance sheet).",
+      "interpretation": "Positive = the company can cover its near-term bills with near-term assets. Negative = a possible short-term squeeze.",
+      "applicability": "Short-term assets minus short-term bills, from the latest balance sheet. Positive = a near-term cushion; negative = a possible squeeze. Not defined for banks.",
+      "format": "currency_compact",
+      "perspective": "liquidity",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Short-term cash cushion",
+      "analogy": "Like your bank balance minus the bills due this month — what is left to work with.",
+      "learn": "Working capital is current assets (cash and things turning to cash within a year) minus current liabilities (bills due within a year). It is the short-term cushion that keeps a young company running between funding rounds. Shown as a money amount.",
+      "importance_tier": 1,
+      "display_order": 14,
+      "benchmarkable": false,
+      "applies_to": [
+        "pre_revenue"
+      ]
+    },
+    {
+      "metric_id": "cash_runway_months",
+      "label": "Cash runway",
+      "description": "How many months the company's cash would last at its current cash burn, from the latest annual statements.",
+      "calculation": "Cash on hand ÷ monthly cash burn (12 months of burn), in months.",
+      "interpretation": "Higher = more months before the cash runs out at today's spending. A short runway means the company likely needs to raise money soon.",
+      "applicability": "Only for companies burning cash. Cash on hand ÷ average monthly cash burn. Assumes the burn holds steady — a real company's can change fast.",
+      "format": "ratio_1",
+      "perspective": "cash",
+      "direction": "higher_better",
+      "basis_column": "",
+      "gloss": "Months of cash left at the current burn",
+      "analogy": "Like dividing your savings by your monthly spending to see how many months you can go without new income.",
+      "learn": "Cash runway estimates how long the company can keep operating before it runs out of cash, at its current burn rate — cash on hand divided by the average monthly cash outflow. For a pre-revenue company this is the survival clock: a short runway means new funding is needed soon. It assumes the burn rate holds steady, which rarely happens exactly.",
+      "importance_tier": 1,
+      "display_order": 15,
+      "benchmarkable": false,
+      "applies_to": [
+        "pre_revenue"
+      ]
+    },
+    {
+      "metric_id": "burn_rate_monthly",
+      "label": "Cash burn (monthly)",
+      "description": "Average cash the company spends each month (operating cash flow plus capital spending, over 12 months), from the latest annual statements.",
+      "calculation": "−(operating cash flow + capital spending) ÷ 12 (a monthly amount).",
+      "interpretation": "Higher = the company is spending cash faster, so the runway is shorter. Shown only when the company is burning cash.",
+      "applicability": "Average monthly cash outflow (operating cash flow plus capital spending, over 12 months). Shown only when the company is burning cash.",
+      "format": "currency_compact",
+      "perspective": "cash",
+      "direction": "lower_better",
+      "basis_column": "",
+      "gloss": "Cash spent per month",
+      "analogy": "Like your monthly spending — the faster it goes, the sooner the savings run out.",
+      "learn": "Burn rate is the average cash a company spends each month after running and investing in the business — operating cash flow plus capital spending, spread over the year. Paired with cash on hand it sets the runway. Shown as a money amount per month.",
+      "importance_tier": 1,
+      "display_order": 16,
+      "benchmarkable": false,
+      "applies_to": [
+        "pre_revenue"
       ]
     }
   ]

@@ -27,6 +27,9 @@ models:
                   and statement_roe_pct is not null
                   and net_margin_pct is not null
                 )
+                when 'pre_revenue' then (
+                  net_cash_to_market_cap is not null
+                )
                 else (
                   forward_pe is not null
                   and ebit_margin_pct is not null
@@ -116,10 +119,26 @@ models:
         description: >
           Financial-card income metric — Yahoo dividend yield, already in percent (nullable; null
           when no dividend). Rendered for financials; not part of eligibility.
+      - name: net_cash_to_market_cap
+        description: >
+          Pre-revenue-card valuation metric — net cash (cash − debt) / market cap (nullable).
+          Required for pre_revenue-card eligibility.
+      - name: working_capital
+        description: >
+          Pre-revenue-card liquidity metric — current assets − current liabilities, a currency amount
+          (nullable; null for banks). Rendered for pre_revenue; not part of eligibility.
+      - name: cash_runway_months
+        description: >
+          Pre-revenue-card cash metric — months of cash left at the current burn (nullable; null when
+          not burning). Rendered for pre_revenue; not part of eligibility.
+      - name: burn_rate_monthly
+        description: >
+          Pre-revenue-card cash metric — average monthly cash burn, a currency amount (nullable; null
+          when not burning). Rendered for pre_revenue; not part of eligibility.
       - name: is_card_eligible
         description: >
-          Whether the company_type's required metrics are present (per-type: operating/pre_revenue
-          on the five-metric set, financial on forward_pe + statement_roe_pct + net_margin_pct);
+          Whether the company_type's required metrics are present (operating on the five-metric set;
+          financial on forward_pe + statement_roe_pct + net_margin_pct; pre_revenue on net_cash_to_market_cap);
           drives discovery queue inclusion.
         data_tests:
           - not_null
@@ -127,7 +146,8 @@ models:
         description: >
           Sector/lifecycle classification for the Router — operating, financial, or pre_revenue.
           Always non-null (defaults to operating when revenue is a data gap). Drives which metrics
-          the card renders per company type; does not affect is_card_eligible in this slice.
+          the card renders per company type and selects the per-type eligibility branch behind
+          is_card_eligible.
         data_tests:
           - not_null
           - accepted_values:

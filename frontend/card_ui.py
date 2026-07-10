@@ -157,7 +157,7 @@ def _company_summary_html(card: dict) -> str:
 
 def _metric_cell_html(card: dict, metric: str) -> str:
     label = metric_label(metric, card)
-    value = format_metric_value(metric, card.get(metric))
+    value = format_metric_value(metric, card.get(metric), card.get("currency"))
     gloss = metric_gloss(metric, card.get(metric), card)
     indicator = _bench_indicator_html(card, metric)
     gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'

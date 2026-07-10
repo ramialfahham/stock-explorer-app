@@ -31,6 +31,7 @@ def _card_with_all_metrics(company_type: str) -> dict:
         "ticker": "TST",
         "market_code": "us_sp500",
         "sector": "Technology",
+        "currency": "USD",
         "company_type": company_type,
     }
     for metric in ALL_METRICS:
@@ -55,3 +56,13 @@ def test_build_card_financial_shows_bank_metrics() -> None:
     html = build_card_html(_card_with_all_metrics("financial"))
     for label in ("Price / tangible book", "Net margin", "Return on assets", "Dividend yield"):
         assert label in html
+
+
+def test_build_card_pre_revenue_shows_survival_metrics_no_dash() -> None:
+    html = build_card_html(_card_with_all_metrics("pre_revenue"))
+    for label in ("Net cash vs price", "Working capital", "Cash runway", "Cash burn (monthly)"):
+        assert label in html
+    for label in ("Forward P/E", "Operating margin", "Return on equity"):
+        assert label not in html  # operating/financial metrics omitted for pre-revenue
+    assert 'ss-metric-value">—<' not in html
+    assert 'ss-metric-value">$' in html  # currency_compact metrics render with the card's currency symbol

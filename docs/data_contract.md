@@ -126,9 +126,10 @@ Point-in-time (a stock, not a flow), so use the **latest annual column** from
 `ticker.balance_sheet` — no TTM summing. yfinance canonicalises row labels to a fixed key set, so one
 label per line resolves across markets (only equity keeps a second real fallback; see
 [`intl-balance-sheet-row-labels.md`](intl-balance-sheet-row-labels.md)).
-Landed **data-only** for the Sector/Lifecycle Router to compute statement-based metrics
-(debt-to-equity, current ratio, working capital, tangible-book valuation, net cash, ROA) — not yet in
-`is_card_eligible`, the metric catalogue, `frontend/metrics.json`, or the Supabase export.
+Landed as raw inputs for the Sector/Lifecycle Router to compute statement-based metrics
+(debt-to-equity, current ratio, working capital, tangible-book valuation, net cash, ROA). The raw
+columns themselves are not catalogued or exported; their derived metrics are catalogued and exported
+per company type (see the `metric_catalogue` seed).
 
 | Raw column (parquet) | Statement row label (first-match fallback) | Statement |
 |----------------------|---------------------------------------------|-----------|
@@ -160,9 +161,12 @@ Nullable — e.g. financials have no current/non-current split, so `stmt_current
 | 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
 | 5 | `fcf_margin_pct` | `stmt_free_cash_flow / stmt_total_revenue * 100` | cashflow + income_stmt |
 
-**Data-only metrics (computed in dbt, not yet on the card):** computed once in `int_stock__card_metrics`,
-**not** part of `is_card_eligible`, the `metric_catalogue`, `frontend/metrics.json`, or the Supabase export
-— staged for the Sector/Lifecycle Router to catalogue, gate, and display per company type. Nullable; not clipped.
+**Additional computed metrics — formula reference:** computed once in `int_stock__card_metrics`. The
+authoritative display definitions live in the [`metric_catalogue` seed](../dbt_analytics/seeds/metric_catalogue.csv);
+many of the below are now catalogued and exported per company type by the Sector/Lifecycle Router (the
+operating solvency/returns set, the bank set, and the pre-revenue survival set), while several remain
+data-only intermediates (the info-scalar duplicates, `interest_coverage`, `computed_fcf`, and
+`net_cash_to_ev`). Nullable; not clipped.
 
 - `roe_pct` = `info_return_on_equity * 100` (Yahoo `returnOnEquity`); may be negative (loss-makers).
 - `current_ratio` = `info_current_ratio` (Yahoo `currentRatio`).
@@ -186,18 +190,19 @@ Nullable — e.g. financials have no current/non-current split, so `stmt_current
 - `burn_rate_monthly` = `-computed_fcf / 12` when `computed_fcf < 0` (null when not burning).
 - `net_cash_to_ev` = `(stmt_cash_and_equivalents - stmt_total_debt) / (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents)` (guarded on zero EV).
 
-**Company-type classification (data-only):** `company_type` is computed once in
-`int_stock__card_metrics`, alongside the metrics, to label each snapshot for the Sector/Lifecycle
-Router. It is **not** part of `is_card_eligible`, the `metric_catalogue`, `frontend/metrics.json`, or
-the Supabase export yet. Always non-null — evaluated in order, first match wins:
+**Company-type classification:** `company_type` is computed once in `int_stock__card_metrics`,
+alongside the metrics, to label each snapshot for the Sector/Lifecycle Router. It is not itself a
+catalogued metric (not in the `metric_catalogue` or `frontend/metrics.json`), but it **drives the
+per-type `is_card_eligible` branch** (the `CASE company_type` switch key) and **is exported to
+Supabase**. Always non-null — evaluated in order, first match wins:
 
 1. `financial` — when `coalesce(info_sector, dim_stock.sector) = 'Financial Services'`.
 2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`.
 3. `operating` — else (the default). A **null** `stmt_total_revenue` is treated as a data gap and
    stays `operating`, not `pre_revenue`.
 
-`financial` takes precedence over `pre_revenue`. The Router will use `company_type` to drive
-per-type metric sets, eligibility, and display — out of scope here.
+`financial` takes precedence over `pre_revenue`. `company_type` drives the per-type metric sets,
+eligibility, and card display (the Sector/Lifecycle Router).
 
 **Operating margin:** prefer TTM — sum four quarters of operating profit and **Total Revenue**
 from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks (see
@@ -219,10 +224,12 @@ substitute ROE, ROA, or hand-built ROIC.
 
 `is_card_eligible` uses **per-type required sets**, keyed on `company_type` (the Sector/Lifecycle Router):
 
-- **operating** and **pre_revenue** — all five of `forward_pe`, `ebit_margin_pct`,
-  `revenue_growth_yoy_pct`, `net_debt_to_ebitda`, `fcf_margin_pct` non-null.
+- **operating** — all five of `forward_pe`, `ebit_margin_pct`, `revenue_growth_yoy_pct`,
+  `net_debt_to_ebitda`, `fcf_margin_pct` non-null.
 - **financial** — `forward_pe`, `statement_roe_pct`, `net_margin_pct` non-null (the operating
-  solvency/cash metrics are unsourceable for banks). pre_revenue's own set lands in a later slice.
+  solvency/cash metrics are unsourceable for banks).
+- **pre_revenue** — `net_cash_to_market_cap` non-null (we can compare its cash to its price; the operating
+  metrics break for revenue ≤ 0).
 
 Missing any required metric → excluded from discovery queue.
 
@@ -310,8 +317,12 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `net_margin_pct` | numeric | Financial-card profitability; nullable. |
 | `roa_pct` | numeric | Financial-card returns (statement-based, period-end); nullable. |
 | `dividend_yield_pct` | numeric | Financial-card income (Yahoo dividend yield, percent); nullable. |
+| `net_cash_to_market_cap` | numeric | Pre-revenue-card valuation (net cash vs market price); nullable. |
+| `working_capital` | numeric | Pre-revenue-card liquidity (current assets − liabilities, a currency amount); nullable. |
+| `cash_runway_months` | numeric | Pre-revenue-card cash (months of cash left; null when not burning); nullable. |
+| `burn_rate_monthly` | numeric | Pre-revenue-card cash (monthly burn, a currency amount; null when not burning); nullable. |
 | `is_card_eligible` | boolean | |
-| `company_type` | text | Sector/lifecycle class — `operating`, `financial`, or `pre_revenue`; always set (defaults to `operating`). Drives which metrics render per card type; does not affect `is_card_eligible`. |
+| `company_type` | text | Sector/lifecycle class — `operating`, `financial`, or `pre_revenue`; always set (defaults to `operating`). Drives which metrics render per card type and selects the per-type eligibility branch behind `is_card_eligible`. |
 | `sector_peer_count` | integer | |
 | `sector_median_forward_pe` | numeric | nullable |
 | `sector_median_ebit_margin_pct` | numeric | nullable |

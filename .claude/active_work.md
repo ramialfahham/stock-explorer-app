@@ -11,11 +11,12 @@ not Yahoo `info` scalar shortcuts**, and design per-type metric sets from an exp
 matrix** (below). **Slices 1–2b are all MERGED** (#139 classifier · #140 balance sheet · #141 statements)
 — **the entire raw data foundation is in.** Slice 3 (the compute) is built in two PRs: **Slice 3a
 (statement enrichment) MERGED (#142)** and **Slice 3b (per-type metric compute) MERGED (#143).** The
-test-architecture cleanup (#144) also merged. **Slice 4a — the Router mechanism + grown operating card — is
-MERGED (#145); Slice 4b — the financial/bank card + per-type eligibility rework — is PR'd (#146, awaiting merge).**
-The next step is **Slice 4c (pre-revenue card),** the last Router slice.
-The most recent session built Slice 4b: 4 bank metrics + the per-type eligibility `CASE` (banks now enter the
-pool, baseline 25 → 30) + a synthetic bank fixture — see Status + Next actions.
+test-architecture cleanup (#144) also merged. **Slices 4a (#145) and 4b (#146) are MERGED; Slice 4c — the
+pre-revenue/survival card, the last Router slice — is PR'd (awaiting merge).** With 4c the Router is
+feature-complete; the remaining work is **Slice 5 (AI assessment generator)** then **Slice 6 (UI redesign).**
+The most recent session built Slice 4c: the 4-metric survival card + a pre_revenue eligibility branch (pre-revenue
+companies now enter the pool, baseline 30 → 35) + a compact-currency format + a synthetic pre_revenue fixture —
+see Status + Next actions.
 
 ## Status
 
@@ -50,7 +51,7 @@ pool, baseline 25 → 30) + a synthetic bank fixture — see Status + Next actio
   `statement_roe_pct`; owner-signed copy). **Eligibility untouched — five-metric AND stays, baseline 25.**
   Full 5-reviewer cycle all-PASS (3 cycles); dbt PASS=102, pytest 88. Deferred to 4b: value-aware
   negative-equity gloss for debt/equity + ROE (caveat already warns).
-- **Sector Router — Slice 4b (financial/bank card + per-type eligibility) PR'd (#146, awaiting merge).**
+- **Sector Router — Slice 4b (financial/bank card + per-type eligibility) MERGED (#146).**
   4 bank metrics catalogued (`price_to_tangible_book`, `net_margin_pct`, `roa_pct`, `dividend_yield_pct`;
   `applies_to = financial`; owner-signed copy incl. the ROA/ROE numerator-asymmetry caveat); operating-only
   metrics narrowed off banks; `statement_roe_pct` extended to `operating|financial`. **Eligibility reworked to a
@@ -59,6 +60,18 @@ pool, baseline 25 → 30) + a synthetic bank fixture — see Status + Next actio
   LLOY/HSBA unit tests). Values carried int → mart → Supabase (migration `008`). `metrics_for_card` now
   lens-sorts (bank card lens-grouped; operating byte-identical). Synthetic bank fixture per market → **CI
   baseline 25 → 30**; dividendYield scale-guard unit test. dbt PASS=104, pytest 91. Full 5-reviewer cycle all-PASS.
+- **Sector Router — Slice 4c (pre-revenue/survival card + per-type benchmarks) PR'd (awaiting merge).**
+  4 survival metrics catalogued (`net_cash_to_market_cap`, `working_capital`, `cash_runway_months`,
+  `burn_rate_monthly`; `applies_to = pre_revenue`; owner-signed copy) + a **pre_revenue eligibility branch**
+  (gates on `net_cash_to_market_cap is not null` → 3-branch `CASE company_type`; pre-revenue companies now enter
+  the pool, **CI baseline 30 → 35**). New **`currency_compact`** display format ($/£/¥/€/A$, B/M/K) for the two
+  dollar amounts. **`net_cash_to_ev` → `net_cash_to_market_cap`** (owner-approved §6 switch: the EV denominator
+  sign-flips when net cash exceeds EV, contradicting higher_better; market cap is monotonic — `net_cash_to_ev`
+  reverts to data-only). **`pre_revenue` excluded from `int_stock__sector_benchmarks` peers AND the mart benchmark
+  join** (a pre-revenue card never shows a peer-count it isn't in). Synthetic pre_revenue Healthcare fixture;
+  values carried int → mart → Supabase (migration `009`). dbt PASS=105, pytest 95, baseline 35. **Full 5-reviewer
+  cycle, 4 rounds → all-PASS** (rounds 1–3 caught the metric sign-flip, the benchmark pollution, and an incomplete
+  doc-sweep of the rename + the company_type-drives-eligibility fact; all fixed and re-verified).
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -144,23 +157,26 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
      + migration + `data_contract.md` are explicit); `applies_to` is pipe-delimited (`_seeds.yml` not_null +
      `test_metric_catalogue` subset check — `accepted_values` can't validate a compound cell); mart is
      SELECT-only, metrics computed once in `int_stock__card_metrics`.
-5b. **Slice 4b — financial/bank card + per-type eligibility: PR'd (#146, awaiting merge).** 4 bank metrics
+5b. **Slice 4b — financial/bank card + per-type eligibility: MERGED (#146).** 4 bank metrics
    catalogued (P/TBV, net_margin, roa, dividend_yield; owner-signed copy incl. the ROA/ROE asymmetry + period-end
    caveats + a dividendYield scale-guard unit test); operating-only metrics narrowed off banks; per-type
    eligibility `CASE` (financial core three = forward_pe + statement_roe_pct + net_margin_pct); bank fixture →
    baseline 25 → 30; `metrics_for_card` lens-sort. **EV/EBITDA & P/B financial caveats were moot** (banks use
    statement P/TBV, not those info-scalars). Value-aware negative-equity gloss for debt/equity + ROE still
    deferred (caveat already warns). Owner **kept the P/E-based bank gate** (declined the P/TBV swap).
-5c. **Slice 4c (← START HERE) — pre-revenue card.** Survival set: `cash_runway_months`, `burn_rate_monthly`,
-   `net_cash_to_ev`, `working_capital` (+ a cash level); `applies_to = pre_revenue`; narrow operating/financial
-   metrics off pre-revenue; **add the pre_revenue eligibility branch** (it currently rides the else/5-AND → stays
-   ineligible until 4c); cash-first ordering; recalibrate baseline; owner-signed copy; **FCF yield NEGATIVE for
-   cash-burners** (#137 flag) if surfaced. **All the mechanism is in place from 4b** — the per-type eligibility
-   `CASE` (5 assumption sites: int model + int/mart expression tests + the `assert_eligible_mart_rows_have_all_metrics`
-   singular test + per-type unit tests), the `applies_to` narrowing pattern, the lens-sort, and the CIFIN bank-fixture
-   pattern (add a pre_revenue fixture the same way) — copy those.
-6. **Slice 5 — AI assessment generator** (Python after dbt/export; Claude; store to Supabase; not-advice).
-7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above.
+5c. **Slice 4c — pre-revenue/survival card: PR'd (awaiting merge).** 4 survival metrics catalogued
+   (`net_cash_to_market_cap`, `working_capital`, `cash_runway_months`, `burn_rate_monthly`; owner-signed copy);
+   pre_revenue eligibility branch (3-branch `CASE`, gates on `net_cash_to_market_cap`); `currency_compact` format;
+   pre_revenue excluded from sector benchmarks (peer CTE + mart join); synthetic pre_revenue fixture (baseline
+   30 → 35); migration `009`. Owner-approved §6 switch **`net_cash_to_ev` → `net_cash_to_market_cap`** (EV
+   denominator sign-flips when net cash > EV; market cap is monotonic — `net_cash_to_ev` now data-only). 4-round
+   review → all-PASS. Deferred (owner, out of 4c): the pre-existing "all five" / "data-only" doc boilerplate on
+   now-catalogued metrics across `_intermediate.yml` + `data_contract.md` + `overflow_menu.py`/README/north_star.
+6. **Slice 5 (← START HERE) — AI assessment generator** (Python after dbt/export; Claude; store to Supabase;
+   not-advice). The Router is feature-complete after 4c; this is the next build. Educational only, true-beginner
+   language, reason only from the given numbers, end with a 🟢/🟡/🔴 health verdict.
+7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above (the approved mock: cohesive card,
+   scan→deep tiers, one disclosure, label chips, words-not-arrows).
 
 ## Do NOT
 
