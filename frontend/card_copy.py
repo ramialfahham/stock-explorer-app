@@ -243,12 +243,38 @@ _VALUE_FORMATTERS = {
     "ratio_2": lambda value: f"{value:.2f}",
 }
 
+# Registry-driven markets use these currencies; fall back to the code for anything else.
+_CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
 
-def format_metric_value(metric: str, value: float | None) -> str:
+
+def _format_currency_compact(value: float, currency: str | None) -> str:
+    """A money amount as a compact, sign-aware string with the card's currency symbol.
+
+    e.g. 2_100_000_000/GBP -> "£2.1B"; -58_300_000/USD -> "-$58.3M". Used for level metrics
+    (working capital, monthly cash burn) that are amounts, not ratios.
+    """
+    code = (currency or "").upper()
+    symbol = _CURRENCY_SYMBOLS.get(code) or (f"{code} " if code else "")
+    sign = "-" if value < 0 else ""
+    magnitude = abs(value)
+    if magnitude >= 1_000_000_000:
+        body = f"{magnitude / 1_000_000_000:.1f}B"
+    elif magnitude >= 1_000_000:
+        body = f"{magnitude / 1_000_000:.1f}M"
+    elif magnitude >= 1_000:
+        body = f"{magnitude / 1_000:.1f}K"
+    else:
+        body = f"{magnitude:.0f}"
+    return f"{sign}{symbol}{body}"
+
+
+def format_metric_value(metric: str, value: float | None, currency: str | None = None) -> str:
     if value is None:
         return "—"
-    formatter = _VALUE_FORMATTERS[_METRIC_FORMAT.get(metric, "ratio_2")]
-    return formatter(value)
+    fmt = _METRIC_FORMAT.get(metric, "ratio_2")
+    if fmt == "currency_compact":
+        return _format_currency_compact(value, currency)
+    return _VALUE_FORMATTERS[fmt](value)
 
 
 def benchmark_position(

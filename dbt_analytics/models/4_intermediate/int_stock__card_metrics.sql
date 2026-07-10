@@ -215,6 +215,13 @@ metrics as (
                     / (s.info_market_cap + s.stmt_total_debt - s.stmt_cash_and_equivalents)
         end as net_cash_to_ev,
         case
+            when s.info_market_cap is not null
+                and s.stmt_cash_and_equivalents is not null
+                and s.stmt_total_debt is not null
+                and s.info_market_cap != 0
+                then (s.stmt_cash_and_equivalents - s.stmt_total_debt) / s.info_market_cap
+        end as net_cash_to_market_cap,
+        case
             when coalesce(s.info_sector, st.sector) = 'Financial Services'
                 then 'financial'
             when s.stmt_total_revenue is not null
@@ -230,8 +237,8 @@ metrics as (
 
 eligibility as (
     -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a bank-appropriate
-    -- core three, since the operating solvency/cash metrics are unsourceable for them. Operating
-    -- and pre_revenue keep the original five-metric AND (pre_revenue's own set lands in slice 4c).
+    -- core three, since the operating solvency/cash metrics are unsourceable for them; pre_revenue
+    -- qualifies on net_cash_to_market_cap alone (its survival card); operating keeps the five-metric AND.
     select
         *,
         case company_type
@@ -240,6 +247,12 @@ eligibility as (
                     if(forward_pe is null, 'forward_pe', null),
                     if(statement_roe_pct is null, 'statement_roe_pct', null),
                     if(net_margin_pct is null, 'net_margin_pct', null)
+                ),
+                metric -> metric is not null
+            )
+            when 'pre_revenue' then list_filter(
+                list_value(
+                    if(net_cash_to_market_cap is null, 'net_cash_to_market_cap', null)
                 ),
                 metric -> metric is not null
             )
@@ -259,6 +272,9 @@ eligibility as (
                 forward_pe is not null
                 and statement_roe_pct is not null
                 and net_margin_pct is not null
+            )
+            when 'pre_revenue' then (
+                net_cash_to_market_cap is not null
             )
             else (
                 forward_pe is not null

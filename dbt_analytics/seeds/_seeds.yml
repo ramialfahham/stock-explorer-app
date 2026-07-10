@@ -56,7 +56,7 @@ seeds:
           - not_null
           - accepted_values:
               arguments:
-                values: ["ratio_1", "ratio_2", "percent_1"]
+                values: ["ratio_1", "ratio_2", "percent_1", "currency_compact"]
       - name: perspective
         description: "Analytical lens. Full taxonomy: valuation, profitability, growth, solvency, liquidity, cash, returns (this PR populates five)."
         tests:

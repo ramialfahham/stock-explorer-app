@@ -7,6 +7,7 @@ from card_copy import (  # noqa: E402
     BUSINESS_SUMMARY_PREVIEW_WORDS,
     business_summary_is_truncated,
     business_summary_preview,
+    format_metric_value,
     metric_analogy,
     metric_gloss,
     metric_label,
@@ -146,6 +147,39 @@ def test_metrics_for_card_financial_omits_operating_only_and_the_new_bank_metric
     # operating solvency/cash metrics are not on the bank card
     for metric in ("ebit_margin_pct", "net_debt_to_ebitda", "fcf_margin_pct"):
         assert metric in operating and metric not in financial
+
+
+# The pre-revenue survival card (4c): 4 metrics, lens-grouped (valuation, liquidity, cash, cash).
+_PRE_REVENUE_CARD = (
+    "net_cash_to_market_cap",
+    "working_capital",
+    "cash_runway_months",
+    "burn_rate_monthly",
+)
+
+
+def test_metrics_for_card_pre_revenue_is_the_survival_set() -> None:
+    assert metrics_for_card(_full_card("pre_revenue")) == _PRE_REVENUE_CARD
+
+
+def test_metrics_for_card_pre_revenue_omits_operating_and_financial_metrics() -> None:
+    pre = set(metrics_for_card(_full_card("pre_revenue")))
+    for metric in (
+        "forward_pe", "ebit_margin_pct", "net_debt_to_ebitda", "fcf_margin_pct",
+        "price_to_tangible_book", "roa_pct", "dividend_yield_pct", "statement_roe_pct",
+    ):
+        assert metric not in pre
+
+
+def test_currency_compact_format() -> None:
+    assert format_metric_value("working_capital", 2_100_000_000.0, "USD") == "$2.1B"
+    assert format_metric_value("burn_rate_monthly", -58_300_000.0, "GBP") == "-£58.3M"
+    assert format_metric_value("working_capital", 950_000.0, "JPY") == "¥950.0K"
+    # unknown currency -> code prefix; no currency -> no symbol
+    assert format_metric_value("working_capital", 1_000_000.0, "CHF") == "CHF 1.0M"
+    assert format_metric_value("working_capital", 1_000_000.0, None) == "1.0M"
+    # ratio/percent metrics are unaffected by the new format path
+    assert format_metric_value("cash_runway_months", 36.0) == "36.0"
 
 
 def test_metrics_for_card_pre_revenue_omits_bank_inapplicable() -> None:
