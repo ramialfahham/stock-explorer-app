@@ -1,58 +1,77 @@
-# Review
+# Review — Sector/Lifecycle Router, Slice 4c (pre-revenue / survival card)
 
-diff_sha256: 02f810c7e0baaa18bd3ded9a85abd8313e60c1a505a1106fdb69629bfb84277f
+diff_sha256: 6819f55816bb338cb5a62ccaf18be9360d57329ef6bc0b897445042d2837c684
 
-_Sector/Lifecycle Router — **Slice 4b** (financial/bank card + per-type eligibility rework), branch
-`feat/sector-router-slice4b`. Blinded reviewers (cold, read-only, per `.claude/review_routing.json`):
-scope-auditor (always) · analytics-engineer (`*.sql`/`*.csv`/`dbt_analytics/*.yml`) · cto
-(`frontend/*`/`scripts/*`/`tests/*`) · data-engineer (`supabase/*`) · equity-analyst
-(`metric_catalogue.csv`/`data_contract.md`). **All five PASS.** Cycle 1: scope-auditor / analytics-engineer /
-cto / data-engineer PASS; equity-analyst ESCALATE (2 owner-judgment items) + an analytics non-blocking nit.
-Cycle 2 resolved both: (Q2) reworded `price_to_tangible_book` applicability ("meaningless or negative" -> "not
-shown" — the model guards tangible book > 0, so it's omitted not rendered negative); (Q1) **owner kept the
-P/E-based core three** (declined the P/TBV swap) via AskUserQuestion; fixed the stale "five-metric" prose in the
-gaps mart; **owner §6 copy sign-off** obtained (AskUserQuestion "Approve — ship as-is", 2026-07-08). The final
-diff `02f810c7` differs from the analytics/cto/data-engineer reviewed hash (`56eccecd`) only by copy/prose fixes
-(the P/TBV applicability + the gaps description + the contract amendment) — no logic/mechanism/schema change in
-their territories, so those PASSes stand. Verify: dbt build PASS=104, pytest 91, CI eligibility baseline 25->30,
-bank card renders 7 lens-grouped metrics (no em-dash), export-health 100%.
+**Change under review (21 files):** the pre-revenue **survival card** — cash runway, monthly cash
+burn, net-cash-vs-price, working capital — with a `pre_revenue` eligibility branch gating on
+`net_cash_to_market_cap`; the 4 survival metrics catalogued; a new `currency_compact` display format
+for the two dollar amounts; `pre_revenue` excluded from the sector-benchmark peer set (and from the
+mart benchmark join, so a pre-revenue card never shows a peer-count it isn't part of); a synthetic
+pre-revenue fixture (CI baseline 30 → 35); mart/export/Supabase carry + migration 009; docs.
 
-## scope-auditor (cycle 2)
+**Required reviewers** (per `.claude/review_routing.json`, for the staged files): scope-auditor
+(always); analytics-engineer-reviewer (`*.sql`/`*.csv`/`dbt_analytics/*.yml`); cto-reviewer
+(`frontend/*`/`scripts/*`/`tests/*`); data-engineer-reviewer (`supabase/*`); equity-analyst-reviewer
+(`metric_catalogue.csv`/`data_contract.md`).
+
+**Review journey.** Cycle 1 — equity-analyst and analytics-engineer returned blocking verdicts: the
+`net_cash_to_ev` EV denominator sign-flips when net cash exceeds enterprise value (contradicting
+`higher_better`), and `pre_revenue` peers were polluting operating sector benchmarks. Resolved by an
+**owner-approved (§6, AskUserQuestion, 2026-07-08) switch to `net_cash_to_market_cap`** (monotonic;
+market cap ≥ 0, zero-guarded) and by excluding `pre_revenue` from `int_stock__sector_benchmarks`.
+Cycles 2–3 — reviewers caught an incomplete prose sweep of the metric rename and the
+`company_type`-drives-eligibility fact across `_marts.yml`, `int_stock__card_metrics.sql`,
+`seed_ci_raw_fixtures.py`, `_docs.md`, the contract body, and finally `docs/data_contract.md`; the
+mart benchmark-join asymmetry was fixed at the same time. Cycle 4 (this record) — the full blinded
+panel re-reviewed the swept diff and all five returned PASS. Every reviewer independently confirmed the
+executable eligibility/metric/benchmark logic is correct and internally consistent; the only residual
+notes are two explicitly owner-deferred, pre-existing 4a/4b doc tags (`data_contract.md:75`
+dividend-yield "(data-only)"; the EXPORT_COLUMNS/export-shape-table gap) — outside 4c scope.
+
+Verification (repo `.venv`): `dbt build --no-partial-parse --full-refresh` PASS=105 / 0 errors;
+`check_eligibility_baseline.py --baseline-path scripts/eligibility_baseline.ci.json` → 35;
+export-health OK (100% fill); `pytest tests/` 95 passed; sqlfluff clean; layer-contract, sql-structure,
+registry-sync, dbt-test-policy, dbt-documentation gates green. Survival smoke: `us_sp500:CIPRE` →
+`net_cash_to_market_cap=0.4`, `working_capital=$2.1B`, `cash_runway_months=36`, `burn_rate_monthly=$58.3M`,
+`sector_peer_count=None` (benchmark-join exclusion confirmed).
+
+## scope-auditor
 VERDICT: PASS
 risks_checked:
-- §6 copy sign-off is self-contained in the contract amendment (4 bank-metric copy presented via AskUserQuestion, owner selected "Approve — ship as-is", 2026-07-08) — not silent.
-- Owner kept the P/E-based core three (declined the P/TBV swap) — documented in the amendment, not silently decided.
-- Scope integrity: exactly 16 files, all in `scope_paths`; the five eligibility-assumption sites all updated (int model + int/mart expression tests + singular assertion + LLOY/HSBA unit tests); catalogue narrowing correct; `data_contract.md` per-type + export table synced.
+- Staged set (21 files) is 1:1 with contract `scope_paths`; no out-of-scope file. Patch sha256 matches `6819f558…`.
+- No new §6 owner decision this round; the `net_cash_to_market_cap` metric switch (cycle-1 amendment, AskUserQuestion 2026-07-08) and the survival-card copy (decisions_reserved, owner-signed) sign-offs are recorded.
+- Incomplete-sweep failure mode closed: grep of live `data_contract.md` returns zero residual "does not affect / not part of is_card_eligible / not yet in / out of scope here" clauses; remaining `net_cash_to_ev` hits are data-only formula references.
+- All deferred "five-metric framing" items (overflow_menu.py, test_overflow_menu.py, README.md, north_star.md, data_contract onboarding line) documented in the amendments, not silently dropped.
 
-## analytics-engineer (cycle 1)
+## analytics-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Per-type eligibility consistency across all sites: the `eligibility` CTE's `missing_metrics` + `is_card_eligible` CASE are mirrored byte-for-byte in the `_intermediate.yml`/`_marts.yml` `expression_is_true` tests and `assert_eligible_mart_rows_have_all_metrics.sql`; `assert_mart_row_count_matches_card_metrics.sql` is symmetric (untouched). No site still hardcodes the 5-AND.
-- Catalogue-vs-model formula fidelity: the 4 new rows' numerator/denominator_expr match `int_stock__card_metrics.sql` verbatim, all same-statement-window; the mart is a SELECT-only carry (no recompute); the 25->30 pool growth is hand-verified against the bank fixture's real inputs.
-- (Non-blocking nit, now fixed:) stale "five-metric" prose in the `mart_stock_eligibility_gaps` description -> "per-type eligibility gate".
+- 3-branch per-type eligibility identical across all 5 sites (int `is_card_eligible` + `missing_metrics`, `_intermediate.yml` + `_marts.yml` expression tests, singular assertion); `pre_revenue` gates on `net_cash_to_market_cap` only, financial on the core three, operating on the five-metric AND.
+- Metric switch fully swept: `net_cash_to_ev` survives only as the data-only computation, its column doc ("data-only … not in the catalogue or export"), the formula-reference list, and amendment history — never a gate; absent from the catalogue, `metrics.json`, mart SELECT, `EXPORT_COLUMNS`, migration 009.
+- Benchmark exclusion consistent on both sides: `int_stock__sector_benchmarks.sql` peer CTE (`company_type != 'pre_revenue'`) and the `mart_stock_cards.sql` benchmark-join predicate mirror each other.
+- Catalogue (4 pre_revenue rows, formats/perspective/direction/order, benchmarkable=false; five operating/financial metrics narrowed off pre_revenue) matches `metrics.json`; `_docs.md` + dbt-YAML column docs are per-type-correct.
+- This round's `data_contract.md` prose (company_type block + export row + the two reworded headers) is factually correct; no new doc/code contradiction. Documented deferrals respected.
 
-## cto-reviewer (cycle 1)
+## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Operating-card parity: hand-verified the operating metrics' (perspective, display_order) pairs are monotonic in lockstep, so `metrics_for_card`'s new lens-then-order sort is provably identical to the old display_order sort for the operating card (corroborated by the unchanged `test_metrics_for_card_operating_includes_new_metrics_in_order`). Lens-sort reuses the existing CI-governed `perspective` vocabulary — no new column/renumber.
-- Re-run/interruption safety: `seed_ci_raw_fixtures.py` rewrites each parquet fresh (no append) so a re-run yields one bank per market, not cumulative; `export_to_supabase.py` upsert key is independent of the 4 new columns; migration 008 applies before export in `data_pipeline.yml`.
-- Fixture correctness: hand-verified the bank fixture's four metric values against the model SQL; `company_type='financial'` derives from `info_sector`; `debt_to_equity` excluded via `applies_to` (catalogue-driven), not null inputs. No dependency/workflow/secret change.
+- `currency_compact` formatter (B/M/K, sign-aware, `_CURRENCY_SYMBOLS` map with code-prefix and no-currency fallbacks) matches its tests; `format_metric_value(metric, value, currency=None)` is backward-compatible (only the `currency_compact` path uses the new arg; all pre-existing 2-arg callers valid).
+- Real render path: `_metric_cell_html` passes `card.get("currency")`, reached by `build_card_html` → `render_stock_card`; pre_revenue renders exactly the 4 lens-ordered survival metrics, no un-valued em-dash; currency reaches production cards via mart SELECT + `EXPORT_COLUMNS`.
+- Fixture docstring names the real gate (`net_cash_to_market_cap = (2100-100)/5000 = 0.4`, runway 36, burn ≈58.3M, WC 2100M); no stale `net_cash_to_ev`/0.667.
+- Tests exercise real code; no dependency/workflow/lockfile/secret changes anywhere in the patch. `frontend/*`/`scripts/*`/`tests/*` byte-identical to the prior green round.
 
-## data-engineer-reviewer (cycle 1)
+## data-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Migration 008 idempotency/convention: `add column if not exists` on 4 nullable numeric columns, header comment verbatim-matches 007, no overlap with 007's columns, sorts/applies after 007, double-guarded by `apply_supabase_migrations.py` filename tracking.
-- Export idempotency: `EXPORT_COLUMNS` extension is name-keyed (`{col: row[col] for col in EXPORT_COLUMNS}`), `on_conflict` unchanged and excludes the new columns; batch upserts re-runnable. Backfill null-safe (frontend `metrics_for_card` drops null metrics — no dash).
-- Schema contract sync verified column-for-column: `data_contract.md` export table + per-type eligibility prose match `EXPORT_COLUMNS` and the dbt CASE; baseline 25->30 arithmetically consistent (5 active markets × 1 bank). No `ingestion/` change.
+- Migration 009 adds exactly the 4 survival columns (`net_cash_to_market_cap`, `working_capital`, `cash_runway_months`, `burn_rate_monthly`) as nullable `numeric`, additive/idempotent (`add column if not exists`), sequential file number; uses `net_cash_to_market_cap`, not `net_cash_to_ev`.
+- Three-surface consistency: `EXPORT_COLUMNS`, the `data_contract.md` export table, and the per-type eligibility section all name `net_cash_to_market_cap`; no `net_cash_to_ev` leaks into export/catalogue.
+- Export idempotency/backfill unchanged (`on_conflict="market_code,ticker,snapshot_date"`, keep-last-good-snapshot on empty, NaN→None); new columns additive/nullable, so pre-migration rows read null.
+- The two reworded `data_contract.md` headers (balance-sheet intro + "Additional computed metrics — formula reference") are factually accurate: the now-catalogued/exported metrics are grouped correctly and only genuinely data-only intermediates are named. The non-blocking item flagged last round is resolved.
 
-## equity-analyst-reviewer (cycle 2)
+## equity-analyst-reviewer
 VERDICT: PASS
 risks_checked:
-- `price_to_tangible_book` copy now accurately describes ABSENCE (null when tangible book <= 0, per the model's `> 0` guard) with "zero or negative" attributed to the input, plain English, no `≤` symbol — mirrored identically in seed + metrics.json.
-- Bank eligibility gate (P/E-based core three; P/TBV swap declined) is the owner's documented §6 call, not silently overridden.
-- All 4 new formulas (P/TBV, net margin, ROA, dividend yield) match `int_stock__card_metrics.sql` line-by-line; `roa_pct` copy surfaces the ROA/ROE numerator asymmetry + period-end basis; dividend passthrough pinned by a unit test; no advice language anywhere.
-
-## Non-blocking / deferred to follow-on slices
-- **Slice 4c (pre-revenue card):** the survival set (`cash_runway_months`, `burn_rate_monthly`, `net_cash_to_ev`, `working_capital`, + a cash level), its `applies_to = pre_revenue`, a per-type eligibility branch (pre_revenue currently rides the else/5-AND, so it stays ineligible until 4c), cash-first ordering, and the FCF-yield-negative copy.
-- **Full-pipeline baseline (843)** will rise as banks become eligible; `check_eligibility_baseline.py` fails only on drops, so it passes — refresh via `--write-baseline` on the next weekly pipeline (owner; not local).
-- Value-aware negative-equity gloss for `debt_to_equity`/`statement_roe_pct` (from 4a) remains a candidate — the applicability caveat already warns.
+- `net_cash_to_market_cap` definition/direction/format match the model; market cap ≥ 0 and zero-guarded ⇒ monotonic, no sign-flip/pole (the cycle-1 EV fix intact); `net_cash_to_ev` no longer gates anything.
+- Survival copy for all 4 metrics: formulas match the model; beginner-appropriate; NO buy/sell/hold or imperative advice language (descriptive characterization only).
+- `cash_runway_months` "assumes steady burn" caveat is present in the RENDERED `learn` copy (metrics.json ↔ seed identical; no `metric_learn_text` override), reaching the card.
+- `company_type` "does not affect is_card_eligible" clause is gone from `data_contract.md` (grep-confirmed); the file is factual. Owner §6 sign-off of the metric switch recorded in the cycle-1 amendment; copy sign-off in decisions_reserved. Documented deferrals respected.
