@@ -337,6 +337,47 @@ and `roic` (see migration `002_fundamentals_mart.sql`).
 
 ---
 
+## Supabase assessments — `card_assessments`
+
+AI **health assessment** per card, written by `scripts/generate_assessments.py` after the mart export
+(weekly pipeline). Educational only — **not** investment advice. **Slice 5a** writes the deterministic
+verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` (a Claude Haiku prose read),
+regenerated only when `input_hash` changes; the card renders it in **Slice 6**.
+
+**Grain:** one row per `(market_code, ticker)` — latest snapshot only (differs from `mart_stock_cards`,
+keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migration `010_card_assessments.sql`).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `market_code` | text | FK → `markets` |
+| `ticker` | text | Provider symbol |
+| `company_type` | text | `operating` / `financial` / `pre_revenue` |
+| `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴 in Slice 6) |
+| `ai_read` | text | LLM prose read; **null in 5a**, populated in 5b (Claude Haiku) |
+| `read_model` | text | model id that wrote `ai_read`; **null in 5a** |
+| `input_hash` | text | sha256 of the verdict inputs; drives 5b regenerate-on-change |
+| `snapshot_date` | date | the mart snapshot the assessment reflects |
+| `generated_at` | timestamptz | last write |
+
+**Verdict rules (deterministic, per `company_type`).** The color is decided by transparent rules — **not**
+the LLM — and measures **financial health / resilience** on the card's own numbers; it deliberately
+excludes valuation (P/E, P/TBV) and growth. Conservative — one serious weakness caps it:
+- **operating** — leverage (`net_debt_to_ebitda`), profitability (`ebit_margin_pct`), cash (`fcf_margin_pct`);
+  `debt_to_equity` / `current_ratio_stmt` / `statement_roe_pct` are supporting (tie-breakers).
+- **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
+  adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the bank verdict stays modest).
+- **pre_revenue** — `cash_runway_months` / `net_cash_to_market_cap` / `working_capital`.
+
+Missing inputs are treated as unknown/neutral, never faked; an all-unknown card falls back to `yellow`.
+Thresholds live in `scripts/assessment_rules.py`, whose `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC`
+mirror this seed's `applies_to` / `direction` (a `tests/tooling` guard enforces it).
+
+**`input_hash`:** sha256 over the per-type card metric set + `company_type` + `health_verdict` +
+`INPUT_HASH_VERSION` (numerics rounded to 6dp, NaN → null). 5a recomputes the verdict + hash every run; 5b
+regenerates the prose read only when the hash changes.
+
+---
+
 ## Market activation checklist
 
 Before setting `ingest_active: true` for a new market:
