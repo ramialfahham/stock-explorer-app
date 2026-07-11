@@ -69,3 +69,6 @@ jobs:
 
       - name: Export to Supabase
         run: python scripts/export_to_supabase.py --duckdb-path storage/stock_data.db
+
+      - name: Generate assessments
+        run: python scripts/generate_assessments.py --duckdb-path storage/stock_data.db

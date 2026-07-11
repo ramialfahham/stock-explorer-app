@@ -84,6 +84,9 @@ jobs:
             --max-missing 0 \
             --require-ticker us_sp500:CI01
 
+      - name: Assessment generator smoke (dry-run)
+        run: python scripts/generate_assessments.py --duckdb-path /tmp/stock_data_ci.db --dry-run
+
       - name: Eligibility gaps summary
         run: python scripts/check_eligibility_gaps.py --duckdb-path /tmp/stock_data_ci.db
 

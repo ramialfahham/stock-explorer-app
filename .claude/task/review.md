@@ -1,77 +1,59 @@
-# Review — Sector/Lifecycle Router, Slice 4c (pre-revenue / survival card)
+# Review — Slice 5a: AI assessment — deterministic health verdict + storage (no LLM)
 
-diff_sha256: 6819f55816bb338cb5a62ccaf18be9360d57329ef6bc0b897445042d2837c684
+diff_sha256: 74e3016fa6d6d7010bfc9c3520afd1def0ba36a4e2bd30285d7b0e22de05f745
 
-**Change under review (21 files):** the pre-revenue **survival card** — cash runway, monthly cash
-burn, net-cash-vs-price, working capital — with a `pre_revenue` eligibility branch gating on
-`net_cash_to_market_cap`; the 4 survival metrics catalogued; a new `currency_compact` display format
-for the two dollar amounts; `pre_revenue` excluded from the sector-benchmark peer set (and from the
-mart benchmark join, so a pre-revenue card never shows a peer-count it isn't part of); a synthetic
-pre-revenue fixture (CI baseline 30 → 35); mart/export/Supabase carry + migration 009; docs.
+**Change under review (9 files):** the first half of the AI assessment generator — a deterministic
+per-type 🟢/🟡/🔴 **financial-health** verdict (rules decide the color; the LLM is deferred to 5b),
+computed from each card's own numbers and stored to a new Supabase table `card_assessments` with an
+`input_hash` for 5b's regenerate-on-change. Wires the generator into the weekly pipeline + a no-secret
+CI dry-run smoke. Ships **no LLM, no `anthropic` dependency, no API key, no cost**; data-only (Slice 6 renders).
 
-**Required reviewers** (per `.claude/review_routing.json`, for the staged files): scope-auditor
-(always); analytics-engineer-reviewer (`*.sql`/`*.csv`/`dbt_analytics/*.yml`); cto-reviewer
-(`frontend/*`/`scripts/*`/`tests/*`); data-engineer-reviewer (`supabase/*`); equity-analyst-reviewer
-(`metric_catalogue.csv`/`data_contract.md`).
+**Required reviewers** (per `.claude/review_routing.json`): scope-auditor (always); analytics-engineer
+(`010_*.sql`); data-engineer (`supabase/*`); cto (`scripts/*`/`tests/*`/`.github/workflows/*`);
+equity-analyst (`docs/data_contract.md` + the verdict rubric).
 
-**Review journey.** Cycle 1 — equity-analyst and analytics-engineer returned blocking verdicts: the
-`net_cash_to_ev` EV denominator sign-flips when net cash exceeds enterprise value (contradicting
-`higher_better`), and `pre_revenue` peers were polluting operating sector benchmarks. Resolved by an
-**owner-approved (§6, AskUserQuestion, 2026-07-08) switch to `net_cash_to_market_cap`** (monotonic;
-market cap ≥ 0, zero-guarded) and by excluding `pre_revenue` from `int_stock__sector_benchmarks`.
-Cycles 2–3 — reviewers caught an incomplete prose sweep of the metric rename and the
-`company_type`-drives-eligibility fact across `_marts.yml`, `int_stock__card_metrics.sql`,
-`seed_ci_raw_fixtures.py`, `_docs.md`, the contract body, and finally `docs/data_contract.md`; the
-mart benchmark-join asymmetry was fixed at the same time. Cycle 4 (this record) — the full blinded
-panel re-reviewed the swept diff and all five returned PASS. Every reviewer independently confirmed the
-executable eligibility/metric/benchmark logic is correct and internally consistent; the only residual
-notes are two explicitly owner-deferred, pre-existing 4a/4b doc tags (`data_contract.md:75`
-dividend-yield "(data-only)"; the EXPORT_COLUMNS/export-shape-table gap) — outside 4c scope.
-
-Verification (repo `.venv`): `dbt build --no-partial-parse --full-refresh` PASS=105 / 0 errors;
-`check_eligibility_baseline.py --baseline-path scripts/eligibility_baseline.ci.json` → 35;
-export-health OK (100% fill); `pytest tests/` 95 passed; sqlfluff clean; layer-contract, sql-structure,
-registry-sync, dbt-test-policy, dbt-documentation gates green. Survival smoke: `us_sp500:CIPRE` →
-`net_cash_to_market_cap=0.4`, `working_capital=$2.1B`, `cash_runway_months=36`, `burn_rate_monthly=$58.3M`,
-`sector_peer_count=None` (benchmark-join exclusion confirmed).
+**Outcome: all five PASS, single cycle, no blocking findings.** Local verification: `pytest tests/` 117
+passed (22 new), and the generator dry-run over the fixture mart yields a verdict per card (35 cards),
+no credentials required. Every reviewer independently confirmed 5a ships no LLM/dependency/secret, the
+verdict is health-only (excludes valuation + growth), the catalogue mirror holds across all 16 metrics,
+the migration is additive/idempotent, and the upsert provably can't clobber a future 5b read.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Staged set (21 files) is 1:1 with contract `scope_paths`; no out-of-scope file. Patch sha256 matches `6819f558…`.
-- No new §6 owner decision this round; the `net_cash_to_market_cap` metric switch (cycle-1 amendment, AskUserQuestion 2026-07-08) and the survival-card copy (decisions_reserved, owner-signed) sign-offs are recorded.
-- Incomplete-sweep failure mode closed: grep of live `data_contract.md` returns zero residual "does not affect / not part of is_card_eligible / not yet in / out of scope here" clauses; remaining `net_cash_to_ev` hits are data-only formula references.
-- All deferred "five-metric framing" items (overflow_menu.py, test_overflow_menu.py, README.md, north_star.md, data_contract onboarding line) documented in the amendments, not silently dropped.
+- 9 staged files == contract `scope_paths`; the unrelated `.gitignore` change is unstaged/absent from the diff; patch sha256 matches.
+- No `anthropic` dep / `ANTHROPIC_API_KEY` / Claude call; `ai_read`/`read_model` are nullable columns omitted from the upsert (null in 5a).
+- All §6 decisions (per-type rubric, health-only framing, `(market_code, ticker)` grain, `green|yellow|red` token, generate-and-store, 5a/5b split) recorded in `decisions_reserved` + the 2026-07-11 amendment.
+- 5b (LLM read) and Slice 6 (rendering) deferrals documented; review artifacts correctly excluded from this diff.
 
 ## analytics-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- 3-branch per-type eligibility identical across all 5 sites (int `is_card_eligible` + `missing_metrics`, `_intermediate.yml` + `_marts.yml` expression tests, singular assertion); `pre_revenue` gates on `net_cash_to_market_cap` only, financial on the core three, operating on the five-metric AND.
-- Metric switch fully swept: `net_cash_to_ev` survives only as the data-only computation, its column doc ("data-only … not in the catalogue or export"), the formula-reference list, and amendment history — never a gate; absent from the catalogue, `metrics.json`, mart SELECT, `EXPORT_COLUMNS`, migration 009.
-- Benchmark exclusion consistent on both sides: `int_stock__sector_benchmarks.sql` peer CTE (`company_type != 'pre_revenue'`) and the `mart_stock_cards.sql` benchmark-join predicate mirror each other.
-- Catalogue (4 pre_revenue rows, formats/perspective/direction/order, benchmarkable=false; five operating/financial metrics narrowed off pre_revenue) matches `metrics.json`; `_docs.md` + dbt-YAML column docs are per-type-correct.
-- This round's `data_contract.md` prose (company_type block + export row + the two reworded headers) is factually correct; no new doc/code contradiction. Documented deferrals respected.
+- Migration 010: FK to `markets`, `health_verdict` CHECK in (green,yellow,red), `input_hash`/`snapshot_date` NOT NULL, `unique(market_code,ticker)` backing `on_conflict`, two indexes, RLS + public select; additive/idempotent (`create table if not exists`), sequential, auto-discovered.
+- `INPUT_FIELDS_BY_TYPE` + `DIRECTION_BY_METRIC` reproduce `metric_catalogue.csv` `applies_to`/`direction` exactly (all 16 metrics); the two mirror-guard tests are full set/dict-equality checks against the live seed.
+- Verdict logic reads only the health subset (excludes forward_pe/price_to_tangible_book/growth); banding respects the catalogue direction; null handling is total (all-unknown -> yellow); `input_hash` covers the full per-type set + version.
+- No dbt model/mart change; all generator SELECT columns exist in `mart_stock_cards`.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- `currency_compact` formatter (B/M/K, sign-aware, `_CURRENCY_SYMBOLS` map with code-prefix and no-currency fallbacks) matches its tests; `format_metric_value(metric, value, currency=None)` is backward-compatible (only the `currency_compact` path uses the new arg; all pre-existing 2-arg callers valid).
-- Real render path: `_metric_cell_html` passes `card.get("currency")`, reached by `build_card_html` → `render_stock_card`; pre_revenue renders exactly the 4 lens-ordered survival metrics, no un-valued em-dash; currency reaches production cards via mart SELECT + `EXPORT_COLUMNS`.
-- Fixture docstring names the real gate (`net_cash_to_market_cap = (2100-100)/5000 = 0.4`, runway 36, burn ≈58.3M, WC 2100M); no stale `net_cash_to_ev`/0.667.
-- Tests exercise real code; no dependency/workflow/lockfile/secret changes anywhere in the patch. `frontend/*`/`scripts/*`/`tests/*` byte-identical to the prior green round.
+- `assessment_rules.py` pure (hashlib/json/math only); `compute_verdict` total (null/unknown company_type -> operating; all-unknown -> yellow); `compute_input_hash` float-canonicalized (6dp, NaN->None), order-independent, versioned.
+- `generate_assessments.py` mirrors `export_to_supabase`; `build_assessment_records` pure; `--dry-run` returns before the creds check (secret-free CI smoke); upsert omits `ai_read`/`read_model`; `ASSESSMENT_INPUT_COLUMNS` derived from the rules module (can't drift).
+- Tests genuinely exercise real code (ran 22 passed): per-type verdicts, boundaries, null-tolerance, totality grid, hash determinism/float-stability/version-sensitivity, catalogue mirror, offline generator (synthetic DuckDB, dedupe, `ai_read` absent, dry-run rc 0 env-stripped, missing-db rc 1).
+- Workflows: generate step after export inheriting existing secrets; no-secret dry-run smoke; no new dependency, secret, or LLM call (`requirements.txt` untouched; imports pre-existing).
 
 ## data-engineer-reviewer
 VERDICT: PASS
 risks_checked:
-- Migration 009 adds exactly the 4 survival columns (`net_cash_to_market_cap`, `working_capital`, `cash_runway_months`, `burn_rate_monthly`) as nullable `numeric`, additive/idempotent (`add column if not exists`), sequential file number; uses `net_cash_to_market_cap`, not `net_cash_to_ev`.
-- Three-surface consistency: `EXPORT_COLUMNS`, the `data_contract.md` export table, and the per-type eligibility section all name `net_cash_to_market_cap`; no `net_cash_to_ev` leaks into export/catalogue.
-- Export idempotency/backfill unchanged (`on_conflict="market_code,ticker,snapshot_date"`, keep-last-good-snapshot on empty, NaN→None); new columns additive/nullable, so pre-migration rows read null.
-- The two reworded `data_contract.md` headers (balance-sheet intro + "Additional computed metrics — formula reference") are factually accurate: the now-catalogued/exported metrics are grouped correctly and only genuinely data-only intermediates are named. The non-blocking item flagged last round is resolved.
+- Migration 010 applies additively ahead of the generator (migrations step precedes it); FK/CHECK/grain/indexes/RLS mirror the mart convention; auto-discovered; `create table if not exists` deliberately non-destructive (preserves a future 5b `ai_read`).
+- Non-clobber invariant: `build_assessment_records` emits a uniform 7-key payload omitting `ai_read`/`read_model`, so PostgREST `ON CONFLICT DO UPDATE SET` leaves an existing 5b read untouched; asserted by the offline test.
+- Read/coerce/dedupe: read-only mart read, NaN->None, latest-snapshot per `(market_code, ticker)` via ISO-string compare; all 16 metric columns exist in the mart.
+- Empty-mart keeps the snapshot (never deletes); `--dry-run` returns before creds; pipeline reuses the service-role secret (no new secret); `data_contract.md` `card_assessments` section factually consistent with the migration + write path.
 
 ## equity-analyst-reviewer
 VERDICT: PASS
 risks_checked:
-- `net_cash_to_market_cap` definition/direction/format match the model; market cap ≥ 0 and zero-guarded ⇒ monotonic, no sign-flip/pole (the cycle-1 EV fix intact); `net_cash_to_ev` no longer gates anything.
-- Survival copy for all 4 metrics: formulas match the model; beginner-appropriate; NO buy/sell/hold or imperative advice language (descriptive characterization only).
-- `cash_runway_months` "assumes steady burn" caveat is present in the RENDERED `learn` copy (metrics.json ↔ seed identical; no `metric_learn_text` override), reaching the card.
-- `company_type` "does not affect is_card_eligible" clause is gone from `data_contract.md` (grep-confirmed); the file is factual. Owner §6 sign-off of the metric switch recorded in the cycle-1 amendment; copy sign-off in decisions_reserved. Documented deferrals respected.
+- Health-not-investment-quality: the three verdict functions read only resilience axes; no path reads `forward_pe`/`price_to_tangible_book`/`revenue_growth`/`dividend_yield` (those are hashed for 5b but never scored) — no "cheap P/E -> green".
+- Per-type bands defensible + beginner-honest; edge handling correct (negative net-cash -> red; null runway = not-burning -> good with net-cash/WC still gating; missing inputs = unknown, never faked); worst-axis-wins + totality confirmed.
+- Bank honest-limit (profitability-only; CET1/Tier 1 unsourceable) stated in `data_contract.md` + a code comment; verdict stays modest. No advice language anywhere; `data_contract.md` factual; owner sign-off of the rubric recorded.
+- Non-blocking methodology notes (no change required): (1) a negative `net_debt_to_ebitda` is classed "good", but negative-EBITDA distress is caught independently by the margin axis under worst-axis-wins; (2) financial-green treats a known-mediocre ROA more strictly than an unknown ROA — a defensible "don't penalize missing data" asymmetry.
