@@ -11,11 +11,11 @@ not Yahoo `info` scalar shortcuts**, and design per-type metric sets from an exp
 matrix** (below). **Slices 1–2b are all MERGED** (#139 classifier · #140 balance sheet · #141 statements)
 — **the entire raw data foundation is in.** Slice 3 (the compute) is built in two PRs: **Slice 3a
 (statement enrichment) MERGED (#142)** and **Slice 3b (per-type metric compute) MERGED (#143).** The
-test-architecture cleanup (#144) also merged. **Slices 4a (#145) and 4b (#146) are MERGED; Slice 4c — the
-pre-revenue/survival card, the last Router slice — is PR'd (awaiting merge).** With 4c the Router is
-feature-complete; the remaining work is **Slice 5 (AI assessment generator)** then **Slice 6 (UI redesign).**
-The most recent session built Slice 4c: the 4-metric survival card + a pre_revenue eligibility branch (pre-revenue
-companies now enter the pool, baseline 30 → 35) + a compact-currency format + a synthetic pre_revenue fixture —
+test-architecture cleanup (#144) also merged. **The Sector/Lifecycle Router (Slices 4a #145 · 4b #146 · 4c #147)
+is fully MERGED — feature-complete.** Work has moved to **Slice 5 — the AI assessment generator**, split into
+**5a (deterministic health verdict + storage, no LLM) — PR'd (awaiting merge)** and **5b (the Claude-written prose
+read)**; then **Slice 6 (UI redesign)** renders it. The most recent session built Slice 5a: a per-type 🟢/🟡/🔴
+financial-health verdict from deterministic rules + a new `card_assessments` Supabase table + pipeline wiring —
 see Status + Next actions.
 
 ## Status
@@ -60,7 +60,7 @@ see Status + Next actions.
   LLOY/HSBA unit tests). Values carried int → mart → Supabase (migration `008`). `metrics_for_card` now
   lens-sorts (bank card lens-grouped; operating byte-identical). Synthetic bank fixture per market → **CI
   baseline 25 → 30**; dividendYield scale-guard unit test. dbt PASS=104, pytest 91. Full 5-reviewer cycle all-PASS.
-- **Sector Router — Slice 4c (pre-revenue/survival card + per-type benchmarks) PR'd (awaiting merge).**
+- **Sector Router — Slice 4c (pre-revenue/survival card + per-type benchmarks) MERGED (#147).**
   4 survival metrics catalogued (`net_cash_to_market_cap`, `working_capital`, `cash_runway_months`,
   `burn_rate_monthly`; `applies_to = pre_revenue`; owner-signed copy) + a **pre_revenue eligibility branch**
   (gates on `net_cash_to_market_cap is not null` → 3-branch `CASE company_type`; pre-revenue companies now enter
@@ -72,6 +72,16 @@ see Status + Next actions.
   values carried int → mart → Supabase (migration `009`). dbt PASS=105, pytest 95, baseline 35. **Full 5-reviewer
   cycle, 4 rounds → all-PASS** (rounds 1–3 caught the metric sign-flip, the benchmark pollution, and an incomplete
   doc-sweep of the rename + the company_type-drives-eligibility fact; all fixed and re-verified).
+- **Slice 5a (AI assessment — deterministic health verdict + storage, no LLM) PR'd (awaiting merge).**
+  New pure `scripts/assessment_rules.py` — a per-type 🟢/🟡/🔴 **financial-health** verdict decided by
+  deterministic rules (NOT the LLM): operating on leverage/profitability/cash, financial on ROE/margin/ROA
+  (profitability-only — capital adequacy unsourceable from yfinance), pre_revenue on runway/net-cash/working-capital;
+  conservative worst-axis-wins; **excludes valuation + growth** (no disguised buy signal). Stored to a new Supabase
+  table **`card_assessments`** (migration `010`, RLS public read) with an `input_hash` (float-canonical) for 5b's
+  regenerate-on-change; `ai_read`/`read_model` are null in 5a and omitted from the upsert so 5b can't be clobbered.
+  `scripts/generate_assessments.py` (mirrors export) runs after export in the weekly pipeline + a no-secret CI
+  dry-run smoke. **No `anthropic` dep, no API key, no cost.** pytest 117 (22 new); generator dry-run 35 cards.
+  **Full 5-reviewer cycle, single round → all-PASS.**
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -164,7 +174,7 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
    baseline 25 → 30; `metrics_for_card` lens-sort. **EV/EBITDA & P/B financial caveats were moot** (banks use
    statement P/TBV, not those info-scalars). Value-aware negative-equity gloss for debt/equity + ROE still
    deferred (caveat already warns). Owner **kept the P/E-based bank gate** (declined the P/TBV swap).
-5c. **Slice 4c — pre-revenue/survival card: PR'd (awaiting merge).** 4 survival metrics catalogued
+5c. **Slice 4c — pre-revenue/survival card: MERGED (#147).** 4 survival metrics catalogued
    (`net_cash_to_market_cap`, `working_capital`, `cash_runway_months`, `burn_rate_monthly`; owner-signed copy);
    pre_revenue eligibility branch (3-branch `CASE`, gates on `net_cash_to_market_cap`); `currency_compact` format;
    pre_revenue excluded from sector benchmarks (peer CTE + mart join); synthetic pre_revenue fixture (baseline
@@ -172,9 +182,16 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
    denominator sign-flips when net cash > EV; market cap is monotonic — `net_cash_to_ev` now data-only). 4-round
    review → all-PASS. Deferred (owner, out of 4c): the pre-existing "all five" / "data-only" doc boilerplate on
    now-catalogued metrics across `_intermediate.yml` + `data_contract.md` + `overflow_menu.py`/README/north_star.
-6. **Slice 5 (← START HERE) — AI assessment generator** (Python after dbt/export; Claude; store to Supabase;
-   not-advice). The Router is feature-complete after 4c; this is the next build. Educational only, true-beginner
-   language, reason only from the given numbers, end with a 🟢/🟡/🔴 health verdict.
+6. **Slice 5 — AI assessment generator** (split 5a/5b; owner decisions: rules decide the verdict color / LLM
+   writes prose only; generate-and-store data-only; Claude Haiku + regenerate-on-change).
+   - **5a — deterministic verdict + `card_assessments` storage: PR'd (awaiting merge).** `assessment_rules.py`
+     (per-type health verdict + `input_hash`), migration `010`, `generate_assessments.py`, pipeline + CI smoke,
+     tests, `data_contract.md` §card_assessments. No LLM/dep/key/cost. Owner-signed per-type verdict rubric.
+   - **5b (← START HERE) — the Claude read.** Add `anthropic` + `ANTHROPIC_API_KEY` secret; an owner-signed
+     per-type prompt/voice (the beginner "read": reason only from the numbers, end on the verdict's meaning —
+     "financially sturdy on these figures", never "a good buy"); the Haiku call gated on `input_hash` change
+     (read the existing row, regenerate only when changed); fill `ai_read`/`read_model`; offline test mocking the API.
+     Plan: repurpose `~/.claude/plans/dynamic-snuggling-truffle.md` (currently holds the 5a plan).
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above (the approved mock: cohesive card,
    scan→deep tiers, one disclosure, label chips, words-not-arrows).
 
