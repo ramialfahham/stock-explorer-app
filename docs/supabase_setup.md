@@ -133,6 +133,32 @@ pipeline**, then the job's play button).
 
 ---
 
+## 3b. Testing against a dev schema
+
+There's one Supabase project, and it's production — `--dry-run` on either script skips the
+write entirely, it doesn't exercise one. `--target dev` gives both scripts a safe place to
+write for real, inside the *same* project (same `SUPABASE_URL` / credentials, no new secret):
+
+```bash
+python scripts/apply_supabase_migrations.py --target dev   # creates + populates dev.*
+python scripts/export_to_supabase.py --target dev --duckdb-path storage/stock_data.db
+```
+
+`prod` (the default, unchanged) writes to `public.*` — what Streamlit reads. `dev` writes to
+`dev.*`, created on first run by rewriting each migration file's `public.` references at
+execution time; the files on disk never change, so a future migration works against both
+targets automatically.
+
+**One manual step, once, for the export half only:** `export_to_supabase.py` goes through
+PostgREST, which only serves schemas explicitly listed in **Settings → API → Exposed
+schemas** in the Supabase dashboard — add `dev` there. `apply_supabase_migrations.py` is a
+raw Postgres connection and needs no such step.
+
+**CI button:** the same check runs as [`dev-schema-check`](../.gitlab-ci.yml) — **CI/CD →
+Pipelines → Run pipeline**, then that job's manual play button. Never runs automatically.
+
+---
+
 ## 4. What gets created
 
 | Table | Purpose |

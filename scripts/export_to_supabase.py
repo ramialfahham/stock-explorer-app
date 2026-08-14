@@ -1,4 +1,17 @@
-"""Upsert mart_stock_cards from DuckDB into Supabase (service role)."""
+"""Upsert mart_stock_cards from DuckDB into Supabase (service role).
+
+--target selects which Postgres schema this writes to, inside the SAME Supabase project
+(same credentials, no new secrets):
+
+  prod (default) — public.mart_stock_cards. What Streamlit reads.
+  dev            — dev.mart_stock_cards. A safe place to test an export change against a
+                    real Postgres before it ships. Requires the "dev" schema to already
+                    exist (run apply_supabase_migrations.py --target dev first) AND to be
+                    added to the Supabase project's Settings -> API -> Exposed schemas list
+                    once, manually — this script goes through PostgREST (client.table()),
+                    which only serves schemas on that list. apply_supabase_migrations.py is
+                    unaffected (raw Postgres connection, not PostgREST).
+"""
 
 from __future__ import annotations
 
@@ -12,6 +25,7 @@ import duckdb
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
+from supabase.lib.client_options import ClientOptions
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -97,6 +111,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Load rows but do not write to Supabase",
     )
+    parser.add_argument(
+        "--target",
+        choices=["prod", "dev"],
+        default="prod",
+        help="prod (default) writes to public.*; dev writes to dev.* in the same project",
+    )
     args = parser.parse_args(argv)
 
     load_dotenv()
@@ -105,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     if not url or not key:
         print("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env")
         return 1
+
+    schema = "public" if args.target == "prod" else args.target
 
     db_path = Path(args.duckdb_path)
     if not db_path.exists():
@@ -121,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Nothing to export; keeping existing Supabase snapshot.")
         return 0
 
-    client = create_client(url, key)
+    client = create_client(url, key, options=ClientOptions(schema=schema))
     batch_size = 500
     for start in range(0, len(records), batch_size):
         batch = records[start : start + batch_size]
@@ -130,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
             on_conflict="market_code,ticker,snapshot_date",
         ).execute()
 
-    print(f"export_to_supabase: upserted {len(records)} rows")
+    print(f"export_to_supabase: upserted {len(records)} rows to '{schema}'")
     return 0
 
 
