@@ -41,17 +41,25 @@ name "main"); confirmed via `protected_branches` API that `main` is the protecte
 (Maintainer push/merge, no force-push), not the feature branch. MR #1 open:
 https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/1.
 
-**Blocked on:** the MR's own pipeline (`#2759956276`) failed instantly on all three jobs
-with `failure_reason: "ci_quota_exceeded"` — the account's Free-plan shared-runner CI
-minutes are exhausted (likely by the other two projects in this namespace:
-`backtobayesics`, `football-data-pipeline`). This is **not** a `.gitlab-ci.yml` defect —
-`workflow:` rules and the MR trigger fired correctly; no job ever got a runner. Confirmed
-zero CI/CD variables are configured yet (`GET .../variables` → `[]`), which is expected —
-I never had read access to the GitHub secret values.
+**CI-minutes blocker resolved 2026-08-14.** First MR pipeline (`#2759956276`) failed
+instantly on all three jobs with `ci_quota_exceeded` — the account's Free-plan shared-runner
+minutes were exhausted (this repo's own migration was the third project to draw on that
+namespace-wide pool; not a `.gitlab-ci.yml` defect, `workflow:` rules fired correctly, no
+job ever got a runner). Fixed by assigning the project to the account's existing Hetzner
+self-hosted runner (`runner_id 55092538`) rather than buying minutes — see
+[[gitlab-runner-duplicate-registration]] for the full runner-topology history, including a
+pre-existing duplicate registration (found and consolidated the same day: `backtobayesics`
+was on a *separate* duplicate identity, `55093930`, reassigned to `55092538` and the
+duplicate deleted). Re-triggered pipeline `#2760178252` **ran for real and passed**:
+`validate:branch-guard` (confirms the `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME` fix actually
+works — logged `branch guard passed (chore/migrate-to-gitlab)`, proving the old GitHub
+version's dead `HEAD`-only check is genuinely fixed), `validate:secret-scan` (gitleaks: 172
+commits, 0 leaks), `validate:full` (dbt: 11 models/74 tests/19 unit tests, pytest 120
+passed, full audit script run). Also learned incidentally, no box access needed: the
+runner uses the **docker** executor (each job trace opens with `Using docker image ... for
+python:3.11`) — jobs are isolated per-container, not sharing the host.
 
-**Owner-only, not decided:**
-- CI minutes: buy more on the Free plan, or point this project at an existing self-hosted
-  runner (`self-hosted-runner.md` in the skill) instead of GitLab's shared runners.
+**Owner-only, still not decided:**
 - Streamlit Community Cloud only deploys from GitHub — **the live app
   (stock-explorer.streamlit.app) has no deploy path from the new GitLab repo.** Options:
   keep a GitHub mirror alive just for Streamlit, or find another host. Not solved here.
@@ -62,15 +70,16 @@ I never had read access to the GitHub secret values.
 - Repo visibility: created **private** by default (unlike the two public sibling repos) —
   flip it if that's wrong; this repo's docs reference production secret names.
 - CI/CD variable values themselves (Supabase creds, `ANTHROPIC_API_KEY`) — names only in
-  `docs/operations_guide.md` / `supabase_setup.md`, never values.
+  `docs/operations_guide.md` / `supabase_setup.md`, never values. `supabase-migrate` and
+  `data-pipeline` are still unexercised — both need these variables plus (for
+  `data-pipeline`) the Mon 06:00 UTC pipeline schedule, which is project config and can't be
+  committed.
 - Whether/when to restore `main` branch protection expectations once GitHub access (if
   ever restored) makes the old repo relevant again — two remotes now exist for a while.
 
-**Next concrete action:** owner reviews MR #1, resolves CI-minutes (buy vs. self-hosted
-runner), sets the CI/CD variables listed in `operations_guide.md`, creates the Mon 06:00
-UTC pipeline schedule (project config — can't be committed), decides the Streamlit
-question, then merges. Re-run the pipeline after variables exist to actually exercise
-`supabase-migrate` / `data-pipeline` — neither has run yet.
+**Next concrete action:** owner reviews MR #1 (CI now genuinely green, not just config that
+parses), sets the CI/CD variables, creates the pipeline schedule, decides the Streamlit
+question, then merges.
 
 ## Status
 
