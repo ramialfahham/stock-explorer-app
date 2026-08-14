@@ -119,7 +119,7 @@ def main() -> int:
         return 1
 
     host, port, label = working[0]
-    print("\n--- Set these GitHub Actions secrets ---")
+    print("\n--- Set these GitLab CI/CD variables (Protected) ---")
     print(f"SUPABASE_DB_HOST={host}")
     print(f"SUPABASE_DB_PORT={port}")
     print("SUPABASE_URL=https://{ref}.supabase.co".format(ref=ref))

@@ -20,7 +20,7 @@ Price fetch: `history` and `download` both OK for sampled symbols (including `.L
 
 - `check_pipeline_completeness.py` may fail the **<5 eligible** gate when ebitda or other fields are missing for most tickers (e.g. banks).
 - Land `info_total_debt` / `info_total_cash`; dbt coalesces net debt when `netDebt` is null.
-- Run full ingest per market with default `--delay-seconds 0.25`; use `workflow_dispatch` on Data Pipeline after a one-market pilot.
+- Run full ingest per market with default `--delay-seconds 0.25`; use a manual `web` dispatch on `data-pipeline` after a one-market pilot.
 
 ## Commands
 

@@ -11,7 +11,7 @@ what is unique to this repo.
 
 Card-based stock dashboard. Python ingestion → dbt (DuckDB) → Supabase → Streamlit.
 
-Nothing runs on a developer machine in production. GitHub Actions runs ingestion,
+Nothing runs on a developer machine in production. GitLab CI runs ingestion,
 dbt, and export on a schedule.
 
 ---
@@ -81,7 +81,7 @@ dbt <command> --project-dir dbt_analytics --profiles-dir .
 - Primary mart: `mart_stock_cards` (all markets; filter by `market_code` at export/UI).
 - Do not create per-market mart copies.
 - Exporter: `scripts/export_to_supabase.py` upserts `mart_stock_cards` using the service role key
-  (scheduled via `.github/workflows/data_pipeline.yml`).
+  (scheduled via the `data-pipeline` job in [`.gitlab-ci.yml`](../.gitlab-ci.yml)).
 - Streamlit reads Supabase with the **anon** key only.
 
 Setup: [`supabase_setup.md`](supabase_setup.md).
@@ -90,12 +90,12 @@ Setup: [`supabase_setup.md`](supabase_setup.md).
 
 ## CI extensions
 
-In addition to the gates in `engineering_standards.md` §8, every PR also runs:
+In addition to the gates in `engineering_standards.md` §8, every MR also runs:
 
 - `python scripts/check_layer_contract.py`
 - `python scripts/check_registry_var_sync.py`
 
-See [`.github/workflows/ci-validate.yml`](../.github/workflows/ci-validate.yml).
+See [`.gitlab-ci.yml`](../.gitlab-ci.yml) — `validate:full` job.
 
 ---
 

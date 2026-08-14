@@ -2,7 +2,7 @@
 
 Tracks applied files in public.schema_migrations. Safe to run locally and in CI.
 
-Requires in .env (or GitHub Actions secrets) — pick one approach:
+Requires in .env (or GitLab CI/CD variables) — pick one approach:
 
   A) CI-friendly (recommended):
      SUPABASE_URL + SUPABASE_DB_PASSWORD + SUPABASE_DB_HOST

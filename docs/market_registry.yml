@@ -27,7 +27,7 @@
 #   Data provider identifier. Currently supported: yfinance
 #
 # ingest_active     (boolean, required)
-#   When true, GitHub Actions ingestion includes this market. When false, the
+#   When true, the GitLab CI data-pipeline job includes this market. When false, the
 #   entry remains configured but is skipped (useful for pausing a market without
 #   deleting its definition).
 #
