@@ -8,7 +8,7 @@ How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`]
 
 1. `git checkout -b feature/short-description` from latest `main`
 2. Implement; keep scope to the agreed task
-3. Push and open PR; wait for **ci-validate** and review
+3. Push and open an MR; wait for **validate** and review
 4. Merge to `main`; scheduled pipeline picks up on next run
 5. **Post-merge (agent):** `git fetch --prune`, `checkout main`, `pull`, delete merged local branches
    (`git branch -d` for each entry from `git branch --merged main` except `main`)
@@ -17,13 +17,15 @@ Never commit directly to `main`.
 
 **One-time setup:** `pip install -r requirements-dev.txt && pre-commit install` — installs the pre-commit hooks (`no-commit-to-branch` rejects commits on `main`, plus a staged gitleaks secret scan). See [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 
-**GitHub (recommended):** branch protection on `main` — require PR, disallow direct push.
+**GitLab (recommended):** branch protection on `main` — require MR, disallow direct push. Read
+it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/protected_branches`
+(a GitLab project can end up with an unprotected default branch — see the migration handover).
 
 ---
 
 ## CI tiers (economic)
 
-See [`.github/workflows/ci-validate.yml`](../.github/workflows/ci-validate.yml).
+See [`.gitlab-ci.yml`](../.gitlab-ci.yml) — `validate:full` job.
 
 ### Tier A — every PR (~2–5 min)
 
@@ -46,7 +48,7 @@ Always runs:
 
 Doc-only PRs (`docs/**` excluding registry) skip Tier B dbt builds.
 
-### Tier C — production (`data_pipeline.yml`)
+### Tier C — production (`data-pipeline` job)
 
 Weekly / scheduled full run:
 
@@ -55,7 +57,8 @@ Weekly / scheduled full run:
 3. `check_pipeline_completeness.py` (fail if gates not met)
 4. `export_to_supabase.py`
 
-Label `full-ci` on a PR or `workflow_dispatch` can trigger extended checks later if needed.
+A GitLab pipeline schedule (CI/CD → Schedules — project configuration, not something a
+commit can set) drives the weekly run; a manual `web` dispatch can trigger it on demand.
 
 ### dbt testing checklist (before PR)
 
@@ -69,9 +72,9 @@ Label `full-ci` on a PR or `workflow_dispatch` can trigger extended checks later
 
 ### Production pipeline verification
 
-After secrets are configured on GitHub:
+After CI/CD variables are configured on GitLab:
 
-1. `workflow_dispatch` on **Data Pipeline** (or wait for Monday 06:00 UTC cron).
+1. Manual `web` dispatch on **data-pipeline** (or wait for Monday 06:00 UTC schedule).
 2. Confirm job steps: ingest → `dbt build` → completeness → export.
 3. Optional local audit before activating a market: `python scripts/audit_yfinance_coverage.py`.
 

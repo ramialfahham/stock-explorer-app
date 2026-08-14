@@ -261,7 +261,7 @@ Benchmark availability does **not** affect `is_card_eligible`.
 | Layer | Cadence | Owner |
 |-------|---------|-------|
 | Constituents | On demand / when index changes | `refresh_constituents.py` |
-| Fundamentals | **Weekly** (or on statement refresh) | GitHub Actions `data_pipeline.yml` |
+| Fundamentals | **Weekly** (or on statement refresh) | GitLab CI `data-pipeline` job |
 | Daily prices | Weekly or daily (supporting only) | Same pipeline |
 | Supabase export | After successful dbt build | `export_to_supabase.py` |
 | News (Phase 2) | Daily | Separate workflow |

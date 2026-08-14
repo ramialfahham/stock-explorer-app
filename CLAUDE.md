@@ -12,7 +12,7 @@ The essence:
 
 - Every change runs **Explore → Plan → Confirm → Implement → Verify**. Confirm means
   **wait for an explicit "go" before editing or running anything.**
-- Never commit or push to `main`. Branch, open a PR, let the user merge.
+- Never commit or push to `main`. Branch, open an MR, let the user merge.
 - The decisions in §6 (product, naming, anything permanent, new mechanisms, cost) are the
   user's — escalate, don't decide.
 
@@ -22,7 +22,7 @@ The essence:
 - **Transform:** dbt-core + dbt-duckdb, ephemeral DuckDB (`dbt_analytics/`)
 - **Warehouse / export:** Supabase (Postgres) — `supabase/migrations/`, `scripts/export_to_supabase.py`
 - **Frontend:** Streamlit Community Cloud (`frontend/app.py`)
-- **CI:** GitHub Actions (`.github/workflows/ci-validate.yml`, `data_pipeline.yml`)
+- **CI:** GitLab CI (`.gitlab-ci.yml`)
 - Python 3.11. Run dbt from the repo root: `dbt <cmd> --project-dir dbt_analytics --profiles-dir .`
 
 ## Layout

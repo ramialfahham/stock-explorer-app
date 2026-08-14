@@ -18,6 +18,69 @@ read)**; then **Slice 6 (UI redesign)** renders it. The most recent session buil
 financial-health verdict from deterministic rules + a new `card_assessments` Supabase table + pipeline wiring —
 see Status + Next actions.
 
+## Infra: GitHub → GitLab migration (separate track, not a product slice)
+
+**Why this exists:** the GitHub account (`ramialfahham`) got suspended mid-session
+(2026-08-14) — `git fetch`/`push`/`gh api` all 403 "Your account was suspended." Slice 5a's
+PR has nowhere to be merged until either GitHub is restored or the repo moves. Ran
+`/migrate-to-gitlab` at the owner's direction as a result; this is orthogonal to the
+Sector Router / AI-assessment work below and does **not** change Slice 5b's plan.
+
+**State:** `.gitlab-ci.yml` + `tests/tooling/test_ci_reachability.py` written, all three
+reachability pins verified to fail against their deliberately-broken forms before being
+kept (see commit `7ce0c78` on `chore/migrate-to-gitlab`, branched off `main` @ `0f182f7`).
+Docs swept (README, CLAUDE.md, `docs/operations_guide.md`, `supabase_setup.md`,
+`development_workflow.md`, `project_context.md`, `data_contract.md`, `market_registry.yml`,
+two script docstrings) for now-stale GitHub Actions references — historical
+`docs/handover_2026-05-24.md` deliberately left alone (point-in-time record).
+
+New private GitLab project created: `rami.al-fahham/stock-swipe-app`
+(https://gitlab.com/rami.al-fahham/stock-swipe-app). `main` pushed **before** the feature
+branch (trap 9 — branch protection attaches to whichever ref arrives first, not to the
+name "main"); confirmed via `protected_branches` API that `main` is the protected one
+(Maintainer push/merge, no force-push), not the feature branch. MR #1 open:
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/1.
+
+**CI-minutes blocker resolved 2026-08-14.** First MR pipeline (`#2759956276`) failed
+instantly on all three jobs with `ci_quota_exceeded` — the account's Free-plan shared-runner
+minutes were exhausted (this repo's own migration was the third project to draw on that
+namespace-wide pool; not a `.gitlab-ci.yml` defect, `workflow:` rules fired correctly, no
+job ever got a runner). Fixed by assigning the project to the account's existing Hetzner
+self-hosted runner (`runner_id 55092538`) rather than buying minutes — see
+[[gitlab-runner-duplicate-registration]] for the full runner-topology history, including a
+pre-existing duplicate registration (found and consolidated the same day: `backtobayesics`
+was on a *separate* duplicate identity, `55093930`, reassigned to `55092538` and the
+duplicate deleted). Re-triggered pipeline `#2760178252` **ran for real and passed**:
+`validate:branch-guard` (confirms the `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME` fix actually
+works — logged `branch guard passed (chore/migrate-to-gitlab)`, proving the old GitHub
+version's dead `HEAD`-only check is genuinely fixed), `validate:secret-scan` (gitleaks: 172
+commits, 0 leaks), `validate:full` (dbt: 11 models/74 tests/19 unit tests, pytest 120
+passed, full audit script run). Also learned incidentally, no box access needed: the
+runner uses the **docker** executor (each job trace opens with `Using docker image ... for
+python:3.11`) — jobs are isolated per-container, not sharing the host.
+
+**Owner-only, still not decided:**
+- Streamlit Community Cloud only deploys from GitHub — **the live app
+  (stock-explorer.streamlit.app) has no deploy path from the new GitLab repo.** Options:
+  keep a GitHub mirror alive just for Streamlit, or find another host. Not solved here.
+- `dbt-agent-kit` (github.com/ramialfahham/dbt-agent-kit, the guardrail plugin this repo
+  depends on) was **not** migrated — out of scope, and also currently unreachable (same
+  account suspension). Links to it in this repo's docs were deliberately left pointing at
+  GitHub.
+- Repo visibility: created **private** by default (unlike the two public sibling repos) —
+  flip it if that's wrong; this repo's docs reference production secret names.
+- CI/CD variable values themselves (Supabase creds, `ANTHROPIC_API_KEY`) — names only in
+  `docs/operations_guide.md` / `supabase_setup.md`, never values. `supabase-migrate` and
+  `data-pipeline` are still unexercised — both need these variables plus (for
+  `data-pipeline`) the Mon 06:00 UTC pipeline schedule, which is project config and can't be
+  committed.
+- Whether/when to restore `main` branch protection expectations once GitHub access (if
+  ever restored) makes the old repo relevant again — two remotes now exist for a while.
+
+**Next concrete action:** owner reviews MR #1 (CI now genuinely green, not just config that
+parses), sets the CI/CD variables, creates the pipeline schedule, decides the Streamlit
+question, then merges.
+
 ## Status
 
 - **Metric layer + all data-only `info_*` metrics MERGED** (#131–137: ROE, four ratios, FCF yield —
@@ -198,6 +261,10 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
 ## Do NOT
 
 - Commit/push `main`; `gh pr merge`. Agent commits need `gitleaks` on PATH (it is — WinGet Packages dir).
+- (GitLab migration) Don't buy CI minutes, register a self-hosted runner, set CI/CD variable
+  *values*, or touch protected-branch settings — all owner-only (§6 cost/config). Don't merge
+  MR #1 — same rule as GitHub PRs, the owner merges. Don't assume GitHub is gone for good;
+  don't delete the GitHub remote or repo.
 - Emit buy/sell/hold/price-target/advice anywhere — educational only.
 - Reword OR AUTHOR metric copy/definitions/caveats without owner sign-off (§6) — bit us on #135.
 - Add a catalogue row for a new metric before the Router — it renders an un-valued "—" cell.

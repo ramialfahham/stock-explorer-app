@@ -4,7 +4,7 @@ An explore-and-learn stock app for finance-curious beginners — it turns compan
 fundamentals into plain-language "snapshots" you scan one at a time, save, or skip.
 Learning tool, **not** investment advice; batch fundamentals, **not** real-time trading.
 
-[![ci-validate](https://github.com/ramialfahham/stock-swipe-app/actions/workflows/ci-validate.yml/badge.svg)](https://github.com/ramialfahham/stock-swipe-app/actions/workflows/ci-validate.yml)
+[![pipeline status](https://gitlab.com/rami.al-fahham/stock-swipe-app/badges/main/pipeline.svg)](https://gitlab.com/rami.al-fahham/stock-swipe-app/-/pipelines)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status: prototype](https://img.shields.io/badge/status-prototype-orange)
 
@@ -37,7 +37,7 @@ flowchart TD
         direction TB
         F["Streamlit prototype<br/>discovery queue · save / not-now"]
     end
-    G["GitHub Actions<br/>weekly schedule"] -.orchestrates.-> core
+    G["GitLab CI<br/>weekly schedule"] -.orchestrates.-> core
 ```
 
 Nothing runs on a developer machine in production — the pipeline is scheduled in CI and
@@ -55,8 +55,8 @@ the app reads only the exported marts.
 - **Deterministic discovery queue** — round-robin across markets, unseen-first,
   sector-balanced ([`discovery_queue.py`](frontend/discovery_queue.py)). Ordering, not
   a black-box recommender.
-- **Automated weekly refresh** — ingestion → dbt → export runs on schedule in GitHub
-  Actions, gated by dbt tests, a layer contract, and secret scanning.
+- **Automated weekly refresh** — ingestion → dbt → export runs on schedule in GitLab
+  CI, gated by dbt tests, a layer contract, and secret scanning.
 
 ## Design decisions
 
@@ -109,7 +109,7 @@ stock-swipe-app/
 ├── dbt_analytics/             # dbt project (1_staging → 5_marts)
 ├── ingestion/                 # Raw data fetch scripts
 ├── frontend/                  # Streamlit app (app.py)
-├── .github/workflows/         # CI + data pipeline
+├── .gitlab-ci.yml              # CI + data pipeline
 ├── profiles.yml.example       # Copy to profiles.yml for local dbt
 └── .env.example               # Copy to .env for Supabase credentials
 ```

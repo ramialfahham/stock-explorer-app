@@ -1,0 +1,255 @@
+# GitLab CI — ported from .github/workflows/ (see docs/operations_guide.md).
+#
+# Provenance, so the next reader can tell an omission from a decision:
+#
+#   validate:branch-guard  <- ci-validate.yml, the `pull_request`-only step
+#   validate:full          <- ci-validate.yml, everything else in the `validate` job
+#   validate:secret-scan   <- secret-scan.yml
+#   supabase-migrate       <- supabase-migrate.yml
+#   data-pipeline          <- data_pipeline.yml
+#
+# DELIBERATELY NOT PORTED:
+#
+#   ci-validate.yml `gate` job. It existed only to give GitHub a single required status
+#   check to point branch protection at (`needs: validate, if: always()`, then re-assert
+#   validate's own result). GitLab expresses that natively as the project's "Pipelines must
+#   succeed" merge check — project configuration, not repository content. Porting the job
+#   would add a second, weaker copy of a guarantee GitLab already makes. If that setting is
+#   OFF, this file does not compensate for it; see the migration handover.
+#
+#   secret-scan.yml's GITHUB_TOKEN. It fed gitleaks-action's PR-annotation path, which has
+#   no GitLab counterpart. The scan itself is unchanged — same binary, same .gitleaks.toml.
+#
+# RUNNERS: no `tags:` on any job, i.e. GitLab's shared runners. If this project is ever
+# assigned a self-hosted runner that carries a tag_list, every job here needs a matching
+# `tags:` array or it silently falls back to a shared runner instead.
+#
+# CREDENTIALS: unlike GitHub Actions, GitLab injects every project CI/CD variable into every
+# job — there is no per-job `secrets:` mapping to write, and no way to withhold a variable
+# from a job in this file. The Supabase and Anthropic credentials are therefore kept
+# PROTECTED at the project level, which limits them to protected-branch pipelines: exactly
+# `supabase-migrate` and `data-pipeline`. That protection lives in project settings and only
+# works if `main` is genuinely a protected branch. Both halves or neither.
+
+stages:
+  - validate
+  - production
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  # Was `env: DBT_RAW_PATH` on both the ci-validate and data_pipeline jobs.
+  DBT_RAW_PATH: storage/raw
+
+# Which pipelines exist at all. Mirrors the union of the four workflows' triggers:
+# pull_request -> merge_request_event, push:main, workflow_dispatch -> web, cron -> schedule.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+# The guard that has actual teeth in this repo, and it fails SILENTLY without one.
+#
+# A scheduled pipeline runs with CI_COMMIT_BRANCH == main, so it satisfies every
+# `$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH` rule in this file; and GitLab evaluates
+# `changes:` as TRUE on any pipeline that is not a push or an MR, so a path filter does not
+# hold a job back on a schedule either. Concretely here: `data-pipeline` already runs
+# `apply_supabase_migrations.py` on its weekly cron, so an unguarded `supabase-migrate`
+# would apply migrations to production a second time, concurrently, on every schedule.
+#
+# Rules are first-match-wins, so this is only a guard where it comes FIRST.
+.not_on_schedule: &not_on_schedule
+  if: $CI_PIPELINE_SOURCE == "schedule"
+  when: never
+
+# `needs: []` so these start immediately rather than queueing behind stage order. The four
+# GitHub workflows were independent and ran concurrently; stages here are for pipeline-UI
+# grouping only, and serialising them would lose feedback the original had.
+.python: &python
+  image: python:3.11
+  needs: []
+  cache:
+    key:
+      files:
+        - requirements.txt
+        - frontend/requirements.txt
+    paths:
+      - .cache/pip
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+
+# Path set as an anchor so the push and web variants of supabase-migrate cannot drift apart.
+.migration_paths: &migration_paths
+  - supabase/migrations/**/*
+  - scripts/apply_supabase_migrations.py
+
+# ---------------------------------------------------------------------------
+# validate — was ci-validate.yml + secret-scan.yml
+# ---------------------------------------------------------------------------
+
+# Split out of validate:full because GitHub's per-step `if: github.event_name ==
+# 'pull_request'` has no GitLab equivalent — a job is the smallest thing that can carry a
+# condition.
+#
+# The command changed, and that is a fix rather than a translation: check_not_on_main.py
+# reads `git rev-parse --abbrev-ref HEAD`, and a merge-request checkout is a detached HEAD,
+# which reports the literal string "HEAD". The script can therefore never see a branch name
+# here and the guard would pass unconditionally. CI_MERGE_REQUEST_SOURCE_BRANCH_NAME is the
+# branch, unambiguously. The script keeps its local pre-commit role untouched.
+validate:branch-guard:
+  image: python:3.11
+  stage: validate
+  needs: []
+  script:
+    - |
+      if [ "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" = "main" ] || [ "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" = "master" ]; then
+        echo "Blocked: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME' is a protected branch." >&2
+        echo "Open the merge request from a feature branch instead." >&2
+        exit 1
+      fi
+      echo "branch guard passed ($CI_MERGE_REQUEST_SOURCE_BRANCH_NAME)"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - when: never
+
+# was: secret-scan.yml
+#
+# gitleaks-action@v2 is a GitHub Action, so the binary runs directly. Its own image rather
+# than a pip install (one image per job) — and deliberately NOT GitLab's native Secret
+# Detection, which is a different ruleset and would silently change what gets flagged while
+# leaving the committed .gitleaks.toml and the pre-commit hook asserting something else.
+validate:secret-scan:
+  image:
+    name: zricethezav/gitleaks:latest
+    entrypoint: [""]
+  stage: validate
+  needs: []
+  variables:
+    GIT_DEPTH: 0 # was `fetch-depth: 0` — full history, or only the tip commit is scanned
+  script:
+    - gitleaks git --redact --config .gitleaks.toml .
+  rules:
+    - *not_on_schedule
+    - when: on_success
+
+# was: ci-validate.yml `validate`, kept as ONE job because the steps share
+# /tmp/stock_data_ci.db — splitting them would mean passing a DuckDB file between jobs as an
+# artifact to buy parallelism the original never had.
+validate:full:
+  <<: *python
+  stage: validate
+  script:
+    - mkdir -p /tmp/stock-swipe-raw
+    - python scripts/check_layer_contract.py
+    - python scripts/check_registry_var_sync.py
+    - python scripts/check_dbt_sql_structure.py
+    # dbt reads DBT_PROFILES_DIR / --profiles-dir; sqlfluff's dbt templater reads
+    # profiles_dir from the COMMITTED .sqlfluff, which pins it to the repo root. Two tools,
+    # two profiles, and the second one only fails after the first has already passed — so
+    # both are written. .sqlfluff is also what local development uses, which is why the
+    # profile moves to it and not the other way around.
+    - mkdir -p "$HOME/.dbt"
+    - |
+      cat > "$HOME/.dbt/profiles.yml" <<'EOF'
+      dbt_analytics:
+        target: ci
+        outputs:
+          ci:
+            type: duckdb
+            path: /tmp/stock_data_ci.db
+            threads: 4
+      EOF
+    - python scripts/seed_ci_raw_fixtures.py
+    - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - dbt parse --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - python scripts/check_dbt_tests.py
+    - cp profiles.yml.example profiles.yml
+    - sqlfluff lint dbt_analytics/models dbt_analytics/tests
+    - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - python scripts/check_eligibility_baseline.py --duckdb-path /tmp/stock_data_ci.db --baseline-path scripts/eligibility_baseline.ci.json
+    - |
+      python scripts/check_export_health.py \
+        --duckdb-path /tmp/stock_data_ci.db \
+        --min-fill-rate 1.0 \
+        --max-missing 0 \
+        --require-ticker us_sp500:CI01
+    # --dry-run returns before any credential or network call, so this stays secret-free.
+    - python scripts/generate_assessments.py --duckdb-path /tmp/stock_data_ci.db --dry-run
+    - python scripts/check_eligibility_gaps.py --duckdb-path /tmp/stock_data_ci.db
+    - dbt docs generate --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - python scripts/check_dbt_documentation.py
+    - pip install pytest && python -m pytest tests/ -q
+    - python scripts/audit_mart_vs_yfinance.py --duckdb-path /tmp/stock_data_ci.db --offline --sample-size 5
+  # A GitHub workflow with no path filter becomes `when: on_success` behind the schedule
+  # guard — NOT an empty `rules:`, which would let schedules through.
+  rules:
+    - *not_on_schedule
+    - when: on_success
+
+# ---------------------------------------------------------------------------
+# production — the jobs that write Supabase
+#
+# One resource_group across BOTH, not one each: they are two writers of the same production
+# database, and a group per job would let them run concurrently, which is the thing the
+# group exists to prevent.
+# ---------------------------------------------------------------------------
+
+# was: supabase-migrate.yml
+supabase-migrate:
+  <<: *python
+  stage: production
+  resource_group: supabase-prod
+  script:
+    - python scripts/apply_supabase_migrations.py
+  # `&& $CI_PIPELINE_SOURCE == "push"` is NOT redundant with the schedule guard — it is what
+  # stops a WEB dispatch matching here. A web pipeline runs on main and `changes:` evaluates
+  # TRUE on it, so without that clause a manual dispatch would match first and run
+  # on_success, and the `when: manual` below would never be reached.
+  rules:
+    - *not_on_schedule
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+      changes: *migration_paths
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+
+# was: data_pipeline.yml — the one job a schedule is for, and per tests/tooling/
+# test_ci_reachability.py the only one it may reach.
+#
+# The schedule itself is PROJECT CONFIGURATION and cannot be committed: until the owner
+# creates a Mon 06:00 UTC pipeline schedule, this job simply never runs on its own. That is
+# the safe default — an absent schedule costs nothing.
+#
+# ANTHROPIC_API_KEY is a soft dependency: generate_assessments.py skips the prose reads and
+# still upserts verdicts when it is unset, so the weekly run degrades rather than fails.
+data-pipeline:
+  <<: *python
+  stage: production
+  resource_group: supabase-prod
+  timeout: 2h # was `timeout-minutes: 120`
+  script:
+    - python scripts/apply_supabase_migrations.py
+    - python scripts/run_ingestion.py
+    - mkdir -p "$HOME/.dbt"
+    - |
+      cat > "$HOME/.dbt/profiles.yml" <<'EOF'
+      dbt_analytics:
+        target: ci
+        outputs:
+          ci:
+            type: duckdb
+            path: storage/stock_data.db
+            threads: 4
+      EOF
+    - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.db
+    - python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db
+    - python scripts/check_export_health.py --duckdb-path storage/stock_data.db
+    - python scripts/export_to_supabase.py --duckdb-path storage/stock_data.db
+    - python scripts/generate_assessments.py --duckdb-path storage/stock_data.db
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual

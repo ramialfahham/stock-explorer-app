@@ -8,7 +8,7 @@ How production data moves and how to respond when it breaks. Product rules live 
 ## Production architecture
 
 ```
-GitHub Actions (schedule)
+GitLab CI (schedule)
   → refresh constituents (optional / on change)
   → run_ingestion.py (yfinance → parquet)
   → dbt build (DuckDB)
@@ -25,21 +25,22 @@ Nothing in this path runs on a developer laptop in production.
 
 ## Schedules
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| [`ci-validate.yml`](../.github/workflows/ci-validate.yml) | Every PR + push to `main` | Fast integrity checks (Tier A/B) |
-| [`data_pipeline.yml`](../.github/workflows/data_pipeline.yml) | Mon 06:00 UTC + `workflow_dispatch` | Full ingest, dbt, completeness, export (Tier C) |
+| Job | Trigger | Purpose |
+|-----|---------|---------|
+| [`validate:full`](../.gitlab-ci.yml) | Every MR + push to `main` | Fast integrity checks (Tier A/B) |
+| [`data-pipeline`](../.gitlab-ci.yml) | Mon 06:00 UTC pipeline schedule + manual web dispatch | Full ingest, dbt, completeness, export (Tier C) |
 
 ### Verify production pipeline
 
-1. Ensure `SUPABASE_DB_HOST` and `SUPABASE_DB_PORT` are set in GitHub secrets (see below).
-   Without them, `apply_supabase_migrations` fails with **HTTP 403** when the Management API
-   fallback is used.
-2. Actions → **Data Pipeline** → **Run workflow** on `main`.
+1. Ensure `SUPABASE_DB_HOST` and `SUPABASE_DB_PORT` are set as GitLab CI/CD variables (see
+   below), **Protected** (they're only needed by protected-branch pipelines). Without them,
+   `apply_supabase_migrations` fails with **HTTP 403** when the Management API fallback is used.
+2. CI/CD → Pipelines → **Run pipeline** on `main` (this is a `web`-source dispatch; the
+   `data-pipeline` job appears with a manual play button — click it to actually start it).
 3. Expect: migrate → ingest → `dbt build` → completeness → eligibility baseline → export health → export.
 
 If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` locally and set
-`SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` in repo secrets ([`supabase_setup.md`](supabase_setup.md)).
+`SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` as GitLab CI/CD variables ([`supabase_setup.md`](supabase_setup.md)).
 
 After a successful export, deploy or refresh the UI: [`streamlit_deploy.md`](streamlit_deploy.md).
 
@@ -48,9 +49,14 @@ session cache ~1 hour). Not part of the weekly fundamentals pipeline and not sho
 
 ---
 
-## Secrets (GitHub Actions)
+## CI/CD variables (GitLab)
 
-| Secret | Used by |
+Unlike GitHub Actions' per-step `secrets:` mapping, GitLab injects every project CI/CD
+variable into every job. These must be marked **Protected** — that's what limits them to
+the two jobs that actually use them (`supabase-migrate`, `data-pipeline`, both restricted to
+protected-branch pipelines), and it only works if `main` is genuinely a protected branch.
+
+| Variable | Used by |
 |--------|---------|
 | `SUPABASE_URL` | Migrate, data pipeline, export |
 | `SUPABASE_DB_PASSWORD` | Migrate, data pipeline |
@@ -58,6 +64,7 @@ session cache ~1 hour). Not part of the weekly fundamentals pipeline and not sho
 | `SUPABASE_DB_PORT` | Migrate, data pipeline (usually `5432`) |
 | `SUPABASE_ACCESS_TOKEN` | Migrate (optional Management API pooler fallback) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export (bypasses RLS) |
+| `ANTHROPIC_API_KEY` | Data pipeline (assessment prose reads; soft dependency — skipped when unset) |
 
 Streamlit uses the **anon** key in its own hosting secrets — not in the data pipeline.
 See [`supabase_setup.md`](supabase_setup.md) for local `.env` and pooler discovery.
@@ -94,7 +101,7 @@ python scripts/apply_supabase_migrations.py
 python scripts/apply_supabase_migrations.py --dry-run
 ```
 
-Also runs automatically via GitHub Actions (`supabase-migrate` workflow) when migration
+Also runs automatically via GitLab CI (`supabase-migrate` job) when migration
 files change on `main`, and before the data pipeline export step.
 
 ### Refresh constituents
@@ -144,7 +151,7 @@ python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.d
 ### Pipeline failed on completeness gate
 
 1. Check logs for which market failed (eligible count vs raw missing).
-2. If yfinance outage: re-run workflow; Supabase retains last export.
+2. If yfinance outage: retry the pipeline; Supabase retains last export.
 3. If single market degraded: set `ingest_active: false` temporarily, sync dbt vars, re-run.
 4. Do not export partial empty tables over good data.
 
@@ -155,7 +162,7 @@ CI fails `check_registry_var_sync.py`. Run `sync_dbt_vars.py` and commit.
 ### New Supabase migration
 
 Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migrations.py` or the
-`supabase-migrate` GitHub Action — not the Dashboard SQL Editor. See [`supabase_setup.md`](supabase_setup.md).
+`supabase-migrate` GitLab CI job — not the Dashboard SQL Editor. See [`supabase_setup.md`](supabase_setup.md).
 
 ---
 
@@ -163,7 +170,7 @@ Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migration
 
 Until dashboards exist, rely on:
 
-- GitHub Actions run status on `main`
+- GitLab CI pipeline status on `main`
 - Completeness script stdout (eligible counts per market)
 - Manual spot-check in Supabase table editor after export ships
 

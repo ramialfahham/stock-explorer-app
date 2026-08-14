@@ -3,7 +3,7 @@
 Phase 2 checklist for the Stock Swipe App warehouse and auth backend.
 
 **No manual SQL in the Dashboard.** Schema changes live in `supabase/migrations/` and are
-applied by `scripts/apply_supabase_migrations.py` (locally or via GitHub Actions).
+applied by `scripts/apply_supabase_migrations.py` (locally or via GitLab CI).
 
 ---
 
@@ -59,11 +59,17 @@ After applying **004+**, run the data pipeline (ingest → dbt → export) so St
 
 ---
 
-## 3. GitHub Actions secrets
+## 3. GitLab CI/CD variables
 
-In your repo **Settings → Secrets and variables → Actions**, add:
+In your project **Settings → CI/CD → Variables**, add each below. Mark each **Protected**
+(GitLab injects every variable into every job by default — Protected is what limits these to
+protected-branch pipelines, i.e. the `supabase-migrate` and `data-pipeline` jobs; this only
+takes effect if `main` is actually a protected branch — verify with `glab api
+projects/<NAMESPACE>%2F<REPO>/protected_branches`). None of these need **Masked** beyond
+what GitLab requires by value shape; the service role key and DB password are still
+sensitive and should stay Protected regardless.
 
-| Secret | Used by | Notes |
+| Variable | Used by | Notes |
 |--------|---------|--------|
 | `SUPABASE_URL` | Migrate, data pipeline, export | Project URL |
 | `SUPABASE_DB_PASSWORD` | Migrate, data pipeline | Database password |
@@ -74,7 +80,8 @@ In your repo **Settings → Secrets and variables → Actions**, add:
 
 ### CI migrations — recommended: host + port (not full URI)
 
-GitHub Actions cannot reach the direct `db.*.supabase.co` host (IPv6). Use the **Session pooler**:
+GitLab's shared runners cannot reach the direct `db.*.supabase.co` host (IPv6). Use the
+**Session pooler**:
 
 1. Locally, discover the correct pooler host for your project:
 
@@ -82,12 +89,13 @@ GitHub Actions cannot reach the direct `db.*.supabase.co` host (IPv6). Use the *
    python scripts/discover_supabase_db_host.py
    ```
 
-2. Set GitHub secrets from the script output:
+2. Set GitLab CI/CD variables from the script output:
    - `SUPABASE_DB_HOST` — hostname only (e.g. `aws-1-eu-central-2.pooler.supabase.com`)
    - `SUPABASE_DB_PORT` — `5432` unless the script reports otherwise
    - `SUPABASE_URL` and `SUPABASE_DB_PASSWORD` — as above
 
-3. Re-run **supabase-migrate** (Actions → workflow_dispatch).
+3. Re-run **supabase-migrate** (CI/CD → Pipelines → Run pipeline, `web` source, then click
+   its manual play button).
 
 [`scripts/apply_supabase_migrations.py`](../scripts/apply_supabase_migrations.py) resolution order:
 
@@ -104,7 +112,7 @@ If you prefer one secret instead of host/port:
 
 1. Supabase Dashboard → **Project Settings → Database** → **Connection string** → **Session pooler**
 2. Copy the URI and replace `[YOUR-PASSWORD]` with your database password
-3. Add as `SUPABASE_DB_URL` in `.env` or GitHub secrets
+3. Add as `SUPABASE_DB_URL` in `.env` or as a GitLab CI/CD variable
 
 Locally you can use direct connection (`SUPABASE_URL` + `SUPABASE_DB_PASSWORD`) or the same pooler URI.
 
@@ -119,8 +127,9 @@ If CI fails with `HTTP Error 403: Forbidden` on pooler config:
   python scripts/print_supabase_pooler_config.py
   ```
 
-When migration files change on `main`, [`.github/workflows/supabase-migrate.yml`](../.github/workflows/supabase-migrate.yml)
-applies them automatically. You can also trigger it manually (**Actions → supabase-migrate → Run workflow**).
+When migration files change on `main`, the [`supabase-migrate`](../.gitlab-ci.yml) job
+applies them automatically. You can also trigger it manually (**CI/CD → Pipelines → Run
+pipeline**, then the job's play button).
 
 ---
 
