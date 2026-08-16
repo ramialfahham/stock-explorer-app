@@ -104,6 +104,13 @@ python scripts/apply_supabase_migrations.py --dry-run
 Also runs automatically via GitLab CI (`supabase-migrate` job) when migration
 files change on `main`, and before the data pipeline export step.
 
+### Test a migration or export change before it ships
+
+Add `--target dev` to either script to write to a `dev` schema in the same Supabase
+project instead of `public` — no separate project, no new secret. See
+[`supabase_setup.md`](supabase_setup.md#3b-testing-against-a-dev-schema) for the one-time
+setup step and the `dev-schema-check` CI button.
+
 ### Refresh constituents
 
 ```bash

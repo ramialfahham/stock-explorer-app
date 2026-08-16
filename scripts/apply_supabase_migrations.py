@@ -1,6 +1,6 @@
 """Apply pending SQL migrations to Supabase Postgres (no Dashboard copy/paste).
 
-Tracks applied files in public.schema_migrations. Safe to run locally and in CI.
+Tracks applied files in <schema>.schema_migrations. Safe to run locally and in CI.
 
 Requires in .env (or GitLab CI/CD variables) — pick one approach:
 
@@ -14,9 +14,19 @@ Requires in .env (or GitLab CI/CD variables) — pick one approach:
   C) Local only:
      SUPABASE_URL + SUPABASE_DB_PASSWORD (direct db.*.supabase.co)
 
+--target selects which Postgres schema the migrations run against, all inside the SAME
+Supabase project (same credentials above, no new secrets needed):
+
+  prod (default) — writes to public.*, unprefixed. What Streamlit reads.
+  dev            — writes to dev.*, created on first run. A safe place to test a migration
+                    or export change against a real Postgres before it ships. Every
+                    migration file hardcodes "public." in its SQL, so a dev run rewrites
+                    that to "dev." at execution time — the files on disk never change.
+
 Usage:
     python scripts/apply_supabase_migrations.py
     python scripts/apply_supabase_migrations.py --dry-run
+    python scripts/apply_supabase_migrations.py --target dev
 """
 
 from __future__ import annotations
@@ -36,8 +46,8 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS_DIR = REPO_ROOT / "supabase" / "migrations"
 
-MIGRATION_TABLE = "public.schema_migrations"
 MIGRATION_FILE_PATTERN = re.compile(r"^\d{3}_.+\.sql$")
+PUBLIC_SCHEMA_REF = re.compile(r"\bpublic\.")
 
 
 def _strip_env(value: str | None) -> str | None:
@@ -182,11 +192,19 @@ def _list_migration_files() -> list[Path]:
     return files
 
 
-def _ensure_migration_table(conn) -> None:
+def _ensure_schema(conn, schema: str) -> None:
+    if schema == "public":
+        return  # always exists; avoid a needless DDL statement on the prod path
+    with conn.cursor() as cur:
+        cur.execute(f"create schema if not exists {schema}")
+    conn.commit()
+
+
+def _ensure_migration_table(conn, migration_table: str) -> None:
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            create table if not exists {MIGRATION_TABLE} (
+            create table if not exists {migration_table} (
                 filename text primary key,
                 applied_at timestamptz not null default now()
             )
@@ -195,38 +213,43 @@ def _ensure_migration_table(conn) -> None:
     conn.commit()
 
 
-def _applied_migrations(conn) -> set[str]:
+def _applied_migrations(conn, migration_table: str) -> set[str]:
     with conn.cursor() as cur:
-        cur.execute(f"select filename from {MIGRATION_TABLE}")
+        cur.execute(f"select filename from {migration_table}")
         return {row[0] for row in cur.fetchall()}
 
 
-def _table_exists(conn, table_name: str) -> bool:
+def _table_exists(conn, schema: str, table_name: str) -> bool:
     with conn.cursor() as cur:
         cur.execute(
             """
             select exists (
                 select 1
                 from information_schema.tables
-                where table_schema = 'public' and table_name = %s
+                where table_schema = %s and table_name = %s
             )
             """,
-            (table_name,),
+            (schema, table_name),
         )
         return bool(cur.fetchone()[0])
 
 
-def _bootstrap_manual_initial_schema(conn, first_migration: str) -> None:
+def _bootstrap_manual_initial_schema(
+    conn, first_migration: str, schema: str, migration_table: str
+) -> None:
     """Record 001 as applied when project was set up before this script existed."""
     if first_migration != "001_initial_schema.sql":
         return
-    if not (_table_exists(conn, "markets") and _table_exists(conn, "user_interactions")):
+    if not (
+        _table_exists(conn, schema, "markets")
+        and _table_exists(conn, schema, "user_interactions")
+    ):
         return
 
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            insert into {MIGRATION_TABLE} (filename, applied_at)
+            insert into {migration_table} (filename, applied_at)
             values (%s, %s)
             on conflict (filename) do nothing
             """,
@@ -236,12 +259,14 @@ def _bootstrap_manual_initial_schema(conn, first_migration: str) -> None:
     print(f"Bootstrapped {first_migration} (existing schema detected)")
 
 
-def _apply_file(conn, path: Path) -> None:
+def _apply_file(conn, path: Path, schema: str, migration_table: str) -> None:
     sql = path.read_text(encoding="utf-8")
+    if schema != "public":
+        sql = PUBLIC_SCHEMA_REF.sub(f"{schema}.", sql)
     with conn.cursor() as cur:
         cur.execute(sql)
         cur.execute(
-            f"insert into {MIGRATION_TABLE} (filename) values (%s)",
+            f"insert into {migration_table} (filename) values (%s)",
             (path.name,),
         )
     conn.commit()
@@ -254,9 +279,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="List pending migrations without applying",
     )
+    parser.add_argument(
+        "--target",
+        choices=["prod", "dev"],
+        default="prod",
+        help="prod (default) writes to public.*; dev writes to dev.* in the same project",
+    )
     args = parser.parse_args(argv)
 
     load_dotenv()
+
+    schema = "public" if args.target == "prod" else args.target
+    migration_table = f"{schema}.schema_migrations"
 
     try:
         db_url = resolve_database_url()
@@ -279,16 +313,17 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        _ensure_migration_table(conn)
-        _bootstrap_manual_initial_schema(conn, migration_files[0].name)
-        applied = _applied_migrations(conn)
+        _ensure_schema(conn, schema)
+        _ensure_migration_table(conn, migration_table)
+        _bootstrap_manual_initial_schema(conn, migration_files[0].name, schema, migration_table)
+        applied = _applied_migrations(conn, migration_table)
 
         pending = [path for path in migration_files if path.name not in applied]
         if not pending:
-            print("apply_supabase_migrations: all migrations already applied")
+            print(f"apply_supabase_migrations: all migrations already applied ({schema})")
             return 0
 
-        print(f"Pending migrations ({len(pending)}):")
+        print(f"Pending migrations for '{schema}' ({len(pending)}):")
         for path in pending:
             print(f"  - {path.name}")
 
@@ -296,16 +331,16 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         for path in pending:
-            print(f"Applying {path.name}...")
+            print(f"Applying {path.name} to '{schema}'...")
             try:
-                _apply_file(conn, path)
+                _apply_file(conn, path, schema, migration_table)
             except Exception as exc:
                 conn.rollback()
                 print(f"apply_supabase_migrations: failed on {path.name} — {exc}", file=sys.stderr)
                 return 1
             print(f"  ok")
 
-        print("apply_supabase_migrations: done")
+        print(f"apply_supabase_migrations: done ({schema})")
         return 0
     finally:
         conn.close()

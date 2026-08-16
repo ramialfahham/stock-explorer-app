@@ -7,6 +7,9 @@
 #   validate:secret-scan   <- secret-scan.yml
 #   supabase-migrate       <- supabase-migrate.yml
 #   data-pipeline          <- data_pipeline.yml
+#   dev-schema-check       <- NEW, no GitHub equivalent — a manual sanity check for
+#                             apply_supabase_migrations.py / export_to_supabase.py's
+#                             --target dev path (see docs/supabase_setup.md)
 #
 # DELIBERATELY NOT PORTED:
 #
@@ -28,8 +31,11 @@
 # job — there is no per-job `secrets:` mapping to write, and no way to withhold a variable
 # from a job in this file. The Supabase and Anthropic credentials are therefore kept
 # PROTECTED at the project level, which limits them to protected-branch pipelines: exactly
-# `supabase-migrate` and `data-pipeline`. That protection lives in project settings and only
-# works if `main` is genuinely a protected branch. Both halves or neither.
+# `supabase-migrate`, `data-pipeline`, and `dev-schema-check` (all three run only from a
+# protected-branch pipeline in practice — the first two by design, the third because it's
+# `web`-only and a web dispatch runs on the default branch). That protection lives in
+# project settings and only works if `main` is genuinely a protected branch. Both halves or
+# neither.
 
 stages:
   - validate
@@ -253,3 +259,46 @@ data-pipeline:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
+
+# NEW — no GitHub equivalent. A manual sanity check for apply_supabase_migrations.py /
+# export_to_supabase.py's --target dev path: writes to the "dev" schema in the SAME
+# Supabase project supabase-migrate/data-pipeline use, so it needs no new CI/CD variables.
+# Reuses validate:full's fixture-seed + dbt-build steps rather than a real ingest — the
+# point is sanity-checking the scripts against a real Postgres connection, not refreshing
+# dev data (no yfinance call, no rate limits, runs in seconds not minutes).
+#
+# Not in the supabase-prod resource_group: this job never touches the public schema
+# supabase-migrate/data-pipeline write, so it cannot race them on correctness — only on
+# connection load, which is fine for an occasional manual check.
+#
+# The export half requires a one-time manual step outside this file: the Supabase project's
+# Settings -> API -> Exposed schemas list must include "dev", or export_to_supabase.py's
+# PostgREST call fails even though the schema itself exists. See docs/supabase_setup.md.
+dev-schema-check:
+  <<: *python
+  stage: production
+  script:
+    - mkdir -p /tmp/stock-swipe-raw
+    - mkdir -p "$HOME/.dbt"
+    - |
+      cat > "$HOME/.dbt/profiles.yml" <<'EOF'
+      dbt_analytics:
+        target: ci
+        outputs:
+          ci:
+            type: duckdb
+            path: /tmp/stock_data_dev_check.db
+            threads: 4
+      EOF
+    - python scripts/seed_ci_raw_fixtures.py
+    - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - python scripts/apply_supabase_migrations.py --target dev
+    - python scripts/export_to_supabase.py --target dev --duckdb-path /tmp/stock_data_dev_check.db
+  # `web` ONLY, same shape as supabase-migrate/data-pipeline's manual dispatch — never
+  # reachable from an MR, a push, or a schedule. The `when: never` fallback is what makes
+  # this a scope rather than a bare `when: manual`, which would appear on every MR/push.
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+    - when: never
