@@ -293,10 +293,10 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
 ## Do NOT
 
 - Commit/push `main`; `gh pr merge`. Agent commits need `gitleaks` on PATH (it is — WinGet Packages dir).
-- (GitLab migration) Don't buy CI minutes, register a self-hosted runner, set CI/CD variable
-  *values*, or touch protected-branch settings — all owner-only (§6 cost/config). Don't merge
-  MR #1 — same rule as GitHub PRs, the owner merges. Don't assume GitHub is gone for good;
-  don't delete the GitHub remote or repo.
+- (GitLab) Don't buy CI minutes, register a self-hosted runner, set CI/CD variable *values*,
+  or touch protected-branch settings — all owner-only (§6 cost/config). **Never merge an MR**
+  — same rule as GitHub PRs, the owner merges, every time, regardless of MR number. Don't
+  assume GitHub is gone for good; don't delete the GitHub remote or repo.
 - Emit buy/sell/hold/price-target/advice anywhere — educational only.
 - Reword OR AUTHOR metric copy/definitions/caveats without owner sign-off (§6) — bit us on #135.
 - Add a catalogue row for a new metric before the Router — it renders an un-valued "—" cell.
