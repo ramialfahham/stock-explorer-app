@@ -21,7 +21,7 @@ while 5b was parked: the **GitHub → GitLab CI migration** (GitHub account got 
 Supabase schema isolation**. See the Infra section below for both, and Status for 5b's own review journey —
 five rounds, four with real findings, all now resolved and committed (`2cf5d6a`). A later session in this
 same handover started **Slice 6a (UI redesign — design system foundation)**, owner-scoped as the first of
-three UI phases; committed after six review rounds (see Status), MR not yet open.
+three UI phases; **MR #4 open** after six review rounds (see Status).
 
 ## Infra: GitHub → GitLab migration (separate track, not a product slice)
 
@@ -180,7 +180,8 @@ question, then merges.
   needed).
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
-- **Slice 6a (UI redesign — design system foundation) committed, MR not yet open.** Owner scoped Slice 6
+- **Slice 6a (UI redesign — design system foundation) MR #4 open**
+  (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/4). Owner scoped Slice 6
   as three phases — 6a (this one): tokens + shared row primitive + Search's missing styling + dead-CSS
   cleanup; 6b (later): Landing/Overflow unification; 6c (later): rendering new card content (health
   verdict, AI read, per-type metrics). 6a deliberately touches neither 6b nor 6c. New spacing/radius/
@@ -204,7 +205,6 @@ question, then merges.
   independent headless-Chrome CDP harness (scratch-only scripts, real trusted mouse/keyboard events) —
   screenshots sent to the owner in-thread, owner reviewed and said "go ahead." Full detail of all 6
   rounds in `.claude/task/contract.md`'s `amendments` + `.claude/task/review.md`. pytest 145 (3 new).
-  **Not yet done: pushed / MR opened.**
 
 ## Decisions locked (the important ones)
 
@@ -316,8 +316,8 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
      MR, then start Slice 6.**
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above (the approved mock: cohesive card,
    scan→deep tiers, one disclosure, label chips, words-not-arrows). Phased by the owner:
-   - **6a — design system foundation: committed, MR not yet open (← START HERE once merged).** See Status
-     for the full account (tokens, shared row primitive, Search styling, dead-CSS removal, 6 review rounds).
+   - **6a — design system foundation: MR #4 open (← START HERE once merged).** See Status for the full
+     account (tokens, shared row primitive, Search styling, dead-CSS removal, 6 review rounds).
    - **6b — Landing/Overflow unification: not started.** Deferred by the owner, explicitly out of 6a's scope.
    - **6c — render new card content** (health verdict, AI read, per-type metrics) **on the finished system:
      not started.** Deferred by the owner, explicitly out of 6a's scope.
