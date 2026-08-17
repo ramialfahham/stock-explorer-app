@@ -2,7 +2,7 @@
 
 **Scope:** Saved tab list view (not focus view).  
 **Authority:** [`north_star.md`](../north_star.md) (Saved = learning list + single focus).  
-**Implementation:** `frontend/app.py` (`_render_saved_tab`), `frontend/styles.py` (`.ss-saved-list-*`).
+**Implementation:** `frontend/app.py` (`_render_saved_tab`), `frontend/row_ui.py` (`.ss-row*` — see [`design_system.md`](design_system.md) for the token/primitive spec).
 
 ---
 
@@ -33,8 +33,8 @@ Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with 
 └─────────────────────────────────────────────┘
 ```
 
-**Line 1 (`.ss-saved-name`):** company display name — bold, left-aligned.  
-**Line 2 (`.ss-saved-sector`):** `{ticker} · {sector}` via `saved_row_subtitle()` — caption colour, left-aligned.
+**Line 1 (`.ss-row-title`):** company display name — bold, left-aligned.  
+**Line 2 (`.ss-row-sub`):** `{ticker} · {sector}` via `saved_row_subtitle()` — caption colour, left-aligned.
 
 ---
 
@@ -42,7 +42,7 @@ Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with 
 
 | Rule | Detail |
 |------|--------|
-| Row structure | `st.container` per row: HTML `.ss-saved-list-entry` + invisible overlay `st.button` (company name for screen readers only) |
+| Row structure | `st.container` per row: HTML `.ss-row` + invisible overlay `st.button` (company name for screen readers only) |
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
 | Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) then Company Snapshot — **no duplicate name/sector row** above the card |
 | Empty state | One `st.info` — no fake rows |
@@ -94,5 +94,6 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 
 ## Related
 
+- [`design_system.md`](design_system.md) — row primitive tokens (radius, spacing, `.ss-row*`) this spec builds on
 - [`card_metric_cell.md`](card_metric_cell.md) — metric layout on the focused snapshot
 - [`discover_header.md`](discover_header.md) — shared chrome above tabs

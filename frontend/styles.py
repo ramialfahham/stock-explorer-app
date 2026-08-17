@@ -25,6 +25,15 @@ def inject_global_css() -> None:
     --ss-caption-size: 0.72rem;
     --ss-bottom-nav-h: 3.25rem;
     --ss-action-bar-h: 3.25rem;
+
+    /* Design system tokens (Slice 6a) — see docs/ui/design_system.md */
+    --ss-space-1: 0.35rem;
+    --ss-space-2: 0.55rem;
+    --ss-space-3: 0.75rem;
+    --ss-space-4: 0.85rem;
+    --ss-radius-control: 0.5rem;
+    --ss-radius-surface: 0.75rem;
+    --ss-row-title: 0.85rem;
 }
 
 html, body, [class*="css"] {
@@ -41,6 +50,13 @@ section[data-testid="stSidebar"] {
     display: none !important;
 }
 
+/* Design system (Slice 6a): every button gets a consistent corner radius by default.
+   Colors/backgrounds are NOT set here — that stays scoped per-surface (fixed action bar,
+   icon buttons) until 6b unifies Landing/Overflow. See docs/ui/design_system.md. */
+[data-testid="stButton"] button {
+    border-radius: var(--ss-radius-control);
+}
+
 [data-testid="stAppViewContainer"] {
     background: var(--ss-bg);
     overflow-x: clip;
@@ -49,17 +65,13 @@ section[data-testid="stSidebar"] {
     overflow-x: clip;
 }
 .block-container {
-    padding: 0.4rem 0.85rem calc(var(--ss-action-bar-h) + 0.5rem);
+    padding: 0.4rem var(--ss-space-4) calc(var(--ss-action-bar-h) + 0.5rem);
     max-width: 480px;
     margin-left: auto !important;
     margin-right: auto !important;
     width: 100%;
     box-sizing: border-box;
 }
-.block-container.ss-no-actions {
-    padding-bottom: 0.5rem;
-}
-
 /* Header — title + tagline only */
 .ss-brand-header {
     min-width: 0;
@@ -122,7 +134,7 @@ section[data-testid="stSidebar"] {
 .ss-card {
     background: var(--ss-surface);
     border: 1px solid var(--ss-border);
-    border-radius: 12px;
+    border-radius: var(--ss-radius-surface);
     padding: 0.7rem 0.8rem 0.6rem;
 }
 .ss-meta-line {
@@ -496,32 +508,34 @@ section[data-testid="stSidebar"] {
     color: var(--ss-caption);
     margin: 0 0 0.65rem;
 }
-/* Saved list — left-aligned HTML row + invisible full-row tap target */
-:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) {
+/* Row primitive (Slice 6a) — shared by Saved list and Search results.
+   See docs/ui/design_system.md. Left-aligned HTML row + invisible full-row tap target. */
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) {
     position: relative;
     margin: 0 0 0.45rem;
 }
-:has(.ss-saved-list-items) .ss-saved-list-entry {
+:has(.ss-row-group) .ss-row {
+    background: var(--ss-surface);
     border: 1px solid var(--ss-border);
-    border-radius: 0.4rem;
-    padding: 0.55rem 0.85rem;
+    border-radius: var(--ss-radius-surface);
+    padding: var(--ss-space-2) var(--ss-space-4);
     text-align: left;
     pointer-events: none;
 }
-:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry):hover .ss-saved-list-entry {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row):hover .ss-row {
     border-color: var(--ss-accent);
 }
-:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) [data-testid="stMarkdown"] {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stMarkdown"] {
     margin: 0;
 }
-:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) [data-testid="stButton"] {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stButton"] {
     position: absolute;
     inset: 0;
     z-index: 1;
     margin: 0;
     min-height: 3.1rem;
 }
-:has(.ss-saved-list-items) div[data-testid="stVerticalBlock"]:has(.ss-saved-list-entry) [data-testid="stButton"] > button {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stButton"] > button {
     width: 100% !important;
     height: 100% !important;
     min-height: 3.1rem !important;
@@ -531,15 +545,6 @@ section[data-testid="stSidebar"] {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
-}
-.ss-saved-list-row {
-    border-bottom: 1px solid var(--ss-border);
-    padding: 0.5rem 0 0.45rem;
-}
-.ss-saved-row {
-    margin: 0 0 0.35rem;
-    padding: 0.45rem 0;
-    border-bottom: 1px solid var(--ss-border);
 }
 .ss-saved-fresh {
     font-size: var(--ss-caption-size);
@@ -553,7 +558,7 @@ section[data-testid="stSidebar"] {
     color: var(--ss-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin: 0.75rem 0 0.4rem;
+    margin: var(--ss-space-3) 0 0.4rem;
 }
 
 .ss-saved-news-list {
@@ -591,37 +596,13 @@ section[data-testid="stSidebar"] {
     font-size: var(--ss-caption-size);
 }
 
-.ss-saved-name {
-    font-size: 0.85rem;
+.ss-row .ss-row-title {
+    font-size: var(--ss-row-title);
     font-weight: 600;
     color: var(--ss-text);
     margin: 0;
 }
-.ss-saved-ticker {
-    color: var(--ss-accent);
-}
-.ss-saved-sector {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-    margin: 0.08rem 0 0;
-}
-
-.ss-browse-heading {
-    font-size: var(--ss-caption-size);
-    font-weight: 600;
-    color: var(--ss-muted);
-    margin: 0 0 0.35rem;
-}
-.ss-browse-name {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--ss-text);
-    margin: 0;
-}
-.ss-browse-ticker {
-    color: var(--ss-accent);
-}
-.ss-browse-sub {
+.ss-row .ss-row-sub {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0.08rem 0 0;
@@ -706,23 +687,6 @@ section[data-testid="stSidebar"] {
     margin: 0.45rem 0 0.55rem;
 }
 
-/* Overflow menu trigger (nav row) */
-.ss-menu-popover button {
-    font-size: 1.05rem !important;
-    padding: 0 !important;
-    min-height: 2.35rem !important;
-    height: 2.35rem !important;
-    width: 2.35rem !important;
-    background: var(--ss-surface) !important;
-    border: 1px solid var(--ss-border) !important;
-    border-radius: 0.5rem !important;
-    color: var(--ss-muted) !important;
-    box-shadow: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
 /* Fixed action bar (Save / Skip) */
 .ss-action-shell + div[data-testid="stHorizontalBlock"] {
     position: fixed;
@@ -755,7 +719,7 @@ section[data-testid="stSidebar"] {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 0 0.45rem !important;
-    gap: 0.35rem !important;
+    gap: var(--ss-space-1) !important;
 }
 .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:first-child,
 .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
@@ -779,8 +743,13 @@ section[data-testid="stSidebar"] {
     font-weight: 600 !important;
     min-height: 2.35rem !important;
 }
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:last-child button,
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:last-child button {
+/* Icon-button variant (Slice 6a): keyed to an explicit marker, not DOM position — the
+   prior :last-child selector would silently jump to the wrong button if the nav row is
+   ever reordered. Reusable by any future icon-only popover trigger via the same marker.
+   Streamlit wraps st.markdown in stElementContainer and st.popover in stLayoutWrapper —
+   both direct children of the same stHorizontalBlock, hence :has() rather than a plain +
+   on the marker itself (the marker is nested one level inside its own wrapper). */
+[data-testid="stElementContainer"]:has(.ss-icon-btn-marker) + [data-testid="stLayoutWrapper"] [data-testid="stPopoverButton"] {
     font-size: 1.05rem !important;
     padding: 0 !important;
     min-height: 2.35rem !important;
@@ -788,7 +757,7 @@ section[data-testid="stSidebar"] {
     width: 2.35rem !important;
     background: var(--ss-surface) !important;
     border: 1px solid var(--ss-border) !important;
-    border-radius: 0.5rem !important;
+    border-radius: var(--ss-radius-control) !important;
     color: var(--ss-muted) !important;
     box-shadow: none !important;
     display: inline-flex !important;
