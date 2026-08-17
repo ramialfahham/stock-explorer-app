@@ -171,7 +171,11 @@ question, then merges.
   sector: insurers, brokers, asset managers, exchanges, not just banks) was narrated as "the bank" with a
   bank-specific safety claim; generalized to "this financial company." All owner-approved in-session;
   exact final wording quoted verbatim in `contract.md`'s amendments log. pytest 142 (25 new); generator
-  dry-run 35 cards, all green. **Next action: open the MR** (GitLab — `rami.al-fahham/stock-swipe-app`).
+  dry-run 35 cards, all green. **MR #3 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/3),
+  pipeline ran for real and passed (`validate:full` logged the genuine `142 passed` from CI, not a cached
+  result). **Needs before merge: `ANTHROPIC_API_KEY` as a Protected GitLab CI/CD variable** (project
+  settings, owner-only — `data-pipeline` picks it up automatically once set, no `.gitlab-ci.yml` change
+  needed).
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -277,11 +281,12 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
    - **5a — deterministic verdict + `card_assessments` storage: MERGED (#148).** `assessment_rules.py`
      (per-type health verdict + `input_hash`), migration `010`, `generate_assessments.py`, pipeline + CI smoke,
      tests, `data_contract.md` §card_assessments. No LLM/dep/key/cost. Owner-signed per-type verdict rubric.
-   - **5b — the Claude read: committed (`2cf5d6a`), MR not yet open (← START HERE).** `anthropic` +
+   - **5b — the Claude read: MR #3 open, pipeline verified green (← START HERE once merged).** `anthropic` +
      `READ_SYSTEM_PROMPT`/`READ_METRIC_BRIEF`/`build_read_messages`; Haiku call gated on `input_hash` change
      or null `ai_read`; fills `ai_read`/`read_model`; offline tests mock the API. Five review rounds closed
      out eleven metric-caveat gaps + a "financial = bank" mislabeling (see Status for the full list) —
-     nothing left outstanding. **Open the MR on GitLab, then start Slice 6.**
+     nothing left outstanding. **Owner sets `ANTHROPIC_API_KEY` as a Protected CI/CD variable, merges the
+     MR, then start Slice 6.**
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above (the approved mock: cohesive card,
    scan→deep tiers, one disclosure, label chips, words-not-arrows).
 
