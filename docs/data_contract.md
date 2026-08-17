@@ -341,8 +341,9 @@ and `roic` (see migration `002_fundamentals_mart.sql`).
 
 AI **health assessment** per card, written by `scripts/generate_assessments.py` after the mart export
 (weekly pipeline). Educational only — **not** investment advice. **Slice 5a** writes the deterministic
-verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` (a Claude Haiku prose read),
-regenerated only when `input_hash` changes; the card renders it in **Slice 6**.
+verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` with a **Claude Haiku**
+(`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and ends on the verdict's
+meaning — regenerated only when `input_hash` changes or `ai_read` is null. The card renders it in **Slice 6**.
 
 **Grain:** one row per `(market_code, ticker)` — latest snapshot only (differs from `mart_stock_cards`,
 keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migration `010_card_assessments.sql`).
@@ -353,8 +354,8 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `ticker` | text | Provider symbol |
 | `company_type` | text | `operating` / `financial` / `pre_revenue` |
 | `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴 in Slice 6) |
-| `ai_read` | text | LLM prose read; **null in 5a**, populated in 5b (Claude Haiku) |
-| `read_model` | text | model id that wrote `ai_read`; **null in 5a** |
+| `ai_read` | text | Claude Haiku prose read (`claude-haiku-4-5`); educational, never advice; reasons only from the card's numbers |
+| `read_model` | text | model id that wrote `ai_read` (from the Claude API response) |
 | `input_hash` | text | sha256 of the verdict inputs; drives 5b regenerate-on-change |
 | `snapshot_date` | date | the mart snapshot the assessment reflects |
 | `generated_at` | timestamptz | last write |
@@ -373,8 +374,9 @@ Thresholds live in `scripts/assessment_rules.py`, whose `INPUT_FIELDS_BY_TYPE` /
 mirror this seed's `applies_to` / `direction` (a `tests/tooling` guard enforces it).
 
 **`input_hash`:** sha256 over the per-type card metric set + `company_type` + `health_verdict` +
-`INPUT_HASH_VERSION` (numerics rounded to 6dp, NaN → null). 5a recomputes the verdict + hash every run; 5b
-regenerates the prose read only when the hash changes.
+`INPUT_HASH_VERSION` (numerics rounded to 6dp, NaN → null). The verdict + hash recompute every run; the
+prose read regenerates only when the hash changes or `ai_read` is null — bump `INPUT_HASH_VERSION` to force
+a global read refresh (e.g. after a prompt or model change).
 
 ---
 

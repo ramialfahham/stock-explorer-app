@@ -86,6 +86,9 @@ def test_target_prod_is_the_default_schema(tmp_path: Path, monkeypatch) -> None:
 def test_dry_run_needs_no_credentials_regardless_of_target(tmp_path: Path, monkeypatch) -> None:
     db = tmp_path / "mart.duckdb"
     _make_mart(db, [_ROW])
+    # main() calls load_dotenv() itself, which would re-read a real local .env and defeat
+    # delenv below — stub it out so this test doesn't depend on whether one exists on disk.
+    monkeypatch.setattr(exp, "load_dotenv", lambda *a, **k: None)
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
 

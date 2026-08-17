@@ -13,10 +13,13 @@ matrix** (below). **Slices 1–2b are all MERGED** (#139 classifier · #140 bala
 (statement enrichment) MERGED (#142)** and **Slice 3b (per-type metric compute) MERGED (#143).** The
 test-architecture cleanup (#144) also merged. **The Sector/Lifecycle Router (Slices 4a #145 · 4b #146 · 4c #147)
 is fully MERGED — feature-complete.** Work has moved to **Slice 5 — the AI assessment generator**, split into
-**5a (deterministic health verdict + storage, no LLM) — PR'd (awaiting merge)** and **5b (the Claude-written prose
-read)**; then **Slice 6 (UI redesign)** renders it. The most recent session built Slice 5a: a per-type 🟢/🟡/🔴
-financial-health verdict from deterministic rules + a new `card_assessments` Supabase table + pipeline wiring —
-see Status + Next actions.
+**5a (deterministic health verdict + storage, no LLM) — MERGED (#148)** and **5b (the Claude-written prose
+read) — committed, MR not yet open** (see below); then **Slice 6 (UI redesign)** renders it. This session
+resumed 5b after a prior session's crash lost the working chat mid-review-cycle (code + tests were already
+complete; only the review cycle was outstanding), and after two intervening infra changes landed on `main`
+while 5b was parked: the **GitHub → GitLab CI migration** (GitHub account got suspended) and **`--target dev`
+Supabase schema isolation**. See the Infra section below for both, and Status for 5b's own review journey —
+five rounds, four with real findings, all now resolved and committed (`2cf5d6a`).
 
 ## Infra: GitHub → GitLab migration (separate track, not a product slice)
 
@@ -135,7 +138,7 @@ question, then merges.
   values carried int → mart → Supabase (migration `009`). dbt PASS=105, pytest 95, baseline 35. **Full 5-reviewer
   cycle, 4 rounds → all-PASS** (rounds 1–3 caught the metric sign-flip, the benchmark pollution, and an incomplete
   doc-sweep of the rename + the company_type-drives-eligibility fact; all fixed and re-verified).
-- **Slice 5a (AI assessment — deterministic health verdict + storage, no LLM) PR'd (awaiting merge).**
+- **Slice 5a (AI assessment — deterministic health verdict + storage, no LLM) MERGED (#148).**
   New pure `scripts/assessment_rules.py` — a per-type 🟢/🟡/🔴 **financial-health** verdict decided by
   deterministic rules (NOT the LLM): operating on leverage/profitability/cash, financial on ROE/margin/ROA
   (profitability-only — capital adequacy unsourceable from yfinance), pre_revenue on runway/net-cash/working-capital;
@@ -145,6 +148,34 @@ question, then merges.
   `scripts/generate_assessments.py` (mirrors export) runs after export in the weekly pipeline + a no-secret CI
   dry-run smoke. **No `anthropic` dep, no API key, no cost.** pytest 117 (22 new); generator dry-run 35 cards.
   **Full 5-reviewer cycle, single round → all-PASS.**
+- **Slice 5b (AI assessment — Claude Haiku prose read, regenerate-on-change) committed (`2cf5d6a`),
+  MR not yet open.** `scripts/assessment_rules.py` gains `READ_SYSTEM_PROMPT` + `VERDICT_MEANING` +
+  `READ_METRIC_BRIEF` (per-metric beginner gloss, one line per present metric, missing omitted never
+  guessed) + `build_read_messages`. `scripts/generate_assessments.py` gains the Haiku call
+  (`claude-haiku-4-5`) gated on `input_hash` change or null `ai_read`; per-card failures isolate (one bad
+  card never fails the batch); no key → verdicts-only, degrades gracefully. `anthropic==0.116.0` pinned.
+  **Three-reviewer cycle (scope-auditor/cto-reviewer/equity-analyst-reviewer per the routing — 5b touches
+  no `*.sql`/dbt/`supabase/*`), five rounds, four with real findings — not process noise:**
+  (1) a credential/network-leak in a test discovered while verifying 5b's resumption, in an adjacent
+  already-merged file (`test_export_to_supabase.py`) — same `load_dotenv()`-vs-`monkeypatch.delenv` bug
+  also existed in 5b's own new test and was missed on the first fix; (2) a stale "GitHub Actions secret"
+  reference in `.env.example`, left over from before the migration; (3) **the substantial one** — eleven
+  missing applicability caveats across `READ_METRIC_BRIEF`, found by cross-checking every one of the 16
+  fields against `metric_catalogue.csv`'s own owner-approved text: negative/thin equity
+  (`debt_to_equity`, `statement_roe_pct`), loss-makers (`forward_pe`), near-zero EBITDA
+  (`net_debt_to_ebitda`), tiny prior-year bases (`revenue_growth_yoy_pct`), near-zero revenue
+  (`ebit_margin_pct`, `fcf_margin_pct` — disclosed as an adaptation, not a catalogue quote), wrong
+  "sales dollar" framing on the financial-only `net_margin_pct`, missing distress/idle-cash caveats
+  (`dividend_yield_pct`, `current_ratio_stmt`); (4) a **"financial = bank" mislabeling** in
+  `READ_SYSTEM_PROMPT` — every `company_type == "financial"` card (the whole GICS Financial Services
+  sector: insurers, brokers, asset managers, exchanges, not just banks) was narrated as "the bank" with a
+  bank-specific safety claim; generalized to "this financial company." All owner-approved in-session;
+  exact final wording quoted verbatim in `contract.md`'s amendments log. pytest 142 (25 new); generator
+  dry-run 35 cards, all green. **MR #3 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/3),
+  pipeline ran for real and passed (`validate:full` logged the genuine `142 passed` from CI, not a cached
+  result). **Needs before merge: `ANTHROPIC_API_KEY` as a Protected GitLab CI/CD variable** (project
+  settings, owner-only — `data-pipeline` picks it up automatically once set, no `.gitlab-ci.yml` change
+  needed).
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
 
@@ -247,24 +278,25 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
    now-catalogued metrics across `_intermediate.yml` + `data_contract.md` + `overflow_menu.py`/README/north_star.
 6. **Slice 5 — AI assessment generator** (split 5a/5b; owner decisions: rules decide the verdict color / LLM
    writes prose only; generate-and-store data-only; Claude Haiku + regenerate-on-change).
-   - **5a — deterministic verdict + `card_assessments` storage: PR'd (awaiting merge).** `assessment_rules.py`
+   - **5a — deterministic verdict + `card_assessments` storage: MERGED (#148).** `assessment_rules.py`
      (per-type health verdict + `input_hash`), migration `010`, `generate_assessments.py`, pipeline + CI smoke,
      tests, `data_contract.md` §card_assessments. No LLM/dep/key/cost. Owner-signed per-type verdict rubric.
-   - **5b (← START HERE) — the Claude read.** Add `anthropic` + `ANTHROPIC_API_KEY` secret; an owner-signed
-     per-type prompt/voice (the beginner "read": reason only from the numbers, end on the verdict's meaning —
-     "financially sturdy on these figures", never "a good buy"); the Haiku call gated on `input_hash` change
-     (read the existing row, regenerate only when changed); fill `ai_read`/`read_model`; offline test mocking the API.
-     Plan: repurpose `~/.claude/plans/dynamic-snuggling-truffle.md` (currently holds the 5a plan).
+   - **5b — the Claude read: MR #3 open, pipeline verified green (← START HERE once merged).** `anthropic` +
+     `READ_SYSTEM_PROMPT`/`READ_METRIC_BRIEF`/`build_read_messages`; Haiku call gated on `input_hash` change
+     or null `ai_read`; fills `ai_read`/`read_model`; offline tests mock the API. Five review rounds closed
+     out eleven metric-caveat gaps + a "financial = bank" mislabeling (see Status for the full list) —
+     nothing left outstanding. **Owner sets `ANTHROPIC_API_KEY` as a Protected CI/CD variable, merges the
+     MR, then start Slice 6.**
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above (the approved mock: cohesive card,
    scan→deep tiers, one disclosure, label chips, words-not-arrows).
 
 ## Do NOT
 
 - Commit/push `main`; `gh pr merge`. Agent commits need `gitleaks` on PATH (it is — WinGet Packages dir).
-- (GitLab migration) Don't buy CI minutes, register a self-hosted runner, set CI/CD variable
-  *values*, or touch protected-branch settings — all owner-only (§6 cost/config). Don't merge
-  MR #1 — same rule as GitHub PRs, the owner merges. Don't assume GitHub is gone for good;
-  don't delete the GitHub remote or repo.
+- (GitLab) Don't buy CI minutes, register a self-hosted runner, set CI/CD variable *values*,
+  or touch protected-branch settings — all owner-only (§6 cost/config). **Never merge an MR**
+  — same rule as GitHub PRs, the owner merges, every time, regardless of MR number. Don't
+  assume GitHub is gone for good; don't delete the GitHub remote or repo.
 - Emit buy/sell/hold/price-target/advice anywhere — educational only.
 - Reword OR AUTHOR metric copy/definitions/caveats without owner sign-off (§6) — bit us on #135.
 - Add a catalogue row for a new metric before the Router — it renders an un-valued "—" cell.

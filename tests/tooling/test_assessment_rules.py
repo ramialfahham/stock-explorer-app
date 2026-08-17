@@ -208,3 +208,108 @@ def test_input_fields_mirror_catalogue_applies_to() -> None:
 def test_directions_mirror_catalogue() -> None:
     expected = {row["metric_id"].strip(): row["direction"].strip() for row in _catalogue_rows()}
     assert rules.DIRECTION_BY_METRIC == expected
+
+
+# --- Slice 5b: the prose "read" prompt (build_read_messages) -------------------------------
+
+def test_read_brief_covers_every_input_field() -> None:
+    # Every metric any card can display must have a beginner brief, or the facts block
+    # raises KeyError. Guards against INPUT_FIELDS_BY_TYPE drifting ahead of the brief.
+    union = {m for fields in rules.INPUT_FIELDS_BY_TYPE.values() for m in fields}
+    assert union <= set(rules.READ_METRIC_BRIEF)
+    for brief in rules.READ_METRIC_BRIEF.values():
+        assert {"label", "gloss", "fmt"} <= set(brief)
+        assert brief["fmt"] in {"pct", "ratio", "months", "currency"}
+
+
+def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
+    row = {
+        "company_type": "operating",
+        "forward_pe": 18.5,
+        "ebit_margin_pct": 24.0,
+        "revenue_growth_yoy_pct": 9.0,
+        "net_debt_to_ebitda": 1.1,
+        "fcf_margin_pct": 16.0,
+        "debt_to_equity": 0.6,
+        "current_ratio_stmt": 1.8,
+        "statement_roe_pct": 19.0,
+    }
+    system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
+    assert system == rules.READ_SYSTEM_PROMPT
+    assert "never give investment advice" in system.lower()
+    # verdict + its plain meaning are stated for the model to land on
+    assert "green" in user
+    assert rules.VERDICT_MEANING[rules.VERDICT_GREEN] in user
+    # every present operating metric appears with its label
+    for field in rules.INPUT_FIELDS_BY_TYPE["operating"]:
+        assert rules.READ_METRIC_BRIEF[field]["label"] in user
+    assert "24.0%" in user  # percent formatting
+    # valuation + growth are both flagged context-only, never a health signal
+    assert user.lower().count("context only") >= 2
+
+
+def test_build_read_messages_omits_missing_metrics() -> None:
+    row = {
+        "company_type": "operating",
+        "net_debt_to_ebitda": 1.1,
+        "ebit_margin_pct": 24.0,
+        "fcf_margin_pct": 16.0,
+        # supporting metrics + valuation/growth all absent
+    }
+    _system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
+    assert rules.READ_METRIC_BRIEF["debt_to_equity"]["label"] not in user
+    assert rules.READ_METRIC_BRIEF["forward_pe"]["label"] not in user
+    assert rules.READ_METRIC_BRIEF["net_debt_to_ebitda"]["label"] in user
+    assert "None" not in user  # missing values never render as a number
+
+
+def test_build_read_messages_financial_states_profitability_only_limit() -> None:
+    row = {
+        "company_type": "financial",
+        "statement_roe_pct": 13.0,
+        "net_margin_pct": 30.0,
+        "roa_pct": 1.2,
+    }
+    system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
+    assert "profitability only" in system.lower()  # the financial-sector honesty limit
+    assert rules.READ_METRIC_BRIEF["roa_pct"]["label"] in user
+
+
+def test_build_read_messages_pre_revenue_uses_survival_metrics() -> None:
+    row = {
+        "company_type": "pre_revenue",
+        "currency": "GBP",
+        "net_cash_to_market_cap": 0.4,
+        "working_capital": 2.1e9,
+        "cash_runway_months": 36.0,
+        "burn_rate_monthly": 5.0e6,
+    }
+    _system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
+    assert rules.READ_METRIC_BRIEF["cash_runway_months"]["label"] in user
+    assert "36 months" in user  # months formatting
+    assert "£2.1B" in user      # money amounts carry the card's own currency
+    assert "£5.0M" in user
+    assert "$" not in user      # never an assumed USD symbol
+
+
+def test_build_read_messages_money_amount_names_the_currency() -> None:
+    # known code -> the right symbol
+    _s, jpy = rules.build_read_messages(
+        {"company_type": "pre_revenue", "currency": "JPY", "working_capital": 2.1e9},
+        rules.VERDICT_YELLOW,
+    )
+    assert "¥2.1B" in jpy  # ¥2.1B
+    # unknown code -> the code itself, never a fabricated symbol
+    _s2, chf = rules.build_read_messages(
+        {"company_type": "pre_revenue", "currency": "CHF", "working_capital": 2.1e9},
+        rules.VERDICT_YELLOW,
+    )
+    assert "CHF 2.1B" in chf
+    assert "$" not in chf and "£" not in chf
+
+
+def test_build_read_messages_unknown_type_falls_back_to_operating() -> None:
+    _system, user = rules.build_read_messages(
+        {"company_type": None, "ebit_margin_pct": 10.0}, rules.VERDICT_YELLOW
+    )
+    assert "Company type: operating" in user
