@@ -1,12 +1,17 @@
-"""Generate per-card health assessments from the DuckDB mart into Supabase (Slice 5a).
+"""Generate per-card health assessments from the DuckDB mart into Supabase (Slice 5).
 
-Deterministic verdict only — NO LLM. Mirrors scripts/export_to_supabase.py: reads
-marts.mart_stock_cards (already filtered to eligible cards), computes a per-type health
-verdict + an input_hash per card, and upserts into public.card_assessments.
+Two layers:
+- 5a (deterministic, no LLM): reads marts.mart_stock_cards (already filtered to eligible
+  cards), computes a per-type health verdict + an input_hash per card.
+- 5b (Claude Haiku prose read): fills ai_read / read_model, calling Claude ONLY when a
+  card's input_hash changed or its stored ai_read is null (regenerate-on-change). The read
+  is educational, never advice, and reasons only from the card's own numbers.
 
-The prose read (ai_read) is written later by Slice 5b and is deliberately NOT part of the
-upsert payload here, so re-running 5a never clobbers a 5b read (PostgREST upsert only sets
-the columns provided).
+Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape. --dry-run returns
+before any credential or LLM call, so CI can smoke it secret-free; the real path also skips
+the reads when ANTHROPIC_API_KEY is absent. A base record omits ai_read / read_model unless
+a fresh read was generated, so a re-run never clobbers a stored read (PostgREST upsert only
+sets the columns provided).
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import anthropic
 import duckdb
 import pandas as pd
 from dotenv import load_dotenv
@@ -24,19 +30,27 @@ from supabase import create_client
 
 from assessment_rules import (
     INPUT_FIELDS_BY_TYPE,
+    build_read_messages,
     compute_input_hash,
     compute_verdict,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# Slice 5b: the Claude Haiku prose read. READ_MODEL is the request model; the id
+# actually stored in read_model is response.model (echoed back by the API).
+READ_MODEL = "claude-haiku-4-5"
+READ_MAX_TOKENS = 256
+
 # Union of every per-type card metric (derived from the rules module so it can't drift),
-# plus the keys the verdict/hash and dedupe need.
+# plus the keys the verdict/hash and dedupe need. `currency` is carried only so the 5b
+# read can name the money amounts in the card's own currency (it is NOT hashed/scored).
 _METRIC_COLUMNS = sorted({m for fields in INPUT_FIELDS_BY_TYPE.values() for m in fields})
 ASSESSMENT_INPUT_COLUMNS = [
     "market_code",
     "ticker",
     "company_type",
+    "currency",
     "snapshot_date",
     *_METRIC_COLUMNS,
 ]
@@ -112,9 +126,93 @@ def _verdict_distribution(records: list[dict]) -> dict[str, int]:
     return dist
 
 
+# --- Slice 5b: the Claude Haiku prose read (regenerate-on-change) -------------
+
+
+def _fetch_existing_assessments(client) -> dict[tuple, dict]:
+    """Read the stored (input_hash, ai_read, read_model) per card so we can skip
+    unchanged ones. At current scale (tens of eligible cards) a single select is well
+    under PostgREST's default row cap."""
+    resp = (
+        client.table("card_assessments")
+        .select("market_code,ticker,input_hash,ai_read,read_model")
+        .execute()
+    )
+    rows = resp.data or []
+    return {(r["market_code"], r["ticker"]): r for r in rows}
+
+
+def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | None]:
+    """Call Claude Haiku for one card's prose read. Returns (text, model_id), or
+    (None, None) on any failure so a single bad card never fails the batch."""
+    system, user = build_read_messages(row, verdict)
+    try:
+        resp = client.messages.create(
+            model=READ_MODEL,
+            max_tokens=READ_MAX_TOKENS,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+    except Exception as exc:  # noqa: BLE001 - resilience: isolate one card's failure
+        print(
+            f"  read failed for {row.get('market_code')}/{row.get('ticker')}: {exc}",
+            file=sys.stderr,
+        )
+        return None, None
+    text = "".join(
+        getattr(block, "text", "")
+        for block in resp.content
+        if getattr(block, "type", None) == "text"
+    ).strip()
+    if not text:
+        return None, None
+    return text, resp.model
+
+
+def attach_reads(
+    records: list[dict],
+    rows_by_key: dict[tuple, dict],
+    existing_by_key: dict[tuple, dict],
+    client,
+) -> dict[str, int]:
+    """Fill ai_read / read_model on records that changed, in place.
+
+    Regenerate a card's read when it is new, its input_hash differs from the stored
+    one, or its stored ai_read is empty. Otherwise leave both keys ABSENT so the upsert
+    preserves the stored read (never clobbers). A per-card API failure also leaves the
+    keys absent, so the card stays null-read and retries next run (self-healing).
+    """
+    generated = carried = failed = 0
+    for record in records:
+        key = (record["market_code"], record["ticker"])
+        existing = existing_by_key.get(key)
+        if existing is None:
+            regenerate = True
+        else:
+            regenerate = (
+                existing.get("input_hash") != record["input_hash"]
+                or not existing.get("ai_read")
+            )
+        if not regenerate:
+            carried += 1
+            continue
+        row = rows_by_key.get(key)
+        if row is None:  # defensive: records derive from these rows, so shouldn't happen
+            failed += 1
+            continue
+        text, model = _generate_read(client, row, record["health_verdict"])
+        if text is None:
+            failed += 1
+            continue
+        record["ai_read"] = text
+        record["read_model"] = model
+        generated += 1
+    return {"generated": generated, "carried": carried, "failed": failed}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Generate card_assessments verdicts from the DuckDB mart (Slice 5a)"
+        description="Generate card_assessments verdicts + Claude Haiku reads from the DuckDB mart (Slice 5)"
     )
     parser.add_argument(
         "--duckdb-path",
@@ -135,7 +233,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"DuckDB not found: {db_path}", file=sys.stderr)
         return 1
 
-    records = build_assessment_records(_load_mart_rows(db_path))
+    rows = _load_mart_rows(db_path)
+    records = build_assessment_records(rows)
     print(
         f"generate_assessments: {len(records)} cards -> verdicts {_verdict_distribution(records)}"
     )
@@ -155,6 +254,26 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     client = create_client(url, key)
+
+    # Slice 5b: fill ai_read / read_model for changed cards only. Skipped when no
+    # ANTHROPIC_API_KEY (verdicts still upsert, as in 5a) so the pipeline degrades
+    # gracefully and the secret is a soft dependency.
+    if os.getenv("ANTHROPIC_API_KEY"):
+        existing = _fetch_existing_assessments(client)
+        rows_by_key = {
+            (r["market_code"], r["ticker"]): r for r in _latest_per_ticker(rows)
+        }
+        summary = attach_reads(records, rows_by_key, existing, anthropic.Anthropic())
+        print(
+            "generate_assessments: reads "
+            f"generated={summary['generated']} carried={summary['carried']} "
+            f"failed={summary['failed']}"
+        )
+    else:
+        print(
+            "generate_assessments: no ANTHROPIC_API_KEY, skipping prose reads (verdicts only)"
+        )
+
     batch_size = 500
     for start in range(0, len(records), batch_size):
         batch = records[start : start + batch_size]

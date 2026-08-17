@@ -217,3 +217,187 @@ def compute_input_hash(
     }
     blob = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+# --- Slice 5b: the Claude-written prose "read" -------------------------------
+# The verdict COLOR is decided above by rules; the LLM writes ONLY the prose read.
+# Everything here is pure (no I/O, no anthropic import) so it unit-tests offline;
+# scripts/generate_assessments.py makes the actual Claude Haiku call.
+
+# Owner-signed voice (§6). Educational, never advice; true-beginner language;
+# reason only from the given numbers; end on the verdict's meaning as financial
+# sturdiness/strain "on these figures", never as a buy/sell.
+READ_SYSTEM_PROMPT = """You write a short, plain-language "read" of a company's financial health for a complete beginner using a stock-learning app. You are given the company type, a set of already-computed numbers, and a health verdict (green, yellow, or red) that fixed rules decided - not you. In 2-3 sentences, explain what those numbers say about the company's financial health, ending on what the verdict means in plain words.
+
+Rules:
+- Educational only. Never give investment advice. Do not say or imply whether to buy, sell, hold, or avoid the share, whether it is cheap, expensive, or "worth it", and never predict the price. You explain what the numbers describe; you never recommend an action.
+- Write for someone who knows no finance vocabulary. If you use a term, gloss it in plain words or an everyday comparison. Leave no jargon unexplained.
+- Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
+- Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
+- Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
+- Valuation (P/E, price-to-tangible-book) and growth are context only - never treat a low P/E as "cheap" or high growth as a reason to buy. The verdict measures financial health and resilience only.
+- End on the verdict's meaning, phrased as sturdiness or strain on these figures - e.g. "financially sturdy on these figures", "a mixed financial picture on these numbers", "under real financial strain on these figures". Never phrase it as a good or bad buy.
+- Calm, clear, honest. No hype, no emoji, no exclamation marks.
+
+Company-type lens:
+- operating: profitability (does it earn on sales?), leverage (how much it has borrowed), cash generation.
+- financial: profitability and returns (margin, return on equity, return on assets). State the honest limit: this shows profitability only - it can't judge this financial company's balance-sheet safety or capital strength, which these numbers don't show.
+- pre_revenue: a survival story - not profitable yet, so focus on cash, how fast it is spending (burn), and how long the cash lasts (runway). Health = staying power, not profit."""
+
+
+# Plain-English meaning of each verdict token, given to the model so the read can
+# land on it. Mirrors the frontend token -> emoji mapping added in Slice 6.
+VERDICT_MEANING: dict[str, str] = {
+    VERDICT_GREEN: "green - financially sturdy on these figures",
+    VERDICT_YELLOW: "yellow - a mixed financial picture on these figures",
+    VERDICT_RED: "red - under real financial strain on these figures",
+}
+
+
+# Per-metric beginner brief for the facts block: label + one plain gloss + a value
+# format. Keys MUST cover every field in INPUT_FIELDS_BY_TYPE (a tests/tooling guard
+# asserts it). Wording is drawn from dbt_analytics/seeds/metric_catalogue.csv;
+# valuation / growth / income lines are tagged "context only" so the read never
+# turns them into a buy cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
+READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
+    "forward_pe": {
+        "label": "Forward P/E",
+        "fmt": "ratio",
+        "gloss": "how many years of expected profit the price reflects - valuation context only, not a health signal; meaningless (not \"cheap\") if the company is a loss-maker",
+    },
+    "ebit_margin_pct": {
+        "label": "Operating margin",
+        "fmt": "pct",
+        "gloss": "share of each sales dollar kept as operating profit (higher = more profitable); can look extreme when revenue is very small",
+    },
+    "revenue_growth_yoy_pct": {
+        "label": "Revenue growth vs a year ago",
+        "fmt": "pct",
+        "gloss": "how fast sales are growing - context only, not a health signal; a huge percentage can just mean a very small prior-year base, not real momentum",
+    },
+    "net_debt_to_ebitda": {
+        "label": "Net debt / EBITDA",
+        "fmt": "ratio",
+        "gloss": "roughly how many years of earnings would clear net debt (lower = less borrowing); can explode to a huge or distorted number when earnings are near zero",
+    },
+    "fcf_margin_pct": {
+        "label": "Free cash flow margin",
+        "fmt": "pct",
+        "gloss": "real cash kept from each sales dollar (higher = stronger); negative = burning cash; can look extreme when revenue is very small",
+    },
+    "debt_to_equity": {
+        "label": "Debt / equity",
+        "fmt": "ratio",
+        "gloss": "borrowed money versus the owners' stake (lower = more cushion; distorted or meaningless if equity is thin or negative)",
+    },
+    "current_ratio_stmt": {
+        "label": "Current ratio",
+        "fmt": "ratio",
+        "gloss": "short-term assets versus short-term bills (above 1 = covers near-term bills); a very high ratio isn't automatically good either - it can mean cash sitting idle",
+    },
+    "statement_roe_pct": {
+        "label": "Return on equity",
+        "fmt": "pct",
+        "gloss": "profit earned on the owners' money (higher = more efficient; can look spuriously positive if equity is negative)",
+    },
+    "price_to_tangible_book": {
+        "label": "Price / tangible book",
+        "fmt": "ratio",
+        "gloss": "price versus hard net worth - valuation context only, not a health signal",
+    },
+    "net_margin_pct": {
+        "label": "Net margin",
+        "fmt": "pct",
+        "gloss": "final profit kept from each revenue dollar after all costs (higher = more profitable); for a financial company \"revenue\" means net interest plus fees, not sales",
+    },
+    "roa_pct": {
+        "label": "Return on assets",
+        "fmt": "pct",
+        "gloss": "profit earned on everything the company owns (higher = more efficient)",
+    },
+    "dividend_yield_pct": {
+        "label": "Dividend yield",
+        "fmt": "pct",
+        "gloss": "annual dividend as a share of the price - income context, not a health signal; a very high yield can flag a falling price or a payout at risk, not just generosity",
+    },
+    "net_cash_to_market_cap": {
+        "label": "Net cash vs price",
+        "fmt": "ratio",
+        "gloss": "spare cash (cash minus debt) as a share of the market price (higher = more cushion; above 1 = more cash than its whole price)",
+    },
+    "working_capital": {
+        "label": "Working capital",
+        "fmt": "currency",
+        "gloss": "short-term assets minus short-term bills, a money amount (positive = a near-term cushion, negative = a squeeze)",
+    },
+    "cash_runway_months": {
+        "label": "Cash runway",
+        "fmt": "months",
+        "gloss": "how long the cash lasts at the current spend (higher = more time before needing to raise money)",
+    },
+    "burn_rate_monthly": {
+        "label": "Cash burn per month",
+        "fmt": "currency",
+        "gloss": "how fast cash is going out each month, a money amount (lower = the cash lasts longer)",
+    },
+}
+
+
+# Currency symbols for the money-amount metrics; mirrors frontend/card_copy.py so the
+# read names the SAME currency the card face shows. Unknown code -> the code itself
+# (never a fake symbol). The app spans US/UK/JP/AU/DE markets, so "$" is not a safe default.
+_CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
+
+
+def _compact_amount(value: float, currency: str | None) -> str:
+    """Compact, sign-aware money amount WITH the card's currency:
+    2_100_000_000 / 'GBP' -> '£2.1B'; -5.0e7 / 'JPY' -> '-¥50.0M'; unknown code kept
+    literal ('CHF 2.1B'); no code -> bare magnitude."""
+    code = (currency or "").upper()
+    symbol = _CURRENCY_SYMBOLS.get(code) or (f"{code} " if code else "")
+    v = float(value)
+    sign = "-" if v < 0 else ""
+    magnitude = abs(v)
+    for suffix, size in (("B", 1e9), ("M", 1e6), ("K", 1e3)):
+        if magnitude >= size:
+            return f"{sign}{symbol}{magnitude / size:.1f}{suffix}"
+    return f"{sign}{symbol}{magnitude:.0f}"
+
+
+def _format_metric_value(value: Any, fmt: str, currency: str | None = None) -> str:
+    v = float(value)
+    if fmt == "pct":
+        return f"{v:.1f}%"
+    if fmt == "months":
+        return f"{v:.0f} months"
+    if fmt == "currency":
+        return _compact_amount(v, currency)
+    return f"{v:.2f}"  # ratio
+
+
+def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]:
+    """Pure: build the (system, user) messages for the Claude Haiku prose read.
+
+    The user message states the company type, the verdict + its plain meaning, and
+    one line per PRESENT per-type metric (the same INPUT_FIELDS_BY_TYPE set the hash
+    covers). Missing metrics are omitted - never guessed. No I/O, no anthropic import.
+    """
+    ctype = normalize_company_type(row.get("company_type"))
+    currency = row.get("currency")  # names the money amounts in the card's own currency
+    lines: list[str] = []
+    for field in INPUT_FIELDS_BY_TYPE[ctype]:
+        value = row.get(field)
+        if _is_missing(value):
+            continue
+        brief = READ_METRIC_BRIEF[field]
+        rendered = _format_metric_value(value, brief["fmt"], currency)
+        lines.append(f"- {brief['label']}: {rendered} - {brief['gloss']}")
+    facts = "\n".join(lines) if lines else "- (no metric values available)"
+    meaning = VERDICT_MEANING.get(verdict, verdict)
+    user = (
+        f"Company type: {ctype}\n"
+        f"Health verdict: {meaning}\n\n"
+        f"Numbers for this company:\n{facts}\n\n"
+        "Write the 2-3 sentence read."
+    )
+    return READ_SYSTEM_PROMPT, user
