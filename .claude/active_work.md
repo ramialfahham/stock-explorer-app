@@ -19,7 +19,9 @@ resumed 5b after a prior session's crash lost the working chat mid-review-cycle 
 complete; only the review cycle was outstanding), and after two intervening infra changes landed on `main`
 while 5b was parked: the **GitHub → GitLab CI migration** (GitHub account got suspended) and **`--target dev`
 Supabase schema isolation**. See the Infra section below for both, and Status for 5b's own review journey —
-five rounds, four with real findings, all now resolved and committed (`2cf5d6a`).
+five rounds, four with real findings, all now resolved and committed (`2cf5d6a`). A later session in this
+same handover started **Slice 6a (UI redesign — design system foundation)**, owner-scoped as the first of
+three UI phases; committed after six review rounds (see Status), MR not yet open.
 
 ## Infra: GitHub → GitLab migration (separate track, not a product slice)
 
@@ -178,6 +180,31 @@ question, then merges.
   needed).
 - **UI redesign mock: approved look** (cohesive card, scan→deep tiers, one disclosure, label chips,
   words-not-arrows). NOT implemented — waits on the Router.
+- **Slice 6a (UI redesign — design system foundation) committed, MR not yet open.** Owner scoped Slice 6
+  as three phases — 6a (this one): tokens + shared row primitive + Search's missing styling + dead-CSS
+  cleanup; 6b (later): Landing/Overflow unification; 6c (later): rendering new card content (health
+  verdict, AI read, per-type metrics). 6a deliberately touches neither 6b nor 6c. New spacing/radius/
+  type-scale CSS custom properties (`--ss-space-1..4`, `--ss-radius-control`, `--ss-radius-surface`,
+  `--ss-row-title`) in `frontend/styles.py`; new `frontend/row_ui.py` (`build_row_html`/`render_row_list`,
+  mirrors `card_ui.py`'s pure/render split) shared by Saved-list and Search results — Search previously had
+  **zero custom styling**, plain default buttons. New `docs/ui/design_system.md` (token/primitive spec the
+  other `docs/ui/*` specs build on) + knock-on updates to `north_star.md`/`saved_list.md`/
+  `working_agreement.md`. Six review rounds, five with real findings (not process noise): (1) round 1 —
+  `row_ui.py` shipped with zero test coverage despite the contract flagging it; fixed with
+  `tests/frontend/test_row_ui.py`. (2) round 3 — a genuine CSS bug found via real screenshots: the
+  row-hover highlight bled to **all** rows at once instead of the one under the pointer (a `:has()`
+  selector matched an unintended outer Streamlit wrapper); fixed by requiring a direct-child
+  `stElementContainer`. (3) round 3 (same pass) — a new global button-radius rule reaches Saved's focus
+  view, which hadn't been re-verified; closed by actually opening it and checking the "Back to list"
+  button live. (4)+(5) rounds 4-5 — `docs/ui/design_system.md`'s token table made fabricated/unwired
+  "Used by" claims for three tokens (`--ss-space-1/3/4`); fixed by actually wiring them into their real
+  matching CSS sites (all exact-value substitutions) rather than just editing the doc, and by checking
+  every table row, not just the flagged ones. **Environment note:** the in-app Browser pane couldn't
+  composite frames or dispatch real input for part of this session; verification fell back to an
+  independent headless-Chrome CDP harness (scratch-only scripts, real trusted mouse/keyboard events) —
+  screenshots sent to the owner in-thread, owner reviewed and said "go ahead." Full detail of all 6
+  rounds in `.claude/task/contract.md`'s `amendments` + `.claude/task/review.md`. pytest 145 (3 new).
+  **Not yet done: pushed / MR opened.**
 
 ## Decisions locked (the important ones)
 
@@ -288,7 +315,12 @@ Approved plans: `~/.claude/plans/noble-forging-beaver.md` (parent: "do it right"
      nothing left outstanding. **Owner sets `ANTHROPIC_API_KEY` as a Protected CI/CD variable, merges the
      MR, then start Slice 6.**
 7. **Slice 6 — UI redesign** in Streamlit, consuming all of the above (the approved mock: cohesive card,
-   scan→deep tiers, one disclosure, label chips, words-not-arrows).
+   scan→deep tiers, one disclosure, label chips, words-not-arrows). Phased by the owner:
+   - **6a — design system foundation: committed, MR not yet open (← START HERE once merged).** See Status
+     for the full account (tokens, shared row primitive, Search styling, dead-CSS removal, 6 review rounds).
+   - **6b — Landing/Overflow unification: not started.** Deferred by the owner, explicitly out of 6a's scope.
+   - **6c — render new card content** (health verdict, AI read, per-type metrics) **on the finished system:
+     not started.** Deferred by the owner, explicitly out of 6a's scope.
 
 ## Do NOT
 
