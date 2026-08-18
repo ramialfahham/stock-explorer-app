@@ -2,10 +2,12 @@
 
 objective: Fix agent-setup drift found during this session's guardrail audit — force-load
   the working agreement, pin the dbt-mcp server version, repair active_work.md's
-  SessionStart-injection-cap overflow and stale merged-slice status, and wire the review
+  SessionStart-injection-cap overflow and stale merged-slice status, wire the review
   gate + pre-push checklist + handover injection hooks PROJECT-SCOPED (superseding a
-  reverted global attempt — see amendments) — on its own branch, separate from product
-  work.
+  reverted global attempt — see amendments), and harden `review_routing.json` itself with
+  4 guard-path routes modeled on football-data-pipeline's more mature routing (the owner
+  asked directly for this after seeing that sibling project's routing catch a class of
+  gap this repo's didn't) — on its own branch, separate from product work.
 
 scope_paths:
   - CLAUDE.md
@@ -13,6 +15,7 @@ scope_paths:
   - .claude/active_work.md
   - docs/handover_2026-08-18.md
   - .claude/settings.json
+  - .claude/review_routing.json
 
 decisions_reserved:
   - Every in-repo change in this diff is a mechanical fix to an already-existing
@@ -44,12 +47,22 @@ decisions_reserved:
     elsewhere. Owner chose **commit it (tracked)**, accepting that portability caveat in
     exchange for the wiring being visible/documented in-repo rather than invisible,
     machine-only config.
+  - **This commit's own scope, explicitly bounded:** port ROUTING-CONFIG improvements only
+    (4 new `paths` entries, all using reviewer roles this repo already has — cto-reviewer),
+    modeled on football-data-pipeline's routing. Explicitly NOT ported: their
+    `hash_exclude_paths`/`protected_override` mechanism, since that requires new logic in
+    `commit_review_gate.py` itself (the shared hook currently reads only `always`, `paths`,
+    `artifact_only`, `artifact_only_never` — verified by reading the script), which is a
+    bigger, code-level "new mechanism" decision, not a config tweak. Also not ported: their
+    `platform-reviewer`/`bi-analyst-reviewer` role split — introducing a new reviewer role
+    that doesn't exist in this repo's `agents/` dir is out of scope for a routing-only
+    change. Flagged to the owner as a separate, larger option; not decided here.
 
 done_when:
-  - The 5 files are committed on `chore/agent-setup-hygiene` with a passing scope-auditor
-    review for this diff (no path in this addition matches a `cto-reviewer` route in
-    `.claude/review_routing.json` — `.claude/settings.json` isn't listed there, unlike
-    football-data-pipeline's routing).
+  - The 6 files are committed on `chore/agent-setup-hygiene` with a passing scope-auditor
+    + cto-reviewer review for this diff (`.claude/review_routing.json`'s new
+    self-referential rule means editing it now requires cto-reviewer too, on top of the
+    always-on scope-auditor).
 
 amendments:
   - 2026-08-18 — created fresh for this hygiene task; not derived from the product task
@@ -94,3 +107,33 @@ amendments:
   - 2026-08-18 — round 6: scope-auditor PASS against the final staged diff (hash
     `ff0a49bc4c82e5480c624cd4b11316d2c7ba1e3ac441422261627b36535cdfff`), independently
     verified live via `glab` (MR #5's state, plus MR #3/#4's claimed merged status).
+  - 2026-08-18 — round 7 (new commit, hardening `review_routing.json` with 4 guard-path
+    entries modeled on football-data-pipeline's routing, at the owner's direct request):
+    scope-auditor + cto-reviewer both FAIL, independently, on the same root issue —
+    rationale ported from the sibling repo without verifying it holds here. (1)
+    `.claude/agents/*`'s comment claimed it protects "the adversary" (cto-reviewer,
+    scope-auditor, etc.); verified false — this repo's `.claude/agents/` contains only
+    `equity-analyst-reviewer.md`, the other four roles live entirely outside the repo in
+    the dbt-agent-kit plugin's `agents/` dir, invisible to any repo-scoped gate. (2) the
+    self-referential `review_routing.json` route claimed a same-commit weaken-and-exploit
+    gets "caught by the reviewer it's trying to route around"; verified false —
+    `commit_review_gate.py` reads the file from its current staged state with no baseline
+    pinning, so a commit that weakens a rule is evaluated under the already-weakened
+    rules. Fixed: `_comment_guard_paths` rewritten to state both limitations honestly
+    instead of the ported claims — the rules themselves are unchanged (still real,
+    still worth having), only the documentation of what they actually accomplish.
+  - 2026-08-18 — round 8: cto-reviewer PASS (re-verified both round-7 facts against the
+    real hook/filesystem, held). scope-auditor FAIL: the rewritten comment's own opening
+    sentence claimed the ported-claims problem was "corrected twice by review... both
+    rounds caught claims" — but at the moment that sentence was written, only round 7 had
+    happened; this round (8) didn't exist yet, so the claim asserted a review outcome
+    that hadn't occurred. Same self-referential-drift defect class as rounds 1, 2, and 5,
+    reintroduced inside the very text written to fix a different instance of it. Fixed:
+    reworded to "corrected by review before merge -- the first review round caught two
+    claims... both scope-auditor and cto-reviewer failing independently in that same
+    round" — accurate to what round 7 actually was, no forward-looking claim about rounds
+    that hadn't happened yet.
+  - 2026-08-18 — round 9: scope-auditor + cto-reviewer both PASS against the final staged
+    diff (hash `1bd49a48a58a2908008d393eba16028c2c9f45e0e034a90eb8f7fa8b79757998`), every
+    factual claim in `_comment_guard_paths` independently re-verified against the live
+    filesystem and hook source, not re-read as prose.
