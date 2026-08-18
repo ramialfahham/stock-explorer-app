@@ -33,6 +33,7 @@ from landing import render_landing
 from markets import HERO_MARKET_CODE, eligible_counts_by_market, latest_snapshot_label
 from nav_pages import NAV_PAGES, normalize_nav_page
 from overflow_menu import render_overflow_menu
+import row_ui
 from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
@@ -234,6 +235,7 @@ def _render_bottom_nav(*, saved_count: int, client) -> str:
                 label_visibility="collapsed",
                 key="bottom_nav",
             )
+        st.markdown('<div class="ss-icon-btn-marker"></div>', unsafe_allow_html=True)
         with st.popover("⋯"):
             cards = _ensure_all_cards(client)
             render_overflow_menu(
@@ -370,6 +372,10 @@ def _saved_row_key(card: dict) -> str:
     return f"{card['market_code']}::{card['ticker']}"
 
 
+def _select_saved_row(card: dict) -> None:
+    st.session_state["saved_focus_key"] = _saved_row_key(card)
+
+
 def _render_saved_tab(client, interactions: list[dict]) -> None:
     saved_cards = _saved_cards(client, interactions)
 
@@ -391,27 +397,14 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
                 f"{html.escape(snapshot_label)}</p>",
                 unsafe_allow_html=True,
             )
-        st.markdown('<div class="ss-saved-list-items" aria-hidden="true"></div>', unsafe_allow_html=True)
-        for card in saved_cards:
-            row_key = _saved_row_key(card)
-            company = card.get("company_name") or card.get("ticker") or "Unknown"
-            subtitle = saved_row_subtitle(card)
-            with st.container():
-                st.markdown(
-                    f'<div class="ss-saved-list-entry">'
-                    f'<p class="ss-saved-name">{html.escape(company)}</p>'
-                    f'<p class="ss-saved-sector">{html.escape(subtitle)}</p>'
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-                if st.button(
-                    company,
-                    key=f"saved_row_{row_key}",
-                    use_container_width=True,
-                    type="secondary",
-                ):
-                    st.session_state["saved_focus_key"] = row_key
-                    st.rerun()
+        row_ui.render_row_list(
+            saved_cards,
+            key_prefix="saved_row",
+            row_key_fn=_saved_row_key,
+            title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
+            subtitle_fn=saved_row_subtitle,
+            on_select=_select_saved_row,
+        )
         return
 
     market_code, ticker = focus_key.split("::", 1)
@@ -430,6 +423,10 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
 
     render_saved_news(selected, widget_key_prefix="saved")
     render_stock_card(selected, widget_key_prefix="saved")
+
+
+def _select_search_row(card: dict) -> None:
+    st.session_state["search_selected"] = _card_key(card)
 
 
 def _render_search_tab(client) -> None:
@@ -456,12 +453,14 @@ def _render_search_tab(client) -> None:
         st.warning(f"No matches for “{query}”.")
         return
 
-    for card in matches[:20]:
-        label = card.get("company_name") or card.get("ticker")
-        ticker = card.get("ticker")
-        if st.button(f"{label} ({ticker})", key=f"search_{card['market_code']}_{ticker}"):
-            st.session_state["search_selected"] = _card_key(card)
-            st.rerun()
+    row_ui.render_row_list(
+        matches[:20],
+        key_prefix="search",
+        row_key_fn=lambda c: f"{c['market_code']}_{c['ticker']}",
+        title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
+        subtitle_fn=saved_row_subtitle,
+        on_select=_select_search_row,
+    )
 
     selected = st.session_state.get("search_selected")
     if selected:

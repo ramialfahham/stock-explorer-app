@@ -18,7 +18,7 @@ Applies to Streamlit layout, copy, and interaction changes — not dbt-only or o
 Before opening a UX PR:
 
 1. **north_star check** — tab behavior matches [`north_star.md`](north_star.md) (especially Saved = learning list + single focus).
-2. **Component specs** — layout changes must match [`docs/ui/`](ui/) (Saved list, Discover header, card metric cell).
+2. **Component specs** — layout changes must match [`docs/ui/`](ui/) (design tokens, Saved list, Discover header, card metric cell).
 3. **One primary job** — PR description includes one sentence: what the user can do after merge.
 4. **Mobile wireframe** — ASCII or sketch in the PR body for new layout patterns (required for Saved, Discover chrome, or card structure changes).
 5. **480px smoke** — no horizontal scroll on Saved; Save still reachable on Discover; three hero metric values visible without scroll.

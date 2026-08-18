@@ -167,6 +167,7 @@ Layout-level specs for agents and reviewers — ASCII wireframes, anti-patterns,
 
 | Spec | Covers |
 |------|--------|
+| [`ui/design_system.md`](ui/design_system.md) | Design tokens (spacing, radius, type scale), shared row/button primitives |
 | [`ui/saved_list.md`](ui/saved_list.md) | Saved learning list rows, focus + headlines, freshness line |
 | [`ui/discover_header.md`](ui/discover_header.md) | Brand → tagline → nav (+ ⋯ inline) → filters → stats |
 | [`ui/card_metric_cell.md`](ui/card_metric_cell.md) | Label / value / gloss hierarchy, value-aware copy |
