@@ -147,13 +147,21 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    design system. Not started. This is what finally surfaces Slice 5's AI assessment work in the UI.
 3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
    see Infra section; status unconfirmed from this repo's own files.
-4. **`chore/agent-setup-hygiene` — MR #5 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/5).
-   Separate track, not a product slice — same category as the GitLab migration. Forces `working-agreement.md`
-   to load every session instead of being opt-in, pins `dbt-mcp`, produced this file's own trim/corrections,
-   and wires the review-gate/pre-push/handover hooks project-scoped (see Context/open items). Don't restate
-   the commit count or list hashes here — it drifts every time something new lands on the branch (already
-   happened once); check `git log chore/agent-setup-hygiene` or the MR itself for the current state. Owner
-   reviews and merges the MR when ready.
+4. **`chore/agent-setup-hygiene` — MR #5 MERGED, MR #6 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/6).
+   Separate track, not a product slice — same category as the GitLab migration. MR #5 merged the
+   working-agreement `@`-import, the `dbt-mcp` pin, this file's own trim/corrections, and the review-gate/
+   pre-push/handover hooks wired project-scoped. **MR #5's merge and a later push to this same branch
+   raced** — 3 commits landed on the branch after the merge point and were left unmerged, with no open MR
+   tracking them; MR #6 was opened specifically to pick those up. **Before trusting "MR merged" as "branch
+   fully merged" again: verify with `git merge-base --is-ancestor <branch-tip> <target>`, not just the MR's
+   reported status** — a merged MR only guarantees whatever was on the branch at the moment of merging, not
+   whatever is on it now. MR #6 hardens `.claude/review_routing.json` with 4 guard-path routes modeled on
+   football-data-pipeline's routing (`.claude/settings.json`, `.claude/agents/*`, the routing file itself,
+   `.gitlab-ci.yml` → `cto-reviewer`; see Context/open items for what was deliberately NOT ported and why).
+   Don't restate the commit count or list hashes here — it drifts every time something new lands on the
+   branch (already happened twice); check `git log chore/agent-setup-hygiene` or the MR itself for the
+   current state. Owner reviews and merges the
+   MR when ready.
 
 ## Do NOT
 
@@ -185,6 +193,17 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
   in this frontend — run them as **general-purpose** agents with the role `.md` inlined (definitions in
   the plugin `agents/` dir + `.claude/agents/equity-analyst-reviewer.md`). review.md + active_work.md are
   a **separate artifact-only commit** after the reviewed one.
+- **`review_routing.json` hardened 2026-08-18** with 4 guard-path routes (`.claude/settings.json`,
+  `.claude/agents/*`, itself, `.gitlab-ci.yml` → `cto-reviewer`), modeled on football-data-pipeline's more
+  mature routing at the owner's request. Two things from that sibling repo deliberately NOT ported, both
+  real options if this repo ever wants them: (1) **`hash_exclude_paths`/`protected_override`** — the
+  actual mechanism that would give real tamper-evidence (this repo's self-referential guard rule can't
+  stop a same-commit weaken-and-exploit, since `commit_review_gate.py` has no baseline pinning); needs new
+  code in `commit_review_gate.py`, not a config change. (2) a **`platform-reviewer`/`bi-analyst-reviewer`
+  role split** — not relevant at this repo's current scale. Also worth knowing: `.claude/agents/*` only
+  protects `equity-analyst-reviewer.md` — the four other reviewer roles (`cto-reviewer`, `scope-auditor`,
+  etc.) live entirely outside this repo in the `dbt-agent-kit` plugin's own `agents/` dir, invisible to any
+  repo-scoped gate; no routing rule here can close that gap.
 - **This handover fell behind actual `main` state at least twice** (5b and 6a both sat "MR open" in this
   file long after merging) — likely because parallel sessions on this repo did the merging/next-slice
   work without this file being the thing they updated first. If you're picking this file up and something
