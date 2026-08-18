@@ -7,7 +7,8 @@ partitioned by `market_code` from [`docs/market_registry.yml`](docs/market_regis
 
 ## Working agreement (read first)
 
-Read [`.claude/working-agreement.md`](.claude/working-agreement.md) before doing anything.
+@.claude/working-agreement.md
+
 The essence:
 
 - Every change runs **Explore → Plan → Confirm → Implement → Verify**. Confirm means
