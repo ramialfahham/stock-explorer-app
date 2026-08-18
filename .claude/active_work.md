@@ -147,6 +147,12 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    design system. Not started. This is what finally surfaces Slice 5's AI assessment work in the UI.
 3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
    see Infra section; status unconfirmed from this repo's own files.
+4. **`chore/agent-setup-hygiene` pushed (2026-08-18), MR not yet opened.** Separate track, not a product
+   slice — same category as the GitLab migration. Two commits (`fab79de` the reviewed change, `e87c24a`
+   the task artifacts): forces `working-agreement.md` to load every session instead of being opt-in, pins
+   `dbt-mcp`, and is the branch that produced this file's own trim/corrections. Owner opens the MR
+   (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/new?merge_request%5Bsource_branch%5D=chore%2Fagent-setup-hygiene)
+   when ready.
 
 ## Do NOT
 
