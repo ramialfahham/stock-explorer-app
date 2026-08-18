@@ -2,7 +2,7 @@
   "mcpServers": {
     "dbt": {
       "command": "uvx",
-      "args": ["--python", "3.12", "dbt-mcp"],
+      "args": ["--python", "3.12", "dbt-mcp==1.22.1"],
       "env": {
         "DBT_PROJECT_DIR": "dbt_analytics",
         "DBT_PROFILES_DIR": ".",
