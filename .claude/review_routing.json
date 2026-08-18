@@ -1,5 +1,6 @@
 {
   "_comment": "Which reviewers are REQUIRED for which staged files. 'always' run on every substantive commit. Patterns use fnmatch (a single * also matches across /). Tuned for stock-swipe-app: dbt project in dbt_analytics/, Python ingestion in ingestion/, Streamlit app in frontend/, Supabase export/migrations in supabase/. Commits whose files ALL match artifact_only are exempt (bookkeeping), except anything in artifact_only_never.",
+  "_comment_guard_paths": "GUARD PATHS (2026-08-18, modeled on football-data-pipeline's routing, then corrected by review before merge -- the first review round caught two claims ported from that repo that don't hold here, both scope-auditor and cto-reviewer failing independently in that same round; read the corrected claims below, not the original ported rationale). .claude/settings.json auto-launches hook commands every session, the same authority class as a CI workflow file -- routed to cto-reviewer. .gitlab-ci.yml routed to cto-reviewer for the same CI-authority reason as .github/workflows/* (kept, though that directory no longer exists post-GitLab-migration -- harmless dead pattern, not cleaned up here, separate decision). .claude/agents/* is routed to cto-reviewer but ONLY EVER PROTECTS equity-analyst-reviewer.md -- the one reviewer role this repo keeps in its own git tree. cto-reviewer, scope-auditor, analytics-engineer-reviewer, and data-engineer-reviewer live entirely outside this repo, in the dbt-agent-kit plugin's agents/ dir (~/.claude/plugins/.../agents/*.md) -- edits there never appear in this repo's staged diff, so this gate cannot see or protect them at all. That is a real, unclosed structural gap, not something this rule fixes; flagged to the owner as its own question, not resolved here. This file (review_routing.json) routing to itself means any FUTURE edit to it requires cto-reviewer -- it does NOT stop a single commit from weakening a rule and exploiting the weakened rule in the same breath: commit_review_gate.py reads this file from its current staged/working-tree state with no baseline pinning (verified by reading the hook directly), so a same-commit weaken-and-exploit is evaluated under the already-weakened rules. Real protection against that specific attack needs football-data-pipeline's protected_override mechanism, which is a code change to commit_review_gate.py, not a config change -- deliberately not built here, see contract.md.",
   "always": ["scope-auditor"],
   "paths": {
     "*.sql": ["analytics-engineer-reviewer"],
@@ -10,9 +11,13 @@
     "scripts/*": ["cto-reviewer"],
     "tests/*": ["cto-reviewer"],
     ".github/workflows/*": ["cto-reviewer"],
+    ".gitlab-ci.yml": ["cto-reviewer"],
     "requirements*.txt": ["cto-reviewer"],
     "*hooks/*": ["cto-reviewer"],
     ".mcp.json": ["cto-reviewer"],
+    ".claude/settings.json": ["cto-reviewer"],
+    ".claude/agents/*": ["cto-reviewer"],
+    ".claude/review_routing.json": ["cto-reviewer"],
     "frontend/*": ["cto-reviewer"],
     "ingestion/*": ["data-engineer-reviewer"],
     "supabase/*": ["data-engineer-reviewer"],
