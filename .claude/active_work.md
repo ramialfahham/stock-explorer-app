@@ -150,10 +150,13 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 4. **`chore/agent-setup-hygiene` — MR #5 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/5).
    Separate track, not a product slice — same category as the GitLab migration. Forces `working-agreement.md`
    to load every session instead of being opt-in, pins `dbt-mcp`, produced this file's own trim/corrections,
-   and wires the review-gate/pre-push/handover hooks project-scoped (see Context/open items). Don't restate
-   the commit count or list hashes here — it drifts every time something new lands on the branch (already
-   happened once); check `git log chore/agent-setup-hygiene` or the MR itself for the current state. Owner
-   reviews and merges the MR when ready.
+   wires the review-gate/pre-push/handover hooks project-scoped (see Context/open items), and hardened
+   `.claude/review_routing.json` with 4 guard-path routes modeled on football-data-pipeline's routing
+   (`.claude/settings.json`, `.claude/agents/*`, the routing file itself, `.gitlab-ci.yml` → `cto-reviewer`;
+   see Context/open items for what was deliberately NOT ported and why). Don't restate the commit count or
+   list hashes here — it drifts every time something new lands on the branch (already happened once); check
+   `git log chore/agent-setup-hygiene` or the MR itself for the current state. Owner reviews and merges the
+   MR when ready.
 
 ## Do NOT
 
@@ -185,6 +188,17 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
   in this frontend — run them as **general-purpose** agents with the role `.md` inlined (definitions in
   the plugin `agents/` dir + `.claude/agents/equity-analyst-reviewer.md`). review.md + active_work.md are
   a **separate artifact-only commit** after the reviewed one.
+- **`review_routing.json` hardened 2026-08-18** with 4 guard-path routes (`.claude/settings.json`,
+  `.claude/agents/*`, itself, `.gitlab-ci.yml` → `cto-reviewer`), modeled on football-data-pipeline's more
+  mature routing at the owner's request. Two things from that sibling repo deliberately NOT ported, both
+  real options if this repo ever wants them: (1) **`hash_exclude_paths`/`protected_override`** — the
+  actual mechanism that would give real tamper-evidence (this repo's self-referential guard rule can't
+  stop a same-commit weaken-and-exploit, since `commit_review_gate.py` has no baseline pinning); needs new
+  code in `commit_review_gate.py`, not a config change. (2) a **`platform-reviewer`/`bi-analyst-reviewer`
+  role split** — not relevant at this repo's current scale. Also worth knowing: `.claude/agents/*` only
+  protects `equity-analyst-reviewer.md` — the four other reviewer roles (`cto-reviewer`, `scope-auditor`,
+  etc.) live entirely outside this repo in the `dbt-agent-kit` plugin's own `agents/` dir, invisible to any
+  repo-scoped gate; no routing rule here can close that gap.
 - **This handover fell behind actual `main` state at least twice** (5b and 6a both sat "MR open" in this
   file long after merging) — likely because parallel sessions on this repo did the merging/next-slice
   work without this file being the thing they updated first. If you're picking this file up and something
