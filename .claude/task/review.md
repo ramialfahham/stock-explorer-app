@@ -1,80 +1,78 @@
-# Review — Agent-setup hygiene branch (chore/agent-setup-hygiene)
+# Review — Agent-setup hygiene branch (chore/agent-setup-hygiene), commit 2
 
-diff_sha256: 6e0a116fae7734cab349a286914c52665934a636e22c86ac511164a53efddeaf
+diff_sha256: ff0a49bc4c82e5480c624cd4b11316d2c7ba1e3ac441422261627b36535cdfff
 
-**Change under review (4 files):** force-load `.claude/working-agreement.md` from
-`CLAUDE.md` via `@`-import instead of a passive pointer; pin `.mcp.json`'s `dbt-mcp`
-server to `==1.22.1`; trim `.claude/active_work.md` to fit `handover_in.py`'s
-SessionStart injection cap and correct its stale "MR open" status for Slice 5b/6a (both
-already merged into `main`) and an unverified "in production" claim; archive the full
-pre-trim history losslessly to `docs/handover_2026-08-18.md`.
+**Change under review (2 files):** wire `commit_review_gate.py`, `pre_push_gate.py`, and
+`handover_in.py` into THIS repo's own `.claude/settings.json` (project-scoped), and
+correct `active_work.md`'s self-narration to match — it still described the hooks as
+"wired globally" and undercounted the branch's own commit history.
 
-**Outcome: both required reviewers PASS after three rounds** (two rounds with real,
-substantive findings — not process noise). See `.claude/task/contract.md`'s `amendments`
-for the full round-by-round record.
+This supersedes an earlier, already-reviewed-and-passed attempt (rounds 1-3, recorded
+below) that wired the same three hooks into the GLOBAL `~/.claude/settings.json` instead.
+That global wiring broke a different, unrelated project (football-data-pipeline) — its
+own review-gate hashing logic excludes bookkeeping paths the global hook doesn't know
+about, so the two gates computed different hashes for the same commit and the global one
+could block commits the project's own review had already passed. The owner reverted the
+global wiring immediately on discovering this. This diff re-wires the exact same,
+unmodified hook scripts project-scoped instead, which cannot leak into any other
+project's session by construction.
 
-## What the three rounds actually found and fixed
+**Outcome: scope-auditor PASS after three more rounds** (rounds 4 and 5 both real
+findings, not process noise — see `.claude/task/contract.md`'s amendments for the full
+record). `.claude/settings.json` does not match any `cto-reviewer` path in
+`.claude/review_routing.json`, so scope-auditor is the only required reviewer for this
+specific diff.
 
-1. **scope-auditor FAIL (round 1)** — the global `~/.claude/settings.json` hook
-   registration (`commit_review_gate.py`, `pre_push_gate.py`, `handover_in.py`, plus the
-   `MAX_BYTES` 16000→32000 bump) was narrated in `active_work.md` as already-done fact
-   with no `decisions_reserved` acknowledgment or recorded authority — an owner-level,
-   global-blast-radius action per `.claude/working-agreement.md` §6. Fixed: `contract.md`
-   amended to name the action explicitly and record that it was authorized by the owner,
-   action-by-action, in-session (not a repo-trackable artifact, since it's user-global
-   config, not project config).
-2. **cto-reviewer FAIL (round 1)** — `docs/handover_2026-08-18.md` was referenced by
-   `active_work.md`'s new archive pointer but was untracked/unstaged, meaning a commit at
-   that point would leave the link pointing at a file absent from the commit. The archive
-   doc's header also wrongly stated the injection cap as "16KB" when the live, actually
-   wired hook (`~/.claude/hooks/handover_in.py`) has `MAX_BYTES = 32000` — only two
-   dormant source copies (plugin cache, plugin marketplace) still say 16000. Fixed: the
-   file was `git add`-ed for real and `review_input.patch` regenerated from
-   `git diff --staged`; the header reworded to state 16000 was the cap "at the time the
-   overflow was diagnosed," note the raise to 32000, and point to a new
-   Context/open-items bullet in `active_work.md` naming all three cap locations and their
-   values (a real drift risk: a future plugin reinstall from either dormant copy would
-   silently revert the cap).
-3. **scope-auditor FAIL (round 2)** — `active_work.md`'s Current-task section claimed the
-   merged Router/health-verdict/Haiku-read work "are in production," contradicted by the
-   same file's own Infra section (Streamlit deploy path from GitLab unresolved, CI/CD
-   variables/pipeline schedule unverified). "Merged into main" was being conflated with
-   "live for real users." Fixed: reworded to "are complete and merged, code-wise. Whether
-   they're actually live for real users is a separate, unconfirmed question — see the
-   Infra section for the unresolved Streamlit deploy path and unverified CI/CD
-   variables."
-4. **Round 3 — both PASS** against the final staged diff. cto-reviewer additionally
-   verified: the dbt-mcp pin resolves on PyPI and matches what was already being
-   resolved (not a version bump in disguise); the archive doc is a byte-exact, unaltered
-   snapshot of the pre-trim file; no secrets anywhere in the diff; no hook/CI/plugin files
-   touched in-repo. scope-auditor additionally verified: scope is exactly the 4 contracted
-   files and matches `review_routing.json`'s routing; the "in production" fix didn't
-   relocate the same overstatement elsewhere in the file.
+## What rounds 4-6 found and fixed
 
-## scope-auditor
+1. **Round 4 FAIL, finding 1** — `active_work.md` still said the hooks were "wired
+   globally... as of 2026-08-18," directly contradicting this diff's own premise. Fixed:
+   reworded to describe the project-scoped wiring and the global-revert history.
+2. **Round 4 FAIL, finding 2** — `contract.md`'s `decisions_reserved` authorized *where*
+   the hooks fire (global vs. project) but never addressed *whether to commit the wiring
+   file to git at all* — a distinct axis from what was previously authorized, since this
+   is the first time `.claude/settings.json` (as opposed to the pre-existing, gitignored
+   `.claude/settings.local.json`) is tracked in this repo, and the hook commands reference
+   a machine-specific `$HOME` path that wouldn't resolve if this repo were cloned
+   elsewhere. Escalated directly to the owner via `AskUserQuestion` rather than decided by
+   the agent; owner chose to commit it (tracked), accepting the portability caveat.
+3. **Round 5 FAIL** — fixing finding 1 above left a stale claim sitting right next to it:
+   `active_work.md`'s Next-concrete-actions item 4 said the branch had "Two commits,"
+   already undercounted (a third had landed) and about to be wrong again (this commit
+   makes a fourth). Same self-referential-drift defect class that failed rounds 1 and 2 of
+   this task's first commit. Fixed structurally, not just re-counted: removed the
+   hardcoded commit list/hashes, pointing to `git log`/the MR instead; also corrected "MR
+   not yet opened" to "MR #5 open" (also stale).
+4. **Round 6 — PASS.** Verified live via `glab`, not just re-reading prose: MR #5's
+   state/URL match exactly, and the file's other MR references (#3, #4) were
+   independently checked and both confirmed genuinely merged. Confirmed the global
+   settings.json really doesn't wire these three hooks anymore, and the new
+   project-scoped `.claude/settings.json` really does.
+
+## scope-auditor (final round)
 VERDICT: PASS
 risks_checked:
-- Scope exactness — diffed the actual staged tree (`git diff --cached --stat`) against
-  `contract.md`'s `scope_paths` and against `.claude/review_routing.json`'s routing
-  rules; the 4 changed files match exactly, and the required-reviewer set
-  (scope-auditor + cto-reviewer) is correctly triggered by `.mcp.json`, not just
-  asserted in `done_when`.
-- Archive fidelity — diffed `docs/handover_2026-08-18.md` against
-  `git show <merge-base>:.claude/active_work.md` byte-for-byte; the archive is a
-  faithful, unaltered snapshot, and its stated file-size rationale (34KB old / 17KB new
-  / 16000→32000 cap) checks out against real `wc -c` output rather than being asserted
-  prose.
+- MR #5's existence/state/URL, and the file's other MR references (#3, #4) — verified
+  live against GitLab via `glab`, not just asserted prose; all matched exactly, no
+  staleness found anywhere in the file.
+- Scope and decisions_reserved compliance — diffed the actual staged files against
+  `contract.md`'s `scope_paths` (exact match) and against `.claude/review_routing.json`'s
+  path patterns (no cto-reviewer route triggers, confirming the contract's `done_when`
+  claim); confirmed no owner-level decision is made silently in this round's diff, since
+  the project-scoped wiring and commit-it decisions are already recorded with owner
+  authorization in the contract's amendments log.
 
-## cto-reviewer
-VERDICT: PASS
-risks_checked:
-- New mechanisms — checked `.mcp.json` (version pin only, no new server/tools/env) and
-  `CLAUDE.md`'s `@`-import (native existing Claude Code feature per the contract's own
-  justification, not a new external mechanism) — held.
-- Secrets — grepped the full staged diff for key/secret/token/password/bearer patterns;
-  every match is a variable name in prose, never a value — held.
-- Diff scope — `git diff --staged --stat` shows exactly the 4 contracted files, and the
-  staged tree is byte-identical to `review_input.patch` — held.
-- Guard integrity — no hook, CI, or plugin files touched in-repo; the global
-  hook-registration change is correctly kept out of `scope_paths` and matches the
-  contract's authorization narrative — held.
+---
+
+## Prior rounds (commit 1 of this branch, `fab79de` — kept for context)
+
+diff_sha256 (commit 1): `6e0a116fae7734cab349a286914c52665934a636e22c86ac511164a53efddeaf`
+
+Three rounds (scope-auditor + cto-reviewer), two with real findings: an
+unauthorized-looking global hook-registration note with no recorded owner authority
+(fixed by naming the authorization explicitly), an archive file referenced but never
+staged (fixed), a stale "16KB cap" claim after the cap was raised to 32000 (fixed), and
+an "in production" overstatement for merged-but-unverified-live work (fixed). Both
+reviewers PASS on the final round. Full detail was in this file's previous revision;
+see `.claude/task/contract.md`'s amendments log for the complete record, since this file
+only carries the latest round's full detail going forward.
