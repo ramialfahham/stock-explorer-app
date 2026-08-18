@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"$HOME/.claude/hooks/commit_review_gate.py\"",
+            "statusMessage": "Review gate: checking the change was reviewed..."
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"$HOME/.claude/hooks/pre_push_gate.py\"",
+            "statusMessage": "Pre-push checklist..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"$HOME/.claude/hooks/handover_in.py\"",
+            "statusMessage": "Loading active-work handover..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -147,12 +147,13 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    design system. Not started. This is what finally surfaces Slice 5's AI assessment work in the UI.
 3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
    see Infra section; status unconfirmed from this repo's own files.
-4. **`chore/agent-setup-hygiene` pushed (2026-08-18), MR not yet opened.** Separate track, not a product
-   slice — same category as the GitLab migration. Two commits (`fab79de` the reviewed change, `e87c24a`
-   the task artifacts): forces `working-agreement.md` to load every session instead of being opt-in, pins
-   `dbt-mcp`, and is the branch that produced this file's own trim/corrections. Owner opens the MR
-   (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/new?merge_request%5Bsource_branch%5D=chore%2Fagent-setup-hygiene)
-   when ready.
+4. **`chore/agent-setup-hygiene` — MR #5 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/5).
+   Separate track, not a product slice — same category as the GitLab migration. Forces `working-agreement.md`
+   to load every session instead of being opt-in, pins `dbt-mcp`, produced this file's own trim/corrections,
+   and wires the review-gate/pre-push/handover hooks project-scoped (see Context/open items). Don't restate
+   the commit count or list hashes here — it drifts every time something new lands on the branch (already
+   happened once); check `git log chore/agent-setup-hygiene` or the MR itself for the current state. Owner
+   reviews and merges the MR when ready.
 
 ## Do NOT
 
@@ -174,13 +175,16 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 ## Context / open items
 
 - **Review mechanics (keep — reused every slice):** the blocking review gate is `commit_review_gate.py`,
-  now wired globally in `~/.claude/settings.json` as of 2026-08-18 (an agent-setup audit that session
-  found it had been copied to `~/.claude/hooks/` but never registered — `pre_push_gate.py` and
-  `handover_in.py` had the same gap, both now also wired). `diff_sha256` = `sha256(git diff --staged
-  --no-renames --no-abbrev)`; get it via `commit_review_gate.py --staged-hash`. Reviewer agents are NOT
-  registered as subagent_types in this frontend — run them as **general-purpose** agents with the role
-  `.md` inlined (definitions in the plugin `agents/` dir + `.claude/agents/equity-analyst-reviewer.md`).
-  review.md + active_work.md are a **separate artifact-only commit** after the reviewed one.
+  wired in THIS repo's own `.claude/settings.json` (project-scoped) as of 2026-08-18, alongside
+  `pre_push_gate.py` and `handover_in.py`. This corrects an earlier same-day attempt that wired all three
+  GLOBALLY (`~/.claude/settings.json`) instead — that broke a *different* project
+  (football-data-pipeline), whose own, differently-shaped review-hash logic collided with the global
+  hook's; the owner reverted the global wiring the same day. Project-scoped wiring can't leak into another
+  project's session by construction. `diff_sha256` = `sha256(git diff --staged --no-renames --no-abbrev)`;
+  get it via `commit_review_gate.py --staged-hash`. Reviewer agents are NOT registered as subagent_types
+  in this frontend — run them as **general-purpose** agents with the role `.md` inlined (definitions in
+  the plugin `agents/` dir + `.claude/agents/equity-analyst-reviewer.md`). review.md + active_work.md are
+  a **separate artifact-only commit** after the reviewed one.
 - **This handover fell behind actual `main` state at least twice** (5b and 6a both sat "MR open" in this
   file long after merging) — likely because parallel sessions on this repo did the merging/next-slice
   work without this file being the thing they updated first. If you're picking this file up and something
