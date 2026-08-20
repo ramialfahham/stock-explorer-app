@@ -13,8 +13,9 @@ one line here and let the archive keep the detail._
 MERGED into `main`** (#139–#148, plus 5b via MR #3) — the full raw-data foundation, per-type metric
 compute, the Router mechanism, and both the deterministic health-verdict generator and the Claude Haiku
 prose read are complete and merged, code-wise. Whether they're actually live for real users is a
-separate, unconfirmed question — see the Infra section for the unresolved Streamlit deploy path and
-unverified CI/CD variables. **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
+separate, unconfirmed question — see the Infra section: Render was chosen as the deploy path and
+repo-side prep has landed, but the owner's manual account/connect steps are still pending, and CI/CD
+variable values are unverified. **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
 button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
 read now render on the card, the card's ~11 disclosure toggles consolidated into one expander,
@@ -43,9 +44,22 @@ owner's direction. Orthogonal to the Sector Router / AI-assessment work.
 parses). Full narrative (CI-minutes blocker, runner consolidation, branch-protection ordering trap)
 archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registration]].
 
-**Owner-only, still not decided:**
-- Streamlit Community Cloud only deploys from GitHub — the live app (stock-explorer.streamlit.app) has
-  no deploy path from GitLab. Keep a GitHub mirror, or find another host — not solved.
+**Deploy path — Render chosen, repo-side prep landed, owner's manual steps still pending:**
+Streamlit Community Cloud only deploys from GitHub, and the GitHub account is still suspended
+(no ETA) — ruled out any GitHub-dependent workaround. Owner chose **Render** (native GitLab
+OAuth integration, auto-deploy on push) over Fly.io (CLI-driven, no native git integration) and
+self-hosting on the existing Hetzner box (most control, most ongoing maintenance owned by the
+owner). Repo-side prep: new `render.yaml` Blueprint (repo root) + doc/comment updates —
+`docs/streamlit_deploy.md`/`docs/supabase_setup.md` rewritten for the Render flow, `CLAUDE.md`/
+`docs/project_context.md` stack lines swapped. No code changes needed — `frontend/settings.py`
+already falls back from `st.secrets` to plain `os.environ.get(...)`. **Owner's manual steps
+(cannot be done by the agent — account/OAuth/secrets):** sign up at render.com, connect GitLab,
+New → Blueprint → select this repo (auto-detects `render.yaml`), enter `SUPABASE_URL`/
+`SUPABASE_ANON_KEY` when prompted, confirm branch `main`, Apply/Create. Once live, report the
+URL back — `README.md` lines 11/13/92 (demo URL, "sleeps when idle" blurb, stack table) are
+deliberately still pointing at the dead `stock-explorer.streamlit.app` until then; updating them
+before the real URL exists would be misleading. Full detail: `.claude/task/contract.md` on
+`feat/render-deploy` (branch/MR TBD as of this entry).
 - `dbt-agent-kit` (this repo's guardrail plugin source) was not migrated — out of scope, also
   unreachable (same suspension).
 - Repo visibility: created private by default — flip if wrong; docs reference production secret names.
@@ -56,8 +70,9 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** verify the CI/CD variables and pipeline schedule are actually set (owner-only)
-— unclear from this repo's own files whether that step ever happened, since it predates confirmation.
+**Next concrete action:** complete the Render manual steps above (owner-only) to actually get the app
+live, then verify the CI/CD variables and pipeline schedule are actually set (owner-only) — unclear
+from this repo's own files whether that step ever happened, since it predates confirmation.
 
 ## Status
 
@@ -240,15 +255,16 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: sync local `main`** (`git fetch gitlab && git merge --ff-only gitlab/main`, or
-   just branch new work off `gitlab/main` directly) before starting anything new — local `main` in the
-   primary checkout was last known at `371e4f9`/`1463c95`-era commits, several slices behind
-   `gitlab/main` @ `0a72073`.
-2. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
+1. **← START HERE: complete the Render manual steps** (owner-only — see Infra section above) so the
+   app is actually reachable, then report the live URL back so `README.md` can be updated.
+2. Merge `feat/render-deploy`'s MR once reviewed (repo-side prep: `render.yaml` + doc updates).
+3. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
-3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
+4. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
    see Infra section; status unconfirmed from this repo's own files.
+5. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+   new, if it's drifted behind `gitlab/main` again.
 4. Ask the owner what's next — no product slice is currently scoped beyond Slice 6.
 
 ## Do NOT

@@ -22,7 +22,7 @@ The essence:
 - **Ingestion:** Python + yfinance (`ingestion/`, `scripts/run_ingestion.py`)
 - **Transform:** dbt-core + dbt-duckdb, ephemeral DuckDB (`dbt_analytics/`)
 - **Warehouse / export:** Supabase (Postgres) — `supabase/migrations/`, `scripts/export_to_supabase.py`
-- **Frontend:** Streamlit Community Cloud (`frontend/app.py`)
+- **Frontend:** Streamlit on Render (`frontend/app.py`)
 - **CI:** GitLab CI (`.gitlab-ci.yml`)
 - Python 3.11. Run dbt from the repo root: `dbt <cmd> --project-dir dbt_analytics --profiles-dir .`
 

@@ -174,12 +174,14 @@ The service role key (used in CI export) bypasses RLS.
 
 ---
 
-## 5. Streamlit Community Cloud
+## 5. Deploy (Render)
 
 Full checklist: [`streamlit_deploy.md`](streamlit_deploy.md).
 
-1. Deploy with main file `frontend/app.py` or `streamlit_app.py`, requirements `frontend/requirements.txt`, Python 3.11.
-2. In Streamlit app secrets, set `SUPABASE_URL` and `SUPABASE_ANON_KEY` (see `.streamlit/secrets.toml.example`).
+1. Connect GitLab in Render and select this repo — the service config (build/start command,
+   Python version) comes from the committed [`render.yaml`](../render.yaml) Blueprint.
+2. When Render prompts for the two `sync: false` env vars, set `SUPABASE_URL` and
+   `SUPABASE_ANON_KEY` (see `.streamlit/secrets.toml.example`).
 
 Use the **anon** key — not the service role key.
 

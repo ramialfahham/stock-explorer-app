@@ -1,4 +1,4 @@
-"""Streamlit Community Cloud entrypoint (repo root)."""
+"""Deployed-app entrypoint (repo root) — see render.yaml's startCommand."""
 
 import sys
 from pathlib import Path
