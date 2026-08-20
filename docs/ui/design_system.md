@@ -59,11 +59,11 @@ row.
 
 ## Button variants
 
-- **Base radius + color** (global, Slice 6a + 6b): every `st.button` gets `var(--ss-radius-control)`
-  by default (`[data-testid="stButton"] button`), and every `button[kind="primary"]`/
-  `button[kind="secondary"]` gets the same accent-gold / bordered-surface skin app-wide — one
-  rule each, no per-surface scoping. Landing's "Start exploring", Overflow's buttons, and the
-  Discover action bar all render identically as a result.
+- **Base radius** (global): every `st.button` gets `var(--ss-radius-control)` by default —
+  one rule, `[data-testid="stButton"] button`. Colors/backgrounds are **not** set globally;
+  each surface still skins its own buttons (fixed action bar's primary/secondary, the
+  overflow icon trigger). Landing and Overflow-menu button reskinning beyond radius is 6b's
+  job, not this doc's.
 - **Icon-button variant:** a marker div (`.ss-icon-btn-marker`) rendered immediately before
   the trigger, e.g. `st.popover("⋯")`. Styled via `:has()` rather than DOM position
   (`:last-child`) — position-based selectors silently jump to the wrong element if the row
@@ -75,46 +75,13 @@ row.
 
 ---
 
-## Popover trigger (Slice 6b)
-
-Every `st.popover` trigger gets a base surface/border/`var(--ss-radius-control)` skin —
-one rule, `[data-testid="stPopoverButton"]` — so a text-labeled trigger like **Filters** and
-an icon-only one like **⋯** both read as the same control-tier chrome. The icon-button
-variant above layers its own square sizing on top of this base; it doesn't replace it.
-
-## Expander (Slice 6b)
-
-`st.expander` gets the same surface-tier treatment as the card and rows —
-`var(--ss-surface)` fill, `var(--ss-radius-surface)` corners, one rule,
-`[data-testid="stExpander"]` — instead of default Streamlit chrome. Covers every instance
-app-wide (currently: Overflow's "About the data", the card's "Practice with hypothetical
-numbers"); no per-surface exceptions.
-
-## Link button (Slice 6b)
-
-`st.link_button` renders as `<a data-testid="stBaseLinkButton-{kind}">`, not
-`<button kind="...">` — the button-variant rules above never reach it. All three kinds
-Streamlit's `link_button` supports are covered so a future variant never silently ships
-unstyled: `-primary` gets the same accent skin as `button[kind="primary"]`;
-`-secondary`/`-tertiary` share the surface skin (this app has no separate visual tier for
-"tertiary" anywhere else, so it doesn't invent one here). **Watch this testid if a future
-Streamlit upgrade changes it** — it was already wrong once (a pre-existing footer-scoped
-rule assumed `"stLinkButton"`, which never matched anything; fixed alongside this one).
-Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`).
-
----
-
 ## Anti-patterns (do not ship)
 
 - A new hardcoded radius or padding value on any button or row — use an existing token, or
   add one to the table above in the same PR.
 - Reusing `--ss-title` for list-row text, or `--ss-row-title` for anything inside a card.
-- Scoping a button/popover/expander/link-button skin to one surface instead of the shared
-  global rule — the whole point of Slice 6b was closing exactly that kind of per-surface
-  exception.
-- Trusting a `data-testid` from memory instead of the live DOM — `stLinkButton` looked
-  right and was wrong (`stBaseLinkButton-{kind}` is real); a rule against a stale testid
-  ships silently dead.
+- Extending the primary/secondary button color skin to Overflow/Landing under this doc's
+  authority — that's 6b.
 - A position-based selector (`:last-child`, `:first-child`) for anything that could be
   reordered — use an explicit marker.
 
@@ -124,13 +91,6 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 
 - [ ] Saved row and Search row render with identical corner radius and padding
 - [ ] Overflow trigger's icon-button radius matches other control-tier elements
-- [ ] Landing's "Start exploring" and Overflow's three buttons render with the same
-      accent/surface skin as the Discover action bar
-- [ ] Filters trigger and the ⋯ trigger render with the same surface/border chrome
-- [ ] Both `st.expander` instances (Overflow "About the data", card "Practice with
-      hypothetical numbers") render bordered/filled, not default Streamlit grey
-- [ ] The card footer's "Yahoo Finance" link renders with the same secondary-button skin
-      as "Next company" beside it
 - [ ] No new bare `border-radius:`/`padding:` literal introduced in touched sections of
       `styles.py` — every value traces to a token in the table above
 
