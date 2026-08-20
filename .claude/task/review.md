@@ -1,70 +1,60 @@
 # Review
 
-diff_sha256: 27c14806833d216680a85948f17107fb6efe382299ced92d3fe910ec5f3b50e6
+diff_sha256: 490dbe09c1640e6e8947c56745eb95c44a520108d0f70d1b9c7dc9ce8655b5ca
 
-Two rounds. Round 1 found real issues (one owner-authority gap, two design/hygiene
-findings); all three resolved and recorded in `.claude/task/contract.md`'s `amendments`
-before round 2. Round 2 independently re-verified each fix against the actual diff — not
-taken on faith — and both required reviewers PASS.
+Two rounds. Round 1: cto-reviewer PASS; scope-auditor ESCALATE on one real question (the
+`render.yaml` service name is a public identifier, needing explicit owner sign-off even though
+it looked like an obvious default). Escalated to the owner and resolved before round 2. Round
+2: both PASS, independently re-verified.
 
-- Round 1 (scope-auditor): FAIL — `frontend/card_copy.py`'s `MEDIAN_PRIMER` string had its
-  arrow-glyph legend clause ("↑ higher than median · ↓ lower than median · → at median")
-  removed during implementation with no recorded owner authority; only
-  `_BENCHMARK_INDICATOR_LABELS` was named as pre-approved copy in `explicitly_not_in_scope`.
-  Escalated to the owner: keep the fix (the legend described arrows the card no longer
-  shows) vs. revert. Owner chose to keep it; recorded as an amendment.
-- Round 1 (cto-reviewer): FAIL — two findings. (1) This diff removes the last production
-  caller of the arrow-glyph `benchmark_indicator()`/`_BENCHMARK_INDICATORS`
-  (`frontend/card_copy.py`), leaving them dead; the only remaining reference is
-  `tests/frontend/test_benchmark_indicators.py`, outside this contract's `scope_paths`.
-  (2) `VERDICT_MEANING` (duplicated into `frontend/card_copy.py` with a new
-  `tests/tooling/` sync-guard test, per the original plan) had zero consumers anywhere in
-  the diff. Both escalated to the owner: (1) fold cleanup into this diff (widen scope_paths)
-  vs. keep deferred to the already-spawned follow-up task; (2) keep the unused mechanism
-  as insurance vs. drop it (YAGNI). Owner chose: keep (1) deferred — not fixed here, tracked
-  separately; drop (2) — `VERDICT_MEANING` and `tests/tooling/test_card_copy_verdict_sync.py`
-  removed from the diff entirely. Both recorded as amendments.
-- Round 2 (scope-auditor): PASS — independently verified all three round-1 fixes against
-  the actual diff and the actual `amendments` text (not the round-1 narrative alone), then
-  ran a full fresh hunt: scope (14 changed files, all inside `scope_paths`), doc-sync across
-  all four touched docs, join-key consistency between `fetch_card_assessments` and
-  `attach_assessments`, and a preview/full-text equivalence boundary case for short
-  (non-truncated) company summaries.
-- Round 2 (cto-reviewer): PASS — independently confirmed `VERDICT_MEANING` and its guard
-  test are genuinely absent (grep across the full repo, not just the diff) and that the one
-  remaining `VERDICT_MEANING` hit is an unrelated, out-of-scope doc describing a different
-  future MR on the pipeline side. Re-verified re-run/interruption safety for the three new
-  Supabase-read functions, dead-CSS removal (grepped every removed class name repo-wide),
-  the `show_metric_school` → `show_learn_panel` rename's three call sites, and cost impact
-  (no change to fetch frequency/volume).
+- Round 1 (scope-auditor): ESCALATE — `render.yaml`'s `name: stock-swipe-app` determines the
+  default public subdomain (`*.onrender.com`) once deployed. Per this repo's own decision-
+  rights rules, "anything permanent once published (URLs, slugs, public identifiers)" is
+  owner-reserved "however obvious it seems" — no recorded authority named that specific
+  string. Escalated to the owner: keep `stock-swipe-app` (matches the repo name, renamable
+  later) vs. pick something else. Owner chose `stock-explorer-app` (matches the product name
+  per `docs/north_star.md`).
+- Round 1 (cto-reviewer): PASS — verified the `render.yaml` build/start commands are sane,
+  `frontend/requirements.txt` (not the heavier root `requirements.txt`) is what's actually
+  referenced, `frontend/settings.py`'s existing `st.secrets` → `os.environ` fallback makes the
+  "no code change needed" claim true, and `tests/tooling/test_ci_reachability.py`'s edit is
+  genuinely comment-only (full-file read, every assertion/regex byte-identical).
+- Round 2 (scope-auditor): PASS — independently confirmed `render.yaml` actually says
+  `stock-explorer-app` now (not just asserted in the amendment prose), that the cited owner
+  authority (`north_star.md`'s product-name line) is real text in the repo, and re-ran a full
+  scope + doc-sync sweep from scratch.
+- Round 2 (cto-reviewer): PASS — confirmed the rename is exactly what changed since round 1
+  (no other drift), re-diffed `tests/tooling/test_ci_reachability.py` directly (comment-only
+  holds), and re-checked secrets/dependencies/guard-file integrity.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Round-1's MEDIAN_PRIMER fix — read the actual diff hunk and the actual amendments-section
-  text side by side; they match exactly, and the owner authority is genuinely recorded in
-  `contract.md`, not merely claimed.
-- VERDICT_MEANING removal — grepped the full diff and current worktree for the symbol;
-  confirmed absent from `frontend/`, confirmed the backend's independent copy in
-  `scripts/assessment_rules.py` is untouched and non-conflicting (separate deploy target).
-- File-level scope — enumerated all 14 `diff --git` headers against `scope_paths` line by
-  line; no file outside scope, including confirming `frontend/metric_school.py`'s
-  conditional inclusion was correctly left unused.
-- Company-description preview/full equivalence for short summaries — traced
-  `truncate_words()` to confirm the diff's switch from `full` to `preview` text in
-  `_company_summary_html` causes no content loss for non-truncated cards.
+- Round-1's escalated service-name question: verified `render.yaml` actually says
+  `stock-explorer-app` (not just asserted in prose), and that the cited owner authority
+  (`north_star.md`'s product-name line) is real text in the repo, not invented.
+- Scope boundary: compared the contract's `scope_paths` against the actual `git diff --stat`
+  output (independent of the contract's own file list), and against a full-repo grep for the
+  string this task is retiring — no file changed outside scope, no leftover reference outside
+  the three named deferred `README.md` lines and the archived docs.
+- Technical premise ("no code change needed") underlying the whole plan: read
+  `frontend/settings.py` directly and confirmed the env-var fallback exists as claimed.
+- `test_ci_reachability.py` comment-only claim: read the full file and confirmed the diff
+  lines fall entirely inside the docstring, no assertion/regex/logic touched.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- VERDICT_MEANING removal claim (round-1 FAIL driver) — verified by reading the full
-  `card_copy.py`, confirming `tests/tooling/test_card_copy_verdict_sync.py` is absent from
-  the filesystem, and repo-wide grep showing zero remaining `.py` references.
-- Dead-CSS removal correctness — grepped the whole repo (not just the diff) for every
-  removed class name (`ss-company-about*`, `ss-learn-panel*`, `ss-company-summary-preview`,
-  `ss-company-summary--empty`) to confirm none are still referenced by any Python file
-  before trusting the removal; all confirmed orphaned.
-- Join-key consistency between `fetch_card_assessments`'s dict keys and
-  `attach_assessments`'s `_card_key` lookup, and that `attach_assessments` doesn't mutate
-  its input — read both implementations directly and cross-checked against the paired
-  tests.
+- Rename scope — confirmed `render.yaml`'s `name: stock-explorer-app` matches the recorded
+  amendment and `north_star.md`'s product-name guidance, and confirmed the diff's changed-file
+  list is exactly the 11 files in `scope_paths` (nothing extra crept in alongside the rename).
+- `tests/tooling/test_ci_reachability.py` (explicit territory) — diffed directly: 4 lines
+  changed, all inside the module docstring's prose; every constant, regex, and assertion is
+  byte-identical to `gitlab/main`.
+- Secrets — grepped the full patch for key/token/credential patterns, none found;
+  `render.yaml`'s two env vars use `sync: false` (no values committed).
+- Dependencies — `frontend/requirements.txt` diff is the header comment only; all three
+  version pins unchanged.
+- Guard integrity and cost — `.claude/settings.json`, `.claude/review_routing.json`, and
+  `.gitlab-ci.yml` untouched; `render.yaml` pins `plan: free`, and the Render-vs-Fly.io-vs-
+  Hetzner cost/mechanism decision is recorded as owner-approved in `decisions_reserved`.

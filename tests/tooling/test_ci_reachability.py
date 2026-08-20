@@ -11,10 +11,10 @@ the template on purpose:
 
   - No "deploy job reachable only by deliberate dispatch" pin. The skill's original repo had
     a `when: manual` deploy job reachable from every MR — a real defect once. This repo has
-    no `stage: deploy` job at all (Streamlit Community Cloud redeploys itself by watching the
-    repo; nothing in this file publishes anything), so there is nothing for that pin to
-    assert. Forcing a `deploy_jobs` list to be non-empty would fail this file the moment
-    it's copied in, for a risk that doesn't exist here.
+    no `stage: deploy` job at all (Render redeploys itself by watching the repo; nothing in
+    this file publishes anything), so there is nothing for that pin to assert. Forcing a
+    `deploy_jobs` list to be non-empty would fail this file the moment it's copied in, for a
+    risk that doesn't exist here.
 
   - `EXPENSIVE_COMMAND` targets the two things this repo can lose money or corrupt data on —
     a Supabase write (`apply_supabase_migrations.py`, `export_to_supabase.py`) or a paid

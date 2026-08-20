@@ -1,6 +1,7 @@
-# Streamlit Community Cloud — Stock Swipe
+# Streamlit on Render — Stock Swipe
 
-Deploy the discovery UI (`frontend/app.py`) against Supabase data exported by the data pipeline.
+Deploy the discovery UI (`frontend/app.py`, via the `streamlit_app.py` entrypoint) against
+Supabase data exported by the data pipeline.
 
 ## Prerequisites
 
@@ -8,17 +9,26 @@ Deploy the discovery UI (`frontend/app.py`) against Supabase data exported by th
 
 ## Deploy steps
 
-1. Go to [share.streamlit.io](https://share.streamlit.io) → **Create app** → connect this GitHub repo.
-2. **Main file path:** `frontend/app.py` (existing apps) or `streamlit_app.py` (new apps). Streamlit Cloud **does not allow changing** the main file after create — pick once at deploy time.
-3. **Python version:** 3.11 (repo includes `.python-version`; Cloud may default to 3.14 otherwise)
-4. **Requirements file:**
-   - **`frontend/requirements.txt`** is the single source of truth for UI deps (`streamlit-extras`, etc.).
-   - Main file `frontend/app.py` → set Requirements to `frontend/requirements.txt`.
-   - Main file `streamlit_app.py` → set Requirements to **`requirements.txt`** (repo root includes `-r frontend/requirements.txt`).
-5. **Secrets** — App settings → Secrets, TOML format from [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example):
+The service definition is committed as [`render.yaml`](../render.yaml) (a Render Blueprint) —
+Render auto-detects it, so most fields below are already set in the repo. Only the account
+connection and the two secrets need a human.
+
+1. Sign up / log in at [render.com](https://render.com).
+2. **Connect GitLab** — Account Settings → Connected Accounts → GitLab OAuth, authorize access
+   to `rami.al-fahham/stock-swipe-app`.
+3. **New → Blueprint** → select the repo. Render reads `render.yaml`: Python runtime,
+   `.python-version` (3.11), build command (`pip install -r frontend/requirements.txt`), start
+   command (`streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0`), free
+   plan, auto-deploy on every push to `main`.
+4. **Secrets** — Render prompts for the two `sync: false` env vars declared in `render.yaml`,
+   same values as [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example):
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (anon / publishable key only — never the service role key)
-6. Deploy. Open the app URL — Discover and Search load immediately (no login). Save/skip persist in browser localStorage on the device.
+5. Confirm branch `main`, click **Apply/Create**. First deploy runs automatically. Open the
+   assigned `*.onrender.com` URL — Discover and Search load immediately (no login). Save/skip
+   persist in browser localStorage on the device.
+
+Free-tier instances spin down after ~15 minutes idle; the next visit takes 30-60s to cold-start.
 
 ## Local dev
 

@@ -23,7 +23,7 @@ dbt, and export on a schedule.
 | Ingestion | Python + yfinance |
 | Transform | dbt-core + dbt-duckdb (ephemeral DuckDB in CI) |
 | Warehouse | Supabase (Postgres) |
-| Frontend | Streamlit Community Cloud |
+| Frontend | Streamlit on Render |
 
 ---
 
