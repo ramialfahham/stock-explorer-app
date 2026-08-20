@@ -1,139 +1,159 @@
 # Task contract
 
-objective: Fix agent-setup drift found during this session's guardrail audit — force-load
-  the working agreement, pin the dbt-mcp server version, repair active_work.md's
-  SessionStart-injection-cap overflow and stale merged-slice status, wire the review
-  gate + pre-push checklist + handover injection hooks PROJECT-SCOPED (superseding a
-  reverted global attempt — see amendments), and harden `review_routing.json` itself with
-  4 guard-path routes modeled on football-data-pipeline's more mature routing (the owner
-  asked directly for this after seeing that sibling project's routing catch a class of
-  gap this repo's didn't) — on its own branch, separate from product work.
+objective: **Slice 6b — Landing/Overflow unification.** Second of three phases of the UI
+  redesign (Slice 6). Slice 6a (merged, MR #4) built the token/component foundation and
+  explicitly deferred one gap: `docs/ui/design_system.md`'s anti-patterns list says "Extending
+  the primary/secondary button color skin to Overflow/Landing under this doc's authority —
+  that's 6b." The owner's instruction for this slice was explicit: "100% consistent design
+  language for the whole web app" — not narrowly just Landing/Overflow. Exploration (grepping
+  every `st.button`/`st.popover`/`st.expander` call in `frontend/`) found two more genuine gaps
+  of the same shape: the "Filters" popover trigger (`app.py:302`) has zero custom CSS (a
+  different widget type, `stPopoverButton`, never touched by 6a's button-radius rule), and
+  `st.expander` (Overflow's "About the data" + the card's "Practice with hypothetical numbers")
+  renders with fully native, unstyled Streamlit chrome in both places. This slice closes all
+  three gaps with one generic CSS rule per widget type (buttons, popover triggers, expanders),
+  not one-off per-surface patches. Approved plan: ~/.claude/plans/pure-juggling-frost.md
+  (Slice 6b section, above the archived 6a section in the same file).
 
 scope_paths:
-  - CLAUDE.md
-  - .mcp.json
-  - .claude/active_work.md
-  - docs/handover_2026-08-18.md
-  - .claude/settings.json
-  - .claude/review_routing.json
+  - frontend/styles.py                              # button skin globalized; new popover-trigger + expander rules
+  - docs/ui/design_system.md                         # button-variants section updated; new popover/expander bullets
+  - docs/north_star.md                               # only if a doc-sync gap is found during implementation
+  - docs/working_agreement.md                        # only if a doc-sync gap is found during implementation
+  - .claude/task/contract.md
 
-decisions_reserved:
-  - Every in-repo change in this diff is a mechanical fix to an already-existing
-    mechanism: an `@`-import of a doc that was already referenced by pointer, a version
-    pin on an already-configured MCP server, a trim/correction of a handover doc's own
-    prose to match actual git state, and registering three existing, unmodified hook
-    scripts (`commit_review_gate.py`, `pre_push_gate.py`, `handover_in.py`, all already
-    reviewed and PASSED in rounds 1-3 below when they were wired globally) into THIS
-    repo's own `.claude/settings.json` instead. No new dependency, service, or
-    product/UX decision is introduced BY THIS DIFF.
-  - **Superseded decision, kept for the record:** rounds 1-3 (below) originally reviewed
-    and passed these same three hooks wired into the GLOBAL `~/.claude/settings.json`
-    (owner-authorized in-session, outside this repo's git history). That global wiring
-    broke a DIFFERENT project (football-data-pipeline) — its own, differently-shaped
-    `review_routing.json` (with a `hash_exclude_paths` key the global hook doesn't know
-    about) meant the global `commit_review_gate.py` computed a different review hash than
-    that project's own gate, causing false commit blocks there. The owner reverted the
-    global wiring immediately upon discovering this and directed the fix to be
-    project-scoped instead — this diff. Project-scoped wiring in `.claude/settings.json`
-    carries zero cross-project blast radius by construction (it only loads when this
-    repo is the active project), so the collision this diff exists to avoid cannot recur
-    here regardless of what any other project does. Memory saved:
-    `global-hooks-collision-risk`.
-  - **Round-4 finding, resolved by direct owner decision (AskUserQuestion):** whether to
-    commit `.claude/settings.json` (tracked, visible in-repo) or keep it gitignored like
-    the pre-existing `.claude/settings.local.json` (which already carries an unrelated
-    PowerShell-deny hook). The tracked commands reference `$HOME/.claude/hooks/*.py`, a
-    machine-specific absolute path that would not resolve if this repo were cloned
-    elsewhere. Owner chose **commit it (tracked)**, accepting that portability caveat in
-    exchange for the wiring being visible/documented in-repo rather than invisible,
-    machine-only config.
-  - **This commit's own scope, explicitly bounded:** port ROUTING-CONFIG improvements only
-    (4 new `paths` entries, all using reviewer roles this repo already has — cto-reviewer),
-    modeled on football-data-pipeline's routing. Explicitly NOT ported: their
-    `hash_exclude_paths`/`protected_override` mechanism, since that requires new logic in
-    `commit_review_gate.py` itself (the shared hook currently reads only `always`, `paths`,
-    `artifact_only`, `artifact_only_never` — verified by reading the script), which is a
-    bigger, code-level "new mechanism" decision, not a config tweak. Also not ported: their
-    `platform-reviewer`/`bi-analyst-reviewer` role split — introducing a new reviewer role
-    that doesn't exist in this repo's `agents/` dir is out of scope for a routing-only
-    change. Flagged to the owner as a separate, larger option; not decided here.
+decisions_reserved (owner-approved this session):
+  - **"100% consistent design language for the whole web app"** — the owner's explicit
+    correction after I initially proposed a narrower "just the four Landing/Overflow buttons"
+    scope. This licenses generalizing the button-color skin app-wide (not just Landing/
+    Overflow) and sweeping in the two other same-shape gaps found (Filters trigger, both
+    `st.expander` instances) rather than leaving them freshly inconsistent.
+  - **Correction, not a decision:** I initially asked whether to normalize Landing's serif
+    "Fraunces" hero title (thinking it a one-off inconsistency). Investigation showed this was
+    based on incomplete information — the exact same Fraunces family is already the app's
+    brand typeface, used identically at the persistent `.ss-brand` header (styles.py:80,
+    1.35rem) shown on every other page. A bigger hero treatment of the same brand mark is
+    normal scaling, not an inconsistency. **No change to Landing's typography in this slice** —
+    this was withdrawn as a question, not decided either way by the owner.
+
+technical_definition:
+  - **Button color skin globalized:** `frontend/styles.py`'s existing
+    `.ss-action-shell + div[data-testid="stHorizontalBlock"] button[kind="primary"/"secondary"]`
+    rules (accent-gold primary, bordered-surface secondary — values from 6a, unchanged) lose
+    the `.ss-action-shell + div[...]` prefix and become plain `button[kind="primary"]` /
+    `button[kind="secondary"]`. No new colors — purely widening the selector.
+  - **Full inventory of buttons this affects** (every `st.button(` call in `frontend/`,
+    confirmed via grep): Discover's Save/Skip bar (already had this skin — true no-op there,
+    the zero-diff check in `done_when`), Discover's end-of-scope "Start over in this scope"
+    (primary) + "Next company" (secondary) (`app.py:345,364`), Saved's "← Back to list"
+    (`app.py:389`), Landing's "Start exploring" (`landing.py:34`), Overflow's "How Stock
+    Explorer works" / "Start over" / "Clear saved" (`overflow_menu.py:125,134,137`), Saved-news'
+    "Try again" (`saved_news.py:191`). The row-overlay tap buttons (`row_ui.py`) are unaffected
+    — their own more-specific `!important` rule (styles.py ~538-548) already wins regardless of
+    what a broader rule sets; verified, not assumed, per `done_when`.
+  - **New popover-trigger rule:** `[data-testid="stPopoverButton"] { background:
+    var(--ss-surface) !important; border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius-control) !important; }` — covers the previously-unstyled
+    "Filters" trigger. Does not conflict with the existing icon-button-marker rule for the "⋯"
+    trigger (styles.py ~752), which redeclares the same three properties plus its own square
+    sizing — same harmless redundant-match pattern the cto-reviewer explicitly approved for
+    6a's row-primitive rules.
+  - **New expander rule:** one global `[data-testid="stExpander"]` rule (bordered,
+    `var(--ss-surface)` fill, `var(--ss-radius-surface)` corners — the surface tier, same as
+    the card and rows) covering both live instances (`overflow_menu.py`'s "About the data",
+    `card_ui.py`'s "Practice with hypothetical numbers"). Exact internal selector confirmed
+    against the live rendered DOM during implementation, not assumed from memory.
+  - **Docs:** `design_system.md`'s "Button variants" section — remove the stale "Landing and
+    Overflow-menu button reskinning beyond radius is 6b's job, not this doc's" line (6b
+    resolves it) and state buttons are genuinely global now; add short "Popover trigger" and
+    "Expander" bullets alongside the existing row/button primitives (this doc's own scope
+    statement already covers "shared row/button primitives — the system underneath every other
+    spec"). No new standalone Landing/Overflow content doc — this slice doesn't change what
+    Landing/Overflow say or how they're laid out, only how their existing native widgets are
+    skinned; `discover_header.md` already owns Overflow's content-order spec.
+
+explicitly_not_in_scope:
+  - Landing/Overflow's copy, layout, or content structure.
+  - The Discover/Saved/Search segmented control — `design_system.md` already documents it as
+    deliberately outside the button-variant system (native widget, own theming).
+  - Any new design tokens — every value used here already exists from 6a (`--ss-accent`,
+    `--ss-surface`, `--ss-border`, `--ss-radius-control`, `--ss-radius-surface`).
+  - Landing's typography (see decisions_reserved — this was a withdrawn question, not a change).
 
 done_when:
-  - The 6 files are committed on `chore/agent-setup-hygiene` with a passing scope-auditor
-    + cto-reviewer review for this diff (`.claude/review_routing.json`'s new
-    self-referential rule means editing it now requires cto-reviewer too, on top of the
-    always-on scope-auditor).
+  - Discover's Save/Skip bar renders pixel-identical before/after globalizing its button rule
+    (true no-op there — same values, wider selector).
+  - Landing's "Start exploring", Overflow's three buttons, Discover's two end-of-scope buttons,
+    Saved's "← Back to list", and Saved-news' "Try again" all render with the same accent/
+    surface skin as the Discover action bar.
+  - "Filters" popover trigger and the "⋯" overflow trigger render with the same surface/border/
+    radius look; the "⋯" trigger's own square sizing is unaffected.
+  - Both `st.expander` instances (Overflow "About the data", card "Practice with hypothetical
+    numbers") render bordered/filled instead of native Streamlit grey chrome.
+  - Row-overlay tap buttons (Saved list, Search results) remain fully invisible — no border/
+    background leaking through from the new global button rule.
+  - `pytest tests/` stays green (pure CSS + doc change, no Python logic touched).
+  - Real screenshots (Browser pane or the CDP-harness fallback from 6a) of Landing, the open
+    Overflow popover, the open Filters popover, and both expanders — before and after.
+  - scope-auditor (always) + cto-reviewer (`frontend/*`) both PASS on the final staged diff,
+    per `.claude/review_routing.json`.
+
+impact_map:
+  - Pure frontend CSS + one doc update. No backend/data/migration change, no new dependency.
+    Required reviewers (per `.claude/review_routing.json`): **scope-auditor** (always) ·
+    **cto-reviewer** (`frontend/*`). Neither analytics-engineer nor data-engineer nor
+    equity-analyst-reviewer route to this diff.
+  - Also subject to the project's **UX PR gate** (`docs/working_agreement.md`) — a separate,
+    project-specific requirement for any Streamlit layout/copy/interaction change (this is a
+    visual-skin change, not layout/copy, but the gate's 480px-smoke habit still applies).
 
 amendments:
-  - 2026-08-18 — created fresh for this hygiene task; not derived from the product task
-    contract for Slice 5b/6 (this work is infra/tooling, orthogonal to that task, per the
-    existing precedent of `chore/migrate-to-gitlab` being tracked separately from product
-    slices).
-  - 2026-08-18 — round 1 (scope-auditor + cto-reviewer): both FAIL. scope-auditor: the
-    global `~/.claude/settings.json` hook-registration change was narrated in
-    `active_work.md` with no `decisions_reserved` acknowledgment or authority record;
-    `docs/handover_2026-08-18.md` was referenced but untracked/unstaged. cto-reviewer:
-    same untracked-file gap, plus the archive doc's header wrongly stated the injection
-    cap as "16KB" when the live hook is actually 32000 (two dormant plugin-source copies
-    still say 16000). Fixed: `decisions_reserved` amended to name and authorize the
-    global-hook action explicitly; `docs/handover_2026-08-18.md` staged for real; header
-    reworded to state 16000 was the cap "at the time the overflow was diagnosed" and note
-    the raise to 32000 plus the dormant-copy drift risk (new bullet added to
-    `active_work.md`'s Context/open items).
-  - 2026-08-18 — round 2: cto-reviewer PASS. scope-auditor FAIL: `active_work.md`'s
-    Current-task section claimed the merged Router/health-verdict/Haiku-read work "are in
-    production," contradicted by the same file's own Infra section (Streamlit deploy path
-    unresolved, CI/CD variables unverified). Fixed: reworded to "are complete and merged,
-    code-wise. Whether they're actually live for real users is a separate, unconfirmed
-    question."
-  - 2026-08-18 — round 3: scope-auditor + cto-reviewer both PASS against the final staged
-    diff (hash `6e0a116fae7734cab349a286914c52665934a636e22c86ac511164a53efddeaf`).
-  - 2026-08-18 — round 4 (new commit, adding `.claude/settings.json` to re-wire the same
-    3 hooks project-scoped after the global revert): scope-auditor FAIL. Two findings:
-    (1) `active_work.md` still said the hooks were "wired globally," contradicting this
-    diff's own premise — fixed, reworded to describe the project-scoped wiring and the
-    global-revert history. (2) the contract's `decisions_reserved` authorized *where* the
-    hooks fire (global vs. project) but never addressed *whether to track the wiring file
-    in git at all* — a distinct axis from what rounds 1-3 authorized. Escalated to the
-    owner directly (AskUserQuestion) rather than assumed; owner chose to commit it
-    (see the new decisions_reserved bullet above).
-  - 2026-08-18 — round 5: scope-auditor FAIL. `active_work.md`'s Next-concrete-actions
-    item 4 said the branch had "Two commits," undercounting the real history (a third,
-    `9de7726`, had already landed and this diff was about to add a fourth) — the same
-    self-referential-drift defect class that failed rounds 1 and 2. Fixed structurally,
-    not just re-counted: removed the hardcoded commit list/hashes entirely, pointing to
-    `git log chore/agent-setup-hygiene` / the MR instead, and corrected "MR not yet
-    opened" to "MR #5 open."
-  - 2026-08-18 — round 6: scope-auditor PASS against the final staged diff (hash
-    `ff0a49bc4c82e5480c624cd4b11316d2c7ba1e3ac441422261627b36535cdfff`), independently
-    verified live via `glab` (MR #5's state, plus MR #3/#4's claimed merged status).
-  - 2026-08-18 — round 7 (new commit, hardening `review_routing.json` with 4 guard-path
-    entries modeled on football-data-pipeline's routing, at the owner's direct request):
-    scope-auditor + cto-reviewer both FAIL, independently, on the same root issue —
-    rationale ported from the sibling repo without verifying it holds here. (1)
-    `.claude/agents/*`'s comment claimed it protects "the adversary" (cto-reviewer,
-    scope-auditor, etc.); verified false — this repo's `.claude/agents/` contains only
-    `equity-analyst-reviewer.md`, the other four roles live entirely outside the repo in
-    the dbt-agent-kit plugin's `agents/` dir, invisible to any repo-scoped gate. (2) the
-    self-referential `review_routing.json` route claimed a same-commit weaken-and-exploit
-    gets "caught by the reviewer it's trying to route around"; verified false —
-    `commit_review_gate.py` reads the file from its current staged state with no baseline
-    pinning, so a commit that weakens a rule is evaluated under the already-weakened
-    rules. Fixed: `_comment_guard_paths` rewritten to state both limitations honestly
-    instead of the ported claims — the rules themselves are unchanged (still real,
-    still worth having), only the documentation of what they actually accomplish.
-  - 2026-08-18 — round 8: cto-reviewer PASS (re-verified both round-7 facts against the
-    real hook/filesystem, held). scope-auditor FAIL: the rewritten comment's own opening
-    sentence claimed the ported-claims problem was "corrected twice by review... both
-    rounds caught claims" — but at the moment that sentence was written, only round 7 had
-    happened; this round (8) didn't exist yet, so the claim asserted a review outcome
-    that hadn't occurred. Same self-referential-drift defect class as rounds 1, 2, and 5,
-    reintroduced inside the very text written to fix a different instance of it. Fixed:
-    reworded to "corrected by review before merge -- the first review round caught two
-    claims... both scope-auditor and cto-reviewer failing independently in that same
-    round" — accurate to what round 7 actually was, no forward-looking claim about rounds
-    that hadn't happened yet.
-  - 2026-08-18 — round 9: scope-auditor + cto-reviewer both PASS against the final staged
-    diff (hash `1bd49a48a58a2908008d393eba16028c2c9f45e0e034a90eb8f7fa8b79757998`), every
-    factual claim in `_comment_guard_paths` independently re-verified against the live
-    filesystem and hook source, not re-read as prose.
+  - **scope-auditor FAIL (round 1), fixed — three findings:**
+    1. **`st.link_button` gap (the substantial one).** The original diff's button inventory
+       greped only `st.button(` calls, missing `st.link_button` entirely — the card footer's
+       "Yahoo Finance" link (`card_ui.py:233`, rendered on every card: Discover, Saved focus,
+       Search focus) rendered as an `<a>`, not a `<button kind="...">`, so it was structurally
+       invisible to the new global rules and stayed unstyled while everything else got
+       unified. This directly undercut the "100%, whole app" authority the contract cites.
+       **Fixed, and a second, deeper bug found while fixing it:** live DOM inspection showed
+       the real rendered attribute is `data-testid="stBaseLinkButton-secondary"`, not
+       `"stLinkButton"` as both my new rule AND a **pre-existing** (pre-6b) footer-scoped
+       sizing rule (`styles.py`, `.ss-card-footer-shell + ... a[data-testid="stLinkButton"]`)
+       assumed — meaning that older rule's font-size/min-height/padding/text-decoration have
+       never actually applied to this element, since before 6b started. Fixed both: added a
+       new global `a[data-testid="stBaseLinkButton-secondary"]` rule (same surface/border/
+       control-radius skin as a secondary button) and corrected the pre-existing rule's
+       selector to the real testid. Verified live: computed styles now show
+       `background: rgb(20,20,22)` / `border: 1px solid rgb(39,39,42)` / `border-radius: 8px`
+       — matching `--ss-surface`/`--ss-border`/`--ss-radius-control` exactly.
+    2. **Stale comment**, fixed. `styles.py`'s original 6a comment above the button-radius
+       rule ("Colors/backgrounds are NOT set here... until 6b unifies Landing/Overflow") went
+       unedited by this diff while a second comment two sections below said the opposite —
+       two comments in the same file disagreeing about current state. Updated the first to
+       reflect that 6b did close that gap.
+    3. **Segmented-control leak risk, verified rather than re-asserted.** The contract claimed
+       the nav pills stay unaffected by the widened `button[kind=...]` selectors but never
+       proved it the way it proved the row-overlay-button claim (CSS specificity math). Now
+       verified live: the segmented control's pill elements carry `kind="segmented_control"`/
+       `"segmented_controlActive"` (confirmed via `[data-testid^="stBaseButton-segmented_control"]`
+       in the live DOM), distinct string values from `"primary"`/`"secondary"` — attribute
+       selectors are exact-match, so there is no leak. The cto-reviewer independently confirmed
+       this same fact from the pinned `streamlit==1.57.0` bundle's own kind enum.
+  - **Round 2 — mechanical bug in this file, fixed:** a duplicate top-level `amendments:` key
+    (a stray `amendments: (none yet)` leftover from the original template, never removed when
+    the round-1 amendment above was appended). Removed. Flagged independently by both
+    reviewers, who also each escalated the same underlying question rather than failing or
+    passing outright:
+  - **cto-reviewer ESCALATE + scope-auditor FAIL (round 2) — same question, now owner-decided:**
+    was it appropriate to fold the pre-existing (out-of-slice) footer-link-rule testid bug fix
+    into this diff, discovered incidentally while fixing the in-scope `st.link_button` gap?
+    **Owner decision: keep it bundled** (same file, same CSS rule, same root cause — a rule
+    already known dead within this very diff would otherwise ship uncorrected right beside the
+    freshly-fixed live one referencing the same DOM node).
+  - **cto-reviewer ESCALATE, owner-decided:** should the new link-button skin also cover the
+    `-primary`/`-tertiary` `stBaseLinkButton` variants, which have zero live consumers today
+    (the one call site, `card_ui.py:233`, uses the default `secondary`)? **Owner decision:
+    cover all three now**, so a future `st.link_button(type="primary")` never silently ships
+    unstyled the same way this round's bug did. `-primary` reuses the accent skin from
+    `button[kind="primary"]`; `-tertiary` shares `-secondary`'s surface skin rather than
+    inventing a third color tier this app has no precedent for anywhere else.
