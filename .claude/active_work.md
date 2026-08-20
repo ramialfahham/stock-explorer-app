@@ -14,14 +14,14 @@ MERGED into `main`** (#139–#148, plus 5b via MR #3) — the full raw-data foun
 compute, the Router mechanism, and both the deterministic health-verdict generator and the Claude Haiku
 prose read are complete and merged, code-wise. Whether they're actually live for real users is a
 separate, unconfirmed question — see the Infra section for the unresolved Streamlit deploy path and
-unverified CI/CD variables. **Slice 6 (UI redesign)**, phased by the owner into 6a/6b/6c, is now
-**code-complete on all three phases**: **6a MERGED** (MR #4 — tokens, shared row primitive, Search
-styling), **6b MERGED** (MR #8 revert + MR #9 — button/popover/expander/link-button skin unified
-app-wide, confirmed on `gitlab/main` @ `1463c95`), **6c MR #10 open**
-(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/10,
-`feat/ui-slice6c-card-content`) — health verdict badge + AI read now render on the card, the card's
-~11 disclosure toggles consolidated into one expander, metric-label chips, words-not-arrows benchmarks.
-**← START HERE: review MR #10 and merge if satisfied — that closes out Slice 6 entirely.**
+unverified CI/CD variables. **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
+(MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
+button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
+read now render on the card, the card's ~11 disclosure toggles consolidated into one expander,
+metric-label chips, words-not-arrows benchmarks). Confirmed via `git fetch gitlab` — `gitlab/main` @
+`0a72073` (merge commit of `feat/ui-slice6c-card-content`). **Slice 6 is closed. ← START HERE: pick
+the next piece of work — nothing is queued below beyond the small deferred/infra items in Status and
+Next concrete actions.**
 
 Note on this section: as of 2026-08-18, this repo's own committed handover prose still described 5b's
 MR #3 and 6a's MR #4 as "open" long after both were actually merged (confirmed via the real merge
@@ -107,8 +107,9 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
   the suite carries no regression signal for this diff specifically — verification was DOM/computed-style
   checks + real screenshots via the 6a headless-Chrome CDP harness). Full detail in
   `.claude/task/contract.md`'s amendments and `.claude/task/review.md`.
-- **Slice 6c — MR #10 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/10,
-  `feat/ui-slice6c-card-content`, branched from `gitlab/main` @ `1463c95`, i.e. 6b's tip — no rebase
+- **Slice 6c — MERGED** (MR #10, https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/10,
+  `feat/ui-slice6c-card-content` → `gitlab/main` @ `0a72073`; branched from `gitlab/main` @ `1463c95`,
+  i.e. 6b's tip — no rebase
   needed): **health verdict badge + AI read render on the card; ~11 disclosure toggles consolidated
   into one `st.expander`; metric labels as chips; benchmark comparisons show words, not arrows.**
   First slice to actually read `card_assessments` from `frontend/` (new
@@ -234,17 +235,21 @@ awaiting owner review). Next work here is whatever the owner scopes after Slice 
 
 ## Next concrete actions
 
-Approved plans (historical design docs, kept in case Slice 6 needs to consult prior slice reasoning):
+**Slice 6 (UI redesign) is fully done — 6a, 6b, 6c all merged.** Nothing queued on that track.
+Historical design docs, kept only in case a future slice needs to consult prior reasoning:
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **Slice 6c — MR #10.** ← START HERE. Owner reviews screenshots + the live MR diff, merges if
-   satisfied. Closes out the whole Slice 6 UI redesign once merged.
+1. **← START HERE: sync local `main`** (`git fetch gitlab && git merge --ff-only gitlab/main`, or
+   just branch new work off `gitlab/main` directly) before starting anything new — local `main` in the
+   primary checkout was last known at `371e4f9`/`1463c95`-era commits, several slices behind
+   `gitlab/main` @ `0a72073`.
 2. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
 3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
    see Infra section; status unconfirmed from this repo's own files.
+4. Ask the owner what's next — no product slice is currently scoped beyond Slice 6.
 
 ## Do NOT
 
