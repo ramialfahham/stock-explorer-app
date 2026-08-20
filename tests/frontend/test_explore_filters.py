@@ -5,6 +5,7 @@ from __future__ import annotations
 from explore_filters import (  # noqa: E402
     ALL_MARKETS,
     ALL_SECTORS,
+    attach_assessments,
     cards_lack_business_summary,
     default_market_filter,
     filter_pool,
@@ -124,3 +125,37 @@ def test_cards_lack_business_summary_when_all_empty() -> None:
 def test_cards_lack_business_summary_when_populated() -> None:
     cards = [{**_card("AAPL", "Technology"), "business_summary": "Apple designs products."}]
     assert cards_lack_business_summary(cards) is False
+
+
+def test_attach_assessments_copies_fields_on_match() -> None:
+    cards = [_card("AAPL", "Technology")]
+    assessments = {
+        ("us_sp500", "AAPL"): {"health_verdict": "green", "ai_read": "Sturdy figures."}
+    }
+    result = attach_assessments(cards, assessments)
+    assert result[0]["health_verdict"] == "green"
+    assert result[0]["ai_read"] == "Sturdy figures."
+
+
+def test_attach_assessments_leaves_card_unchanged_without_a_match() -> None:
+    """No row for this (market_code, ticker) — assessments pipeline can lag a
+    newly-eligible card. Card is returned as-is, never a placeholder key."""
+    cards = [_card("AAPL", "Technology")]
+    result = attach_assessments(cards, assessments={})
+    assert "health_verdict" not in result[0]
+    assert "ai_read" not in result[0]
+
+
+def test_attach_assessments_preserves_null_ai_read() -> None:
+    cards = [_card("AAPL", "Technology")]
+    assessments = {("us_sp500", "AAPL"): {"health_verdict": "red", "ai_read": None}}
+    result = attach_assessments(cards, assessments)
+    assert result[0]["health_verdict"] == "red"
+    assert result[0]["ai_read"] is None
+
+
+def test_attach_assessments_does_not_mutate_the_original_card() -> None:
+    card = _card("AAPL", "Technology")
+    assessments = {("us_sp500", "AAPL"): {"health_verdict": "green", "ai_read": "text"}}
+    attach_assessments([card], assessments)
+    assert "health_verdict" not in card

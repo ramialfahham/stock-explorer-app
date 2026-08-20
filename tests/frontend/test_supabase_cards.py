@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from supabase_cards import PAGE_SIZE, fetch_all_eligible_rows, fetch_eligible_cards  # noqa: E402
+from supabase_cards import (  # noqa: E402
+    PAGE_SIZE,
+    fetch_all_assessment_rows,
+    fetch_all_eligible_rows,
+    fetch_card_assessments,
+    fetch_eligible_cards,
+    fetch_eligible_cards_with_assessments,
+)
 
 
 class _FakeResponse:
@@ -48,6 +55,73 @@ def test_fetch_all_eligible_rows_paginates_past_1000() -> None:
     client = _FakeClient([first, second])
     rows = fetch_all_eligible_rows(client)
     assert len(rows) == PAGE_SIZE + 1
+
+
+class _FakeMultiTableClient:
+    """Unlike _FakeClient, returns different page data per table name — needed to test
+    a join across mart_stock_cards and card_assessments, two genuinely different tables."""
+
+    def __init__(self, tables: dict[str, list[list[dict]]]) -> None:
+        self._tables = tables
+
+    def table(self, name: str) -> _FakeQuery:
+        return _FakeQuery(self._tables[name])
+
+
+def test_fetch_all_assessment_rows_paginates_past_1000() -> None:
+    first = [{"market_code": "us_sp500", "ticker": f"T{i}"} for i in range(PAGE_SIZE)]
+    second = [{"market_code": "us_sp500", "ticker": "EXTRA"}]
+    client = _FakeMultiTableClient({"card_assessments": [first, second]})
+    rows = fetch_all_assessment_rows(client)
+    assert len(rows) == PAGE_SIZE + 1
+
+
+def test_fetch_card_assessments_keys_by_market_and_ticker() -> None:
+    pages = [[
+        {"market_code": "us_sp500", "ticker": "ADI", "health_verdict": "green", "ai_read": "text"},
+    ]]
+    client = _FakeMultiTableClient({"card_assessments": pages})
+    result = fetch_card_assessments(client)
+    assert result[("us_sp500", "ADI")]["health_verdict"] == "green"
+
+
+def test_fetch_eligible_cards_with_assessments_joins_across_tables() -> None:
+    mart_pages = [[
+        {
+            "market_code": "us_sp500",
+            "ticker": "ADI",
+            "snapshot_date": "2026-06-09",
+            "is_card_eligible": True,
+            "business_summary": "Latest Yahoo summary.",
+        },
+    ]]
+    assessment_pages = [[
+        {"market_code": "us_sp500", "ticker": "ADI", "health_verdict": "green", "ai_read": "Sturdy."},
+    ]]
+    client = _FakeMultiTableClient(
+        {"mart_stock_cards": mart_pages, "card_assessments": assessment_pages}
+    )
+    cards = fetch_eligible_cards_with_assessments(client)
+    assert len(cards) == 1
+    assert cards[0]["health_verdict"] == "green"
+    assert cards[0]["ai_read"] == "Sturdy."
+
+
+def test_fetch_eligible_cards_with_assessments_omits_missing_assessment() -> None:
+    """A card with no matching card_assessments row (pipeline lag) still comes back —
+    just without the assessment fields, never a placeholder."""
+    mart_pages = [[
+        {
+            "market_code": "us_sp500",
+            "ticker": "NEW",
+            "snapshot_date": "2026-06-09",
+            "is_card_eligible": True,
+        },
+    ]]
+    client = _FakeMultiTableClient({"mart_stock_cards": mart_pages, "card_assessments": [[]]})
+    cards = fetch_eligible_cards_with_assessments(client)
+    assert len(cards) == 1
+    assert "health_verdict" not in cards[0]
 
 
 def test_fetch_eligible_cards_keeps_latest_snapshot() -> None:

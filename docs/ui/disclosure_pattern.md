@@ -22,12 +22,17 @@ Helper: `disclosure_html(preview, full_body_html, more_label=..., less_label=...
 
 | Surface | Status | Labels |
 |---------|--------|--------|
-| Company description (Discover/Saved card) | Shipped | Read full description / Show less |
 | Saved tab headlines | Shipped | Read full headline / Show less |
 | Learn panel metric bodies | Backlog | — |
 | Sector gloss long copy | Backlog | — |
 
-Company description keeps legacy `.ss-company-about-*` classes **and** `.ss-disclosure-*` for shared styling.
+**Company description (Discover/Saved card) no longer uses this pattern (Slice 6c).** The
+card face shows only the word-limited preview (`frontend/card_ui.py`'s `_company_summary_html`);
+the full text, when the preview is truncated, moved into the card's one learn panel
+(`st.expander("Understand these numbers")` — see [`design_system.md`](design_system.md)'s
+Expander primitive) as an "About this company" section, not its own toggle. This was a
+deliberate consolidation, not drift — the "approved mock" called for one disclosure per card,
+and a second small toggle for the description would have left two.
 
 ---
 

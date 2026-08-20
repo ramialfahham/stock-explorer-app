@@ -37,13 +37,13 @@ import row_ui
 from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
-from supabase_cards import fetch_eligible_cards
+from supabase_cards import fetch_eligible_cards_with_assessments
 from supabase_client import get_anon_client
 
 load_dotenv()
 
 EXPLORE_DEFAULTS_VERSION = 5
-CARDS_CACHE_VERSION = 2
+CARDS_CACHE_VERSION = 3
 
 st.set_page_config(
     page_title=PRODUCT_NAME,
@@ -89,7 +89,7 @@ def _init_state() -> None:
 
 def _load_cards(client) -> list[dict]:
     try:
-        return fetch_eligible_cards(client)
+        return fetch_eligible_cards_with_assessments(client)
     except Exception as exc:  # noqa: BLE001
         st.error(f"Could not load cards from Supabase: {exc}")
         return []

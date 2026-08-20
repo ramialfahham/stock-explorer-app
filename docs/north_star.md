@@ -55,7 +55,14 @@ scoped pool only when **all five** metrics are present (no fallbacks, no substit
 widget in v1 — users open **Yahoo Finance** via the card footer link (`st.link_button`).
 
 **Company context:** optional `business_summary` from Yahoo — word-limited preview on the card;
-full text behind **Read full description** (`<details>` disclosure — see [`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)).
+full text lives in the card's one learn panel ("Understand these numbers" `st.expander` — see
+[`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)), not its own separate toggle.
+
+**Health verdict + AI read (Slice 6c):** a 🟢/🟡/🔴 verdict (deterministic rules, Slice 5a) plus a
+short Claude-written plain-language read (Slice 5b) render right after identity, always
+visible — see the Progressive disclosure table below and
+[`data_contract.md`](data_contract.md)'s `card_assessments` section. Omitted entirely (no
+placeholder) when a card has no matching assessment yet.
 
 **Large constituent bucket, smaller eligible pool:** index constituents are ingested broadly;
 only tickers passing the five-metric gate enter discovery. Bad or incomplete data erodes trust.
@@ -68,13 +75,14 @@ Three tiers — never all expanded at once on first load:
 
 | Tier | Content | Goal |
 |------|---------|------|
-| **Scan** | Name, ticker, market, sector headline, three hero metric values (+ two balance metrics below fold) | Answer “what company?” in seconds |
-| **Gloss** | Sector one-liner, company blurb preview, metric gloss lines under values | Plain-English context without clutter |
-| **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?”, “About this company” full summary | Optional learning on demand |
+| **Scan** | Name, ticker, market, sector headline, health verdict badge, three hero metric values (+ two balance metrics below fold) | Answer “what company?” in seconds |
+| **Gloss** | AI read (always visible), sector one-liner, company blurb preview, metric gloss lines under values | Plain-English context without clutter |
+| **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?”, “About this company” full summary, practice-number playgrounds — all in **one** learn panel (Slice 6c consolidated what used to be ~11 separate toggles) | Optional learning on demand |
 
 **Median primer and sector benchmarks** live inside **How we compare to similar companies**
-(`<details>`), not always visible. When fewer than 8 eligible peers exist in the sector within
-that market, **hide benchmark UI entirely** — no orphan “unavailable” line on the card face.
+(inside the one learn panel `st.expander`), not always visible. When fewer than 8 eligible
+peers exist in the sector within that market, **hide benchmark UI entirely** — no orphan
+“unavailable” line on the card face.
 
 **Success check (mobile):** user can read company + sector + three hero metric **values**
 without scrolling; Save remains reachable.
