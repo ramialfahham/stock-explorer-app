@@ -16,9 +16,8 @@ prose read are complete and merged, code-wise. Whether they're actually live for
 separate, unconfirmed question — see the Infra section for the unresolved Streamlit deploy path and
 unverified CI/CD variables. **Slice 6 (UI redesign)**, phased by the owner into 6a/6b/6c, is under way: **6a
 (design system foundation) is also MERGED** (MR #4 — tokens, shared row primitive, Search styling, six
-review rounds). **6b (Landing/Overflow unification) committed, MR not yet open** — see Status. **6c
-(render new card content: health verdict, AI read, per-type metrics onto the finished system)** is the
-remaining phase — **not started.**
+review rounds). **6b (Landing/Overflow unification)** and **6c (render new card content: health verdict,
+AI read, per-type metrics onto the finished system)** are the remaining phases — **neither has started.**
 
 Note on this section: as of 2026-08-18, this repo's own committed handover prose still described 5b's
 MR #3 and 6a's MR #4 as "open" long after both were actually merged (confirmed via the real merge
@@ -80,54 +79,6 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
   test coverage, a hover-highlight CSS bug bleeding to all rows, an unverified Saved-focus-view
   regression, two rounds of fabricated "Used by" token-doc claims that needed real wiring, not just doc
   edits). pytest 145.
-- **Slice 6b (commit `49c64fb` on `feat/ui-slice6b-landing-overflow`, MR not yet open):
-  button/popover/expander/link-button skin unified app-wide.** Owner's own instruction: "100% consistent
-  design language for the whole web app" — not narrowly Landing/Overflow. Generalized the accent/surface
-  button skin (was `.ss-action-shell`-scoped to just the Discover bar) to `button[kind="primary"/
-  "secondary"]` globally; added base skins for every `st.popover` trigger (fixes the previously-fully-
-  unstyled "Filters" trigger) and every `st.expander`; gave `st.link_button` the same treatment across
-  all three variants (primary/secondary/tertiary), even though only secondary has a live consumer today
-  (owner decision — cover it now so a future variant never silently ships unstyled). Three review
-  rounds, real findings every round: (1) the original diff greped only `st.button(`, missing
-  `st.link_button` (the card footer's "Yahoo Finance" link) entirely; fixing it surfaced a **second,
-  deeper bug** — the real rendered testid is `stBaseLinkButton-secondary`, not `stLinkButton`, so a
-  pre-existing (pre-6b) footer-scoped sizing rule had silently matched nothing since before this slice
-  started; fixed both. (2) A duplicate top-level `amendments:` key left in the contract by a sloppy edit;
-  fixed. (3) Two genuine owner escalations, both reviewers independently: whether to bundle the
-  pre-existing footer-rule bug fix into this diff (owner: yes, same file/root cause) and whether to cover
-  the unused link-button variants (owner: yes, all three). Every testid claim (`stExpander`,
-  `stPopoverButton`, `stBaseLinkButton-{kind}`, the segmented control's `kind` values) independently
-  verified against the actual installed `streamlit==1.57.0` bundle by cto-reviewer, not taken from
-  memory — `stLinkButton` had looked right and was wrong. pytest 145 (no test imports `styles.py`, so
-  the suite carries no regression signal for this diff specifically — verification was DOM/computed-style
-  checks + real screenshots via the 6a headless-Chrome CDP harness). Full detail in
-  `.claude/task/contract.md`'s amendments and `.claude/task/review.md`.
-- **Global hook bug found and fixed while landing 6b (separate track, affects every project on this
-  machine, not just this repo):** `~/.claude/hooks/branch_discipline.py` and `commit_review_gate.py`
-  (both wired via `.claude/settings.json`/the user-level `~/.claude/settings.json` per the agent-setup-
-  hygiene work above) resolve "the repo" via `CLAUDE_PROJECT_DIR` — always the **main checkout**, never
-  the actual worktree a command runs in. Every `cd <worktree> && git commit ...` (this repo's own
-  worktree-per-task pattern) got wrongly evaluated against the main checkout's branch/staged-diff state:
-  `branch_discipline.py` falsely blocked a legitimate commit on a feature-branch worktree ("BRANCH
-  BLOCKED... main/master") because the main checkout happened to be on `main`; `commit_review_gate.py`
-  silently no-op'ed instead (main checkout had nothing staged, so its "nothing staged, let git complain"
-  early-return let commits through without ever actually checking the worktree's real review state — a
-  live gap, not just a false block). Root cause confirmed two layers deep: (1) the hook event JSON does
-  carry a `cwd` field for the Bash call, but it reflects the session's persistent shell directory as of
-  the START of that call, not a `cd` chained inside the same command string — so even switching to prefer
-  `cwd` over `CLAUDE_PROJECT_DIR` wasn't enough on its own; (2) fixed by additionally parsing a leading
-  `cd <dir> &&`/`cd <dir>;` in the command text itself (verified the dir exists on disk) and preferring
-  that over the event's `cwd`, which is itself preferred over `CLAUDE_PROJECT_DIR`. Verified safe for
-  every other project: this only changes behavior for the worktree case that was previously wrong: no
-  leading `cd` -> falls through to the previously-fixed `cwd` behavior -> falls through to the original
-  `CLAUDE_PROJECT_DIR` behavior, so normal (non-worktree, non-`cd`-prefixed) commands are unaffected.
-  Verified via direct hook invocation with constructed event JSON (both the false-block and the
-  true-block cases) before landing, then via the real commit succeeding end-to-end. **Bug in the
-  `dbt-agent-kit` plugin's own bundled hook source too** (identical `_repo_root()` pattern) — only the
-  machine-wide installed copies at `~/.claude/hooks/` were fixed here; the plugin's own source under
-  `~/.claude/plugins/marketplaces/dbt-agent-kit/hooks/` was NOT touched (out of this repo's scope
-  entirely) and will regenerate the same bug on a future plugin re-sync unless fixed upstream too —
-  flagged, not resolved.
 - README/shopfront (#138): owner's manual steps may still be pending — `docs/media/swipe-demo.gif`
   (+ uncomment README line) and an optional social-preview image.
 - Test-architecture cleanup (#144): `tests/` reorganized into domain subdirs + `conftest.py` + taxonomy doc.
@@ -141,8 +92,9 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
   memory `global-hooks-collision-risk`.
 
 **Not started:**
+- **Slice 6b — Landing/Overflow unification.** Deferred by the owner, explicitly out of 6a's scope.
 - **Slice 6c — render new card content** (health verdict, AI read, per-type metrics) **on the finished
-  design system.** Deferred by the owner, explicitly out of 6a/6b's scope.
+  design system.** Deferred by the owner, explicitly out of 6a's scope.
 
 ## Decisions locked (the important ones)
 
@@ -197,8 +149,8 @@ Approved plans (historical design docs, kept in case Slice 6 needs to consult pr
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **Slice 6b — Landing/Overflow unification.** Committed (`49c64fb` on
-   `feat/ui-slice6b-landing-overflow`), MR not yet open — push the branch and open the MR (← START HERE).
+1. **Slice 6b — Landing/Overflow unification.** Not started. Builds on 6a's design-system tokens/`row_ui.py`
+   primitive.
 2. **Slice 6c — render new card content** (health verdict, AI read, per-type metrics) on the finished
    design system. Not started. This is what finally surfaces Slice 5's AI assessment work in the UI.
 3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
