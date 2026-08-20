@@ -50,9 +50,9 @@ section[data-testid="stSidebar"] {
     display: none !important;
 }
 
-/* Design system (Slice 6a): every button gets a consistent corner radius by default.
-   Colors/backgrounds are NOT set here — that stays scoped per-surface (fixed action bar,
-   icon buttons) until 6b unifies Landing/Overflow. See docs/ui/design_system.md. */
+/* Design system: every button gets a consistent corner radius by default (Slice 6a) and,
+   since Slice 6b, the accent/surface color skin app-wide too (see the global
+   button[kind="primary"/"secondary"] rules below). See docs/ui/design_system.md. */
 [data-testid="stButton"] button {
     border-radius: var(--ss-radius-control);
 }
@@ -491,7 +491,10 @@ section[data-testid="stSidebar"] {
     margin: 0;
     line-height: 1.35;
 }
-.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] a[data-testid="stLinkButton"] {
+/* Pre-existing rule (predates Slice 6b) — testid corrected from "stLinkButton" to the real
+   rendered value, "stBaseLinkButton-secondary" (confirmed live: the old selector matched
+   nothing, so this compact footer sizing has never actually applied until this fix). */
+.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] a[data-testid="stBaseLinkButton-secondary"] {
     font-size: var(--ss-caption-size) !important;
     min-height: 2rem !important;
     padding: 0.25rem 0.5rem !important;
@@ -699,16 +702,41 @@ section[data-testid="stSidebar"] {
     padding: 0.35rem 0;
     background: linear-gradient(to top, var(--ss-bg) 80%, transparent);
 }
-.ss-action-shell + div[data-testid="stHorizontalBlock"] button[kind="primary"] {
+/* Button color skin (Slice 6b) — global, not scoped to one surface. See
+   docs/ui/design_system.md. Radius alone was globalized in 6a; color/background stayed
+   scoped to just this action bar until 6b closed that gap app-wide. */
+button[kind="primary"] {
     background: var(--ss-accent) !important;
     color: var(--ss-bg) !important;
     border: none !important;
     font-weight: 700 !important;
 }
-.ss-action-shell + div[data-testid="stHorizontalBlock"] button[kind="secondary"] {
+button[kind="secondary"] {
     background: var(--ss-surface) !important;
     color: var(--ss-muted) !important;
     border: 1px solid var(--ss-border) !important;
+}
+/* st.link_button renders as <a data-testid="stBaseLinkButton-{kind}">, not <button kind="...">,
+   so the two rules above never reach it — cover all three kinds Streamlit's link_button
+   supports (primary/secondary/tertiary) so a future variant never silently ships unstyled,
+   even though only "secondary" has a live consumer today (the card footer's "Yahoo Finance"
+   link). Selectors check the real testid, not the "stLinkButton" name the pre-existing
+   footer-scoped rule below assumed — see its comment. This app has no separate visual tier
+   for "tertiary" anywhere else, so it shares secondary's surface skin rather than inventing
+   a third color; "primary" gets the same accent skin as button[kind="primary"] above. */
+a[data-testid="stBaseLinkButton-primary"] {
+    background: var(--ss-accent) !important;
+    color: var(--ss-bg) !important;
+    border: none !important;
+    border-radius: var(--ss-radius-control) !important;
+    font-weight: 700 !important;
+}
+a[data-testid="stBaseLinkButton-secondary"],
+a[data-testid="stBaseLinkButton-tertiary"] {
+    background: var(--ss-surface) !important;
+    color: var(--ss-muted) !important;
+    border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius-control) !important;
 }
 
 /* Nav row: Discover / Saved / Search + overflow menu (single line on mobile) */
@@ -743,12 +771,27 @@ section[data-testid="stSidebar"] {
     font-weight: 600 !important;
     min-height: 2.35rem !important;
 }
+/* Native widget theming (Slice 6b) — st.popover and st.expander rendered fully unstyled
+   before this; both now match the app's surface/border language instead of default
+   Streamlit chrome. See docs/ui/design_system.md. */
+[data-testid="stPopoverButton"] {
+    background: var(--ss-surface) !important;
+    border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius-control) !important;
+}
+[data-testid="stExpander"] {
+    background: var(--ss-surface) !important;
+    border: 1px solid var(--ss-border) !important;
+    border-radius: var(--ss-radius-surface) !important;
+}
 /* Icon-button variant (Slice 6a): keyed to an explicit marker, not DOM position — the
    prior :last-child selector would silently jump to the wrong button if the nav row is
    ever reordered. Reusable by any future icon-only popover trigger via the same marker.
    Streamlit wraps st.markdown in stElementContainer and st.popover in stLayoutWrapper —
    both direct children of the same stHorizontalBlock, hence :has() rather than a plain +
-   on the marker itself (the marker is nested one level inside its own wrapper). */
+   on the marker itself (the marker is nested one level inside its own wrapper). Redeclares
+   background/border/radius from the base popover-trigger rule above plus its own square
+   sizing — same harmless redundant-match pattern used elsewhere in this file. */
 [data-testid="stElementContainer"]:has(.ss-icon-btn-marker) + [data-testid="stLayoutWrapper"] [data-testid="stPopoverButton"] {
     font-size: 1.05rem !important;
     padding: 0 !important;

@@ -1,87 +1,63 @@
-# Review — Agent-setup hygiene branch (chore/agent-setup-hygiene), commit 3
+# Review
 
-diff_sha256: 1bd49a48a58a2908008d393eba16028c2c9f45e0e034a90eb8f7fa8b79757998
+diff_sha256: ab0546d13e9f07e16c21cfdecb31b57420b5724eceaf0d5138eb9614a8e1adf1
 
-**Change under review (1 file):** harden `.claude/review_routing.json` with 4 new
-`paths` entries — `.claude/settings.json`, `.claude/agents/*`, `.claude/review_routing.json`
-itself, and `.gitlab-ci.yml` — all routed to the existing `cto-reviewer` role. Modeled
-on football-data-pipeline's more mature routing, at the owner's direct request after
-seeing that sibling project catch a class of gap this repo's routing didn't.
+Three rounds. Real findings each round, all fixed or escalated to the owner and decided
+before the next round — see `.claude/task/contract.md`'s `amendments` for the full account.
 
-Deliberately NOT ported: football-data-pipeline's `hash_exclude_paths`/`protected_override`
-mechanism (needs code changes to `commit_review_gate.py`, not a config change — the shared
-hook only reads `always`/`paths`/`artifact_only`/`artifact_only_never`) and its
-`platform-reviewer`/`bi-analyst-reviewer` role split (would introduce new reviewer roles
-this repo doesn't have). Both flagged to the owner as separate, larger options — not
-decided here.
+- Round 1 (scope-auditor): FAIL — `st.link_button` (the card footer's "Yahoo Finance" link)
+  was missed by the original button inventory (only `st.button(` was grepped) and stayed
+  unstyled; a stale comment in `styles.py` contradicted a newer one about the same mechanism;
+  the claim that the segmented control is unaffected by the widened selectors was asserted,
+  not proven the way the row-overlay-button claim was. Fixed: added a link-button rule (which
+  surfaced a second, deeper bug — the real testid is `stBaseLinkButton-secondary`, not
+  `stLinkButton`, so a pre-existing footer-scoped sizing rule had silently matched nothing
+  since before this slice started); fixed both; corrected the stale comment; verified the
+  segmented control's `kind` values live (`segmented_control`/`segmented_controlActive`,
+  distinct from `primary`/`secondary`).
+- Round 1 (cto-reviewer): PASS — independently verified `stExpander`/`stPopoverButton` against
+  the pinned `streamlit==1.57.0` static bundle, the row-overlay specificity math, and the full
+  button/popover inventory.
+- Round 2 (scope-auditor): FAIL — a duplicate top-level `amendments:` key left in the contract
+  from a sloppy edit; `review.md` still showed a different, unrelated prior task (expected —
+  written last, not yet reached); the pre-existing footer-rule bug fix was bundled in without
+  recorded owner authority. Fixed the duplicate key; escalated the bundling question.
+- Round 2 (cto-reviewer): ESCALATE — same bundling question, plus whether the new link-button
+  skin should cover the unused `-primary`/`-tertiary` variants. Both put to the owner directly
+  and decided: keep the bug fix bundled (same file, same root cause); cover all three variants
+  now so a future one never silently ships unstyled.
+- Round 3 (scope-auditor): PASS — re-verified the duplicate-key fix, both owner decisions
+  against the actual CSS (not just the narrative), and the full widget inventory.
+- Round 3 (cto-reviewer): PASS — re-verified the `-primary`/`-tertiary` CSS values property-by-
+  property against `button[kind="primary"/"secondary"]`, the testid strings against the actual
+  installed Streamlit bundle, and noted (not a defect) that pytest's 145-pass result carries no
+  regression signal for this specific diff since nothing imports `styles.py` — the real
+  verification is the DOM/selector checks and the screenshots sent to the owner in-session.
 
-**Outcome: scope-auditor + cto-reviewer PASS after three rounds** (rounds 7 and 8 both
-real findings, not process noise — see `.claude/task/contract.md`'s amendments for the
-full record).
-
-## What rounds 7-9 found and fixed
-
-1. **Round 7 FAIL, both reviewers independently, same root issue** — rationale ported
-   from football-data-pipeline without verifying it holds in this repo. (a)
-   `.claude/agents/*`'s comment claimed it protects "the adversary" (cto-reviewer,
-   scope-auditor, etc.); verified false — this repo's `.claude/agents/` contains only
-   `equity-analyst-reviewer.md`, the other four roles live entirely outside the repo in
-   the dbt-agent-kit plugin's `agents/` dir, invisible to any repo-scoped gate. (b) the
-   self-referential `review_routing.json` route claimed a same-commit weaken-and-exploit
-   gets "caught by the reviewer it's trying to route around"; verified false —
-   `commit_review_gate.py` reads the file from its current staged state with no baseline
-   pinning. Fixed: comment rewritten to state both limitations honestly — the routing
-   rules themselves are unchanged and still worthwhile, only the documentation of what
-   they accomplish was corrected.
-2. **Round 8 FAIL (scope-auditor)** — the fix comment's own opening sentence claimed the
-   problem was "corrected twice by review... both rounds caught claims," but only round 7
-   had happened when that sentence was written — the same self-referential-drift defect
-   class as rounds 1, 2, and 5 of this branch's first commit, reintroduced inside the text
-   written to fix a different instance of it. cto-reviewer independently PASSed the same
-   diff (re-verified both round-7 facts, held). Fixed: reworded to accurately describe
-   only round 7's single round, two claims, both reviewers failing independently.
-3. **Round 9 — both PASS.** Every factual claim in the comment (file locations, plugin
-   paths, hook behavior, CI file existence) independently re-verified against the live
-   filesystem and hook source by both reviewers, not re-read as prose.
-
-## scope-auditor (final round)
+## scope-auditor
 VERDICT: PASS
 risks_checked:
-- The corrected round-log sentence's factual accuracy against `contract.md`'s actual
-  round-7 entry — matches exactly, no premature/false claim about review outcomes,
-  unlike the round-8 defect it replaces.
-- Every checkable factual claim in the comment (`.claude/agents/` contents, the four
-  reviewer roles' plugin-only location, `.github` non-existence, `.gitlab-ci.yml`
-  existence, and `commit_review_gate.py`'s no-baseline-pinning behavior) verified
-  directly against the filesystem and live hook source — all held, none fabricated.
+- Duplicate-key regression re-checked directly (grepped for `^amendments:` etc.) — one hit
+  each, the round-2 stray leftover is gone.
+- Both owner-decision amendments checked against the actual CSS, not just the prose — the
+  `-primary`/`-secondary`/`-tertiary` rules in `frontend/styles.py` match exactly what was
+  decided.
+- Full button/link_button inventory re-run independently via grep — matches the contract's
+  claimed inventory exactly, no omitted or extra call site.
+- Footer-scoped rule checked for silent override of the new global link-button skin — it only
+  sets font-size/min-height/padding/text-decoration, no color/border/radius, so no conflict.
 
-## cto-reviewer (final round)
+## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- New mechanism / boring technology: confirmed the diff introduces no new dependency,
-  hook, lifecycle step, or reviewer role — it only adds four `paths` patterns to the
-  existing fnmatch-based routing table, all pointing at the pre-existing `cto-reviewer`
-  role.
-- Guard integrity / factual accuracy: verified every concrete claim in
-  `_comment_guard_paths` against live state — `.claude/settings.json` contents,
-  `.gitlab-ci.yml` presence, `.claude/agents/` contents, the four reviewer roles' actual
-  location outside the repo, and `commit_review_gate.py`'s lack of baseline pinning — all
-  held true.
-- Fail-open/closed class: re-read `commit_review_gate.py`'s `main()` — still wraps
-  `_gate()` in a bare `except Exception: return 0`, so the guardrail hook this routing
-  file feeds remains fail-open; this diff does not touch or weaken that.
-
----
-
-## Prior rounds (commits 1-2 of this branch — kept for context)
-
-Commit 1 (`fab79de`, diff_sha256 `6e0a116fae7734cab349a286914c52665934a636e22c86ac511164a53efddeaf`):
-three rounds, two with real findings (unauthorized-looking global hook note, unstaged
-archive file, stale cap claim, "in production" overstatement).
-
-Commit 2 (`7cbc467`, diff_sha256 `ff0a49bc4c82e5480c624cd4b11316d2c7ba1e3ac441422261627b36535cdfff`):
-three more rounds, two with real findings (stale "wired globally" claim, undercounted
-commit history).
-
-Full detail of both is in `.claude/task/contract.md`'s amendments log, since this file
-only carries the latest commit's full detail going forward.
+- `-primary`/`-tertiary` CSS values diffed property-by-property against
+  `button[kind="primary"/"secondary"]` — exact match plus the necessary added `border-radius`
+  (`<a>` elements aren't reached by the `<button>`-scoped radius rule).
+- `stBaseLinkButton-{kind}` and `stPopoverButton` testid strings verified against the actual
+  installed `streamlit==1.57.0` compiled JS bundle, not memory or the contract's narrative.
+- Segmented-control non-leak re-derived independently from the same bundle (`kind` values
+  `segmented_control`/`segmented_controlActive`, distinct from `primary`/`secondary`).
+- Row-overlay tap-button invisibility re-derived via CSS specificity math — (0,4,2) beats
+  (0,1,1) regardless of source order even with `!important` on both sides.
+- Full widget-call inventory (buttons/popovers/expanders/link_button) re-verified by grep —
+  exact match, no missed consumer.
