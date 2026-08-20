@@ -11,15 +11,18 @@ from card_copy import (
     MEDIAN_PRIMER,
     METRIC_ANALOGY,
     METRIC_LABELS,
+    VERDICT_BADGE_LABEL,
+    VERDICT_EMOJI,
+    ai_read,
     benchmark_compare_available,
     benchmark_compare_unavailable_learn,
-    benchmark_indicator,
     benchmark_indicator_label,
     business_summary_full,
     business_summary_is_truncated,
     business_summary_preview,
     format_metric_value,
     freshness_line,
+    health_verdict_token,
     metric_analogy,
     metric_gloss,
     metric_label,
@@ -29,7 +32,6 @@ from card_copy import (
     sector_headline,
 )
 from markets import market_display_name
-from disclosure_html import disclosure_html
 from live_quote import yahoo_finance_url
 from metric_school import render_metric_playgrounds
 
@@ -38,14 +40,10 @@ def _bench_indicator_html(card: dict, metric: str) -> str:
     for m_key, median_key, _direction in BENCHMARK_METRICS:
         if m_key != metric:
             continue
-        indicator = benchmark_indicator(card, metric, median_key)
-        if not indicator:
+        label = benchmark_indicator_label(card, metric, median_key)
+        if not label:
             return ""
-        label = benchmark_indicator_label(card, metric, median_key) or ""
-        return (
-            f'<span class="ss-bench-indicator" title="{_esc(label)}" '
-            f'aria-label="{_esc(label)}">{_esc(indicator)}</span>'
-        )
+        return f'<span class="ss-bench-indicator">{_esc(label)}</span>'
     return ""
 
 
@@ -58,15 +56,12 @@ def _benchmark_compare_body(card: dict) -> str:
         for m_key, median_key, _direction in BENCHMARK_METRICS:
             if m_key != metric:
                 continue
-            indicator = benchmark_indicator(card, metric, median_key)
-            if indicator:
-                label = benchmark_indicator_label(card, metric, median_key) or ""
+            label = benchmark_indicator_label(card, metric, median_key)
+            if label:
                 bench_items.append(
                     f"<li>"
                     f'<span class="ss-benchmark-metric">{_esc(metric_label(metric, card))}</span> '
-                    f'<span class="ss-bench-indicator" title="{_esc(label)}" '
-                    f'aria-label="{_esc(label)}">{_esc(indicator)}</span> '
-                    f'<span class="ss-bench-vs">vs median</span>'
+                    f'<span class="ss-bench-indicator">{_esc(label)}</span>'
                     f"</li>"
                 )
             break
@@ -83,12 +78,12 @@ def _metric_learn_blocks(card: dict) -> str:
     for metric in metrics_for_card(card):
         value = card.get(metric)
         blocks.append(
-            f'<details class="ss-metric-learn-item">'
-            f"<summary>{_esc(metric_label(metric, card))}</summary>"
+            f'<div class="ss-metric-learn-item">'
+            f'<p class="ss-metric-learn-heading">{_esc(metric_label(metric, card))}</p>'
             f'<p class="ss-metric-analogy">{_esc(metric_analogy(metric, value, card))}</p>'
             f'<p class="ss-metric-gloss-inline">{_esc(metric_gloss(metric, value, card))}</p>'
             f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, value, card))}</p>'
-            f"</details>"
+            f"</div>"
         )
     return "".join(blocks)
 
@@ -105,7 +100,27 @@ def _format_market_code(market_code: str | None) -> str:
     return market_display_name(market_code)
 
 
-def _learn_panel_html(card: dict) -> str:
+def _company_about_body_html(card: dict) -> str:
+    """Full company description for the one learn panel — only when the card-face preview
+    is truncated (nothing more to show otherwise)."""
+    if not business_summary_is_truncated(card):
+        return ""
+    full = business_summary_full(card)
+    if not full:
+        return ""
+    return (
+        f'<div class="ss-learn-section">'
+        f'<p class="ss-learn-heading">About this company</p>'
+        f'<p class="ss-company-summary-full">{_esc(full)}</p>'
+        f"</div>"
+    )
+
+
+def build_learn_panel_body_html(card: dict) -> str:
+    """Inner HTML for the one learn expander: about-this-company, benchmark compare,
+    flattened metric definitions. No outer toggle — that's the st.expander itself now."""
+    about_section = _company_about_body_html(card)
+
     compare = _benchmark_compare_body(card)
     compare_section = ""
     if compare:
@@ -123,36 +138,38 @@ def _learn_panel_html(card: dict) -> str:
             f"</div>"
         )
     return (
-        f'<details class="ss-learn-panel">'
-        f"<summary>Understand these numbers</summary>"
-        f'<div class="ss-learn-panel-body">'
+        f"{about_section}"
         f"{compare_section}"
         f'<div class="ss-learn-section">'
         f'<p class="ss-learn-heading">What each metric means</p>'
         f"{_metric_definitions_body(card)}"
         f"</div>"
-        f"</div>"
-        f"</details>"
     )
 
 
 def _company_summary_html(card: dict) -> str:
-    full = business_summary_full(card)
-    if not full:
-        return ""
+    """Card-face preview only — the full text now lives in the one learn panel."""
     preview = business_summary_preview(card)
     if not preview:
         return ""
-    if not business_summary_is_truncated(card):
-        return f'<p class="ss-company-summary">{_esc(full)}</p>'
-    return disclosure_html(
-        _esc(preview or ""),
-        f'<p class="ss-company-summary-full">{_esc(full)}</p>',
-        more_label="Read full description",
-        less_label="Show less",
-        wrap_class="ss-company-about-wrap ss-disclosure-wrap",
-        details_class="ss-company-about ss-disclosure",
+    return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+
+
+def _health_block_html(card: dict) -> str:
+    """Verdict badge + AI read, or "" when no card_assessments row matched this card —
+    never a placeholder. Both always visible when present, no click needed."""
+    token = health_verdict_token(card)
+    if not token:
+        return ""
+    badge = (
+        f'<p class="ss-verdict-badge">'
+        f'<span class="ss-verdict-emoji">{_esc(VERDICT_EMOJI[token])}</span>'
+        f'<span class="ss-verdict-label">{_esc(VERDICT_BADGE_LABEL[token])}</span>'
+        f"</p>"
     )
+    read = ai_read(card)
+    read_html = f'<p class="ss-ai-read">{_esc(read)}</p>' if read else ""
+    return f'<div class="ss-health-block">{badge}{read_html}</div>'
 
 
 def _metric_cell_html(card: dict, metric: str) -> str:
@@ -199,6 +216,7 @@ def build_card_html(
         f'<p class="ss-identity">'
         f'<span class="ss-company">{_esc(company)}</span> '
         f'<span class="ss-ticker">{_esc(ticker)}</span></p>'
+        f"{_health_block_html(card)}"
         f"{_company_summary_html(card)}"
         f'<div class="ss-sector-context">'
         f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
@@ -206,13 +224,23 @@ def build_card_html(
         f"</div>"
         f"</section>"
     )
-    learn = _learn_panel_html(card)
     metrics = (
         f'<section class="ss-card ss-card-metrics">'
         f'<div class="ss-metrics-grid ss-metrics-stack">{metrics_html}</div>'
         f"</section>"
     )
-    return identity + learn + metrics
+    return identity + metrics
+
+
+def render_learn_panel(card: dict, *, widget_key_prefix: str = "card") -> None:
+    """The one learn panel: about-this-company, benchmark compare, metric definitions, and
+    the interactive practice widgets — all in a single st.expander. Replaces what used to
+    be an HTML <details> plus a separate "Practice with hypothetical numbers" expander."""
+    with st.expander("Understand these numbers", expanded=False):
+        body = build_learn_panel_body_html(card)
+        if body:
+            st.markdown(body, unsafe_allow_html=True)
+        render_metric_playgrounds(card, widget_key_prefix=widget_key_prefix)
 
 
 def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
@@ -242,13 +270,12 @@ def render_stock_card(
     *,
     scope_meta: str | None = None,
     widget_key_prefix: str = "card",
-    show_metric_school: bool = True,
+    show_learn_panel: bool = True,
 ) -> None:
     st.markdown(
         build_card_html(card, scope_meta=scope_meta),
         unsafe_allow_html=True,
     )
-    if show_metric_school:
-        with st.expander("Practice with hypothetical numbers", expanded=False):
-            render_metric_playgrounds(card, widget_key_prefix=widget_key_prefix)
+    if show_learn_panel:
+        render_learn_panel(card, widget_key_prefix=widget_key_prefix)
     render_card_footer(card, widget_key_prefix=widget_key_prefix)

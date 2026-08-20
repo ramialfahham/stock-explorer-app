@@ -184,11 +184,6 @@ section[data-testid="stSidebar"] {
     line-height: 1.45;
 }
 
-.ss-company-about-wrap {
-    margin: 0 0 0.55rem;
-}
-
-.ss-company-summary-preview,
 .ss-disclosure-preview {
     font-size: 0.78rem;
     color: var(--ss-text);
@@ -196,17 +191,14 @@ section[data-testid="stSidebar"] {
     line-height: 1.45;
 }
 
-.ss-company-about-wrap:has(.ss-company-about[open]) .ss-company-summary-preview,
 .ss-disclosure-wrap:has(.ss-disclosure[open]) .ss-disclosure-preview {
     display: none;
 }
 
-.ss-company-about,
 .ss-disclosure {
     margin: 0;
 }
 
-.ss-company-about summary.ss-company-summary-toggle,
 .ss-disclosure summary.ss-disclosure-toggle {
     cursor: pointer;
     list-style: none;
@@ -214,13 +206,10 @@ section[data-testid="stSidebar"] {
     width: fit-content;
 }
 
-.ss-company-about summary.ss-company-summary-toggle::-webkit-details-marker,
 .ss-disclosure summary.ss-disclosure-toggle::-webkit-details-marker {
     display: none;
 }
 
-.ss-company-summary-more,
-.ss-company-summary-less,
 .ss-disclosure-more,
 .ss-disclosure-less {
     font-size: 0.72rem;
@@ -229,17 +218,14 @@ section[data-testid="stSidebar"] {
     line-height: 1.3;
 }
 
-.ss-company-about:not([open]) .ss-company-summary-less,
 .ss-disclosure:not([open]) .ss-disclosure-less {
     display: none;
 }
 
-.ss-company-about[open] .ss-company-summary-more,
 .ss-disclosure[open] .ss-disclosure-more {
     display: none;
 }
 
-.ss-company-about[open] summary.ss-company-summary-toggle,
 .ss-disclosure[open] summary.ss-disclosure-toggle {
     margin-bottom: 0.35rem;
 }
@@ -251,38 +237,30 @@ section[data-testid="stSidebar"] {
     line-height: 1.45;
 }
 
-.ss-company-summary--empty {
-    display: none;
+/* Verdict badge + AI read (Slice 6c) — Scan-tier signal, always visible. */
+.ss-health-block {
+    margin: 0 0 0.55rem;
+}
+.ss-verdict-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--ss-label);
+    font-weight: 600;
+    color: var(--ss-text);
+    background: var(--ss-bg);
+    border: 1px solid var(--ss-border);
+    border-radius: var(--ss-radius-control);
+    padding: var(--ss-space-1) var(--ss-space-2);
+    margin: 0 0 0.3rem;
+}
+.ss-ai-read {
+    font-size: 0.78rem;
+    color: var(--ss-text);
+    margin: 0 0 0.28rem;
+    line-height: 1.45;
 }
 
-.ss-learn-panel {
-    margin: 0.5rem 0;
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-}
-.ss-learn-panel summary {
-    cursor: pointer;
-    color: var(--ss-accent);
-    font-weight: 600;
-    font-size: var(--ss-caption-size);
-    list-style: none;
-}
-.ss-learn-panel summary::before {
-    content: "▸ ";
-}
-.ss-learn-panel[open] summary::before {
-    content: "▾ ";
-}
-.ss-learn-panel summary::-webkit-details-marker {
-    display: none;
-}
-.ss-learn-panel-body {
-    margin-top: 0.35rem;
-    padding: 0.55rem 0.65rem;
-    background: var(--ss-surface);
-    border: 1px solid var(--ss-border);
-    border-radius: 10px;
-}
 .ss-learn-section + .ss-learn-section {
     margin-top: 0.55rem;
     padding-top: 0.55rem;
@@ -361,12 +339,18 @@ section[data-testid="stSidebar"] {
     padding: 0.35rem 0;
 }
 
+/* Metric label chip (Slice 6c) — applied uniformly, no hero/secondary split exists. */
 .ss-metric-label {
+    display: inline-block;
     font-size: var(--ss-label);
     font-weight: 600;
     color: var(--ss-muted);
-    margin: 0 0 0.15rem;
-    line-height: 1.2;
+    background: var(--ss-bg);
+    border: 1px solid var(--ss-border);
+    border-radius: var(--ss-radius-control);
+    padding: var(--ss-space-1) var(--ss-space-2);
+    margin: 0 0 0.3rem;
+    line-height: 1.3;
 }
 .ss-metric-value-row {
     display: flex;
@@ -382,14 +366,10 @@ section[data-testid="stSidebar"] {
     line-height: 1.1;
 }
 .ss-bench-indicator {
-    font-size: 0.9em;
+    font-size: var(--ss-caption-size);
     font-weight: 600;
     color: var(--ss-caption);
-    line-height: 1;
-}
-.ss-bench-vs {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
+    line-height: 1.2;
 }
 .ss-metric-gloss {
     font-size: var(--ss-caption-size);
@@ -442,15 +422,11 @@ section[data-testid="stSidebar"] {
     border-top: 1px solid var(--ss-border);
     padding: 0.35rem 0;
 }
-.ss-metric-learn-item summary {
+.ss-metric-learn-heading {
     font-size: var(--ss-caption-size);
     font-weight: 700;
     color: var(--ss-text);
-    cursor: pointer;
-    list-style: none;
-}
-.ss-metric-learn-item summary::-webkit-details-marker {
-    display: none;
+    margin: 0 0 0.2rem;
 }
 .ss-metric-analogy {
     font-size: var(--ss-caption-size);

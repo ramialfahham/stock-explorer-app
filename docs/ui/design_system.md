@@ -22,11 +22,11 @@ the row/button building blocks those specs assume. This doc is that missing laye
 
 | Token | Value | Used by |
 |---|---|---|
-| `--ss-space-1` | `0.35rem` | Tight spacing (bottom-nav row gap) |
-| `--ss-space-2` | `0.55rem` | Row vertical padding |
+| `--ss-space-1` | `0.35rem` | Tight spacing (bottom-nav row gap, metric-label chip padding) |
+| `--ss-space-2` | `0.55rem` | Row vertical padding, metric-label/verdict-badge chip padding |
 | `--ss-space-3` | `0.75rem` | Section heading top margin (e.g. Saved-tab news heading) |
 | `--ss-space-4` | `0.85rem` | Row horizontal padding, page gutter |
-| `--ss-radius-control` | `0.5rem` (8px) | Buttons, icon-button trigger |
+| `--ss-radius-control` | `0.5rem` (8px) | Buttons, icon-button trigger, metric-label chips, verdict badge |
 | `--ss-radius-surface` | `0.75rem` (12px) | The card, Saved/Search rows |
 | `--ss-row-title` | `0.85rem` | List-row primary text only — do not reuse `--ss-title` (reserved for in-card identity) or reuse this outside a row |
 
@@ -87,8 +87,10 @@ variant above layers its own square sizing on top of this base; it doesn't repla
 `st.expander` gets the same surface-tier treatment as the card and rows —
 `var(--ss-surface)` fill, `var(--ss-radius-surface)` corners, one rule,
 `[data-testid="stExpander"]` — instead of default Streamlit chrome. Covers every instance
-app-wide (currently: Overflow's "About the data", the card's "Practice with hypothetical
-numbers"); no per-surface exceptions.
+app-wide (currently: Overflow's "About the data", the card's one learn panel — "Understand
+these numbers", Slice 6c — which consolidated what used to be a separate HTML `<details>`
+plus a second "Practice with hypothetical numbers" expander into this single one); no
+per-surface exceptions.
 
 ## Link button (Slice 6b)
 
@@ -127,8 +129,10 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 - [ ] Landing's "Start exploring" and Overflow's three buttons render with the same
       accent/surface skin as the Discover action bar
 - [ ] Filters trigger and the ⋯ trigger render with the same surface/border chrome
-- [ ] Both `st.expander` instances (Overflow "About the data", card "Practice with
-      hypothetical numbers") render bordered/filled, not default Streamlit grey
+- [ ] Both `st.expander` instances (Overflow "About the data", the card's one "Understand
+      these numbers" learn panel) render bordered/filled, not default Streamlit grey
+- [ ] Metric-label chips and the verdict badge render with the same control-tier radius
+      as buttons/popover triggers
 - [ ] The card footer's "Yahoo Finance" link renders with the same secondary-button skin
       as "Next company" beside it
 - [ ] No new bare `border-radius:`/`padding:` literal introduced in touched sections of

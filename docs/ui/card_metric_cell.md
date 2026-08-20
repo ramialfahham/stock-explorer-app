@@ -9,10 +9,11 @@
 
 ```
 ┌──────────────────────┐
-│ Operating margin     │  ← label (period-honest)
-│ (TTM)                │
+│ [Operating margin    │  ← label chip (period-honest)
+│  (TTM)]              │
 │                      │
-│ 20.5%            ↑   │  ← value (largest) + optional bench indicator
+│ 20.5%   Higher than  │  ← value (largest) + optional bench indicator
+│         sector median│
 │                      │
 │ Operating profit as  │  ← gloss (one short line, Tier 2)
 │ share of sales (TTM) │
@@ -21,11 +22,16 @@
 
 **Visual hierarchy (strict):**
 
-1. **Label** — `.ss-metric-label` — period in parentheses when needed (`Operating margin (TTM)` vs `(annual)` via `metric_label()`).
-2. **Value** — `.ss-metric-value` — numeric, dominant; benchmark arrow (`↑`/`↓`/`→`) inline on `.ss-metric-value-row` when ≥8 sector peers.
+1. **Label** — `.ss-metric-label` — a bordered/filled chip (Slice 6c; `--ss-bg` fill,
+   `--ss-radius-control` corners), applied uniformly to every metric — period in
+   parentheses when needed (`Operating margin (TTM)` vs `(annual)` via `metric_label()`).
+2. **Value** — `.ss-metric-value` — numeric, dominant; benchmark indicator (words, e.g.
+   "Higher than sector median" — Slice 6c replaced the old `↑`/`↓`/`→` glyphs) inline on
+   `.ss-metric-value-row` when ≥8 sector peers.
 3. **Gloss** — `.ss-metric-gloss` — one plain-language line under the value; always visible on the card face (Tier 2).
 
-Deep copy (analogy, learn text) lives in **Understand these numbers** (`<details>`), not in the cell.
+Deep copy (analogy, learn text) lives in **Understand these numbers** (`st.expander` — one
+panel per card, Slice 6c; was `<details>` before), not in the cell.
 
 ---
 
@@ -60,7 +66,8 @@ When adding a new value-aware metric, update `card_copy.py` **and** this table i
 
 ## Benchmarks on the cell
 
-- Show `↑` / `↓` / `→` only when `sector_peer_count >= 8`.
+- Show the indicator words ("Higher than sector median" / "Lower than sector median" /
+  "At sector median" — `benchmark_indicator_label()`) only when `sector_peer_count >= 8`.
 - **Hide indicator entirely** when peers &lt; 8 — no “unavailable” on the card face.
 - Full median primer and per-metric compare lines live in **How we compare to similar companies** inside **Understand these numbers**.
 - When peers &lt; 8, that section shows one calm line: “Fewer than 8 similar companies in this market — sector compare is hidden.”
@@ -81,7 +88,8 @@ When adding a new value-aware metric, update `card_copy.py` **and** this table i
 
 - [ ] Label + value + gloss readable for each metric without horizontal scroll
 - [ ] Value is the most prominent element in each cell
-- [ ] Benchmark glyph does not wrap to its own line away from the value
+- [ ] Benchmark indicator words don't wrap away from the value in a way that reads as a
+      separate, disconnected line
 - [ ] All five metrics visible in one column
 
 ---

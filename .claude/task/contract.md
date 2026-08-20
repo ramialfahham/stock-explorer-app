@@ -1,159 +1,161 @@
 # Task contract
 
-objective: **Slice 6b — Landing/Overflow unification.** Second of three phases of the UI
-  redesign (Slice 6). Slice 6a (merged, MR #4) built the token/component foundation and
-  explicitly deferred one gap: `docs/ui/design_system.md`'s anti-patterns list says "Extending
-  the primary/secondary button color skin to Overflow/Landing under this doc's authority —
-  that's 6b." The owner's instruction for this slice was explicit: "100% consistent design
-  language for the whole web app" — not narrowly just Landing/Overflow. Exploration (grepping
-  every `st.button`/`st.popover`/`st.expander` call in `frontend/`) found two more genuine gaps
-  of the same shape: the "Filters" popover trigger (`app.py:302`) has zero custom CSS (a
-  different widget type, `stPopoverButton`, never touched by 6a's button-radius rule), and
-  `st.expander` (Overflow's "About the data" + the card's "Practice with hypothetical numbers")
-  renders with fully native, unstyled Streamlit chrome in both places. This slice closes all
-  three gaps with one generic CSS rule per widget type (buttons, popover triggers, expanders),
-  not one-off per-surface patches. Approved plan: ~/.claude/plans/pure-juggling-frost.md
-  (Slice 6b section, above the archived 6a section in the same file).
+objective: **Slice 6c — render new card content.** Third and final phase of the UI redesign
+  (Slice 6). 6a (merged, MR #4) built the token/component foundation; 6b (merged, MR #9)
+  unified button/popover/expander skin app-wide. 6c is the first slice that actually surfaces
+  Slice 5's AI-assessment backend work (5a's deterministic 🟢/🟡/🔴 health verdict, 5b's Claude
+  Haiku prose read) in the UI — `card_assessments` has never been fetched by `frontend/` at
+  all until now. Owner confirmed this should be the full "approved mock" vision, not a
+  minimal bolt-on: consolidate the card's ~11 separate disclosure toggles (company
+  description, the "Understand these numbers" panel, a nested `<details>` per metric inside
+  it, and the separately-expander'd "Practice with hypothetical numbers" playgrounds) into
+  one; restyle metric labels as chips; replace the sector-benchmark arrow symbols (↑/↓/→)
+  with the words already sitting in their tooltips. Approved plan:
+  ~/.claude/plans/pure-juggling-frost.md (Slice 6c section, top of the file).
 
 scope_paths:
-  - frontend/styles.py                              # button skin globalized; new popover-trigger + expander rules
-  - docs/ui/design_system.md                         # button-variants section updated; new popover/expander bullets
-  - docs/north_star.md                               # only if a doc-sync gap is found during implementation
-  - docs/working_agreement.md                        # only if a doc-sync gap is found during implementation
+  - frontend/supabase_cards.py     # new fetch_all_assessment_rows/fetch_card_assessments/fetch_eligible_cards_with_assessments
+  - frontend/explore_filters.py    # new attach_assessments pure transform
+  - frontend/app.py                # swap import, bump CARDS_CACHE_VERSION
+  - frontend/card_copy.py          # VERDICT_EMOJI/VERDICT_BADGE_LABEL/VERDICT_MEANING/health_verdict_token/ai_read
+  - frontend/card_ui.py            # health block, one-expander consolidation, words-not-arrows
+  - frontend/metric_school.py      # only if render_metric_playgrounds's call signature needs to change
+  - frontend/styles.py             # chip/badge CSS, dead-CSS removal
+  - docs/ui/disclosure_pattern.md
+  - docs/ui/card_metric_cell.md
+  - docs/ui/design_system.md
+  - docs/north_star.md
+  - tests/frontend/test_card_ui.py
+  - tests/frontend/test_explore_filters.py
+  - tests/frontend/test_supabase_cards.py
   - .claude/task/contract.md
 
 decisions_reserved (owner-approved this session):
-  - **"100% consistent design language for the whole web app"** — the owner's explicit
-    correction after I initially proposed a narrower "just the four Landing/Overflow buttons"
-    scope. This licenses generalizing the button-color skin app-wide (not just Landing/
-    Overflow) and sweeping in the two other same-shape gaps found (Filters trigger, both
-    `st.expander` instances) rather than leaving them freshly inconsistent.
-  - **Correction, not a decision:** I initially asked whether to normalize Landing's serif
-    "Fraunces" hero title (thinking it a one-off inconsistency). Investigation showed this was
-    based on incomplete information — the exact same Fraunces family is already the app's
-    brand typeface, used identically at the persistent `.ss-brand` header (styles.py:80,
-    1.35rem) shown on every other page. A bigger hero treatment of the same brand mark is
-    normal scaling, not an inconsistency. **No change to Landing's typography in this slice** —
-    this was withdrawn as a question, not decided either way by the owner.
+  - **Full "approved mock" vision** (not a minimal bolt-on) — consolidate disclosures to one,
+    label chips, words-not-arrows. All three explicitly confirmed, not assumed.
+  - **AI read always visible**, right near the verdict badge — no click needed.
+  - **Verdict badge label: emoji + one short word** — "Sturdy" (green) / "Mixed" (yellow) /
+    "Strained" (red). Explicitly NOT the full `VERDICT_MEANING` sentence (redundant with the
+    AI read directly below, which already ends on that same meaning) and NOT emoji-only.
+  - **Words-not-arrows included in this slice's scope**, not deferred — the benchmark
+    indicator's existing `_BENCHMARK_INDICATOR_LABELS` text ("Higher than sector median" /
+    "Lower than sector median" / "At sector median") is already owner-approved copy (already
+    shipped as a tooltip); this only changes whether it's shown visibly, not what it says.
+  - **Correction, not a decision:** exploration found `docs/ui/card_metric_cell.md` already
+    states "No hero/balance split; no side-by-side rows at any breakpoint" and
+    `_metric_cell_html` renders every metric through identical markup today — there is no
+    existing hero/secondary split for chips to selectively apply to. Chips apply uniformly to
+    every metric; `north_star.md`'s older "hero three" framing (lines 46-52) is stale
+    relative to the actual shipped code and is not being re-introduced by this slice.
 
 technical_definition:
-  - **Button color skin globalized:** `frontend/styles.py`'s existing
-    `.ss-action-shell + div[data-testid="stHorizontalBlock"] button[kind="primary"/"secondary"]`
-    rules (accent-gold primary, bordered-surface secondary — values from 6a, unchanged) lose
-    the `.ss-action-shell + div[...]` prefix and become plain `button[kind="primary"]` /
-    `button[kind="secondary"]`. No new colors — purely widening the selector.
-  - **Full inventory of buttons this affects** (every `st.button(` call in `frontend/`,
-    confirmed via grep): Discover's Save/Skip bar (already had this skin — true no-op there,
-    the zero-diff check in `done_when`), Discover's end-of-scope "Start over in this scope"
-    (primary) + "Next company" (secondary) (`app.py:345,364`), Saved's "← Back to list"
-    (`app.py:389`), Landing's "Start exploring" (`landing.py:34`), Overflow's "How Stock
-    Explorer works" / "Start over" / "Clear saved" (`overflow_menu.py:125,134,137`), Saved-news'
-    "Try again" (`saved_news.py:191`). The row-overlay tap buttons (`row_ui.py`) are unaffected
-    — their own more-specific `!important` rule (styles.py ~538-548) already wins regardless of
-    what a broader rule sets; verified, not assumed, per `done_when`.
-  - **New popover-trigger rule:** `[data-testid="stPopoverButton"] { background:
-    var(--ss-surface) !important; border: 1px solid var(--ss-border) !important;
-    border-radius: var(--ss-radius-control) !important; }` — covers the previously-unstyled
-    "Filters" trigger. Does not conflict with the existing icon-button-marker rule for the "⋯"
-    trigger (styles.py ~752), which redeclares the same three properties plus its own square
-    sizing — same harmless redundant-match pattern the cto-reviewer explicitly approved for
-    6a's row-primitive rules.
-  - **New expander rule:** one global `[data-testid="stExpander"]` rule (bordered,
-    `var(--ss-surface)` fill, `var(--ss-radius-surface)` corners — the surface tier, same as
-    the card and rows) covering both live instances (`overflow_menu.py`'s "About the data",
-    `card_ui.py`'s "Practice with hypothetical numbers"). Exact internal selector confirmed
-    against the live rendered DOM during implementation, not assumed from memory.
-  - **Docs:** `design_system.md`'s "Button variants" section — remove the stale "Landing and
-    Overflow-menu button reskinning beyond radius is 6b's job, not this doc's" line (6b
-    resolves it) and state buttons are genuinely global now; add short "Popover trigger" and
-    "Expander" bullets alongside the existing row/button primitives (this doc's own scope
-    statement already covers "shared row/button primitives — the system underneath every other
-    spec"). No new standalone Landing/Overflow content doc — this slice doesn't change what
-    Landing/Overflow say or how they're laid out, only how their existing native widgets are
-    skinned; `discover_header.md` already owns Overflow's content-order spec.
+  - **Data plumbing:** `frontend/supabase_cards.py` gets three new functions
+    (`fetch_all_assessment_rows`, `fetch_card_assessments`, `fetch_eligible_cards_with_assessments`)
+    alongside the existing `fetch_all_eligible_rows`/`fetch_eligible_cards`, which are left
+    untouched (their own test in `tests/frontend/test_supabase_cards.py` would break if the
+    fixture's assumed table shape changed). `frontend/explore_filters.py` gets a new pure
+    `attach_assessments(cards, assessments)` transform (same home as the existing
+    `dedupe_to_latest_snapshot`). A card with no matching `card_assessments` row (the
+    assessments pipeline runs after export and can lag a newly-eligible card) is returned
+    unchanged — the health block is omitted entirely for that card, never a placeholder,
+    matching this repo's established never-show-an-unvalued-dash convention. `ai_read` is
+    nullable even when a row exists (per-card LLM failures are isolated in 5b) — badge shows,
+    AI-read paragraph is omitted, when null.
+  - **Copy:** `frontend/` (Streamlit Cloud) and `scripts/` (weekly pipeline) are separate
+    deploy targets with no shared package today (confirmed via grep — nothing in `frontend/`
+    imports from `scripts/`). `VERDICT_EMOJI`/`VERDICT_BADGE_LABEL` live in
+    `frontend/card_copy.py`, owned there directly (not duplicated from `scripts/`). The plan's
+    proposed `VERDICT_MEANING` duplication + sync-guard test was dropped mid-review (see
+    `amendments`) — nothing in this slice's UI renders that sentence, so it shipped with zero
+    consumers; re-add it, with its guard test, exactly when something needs it.
+  - **One-expander consolidation:** confirmed technically sound before implementation —
+    `render_metric_playgrounds` (real `st.number_input` widgets) already runs inside
+    `with st.expander(...)` today; Streamlit's delta-path container model attaches widgets to
+    whichever `with` block is active regardless of call depth, so mixing `st.markdown(html)`
+    and live widgets in one expander is the same mechanism already in production, not a new
+    risk. `render_learn_panel()` (new) replaces both the old HTML `<details class=
+    "ss-learn-panel">` and the separate "Practice with hypothetical numbers" `st.expander` —
+    one `st.expander("Understand these numbers")` containing: about-this-company (full
+    description text, folded in per `north_star.md`'s own Deep-tier grouping — today's
+    separate toggle is drift from that spec, not the spec itself), benchmark-compare-with-
+    words, flattened per-metric definitions (no more nested `<details>` — a second click-deep
+    toggle contradicts "one disclosure"), then the practice-number widgets in the same block.
+    `render_stock_card`'s `show_metric_school` param renamed to `show_learn_panel`
+    (grep-confirmed safe: never passed explicitly at any of its 3 call sites, only the
+    default is used).
+  - **Health block placement:** Scan tier — in `build_card_html`'s identity section, right
+    after the name/ticker line, before the company description. First signal read after
+    identity, per the owner-confirmed "always visible, near the verdict" AI-read decision.
+  - **CSS:** every new value traces to an existing token (`--ss-bg`/`--ss-border`/
+    `--ss-radius-control`/`--ss-space-1`/`--ss-space-2`/`--ss-label`/`--ss-muted`/`--ss-text`)
+    — no new token invented. Dead-CSS removal (same precedent as 6a):
+    `.ss-learn-panel`/`summary`/`::before` rules, `.ss-learn-panel-body`'s surface/border/
+    radius (redundant with 6b's `[data-testid="stExpander"]` skin), `.ss-metric-learn-item
+    summary`'s `<details>`-specific rules. `.ss-disclosure-*`/`disclosure_html()` itself is
+    kept — still used by `saved_news.py`.
 
 explicitly_not_in_scope:
-  - Landing/Overflow's copy, layout, or content structure.
-  - The Discover/Saved/Search segmented control — `design_system.md` already documents it as
-    deliberately outside the button-variant system (native widget, own theming).
-  - Any new design tokens — every value used here already exists from 6a (`--ss-accent`,
-    `--ss-surface`, `--ss-border`, `--ss-radius-control`, `--ss-radius-surface`).
-  - Landing's typography (see decisions_reserved — this was a withdrawn question, not a change).
+  - A hero/secondary metric split — doesn't exist in the current code, chips apply uniformly
+    (see decisions_reserved correction above).
+  - Anything in Landing/Overflow (6b's territory, shipped) or the token system itself (6a's).
+  - Shortening `_BENCHMARK_INDICATOR_LABELS`' existing text — only swap *where* it's shown,
+    not *what* it says, unless a visual check shows it doesn't fit and the owner is asked
+    separately (not decided in this contract).
 
 done_when:
-  - Discover's Save/Skip bar renders pixel-identical before/after globalizing its button rule
-    (true no-op there — same values, wider selector).
-  - Landing's "Start exploring", Overflow's three buttons, Discover's two end-of-scope buttons,
-    Saved's "← Back to list", and Saved-news' "Try again" all render with the same accent/
-    surface skin as the Discover action bar.
-  - "Filters" popover trigger and the "⋯" overflow trigger render with the same surface/border/
-    radius look; the "⋯" trigger's own square sizing is unaffected.
-  - Both `st.expander` instances (Overflow "About the data", card "Practice with hypothetical
-    numbers") render bordered/filled instead of native Streamlit grey chrome.
-  - Row-overlay tap buttons (Saved list, Search results) remain fully invisible — no border/
-    background leaking through from the new global button rule.
-  - `pytest tests/` stays green (pure CSS + doc change, no Python logic touched).
-  - Real screenshots (Browser pane or the CDP-harness fallback from 6a) of Landing, the open
-    Overflow popover, the open Filters popover, and both expanders — before and after.
+  - A card with a full `card_assessments` row shows the verdict badge (emoji + short word)
+    and the AI read, both always visible, right after identity.
+  - A card with no matching `card_assessments` row shows neither — no placeholder, no
+    layout gap.
+  - A card whose row has `ai_read = null` shows the badge but omits the AI-read paragraph.
+  - The card's learn content (about-this-company, benchmarks, metric definitions, practice-
+    number widgets) all live inside exactly one `st.expander("Understand these numbers")` —
+    zero nested `<details>` remain in `build_card_html`'s output.
+  - Sector-benchmark comparisons show words ("Higher than sector median" etc.), not arrow
+    glyphs, wherever previously shown.
+  - Metric labels render as chips (bordered/filled pill), applied uniformly to every metric.
+  - `pytest tests/` green, including new coverage for `attach_assessments`, the health-block
+    states (present/absent/partial-null), the flattened metric blocks, and the no-nested-
+    details assertion.
+  - Real screenshots (Browser pane or the CDP-harness fallback) of all 3 health-block states,
+    the consolidated expander with working practice widgets, and the metric chips —
+    before/after, reviewed by the owner.
   - scope-auditor (always) + cto-reviewer (`frontend/*`) both PASS on the final staged diff,
     per `.claude/review_routing.json`.
 
 impact_map:
-  - Pure frontend CSS + one doc update. No backend/data/migration change, no new dependency.
-    Required reviewers (per `.claude/review_routing.json`): **scope-auditor** (always) ·
-    **cto-reviewer** (`frontend/*`). Neither analytics-engineer nor data-engineer nor
-    equity-analyst-reviewer route to this diff.
-  - Also subject to the project's **UX PR gate** (`docs/working_agreement.md`) — a separate,
-    project-specific requirement for any Streamlit layout/copy/interaction change (this is a
-    visual-skin change, not layout/copy, but the gate's 480px-smoke habit still applies).
+  - Frontend-only change (new fetch/join logic + card rendering restructuring + CSS + docs).
+    No backend/pipeline/migration change — `card_assessments` already exists and is already
+    populated by Slice 5's merged work; this slice only starts *reading* it. No new
+    dependency. Required reviewers (per `.claude/review_routing.json`): **scope-auditor**
+    (always) · **cto-reviewer** (`frontend/*`, `tests/*`). Neither analytics-engineer nor
+    data-engineer nor equity-analyst-reviewer route to this diff (no `*.sql`/dbt/`supabase/*`/
+    `ingestion/*`/`metric_catalogue.csv`/`data_contract.md`/`metric_layer.md` touched).
+  - Also subject to the project's **UX PR gate** (`docs/working_agreement.md`) — this IS a
+    layout/content change (unlike 6a/6b's pure-skin work), so the gate's mobile-wireframe and
+    "one primary job" requirements apply in full, not just as a habit.
 
 amendments:
-  - **scope-auditor FAIL (round 1), fixed — three findings:**
-    1. **`st.link_button` gap (the substantial one).** The original diff's button inventory
-       greped only `st.button(` calls, missing `st.link_button` entirely — the card footer's
-       "Yahoo Finance" link (`card_ui.py:233`, rendered on every card: Discover, Saved focus,
-       Search focus) rendered as an `<a>`, not a `<button kind="...">`, so it was structurally
-       invisible to the new global rules and stayed unstyled while everything else got
-       unified. This directly undercut the "100%, whole app" authority the contract cites.
-       **Fixed, and a second, deeper bug found while fixing it:** live DOM inspection showed
-       the real rendered attribute is `data-testid="stBaseLinkButton-secondary"`, not
-       `"stLinkButton"` as both my new rule AND a **pre-existing** (pre-6b) footer-scoped
-       sizing rule (`styles.py`, `.ss-card-footer-shell + ... a[data-testid="stLinkButton"]`)
-       assumed — meaning that older rule's font-size/min-height/padding/text-decoration have
-       never actually applied to this element, since before 6b started. Fixed both: added a
-       new global `a[data-testid="stBaseLinkButton-secondary"]` rule (same surface/border/
-       control-radius skin as a secondary button) and corrected the pre-existing rule's
-       selector to the real testid. Verified live: computed styles now show
-       `background: rgb(20,20,22)` / `border: 1px solid rgb(39,39,42)` / `border-radius: 8px`
-       — matching `--ss-surface`/`--ss-border`/`--ss-radius-control` exactly.
-    2. **Stale comment**, fixed. `styles.py`'s original 6a comment above the button-radius
-       rule ("Colors/backgrounds are NOT set here... until 6b unifies Landing/Overflow") went
-       unedited by this diff while a second comment two sections below said the opposite —
-       two comments in the same file disagreeing about current state. Updated the first to
-       reflect that 6b did close that gap.
-    3. **Segmented-control leak risk, verified rather than re-asserted.** The contract claimed
-       the nav pills stay unaffected by the widened `button[kind=...]` selectors but never
-       proved it the way it proved the row-overlay-button claim (CSS specificity math). Now
-       verified live: the segmented control's pill elements carry `kind="segmented_control"`/
-       `"segmented_controlActive"` (confirmed via `[data-testid^="stBaseButton-segmented_control"]`
-       in the live DOM), distinct string values from `"primary"`/`"secondary"` — attribute
-       selectors are exact-match, so there is no leak. The cto-reviewer independently confirmed
-       this same fact from the pinned `streamlit==1.57.0` bundle's own kind enum.
-  - **Round 2 — mechanical bug in this file, fixed:** a duplicate top-level `amendments:` key
-    (a stray `amendments: (none yet)` leftover from the original template, never removed when
-    the round-1 amendment above was appended). Removed. Flagged independently by both
-    reviewers, who also each escalated the same underlying question rather than failing or
-    passing outright:
-  - **cto-reviewer ESCALATE + scope-auditor FAIL (round 2) — same question, now owner-decided:**
-    was it appropriate to fold the pre-existing (out-of-slice) footer-link-rule testid bug fix
-    into this diff, discovered incidentally while fixing the in-scope `st.link_button` gap?
-    **Owner decision: keep it bundled** (same file, same CSS rule, same root cause — a rule
-    already known dead within this very diff would otherwise ship uncorrected right beside the
-    freshly-fixed live one referencing the same DOM node).
-  - **cto-reviewer ESCALATE, owner-decided:** should the new link-button skin also cover the
-    `-primary`/`-tertiary` `stBaseLinkButton` variants, which have zero live consumers today
-    (the one call site, `card_ui.py:233`, uses the default `secondary`)? **Owner decision:
-    cover all three now**, so a future `st.link_button(type="primary")` never silently ships
-    unstyled the same way this round's bug did. `-primary` reuses the accent skin from
-    `button[kind="primary"]`; `-tertiary` shares `-secondary`'s surface skin rather than
-    inventing a third color tier this app has no precedent for anywhere else.
+  - **MEDIAN_PRIMER wording (owner-approved this session):** the round-1 scope-auditor review
+    flagged that `frontend/card_copy.py`'s `MEDIAN_PRIMER` string had its arrow-glyph legend
+    clause ("↑ higher than median · ↓ lower than median · → at median") removed during
+    implementation, with no recorded authority — only `_BENCHMARK_INDICATOR_LABELS` was
+    named as pre-approved copy in `explicitly_not_in_scope`. The removal itself was correct
+    (the per-metric lines below it already show words, not arrows, so the legend described a
+    visual encoding the card no longer uses) — owner reviewed and approved keeping the fix.
+    `MEDIAN_PRIMER` now reads only "Median = the middle value among eligible companies in
+    this sector and market."
+  - **VERDICT_MEANING dropped (owner-approved this session):** the round-1 cto-reviewer flagged
+    that `VERDICT_MEANING` (specified in `technical_definition` above, originally) plus its
+    `tests/tooling/` sync-guard test shipped with zero consumers — nothing in this slice's UI
+    renders that sentence (the badge shows only `VERDICT_BADGE_LABEL`; the AI-read paragraph
+    is separate free text). Owner decided: drop both the dict and the guard test now (YAGNI);
+    re-add exactly when a real consumer needs it. Done — `VERDICT_MEANING` and
+    `tests/tooling/test_card_copy_verdict_sync.py` removed from this diff.
+  - **Dead `benchmark_indicator()`/`_BENCHMARK_INDICATORS` (owner-approved this session):** the
+    round-1 cto-reviewer flagged that this diff removes the last production caller of the
+    arrow-glyph function `benchmark_indicator()` (superseded by `benchmark_indicator_label()`),
+    leaving it and its dict dead — but the only remaining reference is
+    `tests/frontend/test_benchmark_indicators.py`, outside this contract's `scope_paths`. Owner
+    decided: leave it deferred to the already-spawned separate follow-up task rather than widen
+    this diff's scope this late in review. Not fixed here — tracked separately.

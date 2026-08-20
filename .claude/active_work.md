@@ -14,12 +14,14 @@ MERGED into `main`** (#139–#148, plus 5b via MR #3) — the full raw-data foun
 compute, the Router mechanism, and both the deterministic health-verdict generator and the Claude Haiku
 prose read are complete and merged, code-wise. Whether they're actually live for real users is a
 separate, unconfirmed question — see the Infra section for the unresolved Streamlit deploy path and
-unverified CI/CD variables. **Slice 6 (UI redesign)**, phased by the owner into 6a/6b/6c, is under way: **6a
-(design system foundation) is also MERGED** (MR #4 — tokens, shared row primitive, Search styling, six
-review rounds). **6b (Landing/Overflow unification) MR #9 open** (plus cleanup MR #8, see Status).
-**6c
-(render new card content: health verdict, AI read, per-type metrics onto the finished system)** is the
-remaining phase — **not started.**
+unverified CI/CD variables. **Slice 6 (UI redesign)**, phased by the owner into 6a/6b/6c, is now
+**code-complete on all three phases**: **6a MERGED** (MR #4 — tokens, shared row primitive, Search
+styling), **6b MERGED** (MR #8 revert + MR #9 — button/popover/expander/link-button skin unified
+app-wide, confirmed on `gitlab/main` @ `1463c95`), **6c MR #10 open**
+(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/10,
+`feat/ui-slice6c-card-content`) — health verdict badge + AI read now render on the card, the card's
+~11 disclosure toggles consolidated into one expander, metric-label chips, words-not-arrows benchmarks.
+**← START HERE: review MR #10 and merge if satisfied — that closes out Slice 6 entirely.**
 
 Note on this section: as of 2026-08-18, this repo's own committed handover prose still described 5b's
 MR #3 and 6a's MR #4 as "open" long after both were actually merged (confirmed via the real merge
@@ -81,11 +83,10 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
   test coverage, a hover-highlight CSS bug bleeding to all rows, an unverified Saved-focus-view
   regression, two rounds of fabricated "Used by" token-doc claims that needed real wiring, not just doc
   edits). pytest 145.
-- **Slice 6b — MR #9 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/9,
-  `feat/ui-slice6b-landing-overflow`): **button/popover/expander/link-button skin unified
-  app-wide.** **Merge MR #8 first** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/8)
-  — this branch was accidentally pushed straight to `main` first (see the git-push footgun note
-  in Do NOT), MR #8 reverts that on `main` so MR #9's diff applies cleanly on top. Owner's own instruction: "100% consistent
+- **Slice 6b (MR #8 + MR #9, both MERGED — confirmed on `gitlab/main` @ `1463c95`):**
+  **button/popover/expander/link-button skin unified app-wide.** MR #9's branch was
+  accidentally pushed straight to `main` first (see the git-push footgun note in Do NOT); MR
+  #8 reverted that on `main` so MR #9's diff applied cleanly on top. Owner's own instruction: "100% consistent
   design language for the whole web app" — not narrowly Landing/Overflow. Generalized the accent/surface
   button skin (was `.ss-action-shell`-scoped to just the Discover bar) to `button[kind="primary"/
   "secondary"]` globally; added base skins for every `st.popover` trigger (fixes the previously-fully-
@@ -106,6 +107,43 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
   the suite carries no regression signal for this diff specifically — verification was DOM/computed-style
   checks + real screenshots via the 6a headless-Chrome CDP harness). Full detail in
   `.claude/task/contract.md`'s amendments and `.claude/task/review.md`.
+- **Slice 6c — MR #10 open** (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/10,
+  `feat/ui-slice6c-card-content`, branched from `gitlab/main` @ `1463c95`, i.e. 6b's tip — no rebase
+  needed): **health verdict badge + AI read render on the card; ~11 disclosure toggles consolidated
+  into one `st.expander`; metric labels as chips; benchmark comparisons show words, not arrows.**
+  First slice to actually read `card_assessments` from `frontend/` (new
+  `fetch_all_assessment_rows`/`fetch_card_assessments`/`fetch_eligible_cards_with_assessments` in
+  `supabase_cards.py`, new pure `attach_assessments` in `explore_filters.py`). Two review rounds, both
+  FAILED round 1 with real findings, all resolved and recorded in `contract.md`'s `amendments` before
+  round 2 PASS: (1) `MEDIAN_PRIMER`'s stale arrow-glyph-legend clause was edited out (correctly — the
+  words-not-arrows swap made it inaccurate) with no recorded owner authority; owner approved keeping
+  the fix. (2) `VERDICT_MEANING` (a planned copy-sync mechanism, mirroring 5a's `INPUT_FIELDS_BY_TYPE`
+  guard) shipped with zero consumers anywhere in the UI; owner chose to drop it entirely (YAGNI) rather
+  than keep it as unused insurance — deleted along with its new `tests/tooling/` guard test. (3) this
+  diff's own hunk removes the last production caller of the arrow-glyph `benchmark_indicator()`/
+  `_BENCHMARK_INDICATORS`, leaving them dead with only an out-of-scope test
+  (`tests/frontend/test_benchmark_indicators.py`) still exercising them; owner chose to leave this
+  deferred rather than widen `scope_paths` this late — **a separate cleanup task for this is already
+  spawned** (chip in the session UI, title "Remove dead benchmark_indicator() glyph function"; if it's
+  gone from the UI by the time you read this, either it ran or was dismissed — check
+  `frontend/card_copy.py` directly). pytest 163. Local verification used a hand-built headless-Chrome
+  CDP harness (Browser pane tooling was non-functional this session) driving a Streamlit mock
+  entrypoint — **two real gotchas hit and fixed, worth knowing before rebuilding this pattern**: (a)
+  `app.py` calls `main()` unconditionally at module level, so a mock entrypoint must patch
+  settings/supabase_client/supabase_cards/browser_storage **before** `import app`, and must NOT also
+  call `app.main()` again on that same first run — Streamlit's `sys.modules` caching means `import app`
+  is a no-op on every SUBSEQUENT rerun within the same process, so the entrypoint needs `"app" not in
+  sys.modules` to decide whether to rely on the module-level call or invoke `app.main()` itself; getting
+  this wrong either renders nothing (no explicit call, no cached rerun) or crashes with
+  `StreamlitDuplicateElementId` (calling `main()` twice on the same run re-registers the same widget).
+  (b) the real `browser_storage.ensure_interactions_loaded()` mounts a `streamlit-extras`
+  `local_storage_manager` custom component that needs a genuine browser round-trip to report
+  `.ready()`; under CDP-driven automation it never does, so bypass the function entirely — but
+  `render_landing()`'s `onboarding_ready()` gate depends on a session-state flag that function normally
+  sets, so also seed `st.session_state[browser_storage._ONBOARDING_LOADED_FLAG] = True` directly, and
+  leave `is_onboarding_dismissed()` UNPATCHED (it just reads session state, which the real "Start
+  exploring" button click sets correctly on its own) — patching it to a hardcoded `False` blocks the
+  landing page from ever dismissing.
 - **Global hook bug found and fixed while landing 6b (separate track, affects every project on this
   machine, not just this repo):** `~/.claude/hooks/branch_discipline.py` and `commit_review_gate.py`
   (both wired via `.claude/settings.json`/the user-level `~/.claude/settings.json` per the agent-setup-
@@ -144,9 +182,8 @@ archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registra
   `.claude/task/contract.md`'s amendments log (9 review rounds across both MRs, 6 with real findings) and
   memory `global-hooks-collision-risk`.
 
-**Not started:**
-- **Slice 6c — render new card content** (health verdict, AI read, per-type metrics) **on the finished
-  design system.** Deferred by the owner, explicitly out of 6a/6b's scope.
+**Not started:** nothing on the Slice 6 track — 6a/6b/6c are all code-complete (6a/6b merged, 6c MR #10
+awaiting owner review). Next work here is whatever the owner scopes after Slice 6 closes out.
 
 ## Decisions locked (the important ones)
 
@@ -201,10 +238,11 @@ Approved plans (historical design docs, kept in case Slice 6 needs to consult pr
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **Slice 6b — Landing/Overflow unification.** MR #9 open (← START HERE) — merge MR #8 (the
-   accidental-main-push revert) first, then MR #9.
-2. **Slice 6c — render new card content** (health verdict, AI read, per-type metrics) on the finished
-   design system. Not started. This is what finally surfaces Slice 5's AI assessment work in the UI.
+1. **Slice 6c — MR #10.** ← START HERE. Owner reviews screenshots + the live MR diff, merges if
+   satisfied. Closes out the whole Slice 6 UI redesign once merged.
+2. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
+   `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
+   dismiss it.
 3. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
    see Infra section; status unconfirmed from this repo's own files.
 
@@ -238,6 +276,20 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
 ## Context / open items
 
+- **`~/.claude/hooks/branch_discipline.py`'s worktree-cd fix (landed during 6b) still has a gap, hit
+  for real during 6c:** `_leading_cd_dir()` only matches a *literal* `cd <dir> &&`/`cd <dir>;` at the
+  very start of the command string — it does not expand shell variables (`cd "$WORKTREE"` on its own
+  line inside a multi-line heredoc-style Bash call fails to match, since the regex sees the literal
+  text `$WORKTREE`, not a real directory) and doesn't handle `cd` as a standalone statement followed by
+  more commands on separate lines rather than chained with `&&`/`;`. Hit this directly: a `git commit`
+  issued via `cd "$WORKTREE" && git commit ...` with `WORKTREE` set by an earlier line in the same
+  multi-line command was wrongly evaluated against the main checkout (on `main`) and blocked with
+  "BRANCH BLOCKED". Worked around in-session by using a literal `cd "<absolute-path>" && git commit
+  ...` one-liner instead of a variable — the existing fix handles that shape correctly. Not fixed at
+  the hook level this session (out of this repo's scope, same as the `dbt-agent-kit` plugin's own
+  unfixed copy noted below) — if editing this hook again, consider resolving `_repo_root` by running
+  `git rev-parse --show-toplevel` with `cwd=event.get("cwd")` as a more robust fallback than
+  text-matching the command string at all.
 - **Review mechanics (keep — reused every slice):** the blocking review gate is `commit_review_gate.py`,
   wired in THIS repo's own `.claude/settings.json` (project-scoped) as of 2026-08-18, alongside
   `pre_push_gate.py` and `handover_in.py`. This corrects an earlier same-day attempt that wired all three

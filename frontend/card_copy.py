@@ -109,8 +109,7 @@ DEFAULT_SECTOR_GLOSS = (
 )
 
 MEDIAN_PRIMER = (
-    "Median = the middle value among eligible companies in this sector and market. "
-    "↑ higher than median · ↓ lower than median · → at median."
+    "Median = the middle value among eligible companies in this sector and market."
 )
 
 BENCHMARK_COMPARE_UNAVAILABLE_LEARN = (
@@ -372,3 +371,21 @@ def business_summary_is_truncated(
         return False
     _, truncated = truncate_words(full, max_words)
     return truncated
+
+
+# Health verdict (Slice 6c) — token -> emoji/label.
+VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
+VERDICT_BADGE_LABEL = {"green": "Sturdy", "yellow": "Mixed", "red": "Strained"}
+
+
+def health_verdict_token(card: dict) -> str | None:
+    """The card's health_verdict token if present and a known value, else None — a missing
+    or unrecognized token means "no assessment", never a placeholder."""
+    token = card.get("health_verdict")
+    return token if token in VERDICT_EMOJI else None
+
+
+def ai_read(card: dict) -> str | None:
+    """The card's Claude-written prose read, or None when absent/blank."""
+    text = str(card.get("ai_read") or "").strip()
+    return text or None

@@ -77,6 +77,30 @@ def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any
     return list(latest.values())
 
 
+_ASSESSMENT_FIELDS = ("health_verdict", "ai_read")
+
+
+def attach_assessments(
+    cards: list[dict[str, Any]],
+    assessments: dict[tuple[str, str], dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Copy health_verdict/ai_read onto each card when a matching card_assessments row
+    exists. No match (the assessments pipeline runs after export and can lag a
+    newly-eligible card) -> card returned unchanged. Callers must treat a missing
+    health_verdict key as "omit the health block", never a placeholder."""
+    result: list[dict[str, Any]] = []
+    for card in cards:
+        row = assessments.get(_card_key(card))
+        if row is None:
+            result.append(card)
+            continue
+        merged = dict(card)
+        for field in _ASSESSMENT_FIELDS:
+            merged[field] = row.get(field)
+        result.append(merged)
+    return result
+
+
 def _saved_keys(interactions: list[dict[str, Any]]) -> set[tuple[str, str]]:
     return {
         _card_key(row)
