@@ -65,6 +65,31 @@ def test_target_dev_passes_dev_schema_to_create_client(tmp_path: Path, monkeypat
     assert seen_kwargs["options"].schema == "dev"
 
 
+def test_options_passed_to_create_client_is_the_sync_variant(tmp_path: Path, monkeypatch) -> None:
+    """Regression guard: create_client's sync path reads options.storage internally
+    (a confirmed supabase-py==2.30.0 bug — supabase/supabase-py#1306), which the base
+    ClientOptions dataclass doesn't define, only SyncClientOptions/AsyncClientOptions do.
+    A revert to plain ClientOptions crashes for real (verified live) but wouldn't be
+    caught by the schema-only assertions elsewhere in this file, since both classes carry
+    a .schema attribute — only .storage distinguishes them.
+    """
+    db = tmp_path / "mart.duckdb"
+    _make_mart(db, [_ROW])
+    monkeypatch.setenv("SUPABASE_URL", "https://fake.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "fake-key")
+
+    seen_kwargs = {}
+
+    def fake_create_client(url, key, options=None):
+        seen_kwargs["options"] = options
+        return _FakeClient([])
+
+    monkeypatch.setattr(exp, "create_client", fake_create_client)
+
+    assert exp.main(["--duckdb-path", str(db)]) == 0
+    assert hasattr(seen_kwargs["options"], "storage")
+
+
 def test_target_prod_is_the_default_schema(tmp_path: Path, monkeypatch) -> None:
     db = tmp_path / "mart.duckdb"
     _make_mart(db, [_ROW])

@@ -63,7 +63,7 @@ protected-branch pipelines), and it only works if `main` is genuinely a protecte
 | `SUPABASE_DB_HOST` | Migrate, data pipeline (Session pooler hostname) |
 | `SUPABASE_DB_PORT` | Migrate, data pipeline (usually `5432`) |
 | `SUPABASE_ACCESS_TOKEN` | Migrate (optional Management API pooler fallback) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export (bypasses RLS) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export (bypasses RLS — still needs the table-level `GRANT`s in `supabase/migrations/011_grant_roles.sql`; see `supabase_setup.md`) |
 | `ANTHROPIC_API_KEY` | Data pipeline (assessment prose reads; soft dependency — skipped when unset) |
 
 Streamlit uses the **anon** key in its own hosting secrets — not in the data pipeline.

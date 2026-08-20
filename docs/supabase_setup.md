@@ -11,7 +11,13 @@ applied by `scripts/apply_supabase_migrations.py` (locally or via GitLab CI).
 
 1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and sign in.
 2. **New project** → pick an org, name (e.g. `stock-swipe-app`), database password, region.
-3. Wait for the project to finish provisioning.
+3. **"Automatically expose new tables"** — leave this **unchecked** (Supabase's own
+   recommendation; deliberate access control instead of exposing every table by default).
+   This means `service_role`/`anon`/`authenticated` get **no implicit table privileges** —
+   `supabase/migrations/011_grant_roles.sql` grants exactly what each table's RLS policy
+   already declares. If a future migration adds a new table those roles need to touch, a
+   matching `GRANT` has to be added explicitly; nothing grants it automatically.
+4. Wait for the project to finish provisioning.
 
 This is the only step that requires the Supabase UI.
 
@@ -54,6 +60,11 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `004_business_summary.sql` | `business_summary` text on mart (Yahoo longBusinessSummary) |
 | `005_ebit_margin_basis.sql` | `ebit_margin_basis` on mart |
 | `006_company_founded_year.sql` | `company_founded_year` on mart (optional; not shown on card yet) |
+| `007_router_card_columns.sql` | `company_type` + operating-card solvency/liquidity/returns columns (Sector Router 4a) |
+| `008_financial_card_metrics.sql` | Financial/bank-card metric columns (Sector Router 4b) |
+| `009_pre_revenue_card_metrics.sql` | Pre-revenue/survival-card metric columns (Sector Router 4c) |
+| `010_card_assessments.sql` | `card_assessments` table — health verdict + AI read (Slice 5) |
+| `011_grant_roles.sql` | Explicit role grants — needed when "automatically expose new tables" (step 1) is off |
 
 After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives company descriptions. Hard refresh or a new browser session reloads `all_cards` from Supabase.
 
@@ -75,7 +86,7 @@ sensitive and should stay Protected regardless.
 | `SUPABASE_DB_PASSWORD` | Migrate, data pipeline | Database password |
 | `SUPABASE_DB_HOST` | Migrate, data pipeline | **Session pooler hostname only** (recommended for CI) |
 | `SUPABASE_DB_PORT` | Migrate, data pipeline | Usually `5432` (Session pooler) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export | Bypasses RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export | Bypasses RLS — still needs the table-level `GRANT`s in `011_grant_roles.sql` |
 | `SUPABASE_ACCESS_TOKEN` | Migrate (optional) | Personal access token; Management API pooler lookup **fallback only** |
 
 ### CI migrations — recommended: host + port (not full URI)
@@ -170,7 +181,11 @@ Pipelines → Run pipeline**, then that job's manual play button. Never runs aut
 
 Row Level Security: stock data is publicly readable; interactions are scoped to the signed-in user.
 `schema_migrations` has RLS enabled with no policies (not exposed via the anon key).
-The service role key (used in CI export) bypasses RLS.
+The service role key (used in CI export) bypasses RLS — but RLS bypass is not a substitute
+for the table-level `GRANT`, which Postgres still enforces regardless of RLS. On a project
+with "automatically expose new tables" off (step 1), nothing grants that privilege
+implicitly; `supabase/migrations/011_grant_roles.sql` grants it explicitly, matching each
+table's RLS policy scope exactly.
 
 ---
 
