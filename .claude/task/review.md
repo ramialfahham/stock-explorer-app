@@ -1,60 +1,86 @@
 # Review
 
-diff_sha256: 490dbe09c1640e6e8947c56745eb95c44a520108d0f70d1b9c7dc9ce8655b5ca
+diff_sha256: 41704011f30a2738c9af4e0acea729de050793e90ae3bfa046786c1993d7bed3
 
-Two rounds. Round 1: cto-reviewer PASS; scope-auditor ESCALATE on one real question (the
-`render.yaml` service name is a public identifier, needing explicit owner sign-off even though
-it looked like an obvious default). Escalated to the owner and resolved before round 2. Round
-2: both PASS, independently re-verified.
+Three rounds, four required reviewers (scope-auditor always; cto-reviewer for
+`scripts/*`/`tests/*`; data-engineer-reviewer for `supabase/*`; analytics-engineer-reviewer
+per `.claude/review_routing.json`'s bare `*.sql` pattern, which literally matches
+`supabase/migrations/011_grant_roles.sql` — owner explicitly decided to run it per the
+literal rule rather than treat the pattern's scope as a separate config bug, see
+`.claude/task/contract.md`'s amendments). Real findings every round, all fixed.
 
-- Round 1 (scope-auditor): ESCALATE — `render.yaml`'s `name: stock-swipe-app` determines the
-  default public subdomain (`*.onrender.com`) once deployed. Per this repo's own decision-
-  rights rules, "anything permanent once published (URLs, slugs, public identifiers)" is
-  owner-reserved "however obvious it seems" — no recorded authority named that specific
-  string. Escalated to the owner: keep `stock-swipe-app` (matches the repo name, renamable
-  later) vs. pick something else. Owner chose `stock-explorer-app` (matches the product name
-  per `docs/north_star.md`).
-- Round 1 (cto-reviewer): PASS — verified the `render.yaml` build/start commands are sane,
-  `frontend/requirements.txt` (not the heavier root `requirements.txt`) is what's actually
-  referenced, `frontend/settings.py`'s existing `st.secrets` → `os.environ` fallback makes the
-  "no code change needed" claim true, and `tests/tooling/test_ci_reachability.py`'s edit is
-  genuinely comment-only (full-file read, every assertion/regex byte-identical).
-- Round 2 (scope-auditor): PASS — independently confirmed `render.yaml` actually says
-  `stock-explorer-app` now (not just asserted in the amendment prose), that the cited owner
-  authority (`north_star.md`'s product-name line) is real text in the repo, and re-ran a full
-  scope + doc-sync sweep from scratch.
-- Round 2 (cto-reviewer): PASS — confirmed the rename is exactly what changed since round 1
-  (no other drift), re-diffed `tests/tooling/test_ci_reachability.py` directly (comment-only
-  holds), and re-checked secrets/dependencies/guard-file integrity.
+- Round 1: cto-reviewer PASS; data-engineer-reviewer FAIL (grants migration under-provisioned
+  `service_role` — missed `scripts/check_supabase_connection.py`'s real, documented use of
+  the service-role key against `markets`/`user_interactions`); scope-auditor FAIL (three
+  findings — `docs/supabase_setup.md` doc-sync gap, wrong reviewer-routing claim in the
+  contract, a misrepresented citation of `.claude/active_work.md` plus a stale handover).
+  All fixed: `011_grant_roles.sql` extended (verified live — `check_supabase_connection.py`
+  runs clean), `docs/supabase_setup.md` updated, `.claude/active_work.md` rewritten with the
+  full session narrative, routing claim corrected.
+- Round 2: cto-reviewer PASS, data-engineer-reviewer PASS, analytics-engineer-reviewer PASS
+  (explicitly confirmed this diff has zero dbt-layer content — reviewing only because the
+  routing pattern's `*.sql` literally matches, not because anything dbt-shaped needed
+  checking); scope-auditor FAIL with four new findings from a fresh full hunt:
+  `docs/operations_guide.md` restated the same disproven RLS-bypass claim outside scope;
+  `docs/supabase_setup.md`'s migrations table didn't list `011` (the file this diff itself
+  creates); the `ClientOptions`→`SyncClientOptions` fix had zero regression-test coverage
+  (existing tests mock `create_client` and only assert `.schema`, which both classes share —
+  only `.storage` distinguishes them); the contract's own prose overstated
+  `check_supabase_connection.py` as reading "all four tables" (it reads three,
+  `card_assessments` never touched). All fixed: `docs/operations_guide.md` corrected and
+  added to scope, `docs/supabase_setup.md`'s table extended through `011`, a new regression
+  test added (verified to actually fail against the reverted bug, then pass again after
+  restoring the fix), and the false "four tables" claim corrected in both places it appeared.
+- Round 3: all four reviewers PASS, each independently re-verifying every prior finding
+  against live file content (not the amendments' own narrative) before re-running a full
+  fresh hunt on the whole diff.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Round-1's escalated service-name question: verified `render.yaml` actually says
-  `stock-explorer-app` (not just asserted in prose), and that the cited owner authority
-  (`north_star.md`'s product-name line) is real text in the repo, not invented.
-- Scope boundary: compared the contract's `scope_paths` against the actual `git diff --stat`
-  output (independent of the contract's own file list), and against a full-repo grep for the
-  string this task is retiring — no file changed outside scope, no leftover reference outside
-  the three named deferred `README.md` lines and the archived docs.
-- Technical premise ("no code change needed") underlying the whole plan: read
-  `frontend/settings.py` directly and confirmed the env-var fallback exists as claimed.
-- `test_ci_reachability.py` comment-only claim: read the full file and confirmed the diff
-  lines fall entirely inside the docstring, no assertion/regex/logic touched.
+- All four round-1 findings re-verified against live file content: `docs/operations_guide.md`
+  line 66 matches the patch hunk exactly; `docs/supabase_setup.md`'s migrations table runs
+  001→011 unbroken; the regression test is present and its `hasattr(..., "storage")`
+  assertion verified non-tautological via direct dataclass-field introspection of the
+  installed `supabase-py` package; the contract's technical_definition now states
+  `check_supabase_connection.py`'s `REQUIRED_TABLES` accurately (three tables).
+- Migration correctness: diffed `011_grant_roles.sql`'s grants line-by-line against the
+  actual RLS policies in `001_initial_schema.sql`/`002_fundamentals_mart.sql`/
+  `010_card_assessments.sql`, and against real write calls in `export_to_supabase.py`/
+  `generate_assessments.py` (`.upsert()` only, no `.delete()`) — no over-grant found.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Rename scope — confirmed `render.yaml`'s `name: stock-explorer-app` matches the recorded
-  amendment and `north_star.md`'s product-name guidance, and confirmed the diff's changed-file
-  list is exactly the 11 files in `scope_paths` (nothing extra crept in alongside the rename).
-- `tests/tooling/test_ci_reachability.py` (explicit territory) — diffed directly: 4 lines
-  changed, all inside the module docstring's prose; every constant, regex, and assertion is
-  byte-identical to `gitlab/main`.
-- Secrets — grepped the full patch for key/token/credential patterns, none found;
-  `render.yaml`'s two env vars use `sync: false` (no values committed).
-- Dependencies — `frontend/requirements.txt` diff is the header comment only; all three
-  version pins unchanged.
-- Guard integrity and cost — `.claude/settings.json`, `.claude/review_routing.json`, and
-  `.gitlab-ci.yml` untouched; `render.yaml` pins `plan: free`, and the Render-vs-Fly.io-vs-
-  Hetzner cost/mechanism decision is recorded as owner-approved in `decisions_reserved`.
+- Regression-test validity: read the test and the installed `supabase.lib.client_options`
+  source directly — confirmed `hasattr(options, "storage")` would genuinely fail against a
+  reverted `ClientOptions` import (base class has no `storage` field, only
+  `SyncClientOptions`/`AsyncClientOptions` do) — a real guard, not cosmetic.
+- Re-run/interruption safety of the new migration: read `apply_supabase_migrations.py`'s
+  `_apply_file`/`main` — each migration commits atomically with rollback-on-exception, and
+  `GRANT` statements are independently idempotent under Postgres, so both a crash-and-retry
+  and an out-of-band re-run are safe.
+
+## data-engineer-reviewer
+VERDICT: PASS
+risks_checked:
+- Grant scope vs. actual RLS policies (`001_initial_schema.sql`, `010_card_assessments.sql`)
+  read directly — every grant matches its table's existing policy `to`-role and operation
+  exactly, no over-grant, no delete privilege anywhere.
+- service_role grant coverage vs. real consumers (`check_supabase_connection.py`'s
+  `REQUIRED_TABLES`, `export_to_supabase.py`'s upsert) read directly — all three required
+  tables covered, granted operations match what the code actually does.
+- Regression-test validity checked at the source level (base `ClientOptions` has no
+  `storage` field; `_sync/client.py` line 285 reads `client_options.storage`), then ran the
+  full test file (4/4 pass).
+
+## analytics-engineer-reviewer
+VERDICT: PASS
+risks_checked:
+- Seeds/config-as-code risk: `011_grant_roles.sql`'s grants diffed against the actual RLS
+  policies in `001_initial_schema.sql` and `010_card_assessments.sql` — every grant matches
+  its table's declared policy scope exactly.
+- Regression-test quality checked against the installed `supabase` package source and run
+  live (4 passed) — a genuine discriminating guard, not a tautology.
+- Charter-fit re-confirmed each round: `git diff gitlab/main -- dbt_analytics/` returns zero
+  lines — no dbt-shaped finding manufactured where this diff has nothing dbt-layer to grip.
