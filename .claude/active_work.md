@@ -59,7 +59,8 @@ New → Blueprint → select this repo (auto-detects `render.yaml`), enter `SUPA
 URL back — `README.md` lines 11/13/92 (demo URL, "sleeps when idle" blurb, stack table) are
 deliberately still pointing at the dead `stock-explorer.streamlit.app` until then; updating them
 before the real URL exists would be misleading. Full detail: `.claude/task/contract.md` on
-`feat/render-deploy` (branch/MR TBD as of this entry).
+`feat/render-deploy`, MR #12 open
+(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/12).
 - `dbt-agent-kit` (this repo's guardrail plugin source) was not migrated — out of scope, also
   unreachable (same suspension).
 - Repo visibility: created private by default — flip if wrong; docs reference production secret names.
