@@ -117,10 +117,12 @@ def _company_about_body_html(card: dict) -> str:
 
 
 def build_learn_panel_body_html(card: dict) -> str:
-    """Inner HTML for the one learn expander: about-this-company, benchmark compare,
-    flattened metric definitions. No outer toggle — that's the st.expander itself now."""
-    about_section = _company_about_body_html(card)
+    """Inner HTML for the one learn expander: benchmark compare, flattened metric
+    definitions, about-this-company. No outer toggle — that's the st.expander itself now.
 
+    About-this-company is deliberately LAST, not first: this panel opens from a control
+    labeled "Understand these numbers" — leading with company description (unrelated to
+    any number) reads as a wall of text blocking what the user actually opened it for."""
     compare = _benchmark_compare_body(card)
     compare_section = ""
     if compare:
@@ -138,12 +140,12 @@ def build_learn_panel_body_html(card: dict) -> str:
             f"</div>"
         )
     return (
-        f"{about_section}"
         f"{compare_section}"
         f'<div class="ss-learn-section">'
         f'<p class="ss-learn-heading">What each metric means</p>'
         f"{_metric_definitions_body(card)}"
         f"</div>"
+        f"{_company_about_body_html(card)}"
     )
 
 
@@ -233,9 +235,10 @@ def build_card_html(
 
 
 def render_learn_panel(card: dict, *, widget_key_prefix: str = "card") -> None:
-    """The one learn panel: about-this-company, benchmark compare, metric definitions, and
-    the interactive practice widgets — all in a single st.expander. Replaces what used to
-    be an HTML <details> plus a separate "Practice with hypothetical numbers" expander."""
+    """The one learn panel, in north_star.md's Deep-tier order: benchmark compare, metric
+    definitions, about-this-company, then the interactive practice widgets — all in a
+    single st.expander. Replaces what used to be an HTML <details> plus a separate
+    "Practice with hypothetical numbers" expander."""
     with st.expander("Understand these numbers", expanded=False):
         body = build_learn_panel_body_html(card)
         if body:

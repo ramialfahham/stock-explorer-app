@@ -140,6 +140,23 @@ def test_learn_panel_body_includes_about_section_when_truncated() -> None:
     assert "About this company" in html
 
 
+def test_learn_panel_body_orders_numbers_content_before_company_description() -> None:
+    """The panel is titled "Understand these numbers" — company description (unrelated
+    to any number) must render last, not first, or it reads as a wall of text blocking
+    what the user opened the panel for."""
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 20
+    for metric, median_key, _direction in BENCHMARK_METRICS:
+        card[median_key] = 1.0
+    card["business_summary"] = " ".join(f"word{i}" for i in range(30))
+    html = build_learn_panel_body_html(card)
+    about_index = html.index("About this company")
+    compare_index = html.index("How we compare to similar companies")
+    metrics_index = html.index("What each metric means")
+    assert compare_index < about_index
+    assert metrics_index < about_index
+
+
 def test_benchmark_indicator_shows_words_not_arrow_glyphs() -> None:
     card = _card_with_all_metrics("operating")
     html = build_card_html(card)

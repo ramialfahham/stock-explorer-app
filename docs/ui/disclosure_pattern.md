@@ -34,6 +34,12 @@ Expander primitive) as an "About this company" section, not its own toggle. This
 deliberate consolidation, not drift — the "approved mock" called for one disclosure per card,
 and a second small toggle for the description would have left two.
 
+**Renders LAST within the panel, not first** (`build_learn_panel_body_html()` in
+`frontend/card_ui.py`) — the panel is labeled "Understand these numbers," so a control
+opened for that reason should lead with numbers content (benchmark compare, then metric
+definitions), not unrelated company prose. Keep any future section added to this panel
+ordered the same way: numbers content before company description.
+
 ---
 
 ## Anti-patterns
