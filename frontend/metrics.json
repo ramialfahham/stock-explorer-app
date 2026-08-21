@@ -35,7 +35,7 @@
       "basis_column": "ebit_margin_basis",
       "gloss": "Operating profit as share of sales (TTM)",
       "analogy": "For every dollar of sales, this is the slice kept as operating profit before interest and taxes.",
-      "learn": "This card sums Operating Income and Total Revenue from the last four quarterly financial statements, then divides — a trailing twelve-month (TTM) operating margin. It is not Yahoo's single-quarter operatingMargins snapshot.",
+      "learn": "Operating margin measures how much profit is left from each dollar of sales after operating costs, before interest and taxes. This figure divides Operating Income by Total Revenue, both summed across the last four quarters — a trailing twelve-month (TTM) margin, not Yahoo's single-quarter snapshot.",
       "importance_tier": 1,
       "display_order": 2,
       "benchmarkable": true,

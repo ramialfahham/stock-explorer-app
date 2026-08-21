@@ -23,22 +23,27 @@ Helper: `disclosure_html(preview, full_body_html, more_label=..., less_label=...
 | Surface | Status | Labels |
 |---------|--------|--------|
 | Saved tab headlines | Shipped | Read full headline / Show less |
-| Learn panel metric bodies | Backlog | — |
+| Company description (card face) | Shipped | Read more / Show less |
+| Learn panel metric bodies | Shipped | Read more / Show less |
 | Sector gloss long copy | Backlog | — |
 
-**Company description (Discover/Saved card) no longer uses this pattern (Slice 6c).** The
-card face shows only the word-limited preview (`frontend/card_ui.py`'s `_company_summary_html`);
-the full text, when the preview is truncated, moved into the card's one learn panel
-(`st.expander("Understand these numbers")` — see [`design_system.md`](design_system.md)'s
-Expander primitive) as an "About this company" section, not its own toggle. This was a
-deliberate consolidation, not drift — the "approved mock" called for one disclosure per card,
-and a second small toggle for the description would have left two.
+**Company description (Discover/Saved card) uses this pattern directly on the card face**
+(`frontend/card_ui.py`'s `_company_summary_html`) — a real reversal of the Slice 6c
+consolidation, made deliberately after the owner found the consolidated version's UX bad in
+practice: the full text used to live inside the card's one learn panel
+(`st.expander("Understand these numbers")`) as an "About this company" section, reachable
+only after opening the panel and scrolling past every metric's explanation. It no longer
+lives in the learn panel at all — the toggle sits inline, right where the truncated preview
+ends, so reading the rest of the description needs no navigation and no scrolling past
+unrelated content.
 
-**Renders LAST within the panel, not first** (`build_learn_panel_body_html()` in
-`frontend/card_ui.py`) — the panel is labeled "Understand these numbers," so a control
-opened for that reason should lead with numbers content (benchmark compare, then metric
-definitions), not unrelated company prose. Keep any future section added to this panel
-ordered the same way: numbers content before company description.
+**Learn panel metric bodies also use this pattern now** (`_metric_learn_blocks()` in
+`frontend/card_ui.py`) — each metric's full explanation gets its own toggle instead of every
+metric's paragraph rendering concatenated and always-visible once the panel opens. The
+label and analogy line stay unconditionally visible per metric (the scannable part);
+only the longer technical paragraph sits behind Read more. Native `<details>` are
+independent by default, so more than one metric can stay expanded at once if a reader wants
+to compare a couple — no extra state needed for that.
 
 ---
 

@@ -215,6 +215,7 @@ section[data-testid="stSidebar"] {
     font-size: 0.72rem;
     font-weight: 600;
     color: var(--ss-accent);
+    text-decoration: underline;
     line-height: 1.3;
 }
 
@@ -434,12 +435,6 @@ section[data-testid="stSidebar"] {
     color: var(--ss-accent);
     margin: 0.35rem 0 0.2rem;
     line-height: 1.4;
-}
-.ss-metric-gloss-inline {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-muted);
-    margin: 0 0 0.25rem;
-    line-height: 1.35;
 }
 .ss-metric-learn-body {
     font-size: var(--ss-caption-size);
