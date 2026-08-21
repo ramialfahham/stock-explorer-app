@@ -31,7 +31,9 @@
 3. **Gloss** — `.ss-metric-gloss` — one plain-language line under the value; always visible on the card face (Tier 2).
 
 Deep copy (analogy, learn text) lives in **Understand these numbers** (`st.expander` — one
-panel per card, Slice 6c; was `<details>` before), not in the cell.
+panel per card), not in the cell. Inside that panel, the analogy line renders unconditionally
+per metric; the longer learn-text paragraph sits behind its own `disclosure_html()` Read
+more/Show less toggle — see [`disclosure_pattern.md`](disclosure_pattern.md).
 
 ---
 

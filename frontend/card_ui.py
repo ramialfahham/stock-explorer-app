@@ -31,6 +31,7 @@ from card_copy import (
     sector_gloss_line,
     sector_headline,
 )
+from disclosure_html import disclosure_html
 from markets import market_display_name
 from live_quote import yahoo_finance_url
 from metric_school import render_metric_playgrounds
@@ -77,12 +78,18 @@ def _metric_learn_blocks(card: dict) -> str:
     blocks: list[str] = []
     for metric in metrics_for_card(card):
         value = card.get(metric)
+        full_body = f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, value, card))}</p>'
+        toggle = disclosure_html(
+            "",
+            full_body,
+            more_label="Read more",
+            less_label="Show less",
+        )
         blocks.append(
             f'<div class="ss-metric-learn-item">'
             f'<p class="ss-metric-learn-heading">{_esc(metric_label(metric, card))}</p>'
             f'<p class="ss-metric-analogy">{_esc(metric_analogy(metric, value, card))}</p>'
-            f'<p class="ss-metric-gloss-inline">{_esc(metric_gloss(metric, value, card))}</p>'
-            f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, value, card))}</p>'
+            f"{toggle}"
             f"</div>"
         )
     return "".join(blocks)
@@ -100,29 +107,14 @@ def _format_market_code(market_code: str | None) -> str:
     return market_display_name(market_code)
 
 
-def _company_about_body_html(card: dict) -> str:
-    """Full company description for the one learn panel — only when the card-face preview
-    is truncated (nothing more to show otherwise)."""
-    if not business_summary_is_truncated(card):
-        return ""
-    full = business_summary_full(card)
-    if not full:
-        return ""
-    return (
-        f'<div class="ss-learn-section">'
-        f'<p class="ss-learn-heading">About this company</p>'
-        f'<p class="ss-company-summary-full">{_esc(full)}</p>'
-        f"</div>"
-    )
-
-
 def build_learn_panel_body_html(card: dict) -> str:
-    """Inner HTML for the one learn expander: benchmark compare, flattened metric
-    definitions, about-this-company. No outer toggle — that's the st.expander itself now.
+    """Inner HTML for the one learn expander: benchmark compare, then flattened metric
+    definitions (each with its own Read more/Show less). No outer toggle — that's the
+    st.expander itself now.
 
-    About-this-company is deliberately LAST, not first: this panel opens from a control
-    labeled "Understand these numbers" — leading with company description (unrelated to
-    any number) reads as a wall of text blocking what the user actually opened it for."""
+    Company description does NOT render here — it has its own inline toggle on the card
+    face (`_company_summary_html`), right where a reader would expect to click it, instead
+    of living at the bottom of a panel titled for explaining numbers."""
     compare = _benchmark_compare_body(card)
     compare_section = ""
     if compare:
@@ -145,16 +137,27 @@ def build_learn_panel_body_html(card: dict) -> str:
         f'<p class="ss-learn-heading">What each metric means</p>'
         f"{_metric_definitions_body(card)}"
         f"</div>"
-        f"{_company_about_body_html(card)}"
     )
 
 
 def _company_summary_html(card: dict) -> str:
-    """Card-face preview only — the full text now lives in the one learn panel."""
+    """Card-face preview. When truncated, gets its own inline Read more/Show less right
+    where a reader would click it — not a separate section at the bottom of the learn
+    panel. Short descriptions render plain, nothing more to reveal."""
     preview = business_summary_preview(card)
     if not preview:
         return ""
-    return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+    if not business_summary_is_truncated(card):
+        return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+    full = business_summary_full(card)
+    if not full:
+        return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+    return disclosure_html(
+        _esc(preview),
+        f'<p class="ss-company-summary-full">{_esc(full)}</p>',
+        more_label="Read more",
+        less_label="Show less",
+    )
 
 
 def _health_block_html(card: dict) -> str:
@@ -235,10 +238,10 @@ def build_card_html(
 
 
 def render_learn_panel(card: dict, *, widget_key_prefix: str = "card") -> None:
-    """The one learn panel, in north_star.md's Deep-tier order: benchmark compare, metric
-    definitions, about-this-company, then the interactive practice widgets — all in a
-    single st.expander. Replaces what used to be an HTML <details> plus a separate
-    "Practice with hypothetical numbers" expander."""
+    """The one learn panel: benchmark compare, then per-metric definitions (each behind its
+    own Read more/Show less), then the interactive practice widgets — all in a single
+    st.expander. Company description does NOT render here — see
+    `_company_summary_html`'s own inline toggle on the card face."""
     with st.expander("Understand these numbers", expanded=False):
         body = build_learn_panel_body_html(card)
         if body:
