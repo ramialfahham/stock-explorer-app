@@ -12,12 +12,13 @@ one line here and let the archive keep the detail._
 + a health verdict, via the **Sector/Lifecycle Router** built in slices. **Slices 1–5a and 5b are all
 MERGED into `main`** (#139–#148, plus 5b via MR #3) — the full raw-data foundation, per-type metric
 compute, the Router mechanism, and both the deterministic health-verdict generator and the Claude Haiku
-prose read are complete and merged, code-wise. **They ARE now live for real users** — the app is
-deployed on Render (https://stock-explorer-app.onrender.com/) against a newly-created Supabase
-project (the old one is permanently inaccessible — see the Infra section for the full account-
-recovery story), confirmed rendering real card data end-to-end this session. Still open: the full-
-universe data ingestion (only a 40-ticker-per-market sample is live so far) and GitLab CI/CD
-variables for the new Supabase project (`data-pipeline` can't run for real yet — see Infra).
+prose read are complete and merged, code-wise. **They ARE now live for real users, at full scale**
+— the app is deployed on Render (https://stock-explorer-app.onrender.com/) against a newly-created
+Supabase project (the old one is permanently inaccessible — see the Infra section for the full
+account-recovery story), serving **910 real eligible cards** across all 5 markets, confirmed
+rendering end-to-end this session (fresh page load, no errors, benchmark words + health verdicts
+all correct). Still open: GitLab CI/CD variables for the new Supabase project so the pipeline can
+refresh this data on its own weekly schedule instead of relying on tonight's manual run — see Infra.
 **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
 button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
@@ -72,14 +73,18 @@ for manual access control) — this had a real consequence, see below.
   new `011_grant_roles.sql`, direct `db.{ref}.supabase.co:5432` connection — works from a
   home/dev machine; GitLab's shared runners still need the Session pooler host, unresolved,
   see CI/CD variables below).
-- Ingested a **40-tickers-per-market sample** (188 eligible cards) to prove the pipeline
-  end-to-end quickly — **not the full universe**. A full run (`python scripts/run_ingestion.py`,
-  no `--max-tickers`) was started in background this session; check whether it completed or
-  needs a retry (yfinance rate-limits at full scale — see "Do NOT" below for what that looks
-  like and how to tell a real stall from normal slowness).
-- **Two real bugs found and fixed while getting the export path working** (on branch
-  `fix/supabase-export-client-and-grants`, contract + review cycle in progress as of this
-  entry — check `git log`/open MRs to see if it landed):
+- **Full-universe ingestion completed and exported — 910 real eligible cards live**
+  (us_sp500 500, au_asx200 171, jp_nikkei225 109, uk_ftse100 91, de_dax 39; above the
+  843-card eligibility baseline). Started as a 40-tickers-per-market sample (188 cards) to
+  prove the pipeline quickly, then re-run at full scale once the export bugs below were
+  fixed. `dbt build` 105/105, all three health-check scripts (`check_pipeline_completeness`,
+  `check_eligibility_baseline`, `check_export_health`) green. Confirmed live on Render with
+  a fresh page load (no cached-session artifacts) — 910 companies, real benchmark words,
+  health verdicts rendering.
+- **Two real bugs found and fixed while getting the export path working — MERGED** (MR #13,
+  `fix/supabase-export-client-and-grants`, `gitlab/main` @ `aa63058`; three review rounds,
+  four required reviewers, real findings every round — full detail in that MR's
+  `.claude/task/contract.md` amendments and `.claude/task/review.md` if you need the trail):
   1. `scripts/export_to_supabase.py` used `ClientOptions` from `supabase.lib.client_options`
      for a **sync** client — a confirmed upstream `supabase-py==2.30.0` bug
      (supabase/supabase-py#1306: the sync path internally reads `client_options.storage`,
@@ -118,11 +123,11 @@ for manual access control) — this had a real consequence, see below.
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** land `fix/supabase-export-client-and-grants` (branch/review in
-progress as of this entry), then set the GitLab CI/CD variables above for the new Supabase
-project so `data-pipeline` can run for real and keep the live app's data fresh weekly instead
-of relying on manual local runs. Confirm the full-universe ingestion (not just the 40-ticker
-sample) actually completed and was exported.
+**Next concrete action:** set the GitLab CI/CD variables above for the new Supabase project
+so `data-pipeline` can run for real on its Mon 06:00 UTC schedule and keep the live app's
+910 cards fresh weekly, instead of relying on tonight's manual local run. This is now the
+only thing standing between "the app is live with real data" (true today) and "the app
+stays current without a human re-running the pipeline by hand."
 
 ## Status
 
