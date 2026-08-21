@@ -1,86 +1,60 @@
 # Review
 
-diff_sha256: 41704011f30a2738c9af4e0acea729de050793e90ae3bfa046786c1993d7bed3
+diff_sha256: 7411aa16450aca28d6c3122cc1f97988141a4303b24b1c3b5efba68234d34aff
 
-Three rounds, four required reviewers (scope-auditor always; cto-reviewer for
-`scripts/*`/`tests/*`; data-engineer-reviewer for `supabase/*`; analytics-engineer-reviewer
-per `.claude/review_routing.json`'s bare `*.sql` pattern, which literally matches
-`supabase/migrations/011_grant_roles.sql` — owner explicitly decided to run it per the
-literal rule rather than treat the pattern's scope as a separate config bug, see
-`.claude/task/contract.md`'s amendments). Real findings every round, all fixed.
+Three rounds, two required reviewers (scope-auditor always; cto-reviewer per
+`.claude/review_routing.json`'s `frontend/*`/`tests/*` patterns). Real findings in rounds 1
+and 2, all fixed; round 3 clean.
 
-- Round 1: cto-reviewer PASS; data-engineer-reviewer FAIL (grants migration under-provisioned
-  `service_role` — missed `scripts/check_supabase_connection.py`'s real, documented use of
-  the service-role key against `markets`/`user_interactions`); scope-auditor FAIL (three
-  findings — `docs/supabase_setup.md` doc-sync gap, wrong reviewer-routing claim in the
-  contract, a misrepresented citation of `.claude/active_work.md` plus a stale handover).
-  All fixed: `011_grant_roles.sql` extended (verified live — `check_supabase_connection.py`
-  runs clean), `docs/supabase_setup.md` updated, `.claude/active_work.md` rewritten with the
-  full session narrative, routing claim corrected.
-- Round 2: cto-reviewer PASS, data-engineer-reviewer PASS, analytics-engineer-reviewer PASS
-  (explicitly confirmed this diff has zero dbt-layer content — reviewing only because the
-  routing pattern's `*.sql` literally matches, not because anything dbt-shaped needed
-  checking); scope-auditor FAIL with four new findings from a fresh full hunt:
-  `docs/operations_guide.md` restated the same disproven RLS-bypass claim outside scope;
-  `docs/supabase_setup.md`'s migrations table didn't list `011` (the file this diff itself
-  creates); the `ClientOptions`→`SyncClientOptions` fix had zero regression-test coverage
-  (existing tests mock `create_client` and only assert `.schema`, which both classes share —
-  only `.storage` distinguishes them); the contract's own prose overstated
-  `check_supabase_connection.py` as reading "all four tables" (it reads three,
-  `card_assessments` never touched). All fixed: `docs/operations_guide.md` corrected and
-  added to scope, `docs/supabase_setup.md`'s table extended through `011`, a new regression
-  test added (verified to actually fail against the reverted bug, then pass again after
-  restoring the fix), and the false "four tables" claim corrected in both places it appeared.
-- Round 3: all four reviewers PASS, each independently re-verifying every prior finding
-  against live file content (not the amendments' own narrative) before re-running a full
-  fresh hunt on the whole diff.
+- Round 1: scope-auditor ESCALATE (did the UX PR gate's north_star/component-specs/480px-smoke
+  bullets apply to this diff, beyond the mobile-wireframe bullet the contract already
+  addressed?); cto-reviewer FAIL (`render_learn_panel()`'s docstring in `frontend/card_ui.py`
+  still stated the pre-fix section order — only the sibling docstring on
+  `build_learn_panel_body_html()` had been updated — and independently verified the new
+  regression test actually fails against a reconstruction of the pre-fix code, confirming it's
+  a real guard, not a tautology). Resolved: `docs/north_star.md:80`'s Deep-tier row already
+  specifies the exact order this fix implements — the diff corrects Slice 6c's drift from an
+  already-approved spec, not a fresh UX decision; verified by reading the doc directly. 480px
+  smoke run for real via the Browser pane (375×812 preset) rather than argued around. Docstring
+  fixed to match.
+- Round 2: cto-reviewer PASS (independently re-verified the docstring fix, the north_star.md
+  citation, and the regression test's validity against a fresh reconstruction). scope-auditor
+  ESCALATE again — this time on the round-1 *amendment's own rigor*: its claim that north_star.md
+  is cited by "every `docs/ui/*.md` file" was false (`disclosure_pattern.md`, the file this diff
+  itself edits, doesn't cite it — 4 of 5 do), and the 480px claim wasn't reflected in `done_when`
+  with concrete evidence. Both fixed: citation claim corrected to the verified count
+  (`grep -l north_star docs/ui/*.md`), `done_when` updated with the specific measured values
+  (`scrollWidth == clientWidth == 375`, `hasHScroll: false`, both views tested).
+- Round 3: both reviewers PASS, each independently re-verifying the round-2 corrections against
+  live file content (re-ran the grep themselves, re-read north_star.md, re-ran the test suite)
+  rather than trusting the amendments' own narrative. scope-auditor's PASS names two residual,
+  non-blocking risks: the 480px check covered one card/two views, not every company type or
+  surface; the regression test covers HTML string order only, not actual rendered layout. Both
+  are true and are the honest limit of this diff's verification, not a defect in it — noted here
+  rather than silently dropped.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- All four round-1 findings re-verified against live file content: `docs/operations_guide.md`
-  line 66 matches the patch hunk exactly; `docs/supabase_setup.md`'s migrations table runs
-  001→011 unbroken; the regression test is present and its `hasattr(..., "storage")`
-  assertion verified non-tautological via direct dataclass-field introspection of the
-  installed `supabase-py` package; the contract's technical_definition now states
-  `check_supabase_connection.py`'s `REQUIRED_TABLES` accurately (three tables).
-- Migration correctness: diffed `011_grant_roles.sql`'s grants line-by-line against the
-  actual RLS policies in `001_initial_schema.sql`/`002_fundamentals_mart.sql`/
-  `010_card_assessments.sql`, and against real write calls in `export_to_supabase.py`/
-  `generate_assessments.py` (`.upsert()` only, no `.delete()`) — no over-grant found.
+- 480px smoke test is based on a single card (Agilent) and two views (landing, Discover),
+  leaving coverage gaps for other cards with different content lengths and pre-revenue metrics
+  that could cause horizontal scroll.
+- Regression test only asserts HTML string ordering; no automated mobile-viewport test exists
+  to catch horizontal-scroll reintroductions from future CSS/layout changes.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Regression-test validity: read the test and the installed `supabase.lib.client_options`
-  source directly — confirmed `hasattr(options, "storage")` would genuinely fail against a
-  reverted `ClientOptions` import (base class has no `storage` field, only
-  `SyncClientOptions`/`AsyncClientOptions` do) — a real guard, not cosmetic.
-- Re-run/interruption safety of the new migration: read `apply_supabase_migrations.py`'s
-  `_apply_file`/`main` — each migration commits atomically with rollback-on-exception, and
-  `GRANT` statements are independently idempotent under Postgres, so both a crash-and-retry
-  and an out-of-band re-run are safe.
-
-## data-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- Grant scope vs. actual RLS policies (`001_initial_schema.sql`, `010_card_assessments.sql`)
-  read directly — every grant matches its table's existing policy `to`-role and operation
-  exactly, no over-grant, no delete privilege anywhere.
-- service_role grant coverage vs. real consumers (`check_supabase_connection.py`'s
-  `REQUIRED_TABLES`, `export_to_supabase.py`'s upsert) read directly — all three required
-  tables covered, granted operations match what the code actually does.
-- Regression-test validity checked at the source level (base `ClientOptions` has no
-  `storage` field; `_sync/client.py` line 285 reads `client_options.storage`), then ran the
-  full test file (4/4 pass).
-
-## analytics-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- Seeds/config-as-code risk: `011_grant_roles.sql`'s grants diffed against the actual RLS
-  policies in `001_initial_schema.sql` and `010_card_assessments.sql` — every grant matches
-  its table's declared policy scope exactly.
-- Regression-test quality checked against the installed `supabase` package source and run
-  live (4 passed) — a genuine discriminating guard, not a tautology.
-- Charter-fit re-confirmed each round: `git diff gitlab/main -- dbt_analytics/` returns zero
-  lines — no dbt-shaped finding manufactured where this diff has nothing dbt-layer to grip.
+- Silent drift alongside the "contract-only" edit — verified `review_input.patch` is
+  byte-identical to a fresh `git diff main` and `git status` shows only the four `scope_paths`
+  files touched; both `card_ui.py` docstrings and the reorder remain exactly as round 2 left
+  them.
+- Citation-count claim being a second unverified overclaim rather than a real fix —
+  independently re-ran `grep -l north_star docs/ui/*.md` against the real files (4 of 5 hit,
+  `disclosure_pattern.md` doesn't) and confirmed it matches the contract's corrected text and
+  `north_star.md:80`'s actual content.
+- Regression test being cosmetic rather than protective — ran the suite directly (95/95 in
+  `tests/frontend/`, including the new order-assertion test) rather than trusting the
+  contract's claim.
+- 480px `done_when` entry still being vague post-edit — read it directly; it names the tool,
+  viewport, method, and exact pass/fail numbers.
