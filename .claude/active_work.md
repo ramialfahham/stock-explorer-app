@@ -28,9 +28,8 @@ config, same class as the variable values).
 button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
 read now render on the card, the card's ~11 disclosure toggles consolidated into one expander,
 metric-label chips, words-not-arrows benchmarks). Confirmed via `git fetch gitlab` — `gitlab/main` @
-`0a72073` (merge commit of `feat/ui-slice6c-card-content`). **Slice 6 is closed. ← START HERE: pick
-the next piece of work — nothing is queued below beyond the small deferred/infra items in Status and
-Next concrete actions.**
+`0a72073` (merge commit of `feat/ui-slice6c-card-content`). **Slice 6 is closed** — see
+Next concrete actions below for what's actually queued now.
 
 Note on this section: as of 2026-08-18, this repo's own committed handover prose still described 5b's
 MR #3 and 6a's MR #4 as "open" long after both were actually merged (confirmed via the real merge
@@ -137,23 +136,16 @@ stays current unattended."
 
 ## Status
 
-**Open, awaiting owner review — MR #15
-(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/15,
-`fix/learn-panel-metrics-first`): learn-panel content order fixed.** Owner testing the live
-app found "Understand these numbers" opened with the full company description before any
-numbers content. Root cause: `docs/north_star.md:80` already specifies the correct order
-(compare → metric definitions → about-company → playgrounds) — Slice 6c's implementation had
-drifted from it, so this is a bug fix restoring an already-approved spec, not a new UX
-decision. Three review rounds, real findings in the first two — a stale docstring on the
-sibling render function, and an unverified overclaim in the contract's own amendment text —
-both caught by reviewers re-verifying claims against live files, both fixed; new regression
-test confirmed to actually fail against a reconstruction of the pre-fix code. Full detail in
-`.claude/task/contract.md`/`review.md` on this branch. **Raised but NOT started:** the
-metric-cell display (label+value+benchmark+gloss ×5) reads flat/"so what" per the owner.
-Monochrome-only + no-arrow-glyphs are deliberate north_star.md policy, not oversight — color/
-arrows are off the table without reopening those calls. One direction discussed: a magnitude
-cue (e.g. min–median–max range mark), since today's benchmark text is binary with no sense of
-scale. Nothing scoped or built — ask the owner whether to make this its own slice.
+**MERGED — MR #15 (`fix/learn-panel-metrics-first` → `gitlab/main` @ `f1ee009`): learn-panel
+content order fixed** (about-company was rendering first, ahead of any numbers content;
+now matches `docs/north_star.md:80`'s already-approved Deep-tier order). Three review
+rounds, real findings in the first two, both fixed — full trail archived on the merged
+branch if needed. **Raised but NOT started:** the metric-cell display
+(label+value+benchmark+gloss ×5) reads flat/"so what" per the owner. Monochrome-only +
+no-arrow-glyphs are deliberate north_star.md policy, not oversight — color/arrows are off
+the table without reopening those calls. One direction discussed: a magnitude cue (e.g.
+min–median–max range mark), since today's benchmark text is binary with no sense of scale.
+Nothing scoped or built — ask the owner whether to make this its own slice.
 
 **Merged (full detail in `docs/handover_2026-08-18.md`):**
 - Metric layer + data-only `info_*` metrics (#131–137): ROE, four ratios, FCF yield.
@@ -334,11 +326,12 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: MR #15 (learn-panel content order) awaiting owner review** — see Status above.
-2. Owner creates the GitLab pipeline schedule (Mon 06:00 UTC) — see Infra; CI/CD variable
-   *values* are done, the schedule itself is the one remaining piece.
-3. Ask the owner whether/how to scope the metric-cell visual-hierarchy redesign — see Status
-   above; diagnosed and discussed, nothing built.
+1. **← START HERE: owner creates the GitLab pipeline schedule** (Mon 06:00 UTC) — see Infra;
+   CI/CD variable *values* are done (confirmed live), the schedule itself is the one
+   remaining piece before the app refreshes unattended.
+2. Ask the owner whether/how to scope the metric-cell visual-hierarchy redesign — see Status
+   above; diagnosed and discussed, nothing built. MR #15 (learn-panel content order) is
+   MERGED — no longer an action item.
 4. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
