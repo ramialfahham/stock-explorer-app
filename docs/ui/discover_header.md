@@ -75,7 +75,7 @@ Popover content order:
 1. **Right now** — tab-aware one-liner (`right_now_line`)
 2. **Tip** — Discover / Saved / Search hint
 3. Actions (start over, clear saved, etc.)
-4. **About the data** expander — weekly refresh, five-metric gate, market breakdown; caption when `business_summary` export is missing
+4. **About the data** expander — refresh cadence (every two weeks), five-metric gate, market breakdown; caption when `business_summary` export is missing
 
 ---
 

@@ -261,13 +261,13 @@ Benchmark availability does **not** affect `is_card_eligible`.
 | Layer | Cadence | Owner |
 |-------|---------|-------|
 | Constituents | On demand / when index changes | `refresh_constituents.py` |
-| Fundamentals | **Weekly** (or on statement refresh) | GitLab CI `data-pipeline` job |
-| Daily prices | Weekly or daily (supporting only) | Same pipeline |
+| Fundamentals | **Every two weeks** (or on statement refresh) | GitLab CI `data-pipeline` job |
+| Daily prices | Every two weeks or daily (supporting only) | Same pipeline |
 | Supabase export | After successful dbt build | `export_to_supabase.py` |
 | News (Phase 2) | Daily | Separate workflow |
 
-**Stale export policy:** if weekly pipeline fails completeness gate, **keep last good Supabase
-snapshot**; do not truncate to empty.
+**Stale export policy:** if the scheduled pipeline run fails the completeness gate, **keep
+last good Supabase snapshot**; do not truncate to empty.
 
 ---
 
@@ -340,7 +340,7 @@ and `roic` (see migration `002_fundamentals_mart.sql`).
 ## Supabase assessments — `card_assessments`
 
 AI **health assessment** per card, written by `scripts/generate_assessments.py` after the mart export
-(weekly pipeline). Educational only — **not** investment advice. **Slice 5a** writes the deterministic
+(scheduled pipeline). Educational only — **not** investment advice. **Slice 5a** writes the deterministic
 verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` with a **Claude Haiku**
 (`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and ends on the verdict's
 meaning — regenerated only when `input_hash` changes or `ai_read` is null. The card renders it in **Slice 6**.

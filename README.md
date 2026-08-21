@@ -37,7 +37,7 @@ flowchart TD
         direction TB
         F["Streamlit prototype<br/>discovery queue · save / not-now"]
     end
-    G["GitLab CI<br/>weekly schedule"] -.orchestrates.-> core
+    G["GitLab CI<br/>scheduled pipeline"] -.orchestrates.-> core
 ```
 
 Nothing runs on a developer machine in production — the pipeline is scheduled in CI and
@@ -55,8 +55,8 @@ the app reads only the exported marts.
 - **Deterministic discovery queue** — round-robin across markets, unseen-first,
   sector-balanced ([`discovery_queue.py`](frontend/discovery_queue.py)). Ordering, not
   a black-box recommender.
-- **Automated weekly refresh** — ingestion → dbt → export runs on schedule in GitLab
-  CI, gated by dbt tests, a layer contract, and secret scanning.
+- **Automated scheduled refresh** — ingestion → dbt → export runs on schedule in GitLab
+  CI (1st and 15th of each month), gated by dbt tests, a layer contract, and secret scanning.
 
 ## Design decisions
 
@@ -64,8 +64,8 @@ The reasoning and trade-offs behind the core — deeper context lives in
 [`docs/`](docs/) and is linked, not restated.
 
 - **Data source — yfinance, batch, not real-time.** Free and broad, with no API key, at
-  the cost of being unofficial and occasionally gappy. The pipeline refreshes weekly and
-  the app never shows a live quote; the eligibility gate absorbs missing fields rather
+  the cost of being unofficial and occasionally gappy. The pipeline refreshes every two
+  weeks and the app never shows a live quote; the eligibility gate absorbs missing fields rather
   than papering over them. See [`docs/project_context.md`](docs/project_context.md).
 - **Transform on ephemeral DuckDB.** dbt builds against a throwaway DuckDB in CI — no
   warehouse to run or pay for, fast local iteration — then exports the finished marts to

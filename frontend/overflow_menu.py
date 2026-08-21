@@ -19,7 +19,7 @@ from markets import (
     market_display_name,
 )
 
-MENU_DATA_SOURCE = "Sourced from Yahoo Finance via our weekly pipeline."
+MENU_DATA_SOURCE = "Sourced from Yahoo Finance via our pipeline, refreshed every two weeks."
 MENU_MARKETS_LINE = "Markets: US, UK, Japan, Australia, Germany"
 MENU_METRICS_LINE = "Five metrics per company — no substitutes"
 
@@ -86,10 +86,10 @@ def _render_about_data(*, cards: list[dict[str, Any]], counts: dict[str, int]) -
         snapshot = latest_snapshot_label(cards)
         if snapshot:
             st.markdown(
-                f"Fundamentals refresh weekly · data as of **{snapshot}**",
+                f"Fundamentals refresh every two weeks · data as of **{snapshot}**",
             )
         else:
-            st.markdown("Fundamentals refresh weekly.")
+            st.markdown("Fundamentals refresh every two weeks.")
         st.markdown(MENU_METRICS_LINE)
         st.markdown(MENU_MARKETS_LINE)
         st.markdown(MENU_DATA_SOURCE)
@@ -103,7 +103,7 @@ def _render_about_data(*, cards: list[dict[str, Any]], counts: dict[str, int]) -
                 st.caption(breakdown)
         if cards_lack_business_summary(cards):
             st.caption(
-                "Company descriptions are missing from this export — run the weekly "
+                "Company descriptions are missing from this export — run the "
                 "pipeline after migration 004 and re-export mart_stock_cards."
             )
 

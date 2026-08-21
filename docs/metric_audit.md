@@ -4,7 +4,7 @@ Compare [`mart_stock_cards`](../dbt_analytics/models/5_marts/mart_stock_cards.sq
 
 ## Run locally
 
-After a healthy `dbt build` (or weekly pipeline):
+After a healthy `dbt build` (or scheduled pipeline run):
 
 ```bash
 # DuckDB mart (default) — fresh yfinance fetch + dbt rebuild
@@ -39,7 +39,7 @@ Reports are written to `storage/audit/metric_audit_<timestamp>.csv` and `.json`.
 
 High `drift_pct_*` with **low** `snapshot_age_days` → the mart and a fresh rebuild disagree on current data: investigate the export or a since-changed upstream — not the formula, which is identical (the same dbt model produced both).
 
-High `drift_pct_*` with **high** `snapshot_age_days` → the mart is simply stale; run export / wait for the weekly pipeline.
+High `drift_pct_*` with **high** `snapshot_age_days` → the mart is simply stale; run export / wait for the next scheduled pipeline run.
 
 Offline mode (`--offline`, the CI smoke) reports only the `mart_*`, `snapshot_age_days`, and `business_summary_present` columns — no fetch, no rebuild.
 

@@ -50,7 +50,7 @@ Doc-only PRs (`docs/**` excluding registry) skip Tier B dbt builds.
 
 ### Tier C — production (`data-pipeline` job)
 
-Weekly / scheduled full run:
+Scheduled full run:
 
 1. Ingest all active markets
 2. `dbt build` (full)
@@ -58,7 +58,8 @@ Weekly / scheduled full run:
 4. `export_to_supabase.py`
 
 A GitLab pipeline schedule (CI/CD → Schedules — project configuration, not something a
-commit can set) drives the weekly run; a manual `web` dispatch can trigger it on demand.
+commit can set) drives the scheduled run (1st and 15th of each month); a manual `web`
+dispatch can trigger it on demand.
 
 ### dbt testing checklist (before PR)
 
@@ -74,7 +75,7 @@ commit can set) drives the weekly run; a manual `web` dispatch can trigger it on
 
 After CI/CD variables are configured on GitLab:
 
-1. Manual `web` dispatch on **data-pipeline** (or wait for Monday 06:00 UTC schedule).
+1. Manual `web` dispatch on **data-pipeline** (or wait for the 1st/15th 06:00 UTC schedule).
 2. Confirm job steps: ingest → `dbt build` → completeness → export.
 3. Optional local audit before activating a market: `python scripts/audit_yfinance_coverage.py`.
 

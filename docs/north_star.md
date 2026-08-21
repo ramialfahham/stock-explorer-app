@@ -219,7 +219,7 @@ thresholds.
 |------|--------|
 | Saved-tab headlines (2–3 per company, on focus) | **Shipped** — on-demand yfinance, session cache; not a separate CI workflow |
 | Discover metric range filters | **Backlog** — [`backlog/discover_metric_filters_phase2.md`](backlog/discover_metric_filters_phase2.md) |
-| Richer saved-company updates when fundamentals refresh weekly | Backlog |
+| Richer saved-company updates when fundamentals refresh | Backlog |
 | Optional **Not now** review list | Backlog |
 | Optional filter persistence to localStorage | Backlog |
 | Two-company saved compare (vertical table) | Backlog |
