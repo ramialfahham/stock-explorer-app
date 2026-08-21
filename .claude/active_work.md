@@ -12,10 +12,13 @@ one line here and let the archive keep the detail._
 + a health verdict, via the **Sector/Lifecycle Router** built in slices. **Slices 1–5a and 5b are all
 MERGED into `main`** (#139–#148, plus 5b via MR #3) — the full raw-data foundation, per-type metric
 compute, the Router mechanism, and both the deterministic health-verdict generator and the Claude Haiku
-prose read are complete and merged, code-wise. Whether they're actually live for real users is a
-separate, unconfirmed question — see the Infra section: Render was chosen as the deploy path and
-repo-side prep has landed, but the owner's manual account/connect steps are still pending, and CI/CD
-variable values are unverified. **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
+prose read are complete and merged, code-wise. **They ARE now live for real users** — the app is
+deployed on Render (https://stock-explorer-app.onrender.com/) against a newly-created Supabase
+project (the old one is permanently inaccessible — see the Infra section for the full account-
+recovery story), confirmed rendering real card data end-to-end this session. Still open: the full-
+universe data ingestion (only a 40-ticker-per-market sample is live so far) and GitLab CI/CD
+variables for the new Supabase project (`data-pipeline` can't run for real yet — see Infra).
+**Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
 button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
 read now render on the card, the card's ~11 disclosure toggles consolidated into one expander,
@@ -44,36 +47,82 @@ owner's direction. Orthogonal to the Sector Router / AI-assessment work.
 parses). Full narrative (CI-minutes blocker, runner consolidation, branch-protection ordering trap)
 archived in `docs/handover_2026-08-18.md` and [[gitlab-runner-duplicate-registration]].
 
-**Deploy path — Render chosen, repo-side prep landed, owner's manual steps still pending:**
-Streamlit Community Cloud only deploys from GitHub, and the GitHub account is still suspended
-(no ETA) — ruled out any GitHub-dependent workaround. Owner chose **Render** (native GitLab
-OAuth integration, auto-deploy on push) over Fly.io (CLI-driven, no native git integration) and
-self-hosting on the existing Hetzner box (most control, most ongoing maintenance owned by the
-owner). Repo-side prep: new `render.yaml` Blueprint (repo root) + doc/comment updates —
-`docs/streamlit_deploy.md`/`docs/supabase_setup.md` rewritten for the Render flow, `CLAUDE.md`/
-`docs/project_context.md` stack lines swapped. No code changes needed — `frontend/settings.py`
-already falls back from `st.secrets` to plain `os.environ.get(...)`. **Owner's manual steps
-(cannot be done by the agent — account/OAuth/secrets):** sign up at render.com, connect GitLab,
-New → Blueprint → select this repo (auto-detects `render.yaml`), enter `SUPABASE_URL`/
-`SUPABASE_ANON_KEY` when prompted, confirm branch `main`, Apply/Create. Once live, report the
-URL back — `README.md` lines 11/13/92 (demo URL, "sleeps when idle" blurb, stack table) are
-deliberately still pointing at the dead `stock-explorer.streamlit.app` until then; updating them
-before the real URL exists would be misleading. Full detail: `.claude/task/contract.md` on
-`feat/render-deploy`, MR #12 open
-(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/12).
+**Deploy path — DONE, app is LIVE:** https://stock-explorer-app.onrender.com/. Streamlit
+Community Cloud only deployed from GitHub, and the GitHub account is still suspended (no ETA)
+— ruled out any GitHub-dependent workaround. Owner chose **Render** (native GitLab OAuth
+integration, auto-deploy on push) over Fly.io and self-hosting on Hetzner. Repo-side prep
+landed via MR #12 (merged): `render.yaml` Blueprint + doc updates. Owner completed the manual
+account/connect/secrets steps live; confirmed working end-to-end (real card data rendering,
+navigation, Save/Not now all clean) — see the Supabase account-recovery entry below for why
+this took a second pass on the secrets.
+
+**Supabase account recovery — the OLD project is permanently inaccessible, a NEW one now
+backs the app.** The old Supabase account was itself linked to GitHub for login only — the
+same suspension that killed Streamlit Community Cloud also locked the owner out of Supabase
+(Supabase's password-reset flow confirmed: GitHub-OAuth-only account, no password fallback).
+A free-tier support ticket was filed (SU-450943, no SLA) but not relied on. **Fix:** owner
+created a brand-new Supabase project — signed up with a Gmail plus-alias
+(`rami.fahham+supabase2@gmail.com`, same inbox, distinct string so Supabase's signup didn't
+collide with the locked account) using plain email/password, **no OAuth dependency this
+time** — cannot be locked out the same way again. New project: `stock-explorer` org,
+`https://jftklivldxuoumcdabny.supabase.co`, region `eu-west-1` (Ireland). Created with
+**"Automatically expose new tables" deliberately unchecked** (Supabase's own recommendation
+for manual access control) — this had a real consequence, see below.
+- Schema migrated clean (`apply_supabase_migrations.py`, all 10 pre-existing migrations +
+  new `011_grant_roles.sql`, direct `db.{ref}.supabase.co:5432` connection — works from a
+  home/dev machine; GitLab's shared runners still need the Session pooler host, unresolved,
+  see CI/CD variables below).
+- Ingested a **40-tickers-per-market sample** (188 eligible cards) to prove the pipeline
+  end-to-end quickly — **not the full universe**. A full run (`python scripts/run_ingestion.py`,
+  no `--max-tickers`) was started in background this session; check whether it completed or
+  needs a retry (yfinance rate-limits at full scale — see "Do NOT" below for what that looks
+  like and how to tell a real stall from normal slowness).
+- **Two real bugs found and fixed while getting the export path working** (on branch
+  `fix/supabase-export-client-and-grants`, contract + review cycle in progress as of this
+  entry — check `git log`/open MRs to see if it landed):
+  1. `scripts/export_to_supabase.py` used `ClientOptions` from `supabase.lib.client_options`
+     for a **sync** client — a confirmed upstream `supabase-py==2.30.0` bug
+     (supabase/supabase-py#1306: the sync path internally reads `client_options.storage`,
+     which the generic `ClientOptions` dataclass doesn't define). Fix: `SyncClientOptions`.
+     `frontend/supabase_client.py`'s `get_anon_client()` is unaffected (no explicit
+     `options=` passed) — confirmed the live Render app never hit this.
+  2. **"Automatically expose new tables" being off means NO role gets implicit table
+     privileges** — every existing migration's "service role bypasses RLS by default"
+     comment assumed a grant that doesn't exist without that setting. `RLS restricts which
+     rows a role sees; it does not substitute for the underlying GRANT`, which Postgres
+     still enforces. New `supabase/migrations/011_grant_roles.sql` grants exactly what each
+     table's existing RLS policy already declares — found via `export_to_supabase.py`
+     erroring `permission denied for table mart_stock_cards`, then via a review-cycle
+     finding that `scripts/check_supabase_connection.py` (documented setup-verify step)
+     *also* needs `service_role` SELECT on `markets`/`user_interactions`, which the first
+     draft of the migration missed. **If a future migration adds a new table any of
+     `anon`/`authenticated`/`service_role` needs to touch, add a matching `GRANT` explicitly
+     — nothing grants it automatically on this project.**
+- `docs/supabase_setup.md` updated to document the toggle + its consequence (was previously
+  silent on both, which is exactly what let the bug slip through the original migrations).
+
 - `dbt-agent-kit` (this repo's guardrail plugin source) was not migrated — out of scope, also
   unreachable (same suspension).
 - Repo visibility: created private by default — flip if wrong; docs reference production secret names.
-- CI/CD variable *values* (Supabase creds, `ANTHROPIC_API_KEY`) — confirm these are actually set now
-  that 5b (which needs `ANTHROPIC_API_KEY`) is merged; `supabase-migrate` and `data-pipeline` were
-  unexercised pending this, plus the Mon 06:00 UTC pipeline schedule, which is project config and can't
-  be committed.
+- **CI/CD variable values need updating to the NEW Supabase project** (confirmed this session
+  they were never actually set in GitLab for the *old* project either — checked GitLab
+  Settings → CI/CD → Variables directly, found none there at all). Needed:
+  `SUPABASE_URL`, `SUPABASE_DB_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`,
+  and a **Session pooler** `SUPABASE_DB_HOST`/`SUPABASE_DB_PORT` (NOT the direct host — GitLab's
+  shared runners can't reach it over IPv6; run `python scripts/discover_supabase_db_host.py`
+  locally against the new project once its `.env` values are stable, or copy the Session
+  pooler connection string from Supabase's Dashboard → Project Settings → Database directly —
+  faster and more reliable than the discovery script's brute-force region probing). `supabase-migrate`
+  and `data-pipeline` are still unexercised in CI pending this, plus the Mon 06:00 UTC pipeline
+  schedule, which is project config and can't be committed.
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** complete the Render manual steps above (owner-only) to actually get the app
-live, then verify the CI/CD variables and pipeline schedule are actually set (owner-only) — unclear
-from this repo's own files whether that step ever happened, since it predates confirmation.
+**Next concrete action:** land `fix/supabase-export-client-and-grants` (branch/review in
+progress as of this entry), then set the GitLab CI/CD variables above for the new Supabase
+project so `data-pipeline` can run for real and keep the live app's data fresh weekly instead
+of relying on manual local runs. Confirm the full-universe ingestion (not just the 40-ticker
+sample) actually completed and was exported.
 
 ## Status
 

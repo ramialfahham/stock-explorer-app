@@ -25,7 +25,7 @@ import duckdb
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
-from supabase.lib.client_options import ClientOptions
+from supabase.lib.client_options import SyncClientOptions
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -143,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Nothing to export; keeping existing Supabase snapshot.")
         return 0
 
-    client = create_client(url, key, options=ClientOptions(schema=schema))
+    client = create_client(url, key, options=SyncClientOptions(schema=schema))
     batch_size = 500
     for start in range(0, len(records), batch_size):
         batch = records[start : start + batch_size]
