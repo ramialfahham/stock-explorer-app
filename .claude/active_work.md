@@ -17,8 +17,12 @@ prose read are complete and merged, code-wise. **They ARE now live for real user
 Supabase project (the old one is permanently inaccessible — see the Infra section for the full
 account-recovery story), serving **910 real eligible cards** across all 5 markets, confirmed
 rendering end-to-end this session (fresh page load, no errors, benchmark words + health verdicts
-all correct). Still open: GitLab CI/CD variables for the new Supabase project so the pipeline can
-refresh this data on its own weekly schedule instead of relying on tonight's manual run — see Infra.
+all correct). **GitLab CI/CD variables for the new Supabase project are now set** (all 6:
+`SUPABASE_URL`/`SUPABASE_DB_PASSWORD`/`SUPABASE_DB_HOST`/`SUPABASE_DB_PORT`/
+`SUPABASE_SERVICE_ROLE_KEY`/`ANTHROPIC_API_KEY`, all Protected, confirmed via `glab variable
+list`) — still open: **the Mon 06:00 UTC pipeline schedule itself doesn't exist yet** (checked,
+zero schedules on the project) — see Infra for the exact steps, owner-only (GitLab project
+config, same class as the variable values).
 **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
 button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
@@ -109,27 +113,47 @@ for manual access control) — this had a real consequence, see below.
 - `dbt-agent-kit` (this repo's guardrail plugin source) was not migrated — out of scope, also
   unreachable (same suspension).
 - Repo visibility: created private by default — flip if wrong; docs reference production secret names.
-- **CI/CD variable values need updating to the NEW Supabase project** (confirmed this session
-  they were never actually set in GitLab for the *old* project either — checked GitLab
-  Settings → CI/CD → Variables directly, found none there at all). Needed:
-  `SUPABASE_URL`, `SUPABASE_DB_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`,
-  and a **Session pooler** `SUPABASE_DB_HOST`/`SUPABASE_DB_PORT` (NOT the direct host — GitLab's
-  shared runners can't reach it over IPv6; run `python scripts/discover_supabase_db_host.py`
-  locally against the new project once its `.env` values are stable, or copy the Session
-  pooler connection string from Supabase's Dashboard → Project Settings → Database directly —
-  faster and more reliable than the discovery script's brute-force region probing). `supabase-migrate`
-  and `data-pipeline` are still unexercised in CI pending this, plus the Mon 06:00 UTC pipeline
-  schedule, which is project config and can't be committed.
+- **CI/CD variable values: DONE this session.** All 6 set in GitLab Settings → CI/CD →
+  Variables, all Protected, the three real secrets (`SUPABASE_DB_PASSWORD`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`) also Masked+hidden. `SUPABASE_DB_HOST`/
+  `SUPABASE_DB_PORT` came from the owner reading the Session pooler host/port directly off
+  Supabase's Dashboard → Project Settings → Database → Connection string — the discovery
+  script (`scripts/discover_supabase_db_host.py`) was tried first and failed on every one of
+  44 candidate endpoints from this machine (psycopg2 imports fine, so this reads as a local
+  network/firewall issue, not a dead project) — if reaching for it again, expect it may not
+  work from this machine and go straight to the dashboard instead.
+- **Still open: the Mon 06:00 UTC pipeline schedule itself.** Checked via `glab api
+  projects/.../pipeline_schedules` — empty, none exist. Variables alone don't make
+  `data-pipeline` run on its own; owner still needs to create the schedule: GitLab →
+  **Build → Pipeline schedules → New schedule**, cron `0 6 * * 1`, timezone UTC, target
+  branch `main`, leave variables blank (project-level ones already apply), Active toggled on.
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** set the GitLab CI/CD variables above for the new Supabase project
-so `data-pipeline` can run for real on its Mon 06:00 UTC schedule and keep the live app's
-910 cards fresh weekly, instead of relying on tonight's manual local run. This is now the
-only thing standing between "the app is live with real data" (true today) and "the app
-stays current without a human re-running the pipeline by hand."
+**Next concrete action:** owner creates the pipeline schedule above. Once that's done,
+`data-pipeline` refreshes the live app's 910 cards on its own weekly, instead of relying on
+manual local runs — the last piece between "the app is live with real data" and "the app
+stays current unattended."
 
 ## Status
+
+**Open, awaiting owner review — MR #15
+(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/15,
+`fix/learn-panel-metrics-first`): learn-panel content order fixed.** Owner testing the live
+app found "Understand these numbers" opened with the full company description before any
+numbers content. Root cause: `docs/north_star.md:80` already specifies the correct order
+(compare → metric definitions → about-company → playgrounds) — Slice 6c's implementation had
+drifted from it, so this is a bug fix restoring an already-approved spec, not a new UX
+decision. Three review rounds, real findings in the first two — a stale docstring on the
+sibling render function, and an unverified overclaim in the contract's own amendment text —
+both caught by reviewers re-verifying claims against live files, both fixed; new regression
+test confirmed to actually fail against a reconstruction of the pre-fix code. Full detail in
+`.claude/task/contract.md`/`review.md` on this branch. **Raised but NOT started:** the
+metric-cell display (label+value+benchmark+gloss ×5) reads flat/"so what" per the owner.
+Monochrome-only + no-arrow-glyphs are deliberate north_star.md policy, not oversight — color/
+arrows are off the table without reopening those calls. One direction discussed: a magnitude
+cue (e.g. min–median–max range mark), since today's benchmark text is binary with no sense of
+scale. Nothing scoped or built — ask the owner whether to make this its own slice.
 
 **Merged (full detail in `docs/handover_2026-08-18.md`):**
 - Metric layer + data-only `info_*` metrics (#131–137): ROE, four ratios, FCF yield.
@@ -310,17 +334,16 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: complete the Render manual steps** (owner-only — see Infra section above) so the
-   app is actually reachable, then report the live URL back so `README.md` can be updated.
-2. Merge `feat/render-deploy`'s MR once reviewed (repo-side prep: `render.yaml` + doc updates).
-3. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
+1. **← START HERE: MR #15 (learn-panel content order) awaiting owner review** — see Status above.
+2. Owner creates the GitLab pipeline schedule (Mon 06:00 UTC) — see Infra; CI/CD variable
+   *values* are done, the schedule itself is the one remaining piece.
+3. Ask the owner whether/how to scope the metric-cell visual-hierarchy redesign — see Status
+   above; diagnosed and discussed, nothing built.
+4. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
-4. Confirm the GitLab CI/CD variables (`ANTHROPIC_API_KEY` etc.) and pipeline schedule are actually set —
-   see Infra section; status unconfirmed from this repo's own files.
 5. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
-4. Ask the owner what's next — no product slice is currently scoped beyond Slice 6.
 
 ## Do NOT
 
