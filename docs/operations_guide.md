@@ -28,7 +28,7 @@ Nothing in this path runs on a developer laptop in production.
 | Job | Trigger | Purpose |
 |-----|---------|---------|
 | [`validate:full`](../.gitlab-ci.yml) | Every MR + push to `main` | Fast integrity checks (Tier A/B) |
-| [`data-pipeline`](../.gitlab-ci.yml) | Mon 06:00 UTC pipeline schedule + manual web dispatch | Full ingest, dbt, completeness, export (Tier C) |
+| [`data-pipeline`](../.gitlab-ci.yml) | 1st/15th 06:00 UTC pipeline schedule + manual web dispatch | Full ingest, dbt, completeness, export (Tier C) |
 
 ### Verify production pipeline
 
@@ -45,7 +45,7 @@ If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` loc
 After a successful export, deploy or refresh the UI: [`streamlit_deploy.md`](streamlit_deploy.md).
 
 **Saved-tab headlines:** fetched on demand when the user opens a saved company (yfinance,
-session cache ~1 hour). Not part of the weekly fundamentals pipeline and not shown on Discover.
+session cache ~1 hour). Not part of the scheduled fundamentals pipeline and not shown on Discover.
 
 ---
 

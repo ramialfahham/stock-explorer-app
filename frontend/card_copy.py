@@ -322,7 +322,12 @@ def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str |
     return _BENCHMARK_INDICATOR_LABELS[position]
 
 
-STALE_SNAPSHOT_DAYS = 7
+# Worst-case gap between two HEALTHY scheduled runs under the 1st/15th cron, plus one day
+# of slack: 15th -> 1st is 14 days after a non-leap February, 17 days after any 31-day
+# month. A threshold at or below that worst case would flag the normal tail of a healthy
+# cycle as stale, same failure mode this constant is supposed to catch. Was 7, matched to
+# the prior weekly cadence the same way — recalibrate this again if the cron changes.
+STALE_SNAPSHOT_DAYS = 18
 
 # Yahoo longBusinessSummary preview length on the card face (tap to expand).
 BUSINESS_SUMMARY_PREVIEW_WORDS = 20

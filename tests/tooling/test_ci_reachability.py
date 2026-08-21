@@ -28,7 +28,7 @@ coexisted with three real defects in the migration this template came from — a
 on every merge request, jobs that would die at an auth guard on every run, and a nightly
 schedule that would have started a second full production build every night. This repo's
 own equivalent of that last one is concrete: `data-pipeline` already calls
-`apply_supabase_migrations.py` on its weekly cron, so an incorrectly-guarded
+`apply_supabase_migrations.py` on its own cron, so an incorrectly-guarded
 `supabase-migrate` would apply migrations to production a second time, concurrently, on
 every schedule. These tests evaluate `rules:` the way GitLab does, which is the only thing
 that would have caught it.
@@ -207,7 +207,7 @@ def test_only_the_scheduled_job_runs_on_a_schedule():
 
     assert SCHEDULED_JOB in jobs, f"{SCHEDULED_JOB!r} is missing — the schedule has nothing to run"
     assert _when_in(jobs[SCHEDULED_JOB], "schedule") != "never", (
-        f"{SCHEDULED_JOB!r} does not run on a schedule — the weekly refresh would never fire"
+        f"{SCHEDULED_JOB!r} does not run on a schedule — the scheduled refresh would never fire"
     )
 
 

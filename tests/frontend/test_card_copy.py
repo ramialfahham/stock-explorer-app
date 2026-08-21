@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 from card_copy import (  # noqa: E402
     ALL_METRICS,
     BUSINESS_SUMMARY_PREVIEW_WORDS,
+    STALE_SNAPSHOT_DAYS,
     business_summary_is_truncated,
     business_summary_preview,
     format_metric_value,
+    freshness_line,
     metric_analogy,
     metric_gloss,
     metric_label,
@@ -207,3 +211,28 @@ def test_metrics_for_card_tier_split() -> None:
     assert set(tier1) | set(tier2) == set(metrics_for_card(card))
     assert "forward_pe" in tier1  # hero three
     assert "statement_roe_pct" in tier2  # balance metric below the fold
+
+
+def test_freshness_line_silent_within_normal_cadence() -> None:
+    """A snapshot from the tail of a healthy 1st/15th cycle must NOT read as stale —
+    that's the exact noise this threshold exists to avoid. Pinned to a literal day
+    count, not derived from STALE_SNAPSHOT_DAYS itself — deriving the fixture from the
+    same constant under test would pass at any threshold value, including a wrong one."""
+    snapshot = date.today() - timedelta(days=18)
+    line = freshness_line({"snapshot_date": snapshot.isoformat()})
+    assert "may be up to" not in line
+
+
+def test_freshness_line_flags_genuinely_stale_snapshot() -> None:
+    snapshot = date.today() - timedelta(days=19)
+    line = freshness_line({"snapshot_date": snapshot.isoformat()})
+    assert "may be up to" in line
+
+
+def test_stale_snapshot_days_covers_worst_case_healthy_gap() -> None:
+    """Regression guard for the bug this exact constant already shipped once: a
+    threshold left over from a shorter cadence flags every normal refresh as stale.
+    15th -> 1st after a 31-day month is the longest gap between two healthy runs
+    under the 1st/15th cron; the threshold must clear it."""
+    worst_case_healthy_gap_days = 17
+    assert STALE_SNAPSHOT_DAYS > worst_case_healthy_gap_days

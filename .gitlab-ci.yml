@@ -61,7 +61,7 @@ workflow:
 # `$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH` rule in this file; and GitLab evaluates
 # `changes:` as TRUE on any pipeline that is not a push or an MR, so a path filter does not
 # hold a job back on a schedule either. Concretely here: `data-pipeline` already runs
-# `apply_supabase_migrations.py` on its weekly cron, so an unguarded `supabase-migrate`
+# `apply_supabase_migrations.py` on its own cron, so an unguarded `supabase-migrate`
 # would apply migrations to production a second time, concurrently, on every schedule.
 #
 # Rules are first-match-wins, so this is only a guard where it comes FIRST.
@@ -224,11 +224,12 @@ supabase-migrate:
 # test_ci_reachability.py the only one it may reach.
 #
 # The schedule itself is PROJECT CONFIGURATION and cannot be committed: until the owner
-# creates a Mon 06:00 UTC pipeline schedule, this job simply never runs on its own. That is
+# creates a pipeline schedule (1st and 15th of each month, 06:00 UTC — an experimental
+# project doesn't need weekly refreshes), this job simply never runs on its own. That is
 # the safe default — an absent schedule costs nothing.
 #
 # ANTHROPIC_API_KEY is a soft dependency: generate_assessments.py skips the prose reads and
-# still upserts verdicts when it is unset, so the weekly run degrades rather than fails.
+# still upserts verdicts when it is unset, so the scheduled run degrades rather than fails.
 data-pipeline:
   <<: *python
   stage: production

@@ -1,126 +1,140 @@
 # Task contract
 
-objective: **Replace the card's two flat-scroll disclosure surfaces with per-item
-  progressive disclosure**, reusing the existing `disclosure_html()` component rather than
-  inventing a new one. Two surfaces: (1) the company description gets its own inline
-  "Read more" toggle directly under the card-face preview, instead of living at the bottom
-  of the "Understand these numbers" panel; (2) each metric's full explanation in "What each
-  metric means" gets its own toggle instead of all metrics' full paragraphs rendering
-  concatenated and always-visible. Raised live by the owner testing the deployed app,
-  researched against NN/g's progressive-disclosure and accordion guidance, wireframed and
-  approved in conversation before this contract was written.
+objective: **Switch the data pipeline's refresh cadence from weekly to every two weeks**
+  (owner decision — experimental project, doesn't need weekly refreshes) and sweep every
+  place in the repo that describes the old cadence so nothing is left contradicting it. The
+  schedule itself is GitLab project config and can't be committed — the owner creates it;
+  this task covers everything else: the one piece of user-facing copy affected, and every
+  internal doc/comment/test string that named "weekly."
 
 scope_paths:
-  - frontend/disclosure_html.py           # preview param becomes optional (skip empty <p>)
-  - frontend/card_ui.py                   # both disclosure surfaces + _company_about_body_html() removed
-  - frontend/styles.py                    # toggle underline (shared rule); drop dead .ss-metric-gloss-inline
-  - dbt_analytics/seeds/metric_catalogue.csv  # ebit_margin_pct learn text (Option A, owner-picked)
-  - frontend/metrics.json                 # regenerated output, not hand-edited
-  - tests/frontend/test_card_ui.py        # tests for both new disclosure surfaces
-  - tests/frontend/test_disclosure_html.py # round-1 review finding: cover the new falsy-skippable preview branch
-  - docs/ui/disclosure_pattern.md         # flip "no longer uses this pattern" back; Backlog -> Shipped
-  - docs/ui/card_metric_cell.md           # "Deep copy lives in Understand these numbers" no longer covers about-company
-  - docs/north_star.md                    # Deep-tier row: about-company delivery mechanism changed
+  - frontend/overflow_menu.py            # user-facing copy, owner-approved wording
+  - .gitlab-ci.yml                       # 3 comments describing cadence/schedule
+  - tests/tooling/test_ci_reachability.py # 2 comments/assertion strings
+  - dbt_analytics/models/sources.yml     # 1 source-doc comment
+  - docs/operations_guide.md
+  - docs/data_contract.md
+  - docs/development_workflow.md
+  - README.md
+  - docs/ui/discover_header.md           # must mirror overflow_menu.py's actual copy
+  - docs/metric_audit.md
+  - docs/north_star.md                   # 1 backlog-table line
+  - .env.example                         # round-1 review finding: missed "weekly" reference
+  - frontend/card_copy.py                # round-1 review finding: STALE_SNAPSHOT_DAYS recalibration
+  - tests/frontend/test_card_copy.py     # new coverage for the recalibrated threshold
   - .claude/task/contract.md
 
 decisions_reserved (owner-approved this session, in conversation):
-  - **Reopening Slice 6c's "one disclosure per card" and "flatten 11 metric toggles into
-    one list" decisions** — both explicitly reopened by the owner after seeing the live app;
-    not the agent's call, owner-initiated.
-  - **Toggle color**: keep the existing `--ss-accent` gold (consistent with the Saved-headline
-    toggle already using it), add underline so it doesn't blend with `.ss-metric-analogy`
-    (same gold, no underline) sitting right next to it on the per-metric surface — owner
-    confirmed this reads clearly in the wireframe.
-  - **`ebit_margin_pct` learn copy**: owner flagged "This card sums..." as bad opening
-    phrasing (the one metric, of 16, that opens by referencing the UI instead of defining
-    the metric). Owner picked "Option A" from two drafts offered, framed against the other
-    15 metrics' established opening pattern (define the metric first). Round-1 review then
-    caught a real accuracy gap in Option A as drafted — it dropped the word "divide,"
-    describing the calculation as summing two numbers without stating the division that
-    makes the result a margin. Round-2 review then caught the fix's own grammar: "summed
-    across the last four quarters" read, by ordinary proximity parsing, as modifying only
-    "Total Revenue" — leaving Operating Income's period unstated and inviting a beginner to
-    compute roughly a quarter of the true margin. Both fixed without a second owner
-    round-trip (factual/clarity completions, not new framing decisions) — final approved
-    text, verbatim, matching the seed byte-for-byte:
-    > Operating margin measures how much profit is left from each dollar of sales after
-    > operating costs, before interest and taxes. This figure divides Operating Income by
-    > Total Revenue, both summed across the last four quarters — a trailing twelve-month
-    > (TTM) margin, not Yahoo's single-quarter snapshot.
-  - **Redundant gloss line dropped** from the per-metric learn block (`.ss-metric-gloss-inline`,
-    `ss-metric-gloss-inline` class + its one call site) — owner's own strikethrough
-    annotation on a screenshot; it restated the label in flatter language once the full
-    paragraph sits behind its own toggle.
+  - **Bi-weekly cadence itself** — owner's call (§6 schedule), stated directly: "since this
+    is an experimental project, we don't need to update every week... run the pipeline
+    bi-weekly," then confirmed the concrete trigger days: "the 1st and the 15th."
+  - **User-facing copy in `frontend/overflow_menu.py`** — three strings proposed with exact
+    replacement text and approved verbatim ("Good with the copy above"):
+    - `MENU_DATA_SOURCE`: "Sourced from Yahoo Finance via our weekly pipeline." →
+      "Sourced from Yahoo Finance via our pipeline, refreshed every two weeks."
+    - `"Fundamentals refresh weekly · data as of {snapshot}"` → "...refresh every two
+      weeks · data as of {snapshot}"
+    - `"Fundamentals refresh weekly."` → "Fundamentals refresh every two weeks."
+    (A fourth string in the same file — an internal caption shown only when
+    `business_summary` is missing from an export — had "weekly" dropped entirely rather
+    than replaced with a cadence word, since it wasn't describing cadence to begin with,
+    just naming "the pipeline"; not part of the owner-approved three, but not a framing
+    decision either — matches this session's established bar for factual/mechanical
+    corrections that don't need separate sign-off.)
 
 technical_definition:
-  - `disclosure_html()`: `preview` becomes falsy-skippable — when empty, the `<p
-    class="ss-disclosure-preview">` is omitted entirely rather than rendered empty. Backward
-    compatible: every existing caller (Saved headlines) passes real preview text, unaffected.
-  - `_company_summary_html()` (`frontend/card_ui.py`): when `business_summary_is_truncated()`
-    and a full text exists, returns `disclosure_html()` output (preview = the existing
-    truncated preview, full body = the existing `.ss-company-summary-full` paragraph) instead
-    of a plain `<p>`. Short/non-truncated descriptions unchanged (plain `<p
-    class="ss-company-summary">`, no toggle — there's nothing more to reveal).
-  - `_company_about_body_html()`: deleted. Nothing calls it once about-company isn't
-    duplicated into the learn panel.
-  - `build_learn_panel_body_html()`: drops the about-company section entirely (was already
-    last per last session's fix; now absent). Compare section and "What each metric means"
-    heading unchanged.
-  - `_metric_learn_blocks()`: per metric, drops the `.ss-metric-gloss-inline` paragraph and
-    wraps the existing `.ss-metric-learn-body` paragraph in `disclosure_html(preview="",
-    full_body_html=..., more_label="Read more", less_label="Show less")` instead of
-    rendering it unconditionally. `.ss-metric-learn-heading` and `.ss-metric-analogy` stay
-    exactly as they render today, unconditionally visible.
-  - `frontend/styles.py`: `.ss-disclosure-more, .ss-disclosure-less` gets `text-decoration:
-    underline` (one shared rule — every `disclosure_html()` consumer gets it, not scoped to
-    one surface, matching this repo's established no-per-surface-exception convention).
-    `.ss-metric-gloss-inline` rule deleted (confirmed its one Python call site is also
-    removed in the same diff — zero remaining consumers).
-  - `dbt_analytics/seeds/metric_catalogue.csv`: `ebit_margin_pct` row's `learn` field
-    replaced with Option A text. (A `�` seen while inspecting this field via a Bash/Python
-    print earlier turned out to be a terminal print-encoding artifact, not a real bug in the
-    file — confirmed via a direct Read of the raw CSV line, which shows a correctly encoded
-    em dash. No encoding fix needed; noting this so the false lead doesn't get repeated.)
-  - `frontend/metrics.json`: regenerated via `python scripts/export_metric_definitions_json.py`
-    after the seed edit — never hand-edited, per the file's own header comment.
-    `tests/tooling/test_metric_catalogue.py`'s existing no-drift lock (regenerates and
-    diffs against the committed file) is what catches a forgotten regen.
+  - Cron for "1st and 15th of each month, 06:00 UTC": `0 6 1,15 * *`. Not a mathematically
+    exact 14-day interval (standard cron has no week-of-year field, so true fixed-interval
+    bi-weekly isn't natively expressible) — gaps run 14–17 days depending on month length.
+    Judged close enough to what the owner asked for; the owner creates the actual schedule
+    in GitLab's UI, this task does not and cannot set it.
+  - Every other changed file is an internal comment, test string, or doc describing the
+    pipeline's cadence/mechanism — no product-content decision, kept factually in sync as
+    ordinary engineering hygiene. Two styles used depending on context: "every two weeks"
+    (docs stating the actual cadence) or "scheduled"/"on its own cron" (comments where the
+    exact cadence isn't the point, just that it's not manual) — chosen per-site to read
+    naturally, not a mechanical find-replace.
+  - `docs/ui/discover_header.md` intentionally says "refresh cadence (every two weeks)"
+    rather than repeating the exact card-face string — it's a UI *spec*, not a copy mirror;
+    the exact string lives once, in `overflow_menu.py`.
 
 explicitly_not_in_scope:
-  - Any other metric's copy — only `ebit_margin_pct`'s opening sentence, the one confirmed
-    outlier among 16.
-  - Any further metric-cell visual-hierarchy work (magnitude cues, min-median-max range
-    marks) discussed earlier in the same conversation — separate, still-unscoped follow-up.
-  - Multi-open vs. single-open enforcement — native `<details>` are independent by default,
-    so "several can stay open" (the NN/g-informed requirement) falls out for free; no new
-    JS/state needed, nothing to explicitly build for it.
+  - `docs/handover_2026-05-24.md`, `docs/handover_2026-08-18.md` — dated archive snapshots.
+    Editing them to retroactively claim bi-weekly would misrepresent history; they describe
+    what was true when written.
+  - `docs/product_roadmap_2026-06.md` — same reasoning, same dated-snapshot naming
+    convention as the archived handovers.
+  - `.claude/active_work.md` — handover updates for this task land in a separate
+    artifact-only commit after this one, per this repo's established two-commit pattern
+    (`.claude/task/*` is `artifact_only` in `review_routing.json`).
+  - Setting the actual GitLab pipeline schedule — owner-only, project config, cannot be
+    committed.
 
 done_when:
-  - Card face: truncated company descriptions render a real `disclosure_html()` toggle in
-    place; short ones render exactly as before (no toggle).
-  - `build_learn_panel_body_html()` never contains "About this company" — that section is
-    gone from the learn panel entirely, not just reordered.
-  - Each metric in "What each metric means" renders its own `<details>`; `.ss-metric-gloss-inline`
-    does not appear anywhere in the output.
-  - `frontend/metrics.json` regenerated and byte-identical to what
-    `scripts/export_metric_definitions_json.py` produces from the edited seed (the existing
-    no-drift test enforces this).
-  - Full test suite green, including new/updated tests for both disclosure surfaces.
-  - Verified against the real app (local Streamlit + live Supabase) via the Browser pane —
-    both toggles clickable and independently open/closeable; 480px mobile smoke, zero
-    horizontal scroll.
-  - `docs/ui/disclosure_pattern.md`, `docs/ui/card_metric_cell.md`, `docs/north_star.md` all
-    updated to match — none left describing the mechanism this diff replaces.
-  - UX PR gate: mobile wireframe in the PR body (ASCII, derived from the approved interactive
-    wireframe already shown in conversation); one-sentence primary-job statement.
-  - Required reviewers (scope-auditor always; cto-reviewer per `frontend/*`/`tests/*`;
-    equity-analyst-reviewer per `*metric_catalogue.csv`) pass against the staged diff.
+  - `frontend/overflow_menu.py` renders the three approved strings; verified against the
+    real app (not just grep) — "About the data" panel shows both new lines, old "weekly"
+    text confirmed absent from the page.
+  - Repo-wide case-insensitive sweep for "weekly" finds no remaining hits describing this
+    pipeline's cadence outside the excluded archive/roadmap docs.
+  - Full test suite green.
+  - Required reviewers (scope-auditor always; cto-reviewer per `frontend/*`/`tests/*`/
+    `.gitlab-ci.yml`; analytics-engineer-reviewer per `dbt_analytics/*.yml` matching
+    `sources.yml`; equity-analyst-reviewer per the explicit `docs/data_contract.md` route)
+    pass against the staged diff.
 
 impact_map:
-  - User-facing: every card, all markets, all company types — company description and
-    per-metric explanations both change interaction model. No metric values, verdicts, or
-    benchmark comparisons change.
-  - One metric's (`ebit_margin_pct`) explanatory copy changes; no other data or copy.
-  - No pipeline/CI-variable/schedule impact — frontend + one dbt seed only.
+  - User-facing: the "About the data" panel's cadence copy, all users, all markets.
+  - No metric values, verdicts, or benchmark data change — copy and documentation only.
+  - No CI/pipeline logic change — the guard comments explain existing behavior, unchanged.
 
-amendments: none yet.
+amendments:
+  - **Round 1: cto-reviewer FAIL, equity-analyst-reviewer FAIL, scope-auditor PASS,
+    analytics-engineer-reviewer PASS.**
+    - cto-reviewer found the "weekly" sweep had real gaps the literal-word grep missed:
+      `docs/development_workflow.md`'s own line 78 still said "wait for Monday 06:00 UTC
+      schedule" — self-contradicting this same diff's edit to line 61 seventeen lines away;
+      `docs/operations_guide.md`'s "Schedules" table (the single most prominent schedule
+      statement in the ops docs) still said "Mon 06:00 UTC"; `.env.example` still said "the
+      weekly pipeline" — not in `scope_paths`, a plain sweep omission (root cause: the
+      initial grep was glob-restricted to `*.md,*.yml,*.py`, silently excluding
+      `.env.example` and any other extensionless/dotfile pattern). All three fixed; the
+      broader re-sweep this round dropped the extension glob entirely.
+    - equity-analyst-reviewer found a real functional consequence neither the objective nor
+      technical_definition had considered: `frontend/card_copy.py`'s `STALE_SNAPSHOT_DAYS =
+      7` (undocumented, no comment, clearly calibrated to the old weekly cadence) drives the
+      card-face "· data may be up to N days old" warning. Under the new cron, the worst-case
+      gap between two HEALTHY scheduled runs is 17 days (15th → 1st after any 31-day month).
+      Left at 7, the warning would fire on the back half to two-thirds of every normal,
+      healthy cycle — turning a genuine anomaly signal into noise indistinguishable from an
+      actually-broken pipeline. Fixed directly (not escalated) — same reasoning as this
+      session's other factual/clarity completions: recalibrating an existing threshold to
+      the same design principle it already encoded (threshold ≈ worst-case healthy gap) for
+      new inputs the owner's decision changed, not a fresh product judgment call. Set to 18
+      (17-day worst case + 1 day slack against boundary flapping), with a comment recording
+      the derivation so a future cadence change doesn't have to re-discover it the same way.
+      Added three tests (`tests/frontend/test_card_copy.py`) — none existed for this
+      function before, a real coverage gap independent of this task.
+  - **Round 2: scope-auditor ESCALATE, cto-reviewer FAIL, analytics-engineer-reviewer PASS,
+    equity-analyst-reviewer PASS.**
+    - cto-reviewer found two of the three new tests were tautological — they derived their
+      fixture's age from `STALE_SNAPSHOT_DAYS` itself, so they'd pass at any threshold
+      value, including a wrong one (proven by monkeypatching the constant back to 7 and
+      confirming both still passed). Only the third test (hardcoded `17`) was a real
+      regression guard. Fixed: the two boundary tests now use hardcoded day counts (18/19)
+      instead of deriving from the live constant.
+    - scope-auditor escalated the STALE_SNAPSHOT_DAYS recalibration itself: the owner
+      approved the cadence and the three copy strings, but was never asked about this
+      threshold specifically — unlike the copy fixes (completing a sentence already
+      written and approved this session), this was pre-existing, already-shipped app
+      behavior the agent found and changed as a side effect, never seen by the owner.
+      Correctly distinguished from this session's other factual-completion fixes. Taken
+      to the owner directly in chat, full reasoning laid out (what it does, why 7 breaks,
+      what 18 is, that two independent reviewers had already verified the math and
+      beginner-safety reasoning). Owner's reply, verbatim: **"Keep 18."**
+    - equity-analyst-reviewer independently re-verified the 17-day worst-case gap by
+      brute-force enumeration across a non-leap and a leap year (not trusted from the
+      contract's claim) and confirmed 18's margin behaves as described against the real
+      `freshness_line()` comparison; also confirmed the primary "As of {date}" disclosure
+      is never gated by the threshold, only the secondary anomaly flag is — so the
+      recalibration cannot hide how old the underlying data actually is, only when a
+      supplementary warning appears.
