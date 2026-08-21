@@ -142,24 +142,12 @@ now matches `docs/north_star.md:80`'s already-approved Deep-tier order). Three r
 rounds, real findings in the first two, both fixed — full trail archived on the merged
 branch if needed.
 
-**Open, awaiting owner review — MR #17
-(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/17,
-`feat/per-metric-disclosure`): disclosure-mechanism redesign.** Owner's follow-up critique on MR #15: fixing the
-order wasn't enough — company description was still buried at the bottom of a long scroll,
-and all metrics' full explanations rendered concatenated/always-visible once the panel
-opened. Researched against NN/g progressive-disclosure + accordion guidance (multi-expand,
-not single-open — native `<details>` gives this for free). Reopens two Slice 6c
-consolidations (owner-initiated). Company description: own inline Read more/Show less on
-the card face. Each metric: own toggle in "What each metric means," analogy always visible.
-Also fixed `ebit_margin_pct`'s learn copy (the one metric of 16 whose opening sentence
-referenced the UI instead of defining the metric) — two real accuracy issues surfaced by
-review after the owner's initial approval (missing "divide," then an ambiguous modifier)
-and fixed directly without re-approval, confirmed with the owner as the right bar: factual/
-clarity completions don't need the same sign-off as a framing choice. Four review rounds,
-four required reviewers (scope-auditor, cto-reviewer, equity-analyst-reviewer,
-analytics-engineer-reviewer — the last triggered by a routing rule matching any `*.csv`,
-not specific to this change). Full trail in `.claude/task/contract.md`/`review.md` on the
-branch. **Separately, still NOT started:** the metric-cell's own visual hierarchy
+**MERGED — MR #17 (`feat/per-metric-disclosure` → `gitlab/main` @ `de746d2`): company
+description and each metric explanation now have their own Read more/Show less** (was one
+long always-visible scroll once the learn panel opened). Reopened two Slice 6c
+consolidations (owner-initiated). Also fixed `ebit_margin_pct`'s learn copy. Four review
+rounds, real findings across three of four reviewers, all fixed — full trail on the merged
+branch if needed. **Still NOT started:** the metric-cell's own visual hierarchy
 (label+value+benchmark+gloss ×5 reads flat/"so what") — a magnitude cue (e.g. min–median–max
 range mark) was discussed as a direction but nothing scoped. Ask the owner whether to make
 this its own slice.
@@ -343,13 +331,12 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: MR #17 (disclosure-mechanism redesign) awaiting owner review** — see
-   Status above.
-2. Owner creates the GitLab pipeline schedule (Mon 06:00 UTC) — see Infra; CI/CD variable
-   *values* are done (confirmed live), the schedule itself is the one remaining piece
-   before the app refreshes unattended.
-3. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
-   (magnitude cue direction discussed, nothing built) — see Status above.
+1. **← START HERE: owner creates the GitLab pipeline schedule** (Mon 06:00 UTC) — see Infra;
+   CI/CD variable *values* are done (confirmed live), the schedule itself is the one
+   remaining piece before the app refreshes unattended.
+2. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
+   (magnitude cue direction discussed, nothing built) — see Status above. MR #17
+   (disclosure-mechanism redesign) is MERGED — no longer an action item.
 4. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
