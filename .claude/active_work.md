@@ -20,8 +20,8 @@ rendering end-to-end this session (fresh page load, no errors, benchmark words +
 all correct). **GitLab CI/CD variables for the new Supabase project are now set** (all 6:
 `SUPABASE_URL`/`SUPABASE_DB_PASSWORD`/`SUPABASE_DB_HOST`/`SUPABASE_DB_PORT`/
 `SUPABASE_SERVICE_ROLE_KEY`/`ANTHROPIC_API_KEY`, all Protected, confirmed via `glab variable
-list`) — still open: **the Mon 06:00 UTC pipeline schedule itself doesn't exist yet** (checked,
-zero schedules on the project) — see Infra for the exact steps, owner-only (GitLab project
+list`) — still open: **the pipeline schedule itself doesn't exist yet** (checked, zero
+schedules on the project) — see Infra for the exact steps, owner-only (GitLab project
 config, same class as the variable values).
 **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
@@ -121,20 +121,37 @@ for manual access control) — this had a real consequence, see below.
   44 candidate endpoints from this machine (psycopg2 imports fine, so this reads as a local
   network/firewall issue, not a dead project) — if reaching for it again, expect it may not
   work from this machine and go straight to the dashboard instead.
-- **Still open: the Mon 06:00 UTC pipeline schedule itself.** Checked via `glab api
+- **Still open: the pipeline schedule itself.** Checked via `glab api
   projects/.../pipeline_schedules` — empty, none exist. Variables alone don't make
   `data-pipeline` run on its own; owner still needs to create the schedule: GitLab →
-  **Build → Pipeline schedules → New schedule**, cron `0 6 * * 1`, timezone UTC, target
-  branch `main`, leave variables blank (project-level ones already apply), Active toggled on.
+  **Build → Pipeline schedules → New schedule**, cron `0 6 1,15 * *` (1st and 15th of each
+  month, 06:00 UTC — owner decided bi-weekly is enough for an experimental project),
+  timezone UTC, target branch `main`, leave variables blank (project-level ones already
+  apply), Active toggled on.
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** owner creates the pipeline schedule above. Once that's done,
-`data-pipeline` refreshes the live app's 910 cards on its own weekly, instead of relying on
-manual local runs — the last piece between "the app is live with real data" and "the app
-stays current unattended."
+**Next concrete action:** owner creates the pipeline schedule above (now 1st and 15th of
+each month, 06:00 UTC — owner decided bi-weekly is enough for an experimental project, not
+weekly). Once that's done, `data-pipeline` refreshes the live app's 910 cards on its own,
+instead of relying on manual local runs — the last piece between "the app is live with real
+data" and "the app stays current unattended."
 
 ## Status
+
+**Open, awaiting owner review — `chore/biweekly-pipeline-cadence`, MR not yet opened at
+time of writing: pipeline cadence switched from weekly to every two weeks.** Owner's call
+(experimental project, doesn't need weekly refreshes), triggering on the 1st and 15th of
+each month. Covers the 3 owner-approved copy strings in "About the data," a repo-wide sweep
+for stale "weekly"/schedule-day references (two rounds of gaps found — a naive grep missed
+`.env.example` and two self-contradicting doc lines), and a real functional catch:
+`STALE_SNAPSHOT_DAYS` (7, calibrated to the old cadence) would have fired the "data may be
+old" warning on most of every healthy two-week cycle — recalibrated to 18, taken to the
+owner directly since it was pre-existing shipped behavior, not copy already being changed.
+Owner: "Keep 18." Five review rounds, real findings in the first four across three of four
+reviewers — full trail in `.claude/task/contract.md`/`review.md` on the branch. **Owner
+still needs to create the actual GitLab pipeline schedule** — see Infra, this MR doesn't
+and can't do that part.
 
 **MERGED — MR #15 (`fix/learn-panel-metrics-first` → `gitlab/main` @ `f1ee009`): learn-panel
 content order fixed** (about-company was rendering first, ahead of any numbers content;
@@ -331,9 +348,9 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: owner creates the GitLab pipeline schedule** (Mon 06:00 UTC) — see Infra;
-   CI/CD variable *values* are done (confirmed live), the schedule itself is the one
-   remaining piece before the app refreshes unattended.
+1. **← START HERE: owner creates the GitLab pipeline schedule** (1st and 15th, 06:00 UTC)
+   — see Infra; CI/CD variable *values* are done (confirmed live), the schedule itself is
+   the one remaining piece before the app refreshes unattended.
 2. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
    (magnitude cue direction discussed, nothing built) — see Status above. MR #17
    (disclosure-mechanism redesign) is MERGED — no longer an action item.
