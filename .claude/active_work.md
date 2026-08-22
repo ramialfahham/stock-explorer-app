@@ -139,21 +139,19 @@ data" and "the app stays current unattended."
 
 ## Status
 
-**Open, awaiting owner review — MR #19
-(https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/19,
-`chore/biweekly-pipeline-cadence`): pipeline cadence switched from weekly to every two
-weeks.** Owner's call
-(experimental project, doesn't need weekly refreshes), triggering on the 1st and 15th of
-each month. Covers the 3 owner-approved copy strings in "About the data," a repo-wide sweep
-for stale "weekly"/schedule-day references (two rounds of gaps found — a naive grep missed
-`.env.example` and two self-contradicting doc lines), and a real functional catch:
-`STALE_SNAPSHOT_DAYS` (7, calibrated to the old cadence) would have fired the "data may be
-old" warning on most of every healthy two-week cycle — recalibrated to 18, taken to the
-owner directly since it was pre-existing shipped behavior, not copy already being changed.
-Owner: "Keep 18." Five review rounds, real findings in the first four across three of four
-reviewers — full trail in `.claude/task/contract.md`/`review.md` on the branch. **Owner
-still needs to create the actual GitLab pipeline schedule** — see Infra, this MR doesn't
-and can't do that part.
+**MERGED — MR #19 (`chore/biweekly-pipeline-cadence` → `gitlab/main` @ `86105ba`): pipeline
+cadence switched weekly → every two weeks** (1st/15th, owner's call). Copy + repo-wide doc
+sweep + a real functional catch — `STALE_SNAPSHOT_DAYS` recalibrated 7 → 18 so the
+"data may be old" warning doesn't fire on every healthy cycle (owner approved: "Keep 18").
+Five review rounds, real findings in four — full trail on the merged branch if needed.
+**Still open, owner-only:**
+1. Create the actual GitLab pipeline schedule (cron `0 6 1,15 * *`, UTC, target `main`) —
+   this MR couldn't do that part.
+2. **CI is currently broken** — `ci-runner-01` 403s fetching the repo on every job, before
+   any script runs. Not caused by this or any other diff; matches the previously-flagged
+   duplicate `ci-runner-01` registration (never consolidated). Needs the Hetzner box's
+   `gitlab-runner` config checked directly (SSH), out of this session's reach. MR #19 was
+   merged with CI red for this reason — verified locally instead (170 tests, live app).
 
 **MERGED — MR #15 (`fix/learn-panel-metrics-first` → `gitlab/main` @ `f1ee009`): learn-panel
 content order fixed** (about-company was rendering first, ahead of any numbers content;
@@ -350,13 +348,15 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: MR #19 (bi-weekly cadence) awaiting owner review, then owner creates
-   the GitLab pipeline schedule** (1st and 15th, 06:00 UTC) — see Status/Infra; CI/CD
-   variable *values* are done (confirmed live), the schedule itself is the one remaining
-   piece before the app refreshes unattended.
-2. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
-   (magnitude cue direction discussed, nothing built) — see Status above. MR #17
-   (disclosure-mechanism redesign) is MERGED — no longer an action item.
+1. **← START HERE: fix `ci-runner-01`'s 403-on-fetch** (SSH to the Hetzner box, check
+   `gitlab-runner list`/`config.toml` for the duplicate-registration remnant) — see Status;
+   CI has been red since MR #19, unrelated to any diff content.
+2. Owner creates the GitLab pipeline schedule (1st and 15th, 06:00 UTC) — see Status/Infra;
+   CI/CD variable *values* are done, the schedule itself is the one remaining piece before
+   the app refreshes unattended. MR #19 (bi-weekly cadence) is MERGED — no longer an
+   action item on its own.
+3. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
+   (magnitude cue direction discussed, nothing built) — see Status above.
 4. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
