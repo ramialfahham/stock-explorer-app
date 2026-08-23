@@ -139,25 +139,20 @@ data" and "the app stays current unattended."
 
 ## Status
 
-**Committed locally, not yet pushed — branch `feat/metric-range-mark`: card-face benchmark
-indicator replaced with a monochrome range mark.** Directly resolves the "Still NOT
-started" note under MR #17 below — the metric-cell visual-hierarchy work that was flagged
-there as undiscussed is now built, reviewed, and committed. Shows each company's value
-positioned between its sector's min and max, median labeled at its actual position;
-replaces the old "Higher than sector median" text. `sector_min_*`/`sector_max_*` added
-through the dbt model → mart → Supabase export alongside the existing `sector_median_*`.
-Direction cue (`"Lower is better."`) added for net debt/EBITDA only — forward P/E stays
-uncued on the card face (its own catalogue interpretation and this app's health-verdict
-logic both treat its direction with real caution; the deep-dive `learn` text was extended
-to cover the low-P/E case instead). **Nine review rounds, real findings in eight** — full
-trail in the branch's own `.claude/task/contract.md` amendments (an unusually long cycle:
-a production-wiring gap the first pass missed entirely — the new columns never reached
-Supabase — plus a genuine product decision on the direction cue that took several rounds
-of escalation, including two dismissed questions before the owner resolved it directly).
-**Still open:** push the branch, open the MR (needs a mobile wireframe in the body per the
-UX PR gate — card-structure change), wait for CI + owner review/merge. The 11-metric
-benchmark expansion (financial + pre-revenue metrics, 2 more operating) was explicitly
-scoped out of this slice as an owner-approved follow-up, not started.
+**MERGED — MR #22 (`feat/metric-range-mark` → `gitlab/main` @ `ebbe74a`): card-face
+benchmark indicator replaced with a monochrome range mark** (value positioned between
+sector min/max, median labeled; `sector_min_*`/`sector_max_*` added through dbt → mart →
+Supabase export). Direction cue ("Lower is better.") added for net debt/EBITDA only —
+forward P/E stays uncued (own catalogue interpretation + this app's health-verdict logic
+both treat its direction with caution; deep-dive `learn` text extended instead). Nine
+review rounds, real findings in eight — full trail in the merged branch's own
+`.claude/task/contract.md` if needed. **Flagged, not fixed here:** review-cycle
+efficiency (9 rounds judged excessive by owner — tracked in
+[stock-swipe-app#5](https://gitlab.com/rami.al-fahham/stock-swipe-app/-/work_items/5),
+filed there not in `dbt-agent-kit` since GitHub is still suspended); a catalogue-wide
+em-dash/readability pass (~25 fields); a mangled-encoding artifact in one catalogue field;
+this file's own size (see below). **Still not started:** the 11-metric benchmark
+expansion (financial + pre-revenue, 2 more operating) — explicit owner-approved follow-up.
 
 **MERGED — MR #19 (`chore/biweekly-pipeline-cadence` → `gitlab/main` @ `86105ba`): pipeline
 cadence switched weekly → every two weeks** (1st/15th, owner's call). Copy + repo-wide doc
