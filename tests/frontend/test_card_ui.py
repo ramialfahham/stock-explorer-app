@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from card_copy import ALL_METRICS, BENCHMARK_METRICS, metrics_for_card  # noqa: E402
+from card_copy import ALL_METRICS, BENCHMARK_METRICS, _BY_ID, metrics_for_card  # noqa: E402
 from card_ui import (  # noqa: E402
     _company_summary_html,
     _health_block_html,
@@ -57,6 +57,155 @@ def test_build_card_financial_omits_bank_inapplicable_no_dash() -> None:
     for label in ("Debt / equity", "Current ratio"):
         assert label not in html  # honestly blank for banks -> omitted
     assert 'ss-metric-value">—<' not in html  # never an un-valued em-dash cell
+
+
+def _card_with_benchmark_range(**overrides) -> dict:
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 20
+    card["ebit_margin_pct"] = 21.5
+    card["sector_min_ebit_margin_pct"] = 4.1
+    card["sector_median_ebit_margin_pct"] = 15.3
+    card["sector_max_ebit_margin_pct"] = 38.9
+    card.update(overrides)
+    return card
+
+
+def test_build_card_shows_range_mark_when_benchmark_available() -> None:
+    html = build_card_html(_card_with_benchmark_range())
+    assert "ss-metric-range" in html
+    assert "ss-metric-range-marker" in html
+    assert "min 4.1%" in html
+    assert "max 38.9%" in html
+    assert "median 15.3%" in html
+
+
+def test_range_mark_direction_cue_shown_for_net_debt() -> None:
+    """net_debt_to_ebitda is a rightward-marker-is-bad-news metric -- the gloss line must
+    say so, since the mark itself (a bar-and-marker) otherwise reads as "further right =
+    better" the way it correctly does for the 3 higher-better metrics."""
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 20
+    card["net_debt_to_ebitda"] = 3.9
+    card["sector_min_net_debt_to_ebitda"] = -0.4
+    card["sector_median_net_debt_to_ebitda"] = 1.9
+    card["sector_max_net_debt_to_ebitda"] = 4.2
+    html = build_card_html(card)
+    assert "Lower is better." in html
+
+
+def test_range_mark_direction_cue_absent_for_higher_better_metric() -> None:
+    html = build_card_html(_card_with_benchmark_range())  # ebit_margin_pct, higher_better
+    assert "Lower is better." not in html
+
+
+def test_range_mark_direction_cue_shown_for_forward_pe() -> None:
+    """forward_pe is also catalogued lower_better -- the cue applies uniformly to both
+    lower_better metrics. This is a ceteris-paribus statement about the metric's own axis
+    (a lower P/E is more attractively priced for the same growth/quality profile), not a
+    health judgment; it doesn't conflict with assessment_rules.py excluding P/E from the
+    health verdict, which is about not letting P/E alone drive a composite score. The
+    caveat that P/E should be read alongside growth belongs in the metric's deep-dive
+    explanation, not a hedge in this short gloss line (owner decision)."""
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 20
+    card["forward_pe"] = 45.0
+    card["sector_min_forward_pe"] = 10.0
+    card["sector_median_forward_pe"] = 18.0
+    card["sector_max_forward_pe"] = 150.0
+    html = build_card_html(card)
+    assert "Lower is better." in html
+
+
+def test_range_mark_direction_cue_suppressed_for_net_cash() -> None:
+    """A negative net_debt_to_ebitda already renders the value-aware "Net cash" gloss,
+    which states the favorable read directly -- restating the axis on top of it is
+    redundant, not informative."""
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 20
+    card["net_debt_to_ebitda"] = -1.2
+    card["sector_min_net_debt_to_ebitda"] = -2.0
+    card["sector_median_net_debt_to_ebitda"] = 1.9
+    card["sector_max_net_debt_to_ebitda"] = 4.2
+    html = build_card_html(card)
+    assert "Net cash" in html
+    assert "Lower is better." not in html
+
+
+def test_direction_cue_catalogue_assumptions_still_hold() -> None:
+    """_direction_cue() derives which metrics get ". Lower is better." straight from the
+    catalogue's own `direction` field (currently: forward_pe and net_debt_to_ebitda). Pin
+    the specific values here: if a future metric_catalogue.csv edit reclassifies either
+    metric's direction, or changes the language this docstring's reasoning leans on, this
+    test breaks and forces that reasoning to be re-checked against the new catalogue
+    content -- instead of the code's comments silently drifting out of sync with the
+    single source of truth they're supposed to stay consistent with
+    (docs/data_contract.md's "Card metrics -- dbt formulas" section)."""
+    assert _BY_ID["forward_pe"]["direction"] == "lower_better"
+    assert "growth" in _BY_ID["forward_pe"]["interpretation"].lower()
+    assert _BY_ID["net_debt_to_ebitda"]["direction"] == "lower_better"
+    assert "safer" in _BY_ID["net_debt_to_ebitda"]["interpretation"].lower()
+
+
+def test_range_mark_direction_cue_absent_when_range_mark_itself_unavailable() -> None:
+    """No mark to disambiguate below the peer threshold -> no cue either, same
+    availability check as the range mark."""
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 7
+    card["net_debt_to_ebitda"] = 3.9
+    card["sector_min_net_debt_to_ebitda"] = -0.4
+    card["sector_median_net_debt_to_ebitda"] = 1.9
+    card["sector_max_net_debt_to_ebitda"] = 4.2
+    html = build_card_html(card)
+    assert "Lower is better." not in html
+
+
+def test_build_card_omits_range_mark_below_peer_threshold() -> None:
+    html = build_card_html(_card_with_benchmark_range(sector_peer_count=7))
+    assert "ss-metric-range" not in html
+
+
+def test_build_card_range_mark_replaces_old_text_indicator() -> None:
+    """The card face no longer shows the old inline "Higher/Lower than sector median"
+    text at all -- that class only survives in the separate learn-panel recap list."""
+    html = build_card_html(_card_with_benchmark_range())
+    assert "ss-bench-indicator" not in html
+    assert "Higher than sector median" not in html
+
+
+def test_range_mark_bar_end_reaches_track_end_not_shortened() -> None:
+    """Regression: the end bar segment anchors its outer edge via `right:0` (in CSS) and
+    only pulls its inner edge in from the median with `left:calc(...+ 2px)` -- it must not
+    set its own `width`, which previously shrank the segment from its outer edge instead,
+    leaving it 2px short of the true sector-max position (cto-reviewer round 1)."""
+    html = build_card_html(_card_with_benchmark_range())
+    assert 'class="ss-metric-range-bar ss-metric-range-bar-end" style="left:calc(' in html
+    assert "% + 2px)\"></div>" in html
+
+
+def test_range_mark_median_label_position_clamped_near_track_edges() -> None:
+    """A median close to its sector's min or max (realistic for skewed data, e.g. a fat-
+    tailed forward P/E) must not push the label's centered text past the track bounds
+    (cto-reviewer round 1: nothing previously bounded label-vs-track-edge proximity)."""
+    card = _card_with_benchmark_range(
+        sector_min_ebit_margin_pct=2.0,
+        sector_median_ebit_margin_pct=37.5,
+        sector_max_ebit_margin_pct=38.0,
+        ebit_margin_pct=30.0,
+    )
+    html = build_card_html(card)
+    assert "left:clamp(3rem," in html
+
+
+def test_build_card_range_mark_omitted_for_degenerate_sector() -> None:
+    html = build_card_html(
+        _card_with_benchmark_range(
+            ebit_margin_pct=20.0,
+            sector_min_ebit_margin_pct=20.0,
+            sector_median_ebit_margin_pct=20.0,
+            sector_max_ebit_margin_pct=20.0,
+        )
+    )
+    assert "ss-metric-range" not in html
 
 
 def test_build_card_financial_shows_bank_metrics() -> None:

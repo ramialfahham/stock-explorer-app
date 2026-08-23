@@ -13,7 +13,7 @@
       "basis_column": "",
       "gloss": "Price vs expected next-year earnings",
       "analogy": "Think payback time: how many years of expected earnings are priced into one share today.",
-      "learn": "P/E (price-to-earnings) divides the share price by earnings per share. Forward P/E uses analyst estimates for next year's earnings, not last year's results. A higher number often means investors expect faster growth — or are paying a premium today.",
+      "learn": "P/E (price-to-earnings) divides the share price by earnings per share. Forward P/E uses analyst estimates for next year's earnings, not last year's results. A higher number often means investors expect faster growth, or are paying a premium today. A lower number can mean the stock is genuinely cheap, or that investors expect slower growth ahead.",
       "importance_tier": 1,
       "display_order": 1,
       "benchmarkable": true,

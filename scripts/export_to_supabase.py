@@ -62,6 +62,16 @@ EXPORT_COLUMNS = [
     "sector_median_revenue_growth_yoy_pct",
     "sector_median_net_debt_to_ebitda",
     "sector_median_fcf_margin_pct",
+    "sector_min_forward_pe",
+    "sector_max_forward_pe",
+    "sector_min_ebit_margin_pct",
+    "sector_max_ebit_margin_pct",
+    "sector_min_revenue_growth_yoy_pct",
+    "sector_max_revenue_growth_yoy_pct",
+    "sector_min_net_debt_to_ebitda",
+    "sector_max_net_debt_to_ebitda",
+    "sector_min_fcf_margin_pct",
+    "sector_max_fcf_margin_pct",
     "snapshot_date",
 ]
 

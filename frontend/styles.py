@@ -19,6 +19,7 @@ def inject_global_css() -> None:
     --ss-caption: #94949e;
     --ss-accent: #c9a962;
     --ss-border: #27272a;
+    --ss-track: #38383d;
     --ss-value: 1.5rem;
     --ss-title: 1rem;
     --ss-label: 0.75rem;
@@ -345,7 +346,7 @@ section[data-testid="stSidebar"] {
     display: inline-block;
     font-size: var(--ss-label);
     font-weight: 600;
-    color: var(--ss-muted);
+    color: var(--ss-text);
     background: var(--ss-bg);
     border: 1px solid var(--ss-border);
     border-radius: var(--ss-radius-control);
@@ -371,6 +372,69 @@ section[data-testid="stSidebar"] {
     font-weight: 600;
     color: var(--ss-caption);
     line-height: 1.2;
+}
+
+/* Metric range mark (card face) — this company's value between its sector's min and
+   max, median labeled at its own position. See docs/ui/card_metric_cell.md. */
+.ss-metric-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.4rem 0 0;
+}
+.ss-metric-range-min,
+.ss-metric-range-max {
+    flex-shrink: 0;
+    width: 3.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--ss-caption-size);
+    font-variant-numeric: tabular-nums;
+    color: var(--ss-caption);
+    white-space: nowrap;
+}
+.ss-metric-range-min {
+    text-align: right;
+}
+.ss-metric-range-max {
+    text-align: left;
+}
+.ss-metric-range-track {
+    position: relative;
+    flex: 1;
+    height: 2rem;
+}
+.ss-metric-range-median-label {
+    position: absolute;
+    top: 0;
+    font-size: var(--ss-caption-size);
+    line-height: 1;
+    color: var(--ss-caption);
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+.ss-metric-range-bar {
+    position: absolute;
+    top: 1.125rem;
+    height: 0.375rem;
+    background: var(--ss-track);
+}
+.ss-metric-range-bar-start {
+    left: 0;
+    border-radius: 0.2rem 0 0 0.2rem;
+}
+.ss-metric-range-bar-end {
+    right: 0;
+    border-radius: 0 0.2rem 0.2rem 0;
+}
+.ss-metric-range-marker {
+    position: absolute;
+    top: 1rem;
+    width: 0.1875rem;
+    height: 0.6875rem;
+    background: var(--ss-accent);
+    border-radius: 0.1rem;
+    transform: translateX(-50%);
 }
 .ss-metric-gloss {
     font-size: var(--ss-caption-size);

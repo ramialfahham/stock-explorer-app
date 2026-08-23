@@ -93,9 +93,12 @@ without scrolling; Save remains reachable.
 
 - Compare each metric to **sector median** within the **app universe** (same `market_code`).
 - **One card-level median primer** inside the compare expand when benchmarks are available.
-- Per-metric lines use short wording (e.g. **Above median** / **Below median**); sector name
-  appears once in the sector header.
-- **Direction-aware wording** — no color coding on benchmarks in v1 (monochrome text only).
+- **Recap list** (inside the compare expand): per-metric lines use short wording (e.g.
+  **Above median** / **Below median**); sector name appears once in the sector header.
+- **Card face**: a monochrome range mark instead of wording — this company's value
+  positioned between its sector's min and max, median labeled. Same underlying policy
+  (below), different mechanism; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
+- **No color coding on benchmarks in v1 (monochrome only)** — applies to both mechanisms.
 - Show sector context: e.g. `Consumer Cyclical (42 companies)`.
 - **Benchmark is not required for eligibility.** If sector median is unavailable (fewer than **8**
   eligible peers), **do not show** benchmark UI on the card — no warning line on the card face.

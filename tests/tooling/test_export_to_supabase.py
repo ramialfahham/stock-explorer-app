@@ -47,6 +47,22 @@ class _FakeClient:
         return _FakeQuery(self._calls)
 
 
+def test_export_columns_include_sector_min_max() -> None:
+    """Regression guard: a new sector_median_* companion column (min/max) landing in the
+    dbt mart but not in this static allowlist is silently never sent to Supabase -- the
+    mart, the frontend, and every test can all be correct while production ships nothing.
+    """
+    for metric in (
+        "forward_pe",
+        "ebit_margin_pct",
+        "revenue_growth_yoy_pct",
+        "net_debt_to_ebitda",
+        "fcf_margin_pct",
+    ):
+        assert f"sector_min_{metric}" in exp.EXPORT_COLUMNS
+        assert f"sector_max_{metric}" in exp.EXPORT_COLUMNS
+
+
 def test_target_dev_passes_dev_schema_to_create_client(tmp_path: Path, monkeypatch) -> None:
     db = tmp_path / "mart.duckdb"
     _make_mart(db, [_ROW])

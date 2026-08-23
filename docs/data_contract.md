@@ -249,8 +249,10 @@ Computed per `(market_code, sector)` over **card-eligible** tickers in that mark
 |--------|-------------|
 | `sector_peer_count` | Count of eligible peers in sector |
 | `sector_median_*` | Median for each of the five metrics |
+| `sector_min_*` | Minimum for each of the five metrics (card range mark) |
+| `sector_max_*` | Maximum for each of the five metrics (card range mark) |
 
-**Peer threshold:** if `sector_peer_count < 8`, export `null` medians; UI omits benchmark line.
+**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max; UI omits benchmark line.
 
 Benchmark availability does **not** affect `is_card_eligible`.
 
@@ -329,6 +331,16 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `sector_median_revenue_growth_yoy_pct` | numeric | nullable |
 | `sector_median_net_debt_to_ebitda` | numeric | nullable |
 | `sector_median_fcf_margin_pct` | numeric | nullable |
+| `sector_min_forward_pe` | numeric | nullable |
+| `sector_max_forward_pe` | numeric | nullable |
+| `sector_min_ebit_margin_pct` | numeric | nullable |
+| `sector_max_ebit_margin_pct` | numeric | nullable |
+| `sector_min_revenue_growth_yoy_pct` | numeric | nullable |
+| `sector_max_revenue_growth_yoy_pct` | numeric | nullable |
+| `sector_min_net_debt_to_ebitda` | numeric | nullable |
+| `sector_max_net_debt_to_ebitda` | numeric | nullable |
+| `sector_min_fcf_margin_pct` | numeric | nullable |
+| `sector_max_fcf_margin_pct` | numeric | nullable |
 | `snapshot_date` | date | Fundamentals as-of date |
 | `exported_at` | timestamptz | |
 
