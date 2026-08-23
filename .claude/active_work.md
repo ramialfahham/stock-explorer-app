@@ -139,6 +139,26 @@ data" and "the app stays current unattended."
 
 ## Status
 
+**Committed locally, not yet pushed — branch `feat/metric-range-mark`: card-face benchmark
+indicator replaced with a monochrome range mark.** Directly resolves the "Still NOT
+started" note under MR #17 below — the metric-cell visual-hierarchy work that was flagged
+there as undiscussed is now built, reviewed, and committed. Shows each company's value
+positioned between its sector's min and max, median labeled at its actual position;
+replaces the old "Higher than sector median" text. `sector_min_*`/`sector_max_*` added
+through the dbt model → mart → Supabase export alongside the existing `sector_median_*`.
+Direction cue (`"Lower is better."`) added for net debt/EBITDA only — forward P/E stays
+uncued on the card face (its own catalogue interpretation and this app's health-verdict
+logic both treat its direction with real caution; the deep-dive `learn` text was extended
+to cover the low-P/E case instead). **Nine review rounds, real findings in eight** — full
+trail in the branch's own `.claude/task/contract.md` amendments (an unusually long cycle:
+a production-wiring gap the first pass missed entirely — the new columns never reached
+Supabase — plus a genuine product decision on the direction cue that took several rounds
+of escalation, including two dismissed questions before the owner resolved it directly).
+**Still open:** push the branch, open the MR (needs a mobile wireframe in the body per the
+UX PR gate — card-structure change), wait for CI + owner review/merge. The 11-metric
+benchmark expansion (financial + pre-revenue metrics, 2 more operating) was explicitly
+scoped out of this slice as an owner-approved follow-up, not started.
+
 **MERGED — MR #19 (`chore/biweekly-pipeline-cadence` → `gitlab/main` @ `86105ba`): pipeline
 cadence switched weekly → every two weeks** (1st/15th, owner's call). Copy + repo-wide doc
 sweep + a real functional catch — `STALE_SNAPSHOT_DAYS` recalibrated 7 → 18 so the
@@ -166,10 +186,8 @@ description and each metric explanation now have their own Read more/Show less**
 long always-visible scroll once the learn panel opened). Reopened two Slice 6c
 consolidations (owner-initiated). Also fixed `ebit_margin_pct`'s learn copy. Four review
 rounds, real findings across three of four reviewers, all fixed — full trail on the merged
-branch if needed. **Still NOT started:** the metric-cell's own visual hierarchy
-(label+value+benchmark+gloss ×5 reads flat/"so what") — a magnitude cue (e.g. min–median–max
-range mark) was discussed as a direction but nothing scoped. Ask the owner whether to make
-this its own slice.
+branch if needed. The metric-cell's own visual hierarchy this entry flagged as unscoped —
+see the `feat/metric-range-mark` entry at the top of this section, now built.
 
 **Merged (full detail in `docs/handover_2026-08-18.md`):**
 - Metric layer + data-only `info_*` metrics (#131–137): ROE, four ratios, FCF yield.
