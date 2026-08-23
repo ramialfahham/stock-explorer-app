@@ -147,11 +147,13 @@ Five review rounds, real findings in four — full trail on the merged branch if
 **Still open, owner-only:**
 1. Create the actual GitLab pipeline schedule (cron `0 6 1,15 * *`, UTC, target `main`) —
    this MR couldn't do that part.
-2. **CI is currently broken** — `ci-runner-01` 403s fetching the repo on every job, before
-   any script runs. Not caused by this or any other diff; matches the previously-flagged
-   duplicate `ci-runner-01` registration (never consolidated). Needs the Hetzner box's
-   `gitlab-runner` config checked directly (SSH), out of this session's reach. MR #19 was
-   merged with CI red for this reason — verified locally instead (170 tests, live app).
+
+**`ci-runner-01`'s 403-on-fetch (flagged after MR #19) is RESOLVED** — confirmed via
+`glab api .../pipelines`: MR #19's pipeline succeeded on retry the same night, and a fresh
+`main` pipeline the next day (2026-08-22, `id 2781739048`, sha `456459b` — matches the
+commit actually checked out) ran clean. Whatever the duplicate-registration issue was, it
+either self-healed or got fixed outside this session — not confirmed which, so if it
+recurs, re-check the Hetzner box's `gitlab-runner config.toml` as originally suspected.
 
 **MERGED — MR #15 (`fix/learn-panel-metrics-first` → `gitlab/main` @ `f1ee009`): learn-panel
 content order fixed** (about-company was rendering first, ahead of any numbers content;
@@ -348,19 +350,16 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: fix `ci-runner-01`'s 403-on-fetch** (SSH to the Hetzner box, check
-   `gitlab-runner list`/`config.toml` for the duplicate-registration remnant) — see Status;
-   CI has been red since MR #19, unrelated to any diff content.
-2. Owner creates the GitLab pipeline schedule (1st and 15th, 06:00 UTC) — see Status/Infra;
-   CI/CD variable *values* are done, the schedule itself is the one remaining piece before
-   the app refreshes unattended. MR #19 (bi-weekly cadence) is MERGED — no longer an
-   action item on its own.
-3. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
+1. **← START HERE: owner creates the GitLab pipeline schedule** (1st and 15th, 06:00 UTC) —
+   see Status/Infra; CI/CD variable *values* are done, the schedule itself is the one
+   remaining piece before the app refreshes unattended. (`ci-runner-01`'s 403 is resolved —
+   see Status; MR #19 is MERGED.)
+2. Ask the owner whether/how to scope the metric-cell's own visual-hierarchy redesign
    (magnitude cue direction discussed, nothing built) — see Status above.
-4. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
+3. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
-5. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+4. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
 ## Do NOT
