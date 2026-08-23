@@ -237,11 +237,35 @@ models:
               (sector_peer_count >= 8)
               or (
                 sector_median_forward_pe is null
+                and sector_min_forward_pe is null
+                and sector_max_forward_pe is null
                 and sector_median_ebit_margin_pct is null
+                and sector_min_ebit_margin_pct is null
+                and sector_max_ebit_margin_pct is null
                 and sector_median_revenue_growth_yoy_pct is null
+                and sector_min_revenue_growth_yoy_pct is null
+                and sector_max_revenue_growth_yoy_pct is null
                 and sector_median_net_debt_to_ebitda is null
+                and sector_min_net_debt_to_ebitda is null
+                and sector_max_net_debt_to_ebitda is null
                 and sector_median_fcf_margin_pct is null
+                and sector_min_fcf_margin_pct is null
+                and sector_max_fcf_margin_pct is null
               )
+      - dbt_utils.expression_is_true:
+          name: sector_benchmarks_min_le_median_le_max
+          arguments:
+            expression: >-
+              (sector_min_forward_pe is null or sector_min_forward_pe <= sector_median_forward_pe)
+              and (sector_max_forward_pe is null or sector_median_forward_pe <= sector_max_forward_pe)
+              and (sector_min_ebit_margin_pct is null or sector_min_ebit_margin_pct <= sector_median_ebit_margin_pct)
+              and (sector_max_ebit_margin_pct is null or sector_median_ebit_margin_pct <= sector_max_ebit_margin_pct)
+              and (sector_min_revenue_growth_yoy_pct is null or sector_min_revenue_growth_yoy_pct <= sector_median_revenue_growth_yoy_pct)
+              and (sector_max_revenue_growth_yoy_pct is null or sector_median_revenue_growth_yoy_pct <= sector_max_revenue_growth_yoy_pct)
+              and (sector_min_net_debt_to_ebitda is null or sector_min_net_debt_to_ebitda <= sector_median_net_debt_to_ebitda)
+              and (sector_max_net_debt_to_ebitda is null or sector_median_net_debt_to_ebitda <= sector_max_net_debt_to_ebitda)
+              and (sector_min_fcf_margin_pct is null or sector_min_fcf_margin_pct <= sector_median_fcf_margin_pct)
+              and (sector_max_fcf_margin_pct is null or sector_median_fcf_margin_pct <= sector_max_fcf_margin_pct)
     columns:
       - name: market_code
         description: >
@@ -259,18 +283,48 @@ models:
       - name: sector_median_forward_pe
         description: >
           Median forward_pe among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_forward_pe
+        description: >
+          Minimum forward_pe among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_forward_pe
+        description: >
+          Maximum forward_pe among eligible peers (card range mark). Null when sector_peer_count < 8.
       - name: sector_median_ebit_margin_pct
         description: >
           Median ebit_margin_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_ebit_margin_pct
+        description: >
+          Minimum ebit_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_ebit_margin_pct
+        description: >
+          Maximum ebit_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
       - name: sector_median_revenue_growth_yoy_pct
         description: >
           Median revenue_growth_yoy_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_revenue_growth_yoy_pct
+        description: >
+          Minimum revenue_growth_yoy_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_revenue_growth_yoy_pct
+        description: >
+          Maximum revenue_growth_yoy_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
       - name: sector_median_net_debt_to_ebitda
         description: >
           Median net_debt_to_ebitda among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_net_debt_to_ebitda
+        description: >
+          Minimum net_debt_to_ebitda among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_net_debt_to_ebitda
+        description: >
+          Maximum net_debt_to_ebitda among eligible peers (card range mark). Null when sector_peer_count < 8.
       - name: sector_median_fcf_margin_pct
         description: >
           Median fcf_margin_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_fcf_margin_pct
+        description: >
+          Minimum fcf_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_fcf_margin_pct
+        description: >
+          Maximum fcf_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
 
 unit_tests:
   - name: card_metrics_eligible_when_all_inputs_present
@@ -708,6 +762,8 @@ unit_tests:
             sector: Technology,
             sector_peer_count: 7,
             sector_median_forward_pe: null,
+            sector_min_forward_pe: null,
+            sector_max_forward_pe: null,
             sector_median_ebit_margin_pct: null,
           }
   - name: sector_medians_populated_when_eight_eligible_peers
@@ -730,7 +786,14 @@ unit_tests:
             sector: Technology,
             sector_peer_count: 8,
             sector_median_forward_pe: 13.5,
+            sector_min_forward_pe: 10.0,
+            sector_max_forward_pe: 17.0,
             sector_median_ebit_margin_pct: 20.0,
+            # Every peer in this fixture reports the same ebit_margin_pct (20.0) -- the
+            # degenerate min == median == max case the frontend range mark must handle
+            # without dividing by zero (see test_benchmark_range_none_when_degenerate_min_equals_max).
+            sector_min_ebit_margin_pct: 20.0,
+            sector_max_ebit_margin_pct: 20.0,
           }
   - name: card_metrics_statement_metrics_computed
     model: int_stock__card_metrics

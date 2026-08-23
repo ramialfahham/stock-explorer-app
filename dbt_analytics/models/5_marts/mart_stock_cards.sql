@@ -36,10 +36,20 @@ final as (
         m.company_type,
         b.sector_peer_count,
         b.sector_median_forward_pe,
+        b.sector_min_forward_pe,
+        b.sector_max_forward_pe,
         b.sector_median_ebit_margin_pct,
+        b.sector_min_ebit_margin_pct,
+        b.sector_max_ebit_margin_pct,
         b.sector_median_revenue_growth_yoy_pct,
+        b.sector_min_revenue_growth_yoy_pct,
+        b.sector_max_revenue_growth_yoy_pct,
         b.sector_median_net_debt_to_ebitda,
+        b.sector_min_net_debt_to_ebitda,
+        b.sector_max_net_debt_to_ebitda,
         b.sector_median_fcf_margin_pct,
+        b.sector_min_fcf_margin_pct,
+        b.sector_max_fcf_margin_pct,
         m.snapshot_date
     from metrics as m
     left join benchmarks as b

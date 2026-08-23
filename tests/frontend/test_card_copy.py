@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+import pytest
+
 from card_copy import (  # noqa: E402
     ALL_METRICS,
     BUSINESS_SUMMARY_PREVIEW_WORDS,
     STALE_SNAPSHOT_DAYS,
+    benchmark_range,
     business_summary_is_truncated,
     business_summary_preview,
     format_metric_value,
@@ -236,3 +239,49 @@ def test_stale_snapshot_days_covers_worst_case_healthy_gap() -> None:
     under the 1st/15th cron; the threshold must clear it."""
     worst_case_healthy_gap_days = 17
     assert STALE_SNAPSHOT_DAYS > worst_case_healthy_gap_days
+
+
+def _range_card(*, value=21.5, minimum=4.1, median=15.3, maximum=38.9, peer_count=20) -> dict:
+    return {
+        "sector_peer_count": peer_count,
+        "ebit_margin_pct": value,
+        "sector_min_ebit_margin_pct": minimum,
+        "sector_median_ebit_margin_pct": median,
+        "sector_max_ebit_margin_pct": maximum,
+    }
+
+
+def test_benchmark_range_computes_position_and_median_pct() -> None:
+    card = _range_card()
+    rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
+    assert rng is not None
+    assert rng["min"] == 4.1
+    assert rng["median"] == 15.3
+    assert rng["max"] == 38.9
+    assert rng["value"] == 21.5
+    # (15.3 - 4.1) / (38.9 - 4.1) * 100
+    assert rng["median_pct"] == pytest.approx(32.18, abs=0.01)
+    # (21.5 - 4.1) / (38.9 - 4.1) * 100
+    assert rng["position_pct"] == pytest.approx(50.0, abs=0.01)
+
+
+def test_benchmark_range_none_below_peer_threshold() -> None:
+    card = _range_card(peer_count=7)
+    assert benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct") is None
+
+
+def test_benchmark_range_none_when_degenerate_min_equals_max() -> None:
+    """Every eligible peer reports the same value -- no range to show, and no
+    division by zero. This is a real data shape, not just a defensive edge case: a
+    tightly-clustered or small-but-above-threshold sector can land here."""
+    card = _range_card(value=20.0, minimum=20.0, median=20.0, maximum=20.0)
+    assert benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct") is None
+
+
+def test_benchmark_range_clamps_value_outside_min_max() -> None:
+    """Defensive: the card's own company should always fall within its own cohort's
+    min/max by construction, but don't trust that invariant blindly."""
+    card = _range_card(value=999.0, minimum=4.1, median=15.3, maximum=38.9)
+    rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
+    assert rng is not None
+    assert rng["position_pct"] == 100.0

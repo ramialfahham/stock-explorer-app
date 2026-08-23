@@ -29,7 +29,8 @@ on mobile without horizontal scroll.
 ### Neutral palette
 
 Dark editorial base; gold accent for actions. Avoid red/green as “good stock / bad stock” signals.
-Benchmarks use monochrome directional text (↑/↓/→) per north_star.
+Benchmarks stay monochrome per north_star — a range mark on the card face (min/max/median,
+no color), short wording (no arrow glyphs) in the recap list.
 
 ### Friction as feature (education only)
 

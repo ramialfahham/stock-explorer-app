@@ -17,6 +17,7 @@ from card_copy import (
     benchmark_compare_available,
     benchmark_compare_unavailable_learn,
     benchmark_indicator_label,
+    benchmark_range,
     business_summary_full,
     business_summary_is_truncated,
     business_summary_preview,
@@ -37,14 +38,78 @@ from live_quote import yahoo_finance_url
 from metric_school import render_metric_playgrounds
 
 
-def _bench_indicator_html(card: dict, metric: str) -> str:
+def _metric_range_html(card: dict, metric: str) -> str:
+    """Monochrome range mark: this company's value positioned between its sector's min
+    and max, median labeled at its own position. Replaces the old inline "Higher/Lower
+    than sector median" text on the card face — see docs/ui/card_metric_cell.md."""
     for m_key, median_key, _direction in BENCHMARK_METRICS:
         if m_key != metric:
             continue
-        label = benchmark_indicator_label(card, metric, median_key)
-        if not label:
+        rng = benchmark_range(card, metric, median_key)
+        if rng is None:
             return ""
-        return f'<span class="ss-bench-indicator">{_esc(label)}</span>'
+        currency = card.get("currency")
+        min_label = _esc(format_metric_value(metric, rng["min"], currency))
+        max_label = _esc(format_metric_value(metric, rng["max"], currency))
+        median_label = _esc(format_metric_value(metric, rng["median"], currency))
+        median_pct = rng["median_pct"]
+        value_pct = rng["position_pct"]
+        return (
+            f'<div class="ss-metric-range">'
+            f'<span class="ss-metric-range-min">min {min_label}</span>'
+            f'<div class="ss-metric-range-track">'
+            f'<span class="ss-metric-range-median-label" '
+            f'style="left:clamp(3rem, {median_pct}%, calc(100% - 3rem))">'
+            f"median {median_label}</span>"
+            f'<div class="ss-metric-range-bar ss-metric-range-bar-start" '
+            f'style="width:calc({median_pct}% - 2px)"></div>'
+            f'<div class="ss-metric-range-bar ss-metric-range-bar-end" '
+            f'style="left:calc({median_pct}% + 2px)"></div>'
+            f'<div class="ss-metric-range-marker" style="left:{value_pct}%"></div>'
+            f"</div>"
+            f'<span class="ss-metric-range-max">max {max_label}</span>'
+            f"</div>"
+        )
+    return ""
+
+
+def _direction_cue(card: dict, metric: str) -> str:
+    """'. Lower is better.' gloss suffix, shown only alongside the range mark and only
+    for metrics where a rightward marker is bad news, not good. A plain bar-and-marker
+    otherwise reads as "further right = better" the way a loading bar or battery does —
+    true for the 3 higher_better metrics, which need no cue since that already matches
+    the convention.
+
+    Applies uniformly to every metric the catalogue classifies `direction: lower_better`
+    (today: forward_pe and net_debt_to_ebitda) — no metric-specific exception. This is a
+    ceteris-paribus statement about the metric's own axis (a lower P/E is more
+    attractively priced for the same growth/quality profile), not a health judgment, and
+    it doesn't conflict with assessment_rules.py excluding P/E from the health verdict —
+    that's about not letting P/E alone drive an automated composite score, a different and
+    higher-stakes claim than just naming which way this one axis points. The caveat that
+    P/E should be read alongside growth belongs in the metric's own deep-dive explanation
+    (analogy/learn text in "Understand these numbers"), not a hedge stuffed into this
+    short gloss line — a vague pointer like "read alongside growth" gives no actual
+    guidance at a glance (owner feedback, after an earlier draft tried exactly that).
+
+    The catalogue facts behind this are pinned by
+    test_direction_cue_catalogue_assumptions_still_hold() in tests/frontend/test_card_ui.py.
+
+    Suppressed when net_debt_to_ebitda's own value-aware "Net cash" gloss is already
+    showing — that branch already states the favorable read directly; restating the axis
+    on top of it is redundant, not informative.
+
+    Tied to the same availability check as the range mark itself: no mark to
+    disambiguate, no cue.
+    """
+    for m_key, median_key, direction in BENCHMARK_METRICS:
+        if m_key != metric or direction != "lower":
+            continue
+        if metric == "net_debt_to_ebitda" and card.get(metric) is not None and card[metric] < 0:
+            return ""
+        if benchmark_range(card, metric, median_key) is None:
+            return ""
+        return ". Lower is better."
     return ""
 
 
@@ -180,19 +245,19 @@ def _health_block_html(card: dict) -> str:
 def _metric_cell_html(card: dict, metric: str) -> str:
     label = metric_label(metric, card)
     value = format_metric_value(metric, card.get(metric), card.get("currency"))
-    gloss = metric_gloss(metric, card.get(metric), card)
-    indicator = _bench_indicator_html(card, metric)
+    gloss = metric_gloss(metric, card.get(metric), card) + _direction_cue(card, metric)
+    range_html = _metric_range_html(card, metric)
     gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'
     value_row = (
         f'<p class="ss-metric-value-row">'
         f'<span class="ss-metric-value">{_esc(value)}</span>'
-        f"{indicator}"
         f"</p>"
     )
     return (
         f'<div class="ss-metric">'
         f'<p class="ss-metric-label">{_esc(label)}</p>'
         f"{value_row}"
+        f"{range_html}"
         f"{gloss_html}"
         f"</div>"
     )

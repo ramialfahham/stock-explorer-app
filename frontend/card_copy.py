@@ -295,6 +295,41 @@ def benchmark_position(
     return "at"
 
 
+def benchmark_range(card: dict, metric: str, median_key: str) -> dict | None:
+    """Position this card's value within its sector's [min, max], median labeled.
+
+    Returns None when unavailable (peer count < 8, same threshold benchmark_position
+    already applies — min/median/max are null together below it) or degenerate (min ==
+    max: every eligible peer reports the same value, so there is no range to show).
+    position_pct / median_pct are clamped to [0, 100] defensively; under normal operation
+    the card's own company is part of the cohort its own min/max is computed from, so its
+    value should already fall inside that range by construction.
+    """
+    if not _benchmark_eligible(card):
+        return None
+    value = card.get(metric)
+    median = card.get(median_key)
+    min_key = f"sector_min_{metric}"
+    max_key = f"sector_max_{metric}"
+    minimum = card.get(min_key)
+    maximum = card.get(max_key)
+    if value is None or median is None or minimum is None or maximum is None:
+        return None
+    span = maximum - minimum
+    if span <= 0:
+        return None
+    position_pct = max(0.0, min(100.0, (value - minimum) / span * 100))
+    median_pct = max(0.0, min(100.0, (median - minimum) / span * 100))
+    return {
+        "min": minimum,
+        "median": median,
+        "max": maximum,
+        "value": value,
+        "position_pct": position_pct,
+        "median_pct": median_pct,
+    }
+
+
 _BENCHMARK_INDICATORS = {
     "above": "↑",
     "below": "↓",
