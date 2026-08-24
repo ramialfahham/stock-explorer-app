@@ -43,6 +43,14 @@ _METRIC_APPLIES_TO = {m["metric_id"]: tuple(m.get("applies_to") or ()) for m in 
 # follows lens order) and gives disjoint per-type sets (bank, pre-revenue) a lens-grouped order too.
 _LENS_ORDER = ("valuation", "profitability", "growth", "solvency", "liquidity", "cash", "returns")
 _LENS_RANK = {lens: rank for rank, lens in enumerate(_LENS_ORDER)}
+_PERSPECTIVE_BY_METRIC = {m["metric_id"]: m["perspective"] for m in _METRICS}
+
+
+def metric_perspective_label(metric: str) -> str:
+    """Group-header text for this metric's lens (catalogue `perspective`, title-cased) —
+    the same lens metrics_for_card() already sorts by, just made visible on the card
+    face and in the learn panel instead of only ordering silently."""
+    return _PERSPECTIVE_BY_METRIC.get(metric, "").title()
 
 
 def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
@@ -71,6 +79,9 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
 
 # (metric, sector-median column, short direction) — derived from the catalogue.
 _DIRECTION_SHORT = {"higher_better": "higher", "lower_better": "lower", "neutral": "neutral"}
+# Every catalogued metric's direction, not just the 5 benchmarkable ones — backs
+# metric_direction()/metric_gloss()'s universal "Higher/Lower is better." cue.
+_DIRECTION_BY_METRIC = {m["metric_id"]: _DIRECTION_SHORT.get(m["direction"], "neutral") for m in _METRICS}
 BENCHMARK_METRICS = tuple(
     (m["metric_id"], f"sector_median_{m['metric_id']}", _DIRECTION_SHORT.get(m["direction"], "neutral"))
     for m in _METRICS
@@ -82,26 +93,26 @@ PEER_THRESHOLD = 8
 # Yahoo Finance GICS sector labels (info_sector on cards).
 SECTOR_GLOSS = {
     "Communication Services": (
-        "Media, telecom, and entertainment — how people connect and consume content"
+        "Media, telecom, and entertainment: how people connect and consume content"
     ),
     "Consumer Cyclical": (
-        "Discretionary spending — retail, autos, travel, and other non-essential purchases"
+        "Discretionary spending: retail, autos, travel, and other non-essential purchases"
     ),
     "Consumer Defensive": (
-        "Everyday essentials — food, household goods, and staples people buy in any economy"
+        "Everyday essentials: food, household goods, and staples people buy in any economy"
     ),
-    "Energy": "Oil, gas, and energy producers — tied to commodity prices and global demand",
+    "Energy": "Oil, gas, and energy producers, tied to commodity prices and global demand",
     "Financial Services": (
-        "Banks, insurers, and asset managers — profit from lending, fees, and financial products"
+        "Banks, insurers, and asset managers: profit from lending, fees, and financial products"
     ),
     "Healthcare": "Pharmaceuticals, medical devices, and health services",
-    "Industrials": "Manufacturing, transport, and business equipment — tied to economic cycles",
+    "Industrials": "Manufacturing, transport, and business equipment, tied to economic cycles",
     "Basic Materials": (
-        "Raw materials — mining, chemicals, and forestry inputs for other industries"
+        "Raw materials: mining, chemicals, and forestry inputs for other industries"
     ),
-    "Real Estate": "Property owners and developers — revenue from rent and real estate values",
-    "Technology": "Software, hardware, and IT services — often growth-focused and R&D heavy",
-    "Utilities": "Power, water, and gas distributors — regulated, steady-demand businesses",
+    "Real Estate": "Property owners and developers: revenue from rent and real estate values",
+    "Technology": "Software, hardware, and IT services, often growth-focused and R&D heavy",
+    "Utilities": "Power, water, and gas distributors: regulated, steady-demand businesses",
 }
 
 DEFAULT_SECTOR_GLOSS = (
@@ -113,7 +124,7 @@ MEDIAN_PRIMER = (
 )
 
 BENCHMARK_COMPARE_UNAVAILABLE_LEARN = (
-    "Fewer than 8 similar companies in this market — sector compare is hidden."
+    "Fewer than 8 similar companies in this market: sector compare is hidden."
 )
 
 
@@ -148,25 +159,60 @@ def metric_label(metric: str, card: dict | None = None) -> str:
     return METRIC_LABELS[metric]
 
 
+def metric_direction(metric: str) -> str:
+    """'higher' | 'lower' | 'neutral', straight from the catalogue's own `direction`
+    field -- no metric-specific special-casing. See metric_gloss() for why every
+    direction (not just the benchmarked ones) gets a cue."""
+    return _DIRECTION_BY_METRIC.get(metric, "neutral")
+
+
 def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> str:
-    """Card-face gloss; value-aware where the story depends on the number."""
+    """Card-face gloss; value-aware where the story depends on the number.
+
+    Ends with a plain "Higher is better."/"Lower is better." for every metric with a
+    known catalogue direction -- a ceteris-paribus statement about that metric's own
+    axis (owner's call: this holds even for metrics whose free-text `interpretation`
+    carries a caveat, e.g. forward P/E's "always read next to growth" -- the caveat is
+    about using the metric as a standalone judgment, not about which way its own axis
+    points). Applies whether or not the metric currently has a range mark; a metric
+    without one yet (not in the 5 benchmarked today) still gets the same plain cue.
+    Suppressed for net_debt_to_ebitda's value-aware "Net cash" branch and
+    debt_to_equity's "Negative equity" branch -- both already state the actual
+    situation directly, and appending "Lower is better." on top would imply a more
+    negative number is a better version of the same good news, when it's actually a
+    different, broken state the ratio's normal direction no longer describes.
+    """
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
-        return "Net cash — cash on hand exceeds debt"
+        return "Net cash: cash on hand exceeds debt"
+    if metric == "debt_to_equity" and value is not None and value < 0:
+        return "Negative equity, so this ratio isn't a normal leverage read"
     if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
-        return "Operating profit as share of sales (latest annual)"
-    return METRIC_GLOSS[metric]
+        base = "Operating profit as share of sales (latest annual)"
+    else:
+        base = METRIC_GLOSS[metric]
+    direction = metric_direction(metric)
+    if direction == "higher":
+        return f"{base}. Higher is better."
+    if direction == "lower":
+        return f"{base}. Lower is better."
+    return base
 
 
 def metric_analogy(metric: str, value: float | None, card: dict | None = None) -> str:
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return (
-            "Cash on the balance sheet exceeds debt — a net cash position, "
+            "Cash on the balance sheet exceeds debt: a net cash position, "
             "not leverage to repay."
+        )
+    if metric == "debt_to_equity" and value is not None and value < 0:
+        return (
+            "Owners' equity has gone negative here, so the usual mortgage-versus-"
+            "equity comparison breaks down."
         )
     if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
         return (
             "For each dollar of annual sales, this is the slice kept as operating "
-            "profit before interest and taxes — one fiscal year, not four quarters."
+            "profit before interest and taxes: one fiscal year, not four quarters."
         )
     return METRIC_ANALOGY[metric]
 
@@ -175,14 +221,21 @@ def metric_learn_text(metric: str, value: float | None, card: dict | None = None
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return (
             "Net debt is total debt minus cash. When cash exceeds debt, the ratio "
-            "is negative — a net cash position. Yahoo's EBITDA is still in the "
+            "is negative: a net cash position. Yahoo's EBITDA is still in the "
             "denominator; read the sign as cash vs debt, not years to repay."
+        )
+    if metric == "debt_to_equity" and value is not None and value < 0:
+        return (
+            "Debt-to-equity divides total debt by shareholders' equity. When heavy "
+            "losses or buybacks push equity below zero, the ratio's sign flips: a "
+            "very negative number here does not mean low debt, it means the owners' "
+            "stake itself has gone negative."
         )
     if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
         return (
             "Yahoo did not provide four quarters of operating profit for this ticker. "
             "This card uses the latest annual operating profit divided by annual "
-            "total revenue — comparable in spirit to margin, but not trailing twelve months."
+            "total revenue, comparable in spirit to margin, but not trailing twelve months."
         )
     return METRIC_LEARN[metric]
 

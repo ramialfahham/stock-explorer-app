@@ -21,6 +21,6 @@ Before opening a UX PR:
 2. **Component specs** — layout changes must match [`docs/ui/`](ui/) (design tokens, Saved list, Discover header, card metric cell).
 3. **One primary job** — PR description includes one sentence: what the user can do after merge.
 4. **Mobile wireframe** — ASCII or sketch in the PR body for new layout patterns (required for Saved, Discover chrome, or card structure changes).
-5. **480px smoke** — no horizontal scroll on Saved; Save still reachable on Discover; three hero metric values visible without scroll.
+5. **480px smoke** — no horizontal scroll on Saved; Save still reachable on Discover; company + sector + health verdict visible without scroll, at least the first metric value above the fold (no hero/tier split as of the card-metric-cell redesign — see [`north_star.md`](north_star.md)'s "Success check (mobile)" line and [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s own 480px checklist).
 
 Audit or premortem tasks that change UI must pass this gate — not ship as silent engineering deliverables.

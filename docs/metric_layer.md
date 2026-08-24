@@ -21,9 +21,9 @@ No prose document defines a metric; docs *reference* the seed.
 
 ## The three parts
 
-1. **Each metric is computed in exactly one place.** `int_stock__card_metrics` computes the five
-   metrics once; the marts and the Supabase export carry them downstream. The seed *defines*; the
-   model *computes*.
+1. **Each metric is computed in exactly one place.** `int_stock__card_metrics` computes every
+   catalogued metric once; the marts and the Supabase export carry them downstream. The seed
+   *defines*; the model *computes*.
 2. **The catalogue is the registry + glossary.** The seed is the single list of every metric and its
    display/copy metadata. `scripts/export_metric_definitions_json.py` builds `frontend/metrics.json`
    from it; `frontend/card_copy.py` reads that JSON (no hardcoded metric dicts). It documents; it does

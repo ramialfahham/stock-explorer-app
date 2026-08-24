@@ -29,7 +29,7 @@ flowchart TD
         direction TB
         A["yfinance<br/>index-constituent fundamentals"] --> B["Python ingestion<br/>raw parquet"]
         B --> C["dbt transforms<br/>ephemeral DuckDB · 1_staging → 5_marts"]
-        C --> D["Eligibility gate<br/>five-metric data contract"]
+        C --> D["Eligibility gate<br/>per-company-type data contract"]
         D --> E[("Supabase / Postgres<br/>card marts")]
     end
     E -->|"stable data contract"| F
@@ -47,9 +47,9 @@ the app reads only the exported marts.
 
 - **Fundamentals as beginner snapshots** — one company at a time, plain-language gloss on
   each metric, with optional depth via progressive disclosure.
-- **Five-metric eligibility contract** — a company enters the pool only when all its
-  headline fundamentals are present; no fallbacks or substitute proxies, because
-  incomplete data erodes trust.
+- **Per-company-type eligibility contract**: a company enters the pool only when all
+  its headline fundamentals for its type are present; no fallbacks or substitute
+  proxies, because incomplete data erodes trust.
 - **Registry-driven markets** — the active market set lives in
   [`docs/market_registry.yml`](docs/market_registry.yml), not hard-coded.
 - **Deterministic discovery queue** — round-robin across markets, unseen-first,

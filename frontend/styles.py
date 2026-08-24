@@ -374,48 +374,47 @@ section[data-testid="stSidebar"] {
     line-height: 1.2;
 }
 
-/* Metric range mark (card face) — this company's value between its sector's min and
-   max, median labeled at its own position. See docs/ui/card_metric_cell.md. */
+/* Metric range mark (card face) — numbers row above the bar, the bar itself (gap at
+   the median, marker = this company), a word-labels row below. min/median/max are all
+   center-aligned on their real position with the same rule — see
+   docs/ui/card_metric_cell.md. */
 .ss-metric-range {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0.4rem 0 0;
+    margin: 0.5rem 0 0;
+    padding: 0 1.2rem;
 }
-.ss-metric-range-min,
-.ss-metric-range-max {
-    flex-shrink: 0;
-    width: 3.8rem;
+.ss-metric-range-numbers,
+.ss-metric-range-words {
+    position: relative;
+    height: 0.8125rem;
+}
+.ss-metric-range-number,
+.ss-metric-range-word {
+    position: absolute;
+    top: 0;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+.ss-metric-range-number {
+    max-width: 5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     font-size: var(--ss-caption-size);
     font-variant-numeric: tabular-nums;
     color: var(--ss-caption);
-    white-space: nowrap;
 }
-.ss-metric-range-min {
-    text-align: right;
-}
-.ss-metric-range-max {
-    text-align: left;
+.ss-metric-range-word {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
 }
 .ss-metric-range-track {
     position: relative;
-    flex: 1;
-    height: 2rem;
-}
-.ss-metric-range-median-label {
-    position: absolute;
-    top: 0;
-    font-size: var(--ss-caption-size);
-    line-height: 1;
-    color: var(--ss-caption);
-    transform: translateX(-50%);
-    white-space: nowrap;
+    height: 0.6875rem;
+    margin: 0.2rem 0;
 }
 .ss-metric-range-bar {
     position: absolute;
-    top: 1.125rem;
+    top: 0.15625rem;
     height: 0.375rem;
     background: var(--ss-track);
 }
@@ -429,18 +428,59 @@ section[data-testid="stSidebar"] {
 }
 .ss-metric-range-marker {
     position: absolute;
-    top: 1rem;
+    top: 0;
     width: 0.1875rem;
     height: 0.6875rem;
     background: var(--ss-accent);
     border-radius: 0.1rem;
     transform: translateX(-50%);
 }
-.ss-metric-gloss {
+/* font-size and margin both live only in the two scoped rules below, not here -- a
+   Streamlit emotion-cache rule resets both properties on any bare `<p class="single">`
+   at higher specificity than a single class, silently overriding either one if set
+   here instead. font-weight/color/text-transform/letter-spacing are untouched by that
+   reset, so they're safe on the bare class. */
+.ss-metric-group-heading {
+    font-weight: 600;
+    color: var(--ss-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+/* Card face lays metrics out on a CSS grid with its own `gap` between every item, so a
+   heading's own margins would stack on top of that gap instead of replacing it: pull
+   back above for a deliberate section break, negative below so the heading reads as
+   attached to its group rather than floating equidistant between both neighbors. */
+.ss-metrics-stack .ss-metric-group-heading {
+    font-size: 0.68rem;
+    margin: 0.45rem 0 -0.65rem;
+}
+.ss-metrics-stack .ss-metric-group-heading:first-child {
+    margin-top: 0;
+}
+/* Learn panel is plain block flow (no grid `gap`), so its margins are the real values
+   directly, not grid-gap-offset like the card face above. */
+.ss-metric-learn-list .ss-metric-group-heading {
+    font-size: 0.68rem;
+    margin: 0.9rem 0 0.35rem;
+}
+.ss-metric-learn-list .ss-metric-group-heading:first-child {
+    margin-top: 0;
+}
+/* .ss-metric > p (not a bare class selector): Streamlit's own emotion-cache stylesheet
+   carries a `<ancestor-class> p { margin-top: 0; ... }` reset at (0,1,1) specificity,
+   which silently wins over a same-weight single-class rule regardless of source order.
+   Scoping under the parent keeps these at (0,2,0) so the margin actually applies. */
+.ss-metric .ss-metric-gloss {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
-    margin: 0.1rem 0 0;
+    margin: 0.5rem 0 0;
     line-height: 1.25;
+}
+.ss-metric .ss-metric-range-unavailable {
+    margin: 0.5rem 0 0;
+    font-size: var(--ss-caption-size);
+    font-style: italic;
+    color: var(--ss-muted);
 }
 
 /* Explain all */
@@ -493,10 +533,9 @@ section[data-testid="stSidebar"] {
     color: var(--ss-text);
     margin: 0 0 0.2rem;
 }
-.ss-metric-analogy {
+.ss-metric-learn-item .ss-metric-analogy {
     font-size: var(--ss-caption-size);
-    font-weight: 600;
-    color: var(--ss-accent);
+    color: var(--ss-caption);
     margin: 0.35rem 0 0.2rem;
     line-height: 1.4;
 }

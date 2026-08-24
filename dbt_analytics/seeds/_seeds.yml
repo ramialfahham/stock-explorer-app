@@ -65,7 +65,7 @@ seeds:
               arguments:
                 values: ["valuation", "profitability", "growth", "solvency", "liquidity", "cash", "returns"]
       - name: importance_tier
-        description: "1 = hero (visible three), 2 = balance (below the hero three)."
+        description: "Relative importance ranking (1 = higher priority, 2 = lower) -- not tied to a visual split on the card face; every applicable metric renders the same way, lens-grouped."
         tests:
           - accepted_values:
               arguments:

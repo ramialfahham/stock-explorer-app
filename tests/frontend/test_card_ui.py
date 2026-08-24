@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from card_copy import ALL_METRICS, BENCHMARK_METRICS, _BY_ID, metrics_for_card  # noqa: E402
+from card_copy import (  # noqa: E402
+    ALL_METRICS,
+    BENCHMARK_METRICS,
+    _BY_ID,
+    metric_perspective_label,
+    metrics_for_card,
+)
 from card_ui import (  # noqa: E402
     _company_summary_html,
     _health_block_html,
@@ -71,18 +77,41 @@ def _card_with_benchmark_range(**overrides) -> dict:
 
 
 def test_build_card_shows_range_mark_when_benchmark_available() -> None:
+    """New structure: a numbers row (bare values, no "min"/"max" text prefix) above the
+    bar, a words row ("min"/"median"/"max") below it -- see docs/ui/card_metric_cell.md."""
     html = build_card_html(_card_with_benchmark_range())
     assert "ss-metric-range" in html
     assert "ss-metric-range-marker" in html
-    assert "min 4.1%" in html
-    assert "max 38.9%" in html
-    assert "median 15.3%" in html
+    assert 'class="ss-metric-range-number" style="left:0%">4.1%<' in html
+    assert 'class="ss-metric-range-number" style="left:100%">38.9%<' in html
+    assert "15.3%" in html  # median value, position is clamp()'d -- checked separately
+    assert 'class="ss-metric-range-word" style="left:0%">min<' in html
+    assert 'class="ss-metric-range-word" style="left:100%">max<' in html
+    assert ">median<" in html
+
+
+def test_range_mark_min_median_max_share_identical_alignment_rule() -> None:
+    """Regression: an earlier draft edge-anchored min/max (`left:0`/`right:0`-style,
+    text growing outward from the track's ends) while median centered on its own point
+    -- inconsistent, and the max label drifted away from its tick. All three points must
+    resolve through the same class (`.ss-metric-range-number` / `-word`, both
+    `transform: translateX(-50%)` in CSS) with only their `left` position differing, so
+    they read as one consistent reference frame instead of three different rules."""
+    html = build_card_html(_card_with_benchmark_range())
+    assert html.count('class="ss-metric-range-number"') == 3  # min, median, max -- one class
+    assert html.count('class="ss-metric-range-word"') == 3
+    assert "ss-metric-range-min" not in html  # old per-role classes are gone
+    assert "ss-metric-range-max" not in html
+    assert "ss-metric-range-median-label" not in html
 
 
 def test_range_mark_direction_cue_shown_for_net_debt() -> None:
     """net_debt_to_ebitda is a rightward-marker-is-bad-news metric -- the gloss line must
     say so, since the mark itself (a bar-and-marker) otherwise reads as "further right =
-    better" the way it correctly does for the 3 higher-better metrics."""
+    better" the way it correctly does for the 3 higher-better metrics. The cue's full
+    branch coverage (every catalogued direction, the net-cash suppression) lives in
+    test_card_copy.py against metric_gloss() directly; this is an integration smoke
+    check that build_card_html() actually renders what that function returns."""
     card = _card_with_all_metrics("operating")
     card["sector_peer_count"] = 20
     card["net_debt_to_ebitda"] = 3.9
@@ -93,9 +122,16 @@ def test_range_mark_direction_cue_shown_for_net_debt() -> None:
     assert "Lower is better." in html
 
 
-def test_range_mark_direction_cue_absent_for_higher_better_metric() -> None:
-    html = build_card_html(_card_with_benchmark_range())  # ebit_margin_pct, higher_better
-    assert "Lower is better." not in html
+def test_range_mark_direction_cue_matches_higher_better_metric() -> None:
+    """ebit_margin_pct is catalogued higher_better -- its own gloss line must say
+    "Higher is better.", not "Lower". (Other lower_better metrics on the same card get
+    their own "Lower is better." cue now that the rule is universal -- see
+    test_card_copy.py -- so this checks the metric's own composed gloss line, not
+    whole-page absence of that phrase.)"""
+    card = _card_with_benchmark_range()  # ebit_margin_pct, higher_better
+    html = build_card_html(card)
+    assert "Operating profit as share of sales (TTM). Higher is better." in html
+    assert "Operating profit as share of sales (TTM). Lower is better." not in html
 
 
 def test_range_mark_direction_cue_shown_for_forward_pe() -> None:
@@ -119,7 +155,9 @@ def test_range_mark_direction_cue_shown_for_forward_pe() -> None:
 def test_range_mark_direction_cue_suppressed_for_net_cash() -> None:
     """A negative net_debt_to_ebitda already renders the value-aware "Net cash" gloss,
     which states the favorable read directly -- restating the axis on top of it is
-    redundant, not informative."""
+    redundant, not informative. Checks net_debt_to_ebitda's own composed gloss line, not
+    whole-page absence, since other lower_better metrics on this all-metrics card
+    legitimately show "Lower is better." on their own rows now."""
     card = _card_with_all_metrics("operating")
     card["sector_peer_count"] = 20
     card["net_debt_to_ebitda"] = -1.2
@@ -128,17 +166,19 @@ def test_range_mark_direction_cue_suppressed_for_net_cash() -> None:
     card["sector_max_net_debt_to_ebitda"] = 4.2
     html = build_card_html(card)
     assert "Net cash" in html
-    assert "Lower is better." not in html
+    # nothing appended after the value-aware gloss -- </p> immediately follows it
+    assert "Net cash: cash on hand exceeds debt</p>" in html
 
 
 def test_direction_cue_catalogue_assumptions_still_hold() -> None:
-    """_direction_cue() derives which metrics get ". Lower is better." straight from the
-    catalogue's own `direction` field (currently: forward_pe and net_debt_to_ebitda). Pin
-    the specific values here: if a future metric_catalogue.csv edit reclassifies either
-    metric's direction, or changes the language this docstring's reasoning leans on, this
-    test breaks and forces that reasoning to be re-checked against the new catalogue
-    content -- instead of the code's comments silently drifting out of sync with the
-    single source of truth they're supposed to stay consistent with
+    """metric_direction()/metric_gloss() (frontend/card_copy.py) derive the ". Higher/
+    Lower is better." suffix straight from the catalogue's own `direction` field, for
+    every metric that has one. Pin the specific values here for the two metrics this
+    file's other tests exercise: if a future metric_catalogue.csv edit reclassifies
+    either metric's direction, or changes the language this docstring's reasoning leans
+    on, this test breaks and forces that reasoning to be re-checked against the new
+    catalogue content -- instead of the code's comments silently drifting out of sync
+    with the single source of truth they're supposed to stay consistent with
     (docs/data_contract.md's "Card metrics -- dbt formulas" section)."""
     assert _BY_ID["forward_pe"]["direction"] == "lower_better"
     assert "growth" in _BY_ID["forward_pe"]["interpretation"].lower()
@@ -146,9 +186,12 @@ def test_direction_cue_catalogue_assumptions_still_hold() -> None:
     assert "safer" in _BY_ID["net_debt_to_ebitda"]["interpretation"].lower()
 
 
-def test_range_mark_direction_cue_absent_when_range_mark_itself_unavailable() -> None:
-    """No mark to disambiguate below the peer threshold -> no cue either, same
-    availability check as the range mark."""
+def test_range_mark_direction_cue_shown_even_when_range_mark_itself_unavailable() -> None:
+    """Below the peer threshold the range MARK is suppressed (no sector to compare
+    against), but the direction cue is a ceteris-paribus statement about the metric's
+    own axis, independent of whether a mark is currently drawn (owner decision) -- so it
+    still shows. This is the opposite of the old (mark-gated) behavior; see
+    card_copy.metric_gloss()'s docstring."""
     card = _card_with_all_metrics("operating")
     card["sector_peer_count"] = 7
     card["net_debt_to_ebitda"] = 3.9
@@ -156,12 +199,54 @@ def test_range_mark_direction_cue_absent_when_range_mark_itself_unavailable() ->
     card["sector_median_net_debt_to_ebitda"] = 1.9
     card["sector_max_net_debt_to_ebitda"] = 4.2
     html = build_card_html(card)
-    assert "Lower is better." not in html
+    assert "ss-metric-range-marker" not in html  # no mark below the peer threshold...
+    assert "Lower is better." in html  # ...but the cue still shows
 
 
 def test_build_card_omits_range_mark_below_peer_threshold() -> None:
+    """No mark -- but the "No sector comparison" placeholder fills the gap it would
+    have left, so the absence reads as deliberate rather than a missing element
+    (owner feedback: a blank gap "still looks like a bug")."""
     html = build_card_html(_card_with_benchmark_range(sector_peer_count=7))
-    assert "ss-metric-range" not in html
+    assert "ss-metric-range-marker" not in html
+    assert "ss-metric-range-unavailable" in html
+    assert "No sector comparison for this metric." in html
+
+
+def test_build_card_shows_unavailable_placeholder_for_never_benchmarked_metric() -> None:
+    """debt_to_equity is not in BENCHMARK_METRICS at all (a different code path from
+    the below-threshold/degenerate cases, which start from a benchmarkable metric that
+    becomes unavailable for a specific card) -- it must still get the placeholder, not
+    a silent gap, on every card that shows it."""
+    card = _card_with_all_metrics("operating")
+    card["sector_peer_count"] = 20  # would be plenty for a benchmarkable metric
+    html = build_card_html(card)
+    assert "Borrowed money vs owners" in html  # debt_to_equity's own gloss, sanity check
+    assert "ss-metric-range-unavailable" in html
+
+
+def test_build_card_shows_negative_equity_gloss_for_debt_to_equity() -> None:
+    """End-to-end regression for the debt_to_equity value-aware branch (cto-reviewer
+    round 2: the unit-level metric_gloss() tests don't prove build_card_html() actually
+    renders it) -- the card face must show the negative-equity gloss, not the plain
+    "Borrowed money..." text or a "Lower is better." cue on top of it."""
+    card = _card_with_all_metrics("operating")
+    card["debt_to_equity"] = -2.3
+    html = build_card_html(card)
+    assert "Negative equity, so this ratio" in html  # apostrophe in "isn't" is HTML-escaped
+    assert "Borrowed money vs owners" not in html
+    assert "leverage read. Lower is better." not in html
+
+
+def test_learn_panel_shows_negative_equity_analogy_and_learn_text_for_debt_to_equity() -> None:
+    """Same regression, learn panel side -- the analogy/learn text swap, not just the
+    card-face gloss (cto-reviewer round 2: this end-to-end path had no test either)."""
+    card = _card_with_all_metrics("operating")
+    card["debt_to_equity"] = -2.3
+    html = build_learn_panel_body_html(card)
+    assert "mortgage-versus-equity comparison breaks down" in html
+    assert "the owners" in html and "stake itself has gone negative" in html
+    assert "Like comparing a mortgage to home equity" not in html  # plain analogy replaced
 
 
 def test_build_card_range_mark_replaces_old_text_indicator() -> None:
@@ -205,7 +290,8 @@ def test_build_card_range_mark_omitted_for_degenerate_sector() -> None:
             sector_max_ebit_margin_pct=20.0,
         )
     )
-    assert "ss-metric-range" not in html
+    assert "ss-metric-range-marker" not in html
+    assert "ss-metric-range-unavailable" in html
 
 
 def test_build_card_financial_shows_bank_metrics() -> None:
@@ -325,3 +411,36 @@ def test_learn_panel_compare_section_shows_words_not_arrow_glyphs() -> None:
     assert "Higher than sector median" in html
     for glyph in ("↑", "↓", "→"):
         assert glyph not in html
+
+
+def test_metric_groups_render_in_lens_order_on_card_face() -> None:
+    """Group headings surface the same analytical-lens grouping metrics_for_card()
+    already sorts by (card_copy.py's _LENS_ORDER) -- previously only affected silent
+    ordering, now a visible <p class="ss-metric-group-heading"> once per lens
+    transition. Expected headings are derived from metrics_for_card()/
+    metric_perspective_label() directly -- the same primitives build_card_html() itself
+    uses -- rather than a hand-typed catalogue snapshot, so this pins that
+    build_card_html() actually surfaces whatever grouping those primitives establish,
+    without rotting if the catalogue's perspective assignments change."""
+    card = _card_with_all_metrics("operating")
+    ordered_metrics = metrics_for_card(card)
+    expected_groups: list[str] = []
+    for metric in ordered_metrics:
+        label = metric_perspective_label(metric)
+        if not expected_groups or expected_groups[-1] != label:
+            expected_groups.append(label)
+    assert len(expected_groups) > 1  # operating cards span more than one lens
+
+    html = build_card_html(card)
+    assert html.count("ss-metric-group-heading") == len(expected_groups)
+    positions = [html.index(f'ss-metric-group-heading">{label}<') for label in expected_groups]
+    assert positions == sorted(positions)  # lens order, no repeated heading per group
+
+
+def test_metric_groups_also_render_in_learn_panel() -> None:
+    """_metric_stack_with_groups() backs both the card face and the learn panel --
+    confirm the learn panel gets headings too, not just the card face."""
+    card = _card_with_all_metrics("operating")
+    html = build_learn_panel_body_html(card)
+    assert "ss-metric-group-heading" in html
+    assert ">Valuation<" in html  # first lens for an operating card, from the fixture above

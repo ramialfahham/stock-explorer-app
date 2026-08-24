@@ -399,7 +399,7 @@ Before setting `ingest_active: true` for a new market:
 1. Add row to `market_registry.yml` and `constituent_sources.yml`
 2. Run `python scripts/sync_dbt_vars.py`
 3. Refresh or import constituent seed
-4. Run **coverage audit** (all five metrics on sample + full run)
+4. Run **coverage audit** (the operating-type eligibility metrics, the majority case for any market's constituents, on sample + full run)
 5. Confirm eligible count ≥ warn threshold
 6. Add Supabase `markets` row (or rely on export upsert)
 7. Update [`operations_guide.md`](operations_guide.md) market table

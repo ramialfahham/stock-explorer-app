@@ -12,8 +12,8 @@ for user-facing behavior. Technical contracts live in [`data_contract.md`](data_
 An **explore-and-learn** stock app for **finance-curious beginners** — people with near-zero
 prior knowledge who want to **understand companies**, not execute trades.
 
-Each **Company Snapshot** is an analyst-grade overview at low barrier: five fundamental metrics,
-plain language, optional depth. **Discover** is scoped exploration (filter + walk, or **Search** for lookup);
+Each **Company Snapshot** is an analyst-grade overview at low barrier: fundamental metrics for
+that company's type, plain language, optional depth. **Discover** is scoped exploration (filter + walk, or **Search** for lookup);
 **Saved** is the return habit — your learning list on this device.
 
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
@@ -38,18 +38,27 @@ metaphors or opaque queue counters (e.g. global `1/834`) in product copy.
 
 ---
 
-## The card — five mandatory metrics
+## The card: fundamentals by company type
 
-Discovery cards show **fundamentals**, not batch pipeline prices. A company appears in the
-scoped pool only when **all five** metrics are present (no fallbacks, no substitutes).
+Discovery cards show **fundamentals**, not batch pipeline prices, grouped by analytical lens
+(valuation, profitability, growth, solvency, liquidity, cash, returns) so a card reads as one
+coherent picture, not a flat list. Which metrics apply, and which are mandatory for a company
+to appear in the scoped pool at all, depends on **company type** (operating, financial/bank,
+pre-revenue, via the Sector/Lifecycle Router): each type has its own required set (no
+fallbacks, no substitutes within that set) and its own full displayed set, typically larger
+than the required set. No hero/tier visual split: every applicable metric renders the same
+way, lens-grouped.
 
-| # | Metric | Role on card | Deep dive |
-|---|--------|--------------|-----------|
-| 1 | Forward P/E | Valuation — visible (hero three) | — |
-| 2 | EBIT margin | Quality / profitability — visible | — |
-| 3 | Revenue growth YoY | Momentum — visible | — |
-| 4 | Net debt / EBITDA | — | Visible on card (below hero three) |
-| 5 | FCF margin | — | Visible on card (below hero three) |
+The *required* (eligibility) sets per type live in [`data_contract.md`](data_contract.md)'s
+"Card eligibility" section. The *full displayed* set per type, typically larger than the
+required set, isn't enumerated in any doc, including this one; `metrics_for_card()`
+(`frontend/card_copy.py`) is the sole authoritative source, deliberately not duplicated into a
+doc that would need to stay in sync with it (see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s
+"Metric stack" section for why). An earlier version of this section hardcoded a single "five
+mandatory metrics" table that conflated the two concepts and fell out of sync with the app once
+card content started varying by company type. It was left standing after the (correct,
+`is_card_eligible`-level) five-metric picture stopped being the whole story for the growing
+majority of cards.
 
 **Live price** is not on the batch card (pipeline is not real-time). No on-card live-quote
 widget in v1 — users open **Yahoo Finance** via the card footer link (`st.link_button`).
@@ -65,7 +74,8 @@ visible — see the Progressive disclosure table below and
 placeholder) when a card has no matching assessment yet.
 
 **Large constituent bucket, smaller eligible pool:** index constituents are ingested broadly;
-only tickers passing the five-metric gate enter discovery. Bad or incomplete data erodes trust.
+only tickers passing their company type's eligibility gate enter discovery. Bad or incomplete
+data erodes trust.
 
 ---
 
@@ -75,7 +85,7 @@ Three tiers — never all expanded at once on first load:
 
 | Tier | Content | Goal |
 |------|---------|------|
-| **Scan** | Name, ticker, market, sector headline, health verdict badge, three hero metric values (+ two balance metrics below fold) | Answer “what company?” in seconds |
+| **Scan** | Name, ticker, market, sector headline, health verdict badge, metric values for this company's type (lens-grouped, no hero/tier split) | Answer “what company?” in seconds |
 | **Gloss** | AI read (always visible), sector one-liner, company blurb preview (expands inline to the full text when truncated), metric gloss lines under values | Plain-English context without clutter |
 | **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?” (each metric behind its own Read more toggle), practice-number playgrounds — all in **one** learn panel. The full company summary has its own inline toggle on the card face instead (Gloss tier), not in this panel | Optional learning on demand |
 
@@ -84,8 +94,11 @@ Three tiers — never all expanded at once on first load:
 peers exist in the sector within that market, **hide benchmark UI entirely** — no orphan
 “unavailable” line on the card face.
 
-**Success check (mobile):** user can read company + sector + three hero metric **values**
-without scrolling; Save remains reachable.
+**Success check (mobile):** user can read company + sector + health verdict without scrolling,
+with at least the first metric's value visible above the fold; Save remains reachable. (Not
+re-verified against the current, larger per-type metric counts as part of this doc fix: a
+"how many metric values fit above the fold now" check is a UX question, not a doc-accuracy
+one; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s 480px smoke checklist.)
 
 ---
 
@@ -116,7 +129,7 @@ without scrolling; Save remains reachable.
 | Browse list | **Removed** — Discover is filter + walk only; use **Search** for intentional lookup |
 | Cards per session | **No limit** |
 | Ordering (walk) | Round-robin across markets in scope, unseen first, sector-balanced; queue **starts at US S&P 500** when that market is in scope (`HERO_MARKET_CODE`) |
-| Universe | **Card-eligible tickers only** (all five metrics) |
+| Universe | **Card-eligible tickers only** (per company type's eligibility gate) |
 | Auth | **None in v1** — Save/Not now persist in browser localStorage on device |
 
 ### Save
@@ -193,7 +206,8 @@ UX PRs that change these areas must cite the relevant spec in the PR body.
 
 Markets are **registry-driven** (`docs/market_registry.yml`). v1 includes US, UK, JP, AU, and
 **DAX (Germany)**. Additional European indices are added **one at a time** after a **yfinance
-coverage audit** confirms all five metrics are obtainable for a meaningful share of constituents.
+coverage audit** confirms the operating-type eligibility metrics (the majority case for any
+market's constituents) are obtainable for a meaningful share of them.
 
 Do not activate a market in the app until eligibility counts meet [`data_contract.md`](data_contract.md)
 thresholds.
