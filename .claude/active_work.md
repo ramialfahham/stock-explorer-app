@@ -377,16 +377,17 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: the dead-code cleanup task** (`benchmark_indicator()`/
-   `_BENCHMARK_INDICATORS` in `frontend/card_copy.py`, deferred out of 6c's `scope_paths` —
-   see the 6c bullet above) — run it or dismiss it.
-2. The sector min/max data-quality issue and the Streamlit CSS-specificity audit flagged in
-   MR #24's Status entry above — both real, both deliberately deferred, neither started.
-3. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+1. **← START HERE: the sector min/max data-quality issue and the Streamlit
+   CSS-specificity audit** flagged in MR #24's Status entry above — both real, both
+   deliberately deferred, neither started.
+2. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
-(The pipeline schedule that used to be item 1 here is done — see Status/Infra.
-`ci-runner-01`'s 403 is resolved; MR #19 is MERGED.)
+(The dead-code cleanup that used to be item 1 here is done — `benchmark_indicator()`/
+`_BENCHMARK_INDICATORS` removed from `frontend/card_copy.py`, test coverage preserved for
+the still-live helpers in the same test file. The pipeline schedule that used to be item 1
+before that is also done — see Status/Infra. `ci-runner-01`'s 403 is resolved; MR #19 is
+MERGED.)
 
 ## Do NOT
 

@@ -383,24 +383,11 @@ def benchmark_range(card: dict, metric: str, median_key: str) -> dict | None:
     }
 
 
-_BENCHMARK_INDICATORS = {
-    "above": "↑",
-    "below": "↓",
-    "at": "→",
-}
-
 _BENCHMARK_INDICATOR_LABELS = {
     "above": "Higher than sector median",
     "below": "Lower than sector median",
     "at": "At sector median",
 }
-
-
-def benchmark_indicator(card: dict, metric: str, median_key: str) -> str | None:
-    position = benchmark_position(card, metric, median_key)
-    if position is None:
-        return None
-    return _BENCHMARK_INDICATORS[position]
 
 
 def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str | None:
