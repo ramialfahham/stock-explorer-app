@@ -139,24 +139,20 @@ data" and "the app stays current unattended."
 
 ## Status
 
-**OPEN — MR #24 (`feat/metric-cell-groups-and-range-redesign`, awaiting owner review):
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/24.** Three combined
-changes: universal ". Higher/Lower is better." direction cue (all 16 catalogued metrics,
-not just the 5 benchmarked ones), range-mark layout redesign (numbers above the bar, word
-labels below), and the metric catalogue's existing lens grouping surfaced as visible
-section headings (card face + learn panel). Plus a "No sector comparison for this metric"
-placeholder, and a repo-wide sweep (docs + app copy) removing stale "five metrics"/"hero"
-claims left behind by the Sector Router work, and a full em-dash/AI-voice writing pass
-across the metric catalogue. 7 review rounds, all 4 reviewers passing on the final round —
-full round-by-round trail (a genuine CSV corruption caught by tests twice, several
-self-caught overclaims, a real 3-string unapproved-copy-change gap the owner had to
-retroactively approve) is in the branch's own `.claude/task/contract.md` amendments and
-`.claude/task/review.md`, not repeated here. 207 tests. **Not fixed, flagged in the
-branch's own docs:** a sector data-quality issue (one ASX Energy stock's near-zero-revenue
-denominator distorts its whole sector's FCF/EBIT margin range mark — dbt-layer fix, owner
-call); a Streamlit CSS-specificity gotcha (~20 other pre-existing single-class `<p>` rules
-across the app may have the same silent-margin-reset bug this branch fixed for a handful of
-its own classes — spawned as its own follow-up task, not audited here).
+**MERGED — MR #24 (`feat/metric-cell-groups-and-range-redesign` → `gitlab/main` @
+`4e7b7d4`): universal direction cue (all 16 catalogued metrics, not just the 5
+benchmarked), range-mark layout redesign (numbers above the bar, word labels below),
+metric catalogue's lens grouping surfaced as visible section headings (card face + learn
+panel), a "No sector comparison for this metric" placeholder, and a repo-wide sweep
+removing stale "five metrics"/"hero" claims plus a full em-dash/AI-voice writing pass
+across the catalogue and app copy.** 7 review rounds, all 4 reviewers passing — full trail
+in the merged branch's own `.claude/task/contract.md`/`review.md` if needed. 207 tests.
+**Flagged, not fixed here:** a sector data-quality issue (one ASX Energy stock's
+near-zero-revenue denominator distorts its whole sector's FCF/EBIT margin range mark —
+dbt-layer fix, owner call); a Streamlit CSS-specificity gotcha (~20 other pre-existing
+single-class `<p>` rules across the app may share the silent-margin-reset bug this branch
+fixed for a handful of its own classes — spawned as its own follow-up task, not audited
+here).
 
 **MERGED — MR #22 (`feat/metric-range-mark` → `gitlab/main` @ `ebbe74a`): card-face
 benchmark indicator replaced with a monochrome range mark** (value positioned between
@@ -382,18 +378,16 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: owner reviews and merges MR #24** (metric-cell groups + range redesign +
-   universal direction cue) — see Status above.
-2. Owner creates the GitLab pipeline schedule (1st and 15th, 06:00 UTC) — see Status/Infra;
-   CI/CD variable *values* are done, the schedule itself is the one remaining piece before
-   the app refreshes unattended. (`ci-runner-01`'s 403 is resolved — see Status; MR #19 is
-   MERGED.)
-3. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
+1. **← START HERE: owner creates the GitLab pipeline schedule** (1st and 15th, 06:00 UTC) —
+   see Status/Infra; CI/CD variable *values* are done, the schedule itself is the one
+   remaining piece before the app refreshes unattended. (`ci-runner-01`'s 403 is resolved —
+   see Status; MR #19 is MERGED.)
+2. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
    `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
    dismiss it.
-4. The sector min/max data-quality issue and the Streamlit CSS-specificity audit flagged in
+3. The sector min/max data-quality issue and the Streamlit CSS-specificity audit flagged in
    MR #24's Status entry above — both real, both deliberately deferred, neither started.
-5. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+4. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
 ## Do NOT
