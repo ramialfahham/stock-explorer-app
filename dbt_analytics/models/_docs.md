@@ -20,9 +20,10 @@ See `docs/data_contract.md` for the canonical per-type definition.
 
 {% docs card_metrics %}
 
-Five metrics power the stock swipe card (valuation → profitability → growth → solvency → cash).
-All are computed in `int_stock__card_metrics` from the latest fundamentals snapshot and
-constituent dimension. No fallbacks (e.g. ROIC) when a primary Yahoo field is null.
+Metrics power the stock swipe card, grouped by analytical lens (valuation → profitability →
+growth → solvency → liquidity → cash → returns) and varying by company type. All are computed
+in `int_stock__card_metrics` from the latest fundamentals snapshot and constituent dimension.
+No fallbacks (e.g. ROIC) when a primary Yahoo field is null.
 
 {% enddocs %}
 

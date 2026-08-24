@@ -87,7 +87,7 @@ After CI/CD variables are configured on GitLab:
 2. Add [`constituent_sources.yml`](constituent_sources.yml) entry
 3. `python scripts/sync_dbt_vars.py`
 4. Refresh seed: `python scripts/refresh_constituents.py --market <code>`
-5. Run coverage audit on sample tickers (all five metrics via yfinance)
+5. Run coverage audit on sample tickers (the operating-type eligibility metrics via yfinance)
 6. Flip `ingest_active: true`, sync vars, update Supabase `markets` row
 7. Document in [`operations_guide.md`](operations_guide.md)
 

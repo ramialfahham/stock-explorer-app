@@ -3,7 +3,7 @@ version: 2
 models:
   - name: int_stock__card_metrics
     description: >
-      **What:** Five swipe-card metrics and eligibility per ticker snapshot.
+      **What:** Swipe-card metrics and per-company-type eligibility per ticker snapshot.
       **Grain:** One row per (market_code, ticker, snapshot_date).
       **Source:** fct_fundamentals_snapshot, dim_stock.
       **Used by:** int_stock__sector_benchmarks, mart_stock_cards.

@@ -1,5 +1,5 @@
 """Product branding constants."""
 
 PRODUCT_NAME = "Stock Explorer"
-PRODUCT_TAGLINE = "Understand companies through five financial fundamentals."
+PRODUCT_TAGLINE = "Understand companies through their financial fundamentals."
 LANDING_TAGLINE = PRODUCT_TAGLINE

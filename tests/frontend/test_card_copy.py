@@ -9,6 +9,8 @@ import pytest
 from card_copy import (  # noqa: E402
     ALL_METRICS,
     BUSINESS_SUMMARY_PREVIEW_WORDS,
+    METRIC_ANALOGY,
+    METRIC_LEARN,
     STALE_SNAPSHOT_DAYS,
     benchmark_range,
     business_summary_is_truncated,
@@ -16,9 +18,11 @@ from card_copy import (  # noqa: E402
     format_metric_value,
     freshness_line,
     metric_analogy,
+    metric_direction,
     metric_gloss,
     metric_label,
     metric_learn_text,
+    metric_perspective_label,
     metrics_for_card,
     saved_row_subtitle,
     truncate_words,
@@ -26,12 +30,100 @@ from card_copy import (  # noqa: E402
 
 
 def test_metric_gloss_net_cash_when_ratio_negative() -> None:
-    assert metric_gloss("net_debt_to_ebitda", -3.6) == "Net cash — cash on hand exceeds debt"
+    assert metric_gloss("net_debt_to_ebitda", -3.6) == "Net cash: cash on hand exceeds debt"
 
 
 def test_metric_gloss_leverage_when_ratio_positive() -> None:
     gloss = metric_gloss("net_debt_to_ebitda", 2.5)
     assert "repay" in gloss.lower() or "debt" in gloss.lower()
+    assert gloss.endswith(". Lower is better.")  # universal cue, net_debt_to_ebitda is lower_better
+
+
+def test_metric_gloss_negative_equity_when_debt_to_equity_negative() -> None:
+    """Same failure shape as net_debt_to_ebitda's "Net cash" branch: since debt is
+    always >= 0, a negative debt_to_equity ratio structurally means equity itself has
+    gone negative (equity-analyst-reviewer finding -- the catalogue's own applicability
+    text warns the ratio "flips or explodes" here). Suppressing the universal cue on
+    top matters just as much: a more negative number is not a "better" version of low
+    leverage, it is a different, broken reading."""
+    gloss = metric_gloss("debt_to_equity", -0.4)
+    assert gloss == "Negative equity, so this ratio isn't a normal leverage read"
+    assert "Lower is better" not in gloss
+
+
+def test_metric_gloss_leverage_when_debt_to_equity_positive() -> None:
+    gloss = metric_gloss("debt_to_equity", 1.2)
+    assert gloss.endswith(". Lower is better.")
+
+
+def test_metric_analogy_and_learn_text_cover_negative_equity() -> None:
+    analogy = metric_analogy("debt_to_equity", -0.4)
+    learn = metric_learn_text("debt_to_equity", -0.4)
+    assert "negative" in analogy.lower()
+    assert "negative" in learn.lower()
+    # positive-value path is unaffected -- still the plain catalogue text
+    assert metric_analogy("debt_to_equity", 1.2) == METRIC_ANALOGY["debt_to_equity"]
+    assert metric_learn_text("debt_to_equity", 1.2) == METRIC_LEARN["debt_to_equity"]
+
+
+# --- Universal direction cue (metric_direction / metric_gloss's ". Higher/Lower is
+# better." suffix) -- applies to every catalogued metric, not just the 5 with a range
+# mark (owner's ceteris-paribus generalization; see card_copy.metric_gloss docstring).
+# Integration smoke checks that build_card_html() renders this live in test_card_ui.py;
+# the branch coverage over metric_direction()/metric_gloss() itself lives here.
+
+
+def test_metric_direction_higher_better() -> None:
+    assert metric_direction("ebit_margin_pct") == "higher"
+
+
+def test_metric_direction_lower_better() -> None:
+    assert metric_direction("forward_pe") == "lower"
+
+
+def test_metric_direction_unknown_metric_defaults_neutral() -> None:
+    """Defensive fallback -- no catalogued metric is actually 'neutral' today (all 16
+    are higher_better or lower_better), but an unrecognized id must not raise or
+    silently pick a direction it has no basis for."""
+    assert metric_direction("not_a_real_metric") == "neutral"
+
+
+def test_metric_gloss_appends_higher_is_better_cue() -> None:
+    assert metric_gloss("ebit_margin_pct", 21.5).endswith(". Higher is better.")
+
+
+def test_metric_gloss_appends_lower_is_better_cue() -> None:
+    assert metric_gloss("forward_pe", 18.0).endswith(". Lower is better.")
+
+
+def test_metric_gloss_cue_applies_without_a_range_mark() -> None:
+    """The cue is universal now -- it does not depend on whether this metric is one of
+    the 5 with a sector range mark. working_capital has no range mark at all."""
+    assert metric_gloss("working_capital", 2_100_000_000.0).endswith(". Higher is better.")
+
+
+def test_metric_gloss_annual_ebit_margin_still_gets_cue() -> None:
+    """The annual-basis variant swaps the base text but must still get the same
+    universal suffix appended after it, not lose it."""
+    card = {"ebit_margin_basis": "annual_latest"}
+    gloss = metric_gloss("ebit_margin_pct", 21.5, card)
+    assert gloss.startswith("Operating profit as share of sales (latest annual)")
+    assert gloss.endswith(". Higher is better.")
+
+
+def test_metric_gloss_net_cash_suppresses_the_cue() -> None:
+    """The value-aware "Net cash" branch already states the favorable read directly --
+    no suffix appended on top of it (exact match: nothing follows)."""
+    assert metric_gloss("net_debt_to_ebitda", -3.6) == "Net cash: cash on hand exceeds debt"
+
+
+def test_metric_perspective_label_title_cases_the_catalogue_lens() -> None:
+    assert metric_perspective_label("ebit_margin_pct") == "Profitability"
+    assert metric_perspective_label("forward_pe") == "Valuation"
+
+
+def test_metric_perspective_label_unknown_metric_is_blank() -> None:
+    assert metric_perspective_label("not_a_real_metric") == ""
 
 
 def test_metric_learn_net_cash_mentions_sign() -> None:

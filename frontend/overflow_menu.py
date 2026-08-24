@@ -21,14 +21,14 @@ from markets import (
 
 MENU_DATA_SOURCE = "Sourced from Yahoo Finance via our pipeline, refreshed every two weeks."
 MENU_MARKETS_LINE = "Markets: US, UK, Japan, Australia, Germany"
-MENU_METRICS_LINE = "Five metrics per company — no substitutes"
+MENU_METRICS_LINE = "Fundamentals per company, no substitutes"
 
 _DISCOVER_TIP = (
     "Save keeps a company on this device. Not now skips for later — "
     "you can still find it in Search."
 )
 _SAVED_TIP = "Open a company to practice numbers or load recent headlines."
-_SEARCH_TIP = "Only companies with all five fundamentals appear here."
+_SEARCH_TIP = "Only companies with a complete set of fundamentals appear here."
 
 
 def _esc(value: object) -> str:
@@ -53,7 +53,7 @@ def right_now_line(*, active_tab: str, saved_count: int) -> str:
         noun = "company" if saved_count == 1 else "companies"
         return f"{saved_count} saved {noun} on this device"
     if tab == "Search":
-        return "Find any company with a complete five-metric snapshot"
+        return "Find any company with a complete fundamentals snapshot"
     market = st.session_state.get("explore_market", ALL_MARKETS)
     sector = st.session_state.get("explore_sector", ALL_SECTORS)
     return discover_scope_line(market=market, sector=sector)

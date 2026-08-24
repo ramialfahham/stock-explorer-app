@@ -108,7 +108,7 @@ flowchart LR
 - Manual smoke on Streamlit Cloud after merge
 - **Mobile header (~480px):** brand + tagline; **⋯ inline with Discover / Saved / Search** (not on its own row); overflow menu on all tabs
 - Save / not now / hard refresh still works (localStorage)
-- Mobile-width scan: company + 3 hero metric values visible without scroll; **Save reachable** on Discover
+- Mobile-width scan: company + sector + health verdict visible without scroll, at least the first metric value above the fold (no hero/tier split); **Save reachable** on Discover
 - Card scannable in ~30 seconds with learn panel closed
 - Discover loads without `StreamlitDuplicateElementKey`
 - Small-sector cards show no orphan benchmark line on card face
