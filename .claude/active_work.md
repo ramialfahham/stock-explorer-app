@@ -20,9 +20,10 @@ rendering end-to-end this session (fresh page load, no errors, benchmark words +
 all correct). **GitLab CI/CD variables for the new Supabase project are now set** (all 6:
 `SUPABASE_URL`/`SUPABASE_DB_PASSWORD`/`SUPABASE_DB_HOST`/`SUPABASE_DB_PORT`/
 `SUPABASE_SERVICE_ROLE_KEY`/`ANTHROPIC_API_KEY`, all Protected, confirmed via `glab variable
-list`) — still open: **the pipeline schedule itself doesn't exist yet** (checked, zero
-schedules on the project) — see Infra for the exact steps, owner-only (GitLab project
-config, same class as the variable values).
+list`). **The pipeline schedule now exists too** (created 2026-08-24 via `glab api
+projects/:id/pipeline_schedules`, cron `0 6 1,15 * *` UTC, `main`, active — see Infra) —
+`data-pipeline` now refreshes the live app's 910 cards unattended, first run
+2026-09-01T06:00 UTC.
 **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
 button/popover/expander/link-button skin unified app-wide), **6c** (MR #10 — health verdict badge + AI
@@ -121,21 +122,20 @@ for manual access control) — this had a real consequence, see below.
   44 candidate endpoints from this machine (psycopg2 imports fine, so this reads as a local
   network/firewall issue, not a dead project) — if reaching for it again, expect it may not
   work from this machine and go straight to the dashboard instead.
-- **Still open: the pipeline schedule itself.** Checked via `glab api
-  projects/.../pipeline_schedules` — empty, none exist. Variables alone don't make
-  `data-pipeline` run on its own; owner still needs to create the schedule: GitLab →
-  **Build → Pipeline schedules → New schedule**, cron `0 6 1,15 * *` (1st and 15th of each
-  month, 06:00 UTC — owner decided bi-weekly is enough for an experimental project),
-  timezone UTC, target branch `main`, leave variables blank (project-level ones already
-  apply), Active toggled on.
+- **Pipeline schedule created 2026-08-24** via `glab api projects/:id/pipeline_schedules
+  -X POST` (id `4404666`, cron `0 6 1,15 * *`, UTC, target `main`, active, first run
+  2026-09-01T06:00 UTC) — confirmed `data-pipeline`'s own `rules:` already match
+  `$CI_PIPELINE_SOURCE == "schedule"` (`.gitlab-ci.yml:259-260`), so this actually triggers
+  it. Previously deferred as owner-only (same class as the variable *values*); on
+  reconsideration this was mechanical implementation of an already-decided cadence
+  (bi-weekly, 1st/15th, 06:00 UTC — decided in the MR #19 session), not a new decision, so
+  created directly rather than re-escalating an already-settled call.
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** owner creates the pipeline schedule above (now 1st and 15th of
-each month, 06:00 UTC — owner decided bi-weekly is enough for an experimental project, not
-weekly). Once that's done, `data-pipeline` refreshes the live app's 910 cards on its own,
-instead of relying on manual local runs — the last piece between "the app is live with real
-data" and "the app stays current unattended."
+**Next concrete action:** none on this track — the pipeline schedule above was the last
+piece needed, and it's done. `data-pipeline` now refreshes the live app's 910 cards on its
+own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
@@ -174,9 +174,8 @@ cadence switched weekly → every two weeks** (1st/15th, owner's call). Copy + r
 sweep + a real functional catch — `STALE_SNAPSHOT_DAYS` recalibrated 7 → 18 so the
 "data may be old" warning doesn't fire on every healthy cycle (owner approved: "Keep 18").
 Five review rounds, real findings in four — full trail on the merged branch if needed.
-**Still open, owner-only:**
-1. Create the actual GitLab pipeline schedule (cron `0 6 1,15 * *`, UTC, target `main`) —
-   this MR couldn't do that part.
+**The one piece this MR couldn't do — creating the actual GitLab pipeline schedule — is
+now also done** (2026-08-24, see Infra section above).
 
 **`ci-runner-01`'s 403-on-fetch (flagged after MR #19) is RESOLVED** — confirmed via
 `glab api .../pipelines`: MR #19's pipeline succeeded on retry the same night, and a fresh
@@ -378,17 +377,16 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: owner creates the GitLab pipeline schedule** (1st and 15th, 06:00 UTC) —
-   see Status/Infra; CI/CD variable *values* are done, the schedule itself is the one
-   remaining piece before the app refreshes unattended. (`ci-runner-01`'s 403 is resolved —
-   see Status; MR #19 is MERGED.)
-2. The already-spawned dead-code cleanup task (`benchmark_indicator()`/`_BENCHMARK_INDICATORS` in
-   `frontend/card_copy.py`, deferred out of 6c's `scope_paths` — see the 6c bullet above) — run it or
-   dismiss it.
-3. The sector min/max data-quality issue and the Streamlit CSS-specificity audit flagged in
+1. **← START HERE: the dead-code cleanup task** (`benchmark_indicator()`/
+   `_BENCHMARK_INDICATORS` in `frontend/card_copy.py`, deferred out of 6c's `scope_paths` —
+   see the 6c bullet above) — run it or dismiss it.
+2. The sector min/max data-quality issue and the Streamlit CSS-specificity audit flagged in
    MR #24's Status entry above — both real, both deliberately deferred, neither started.
-4. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+3. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
+
+(The pipeline schedule that used to be item 1 here is done — see Status/Infra.
+`ci-runner-01`'s 403 is resolved; MR #19 is MERGED.)
 
 ## Do NOT
 
