@@ -197,8 +197,11 @@ models:
         description: >
           Lifecycle/sector classification for the Sector Router: financial when
           coalesce(info_sector, dim_stock.sector) = 'Financial Services'; else pre_revenue when
-          stmt_total_revenue is present and <= 0; else operating. Always resolves to one of the three
-          (non-null). A null stmt_total_revenue is treated as a data gap (operating), not pre_revenue.
+          stmt_total_revenue is present and <= 0, OR when stmt_total_revenue is positive but under
+          0.1% of info_market_cap (revenue negligible relative to valuation -- e.g. a development-stage
+          miner/biotech that the strict <= 0 test alone misses); else operating. Always resolves to one
+          of the three (non-null). A null stmt_total_revenue, or a positive-but-negligible revenue with
+          no market cap to compare it against, is treated as a data gap (operating), not pre_revenue.
           Exported to the mart/Supabase (Sector Router) and drives per-type eligibility and card display.
         data_tests:
           - not_null
@@ -729,6 +732,15 @@ unit_tests:
           - {market_code: us_sp500, ticker: PRE, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0}
           - {market_code: us_sp500, ticker: OPS, snapshot_date: "2026-01-01", info_sector: Technology, stmt_total_revenue: 200.0}
           - {market_code: us_sp500, ticker: NUL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: null}
+          # DYL-like: revenue positive but 0.05% of market cap -- under the 0.1% floor, reclassifies.
+          - {market_code: au_asx200, ticker: MICRO, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0, info_market_cap: 2000000.0}
+          # Boundary: revenue 0.15% of market cap -- above the floor, stays operating. Pins both
+          # sides of the threshold, not just the one case that motivated it.
+          - {market_code: au_asx200, ticker: SMALL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 3000.0, info_market_cap: 2000000.0}
+          # Positive-but-negligible revenue with NO market cap to compare it against -- a data gap,
+          # not a signal, so this must stay operating rather than silently reclassifying on a
+          # ratio it can't actually compute.
+          - {market_code: au_asx200, ticker: NOMCAP, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0}
       - input: ref('dim_stock')
         rows:
           - {market_code: us_sp500, ticker: FIN, company_name: Bank Co, sector: Financial Services, currency: USD}
@@ -736,6 +748,9 @@ unit_tests:
           - {market_code: us_sp500, ticker: PRE, company_name: Biotech Co, sector: Healthcare, currency: USD}
           - {market_code: us_sp500, ticker: OPS, company_name: Tech Co, sector: Technology, currency: USD}
           - {market_code: us_sp500, ticker: NUL, company_name: Energy Co, sector: Energy, currency: USD}
+          - {market_code: au_asx200, ticker: MICRO, company_name: Micro Co, sector: Energy, currency: AUD}
+          - {market_code: au_asx200, ticker: SMALL, company_name: Small Co, sector: Energy, currency: AUD}
+          - {market_code: au_asx200, ticker: NOMCAP, company_name: No Mcap Co, sector: Energy, currency: AUD}
     expect:
       rows:
         - {market_code: us_sp500, ticker: FIN, company_type: financial}
@@ -743,6 +758,9 @@ unit_tests:
         - {market_code: us_sp500, ticker: PRE, company_type: pre_revenue}
         - {market_code: us_sp500, ticker: OPS, company_type: operating}
         - {market_code: us_sp500, ticker: NUL, company_type: operating}
+        - {market_code: au_asx200, ticker: MICRO, company_type: pre_revenue}
+        - {market_code: au_asx200, ticker: SMALL, company_type: operating}
+        - {market_code: au_asx200, ticker: NOMCAP, company_type: operating}
   - name: sector_medians_null_when_seven_eligible_peers
     model: int_stock__sector_benchmarks
     given:
@@ -1004,3 +1022,21 @@ unit_tests:
       rows:
         - {market_code: us_sp500, ticker: PREOK, company_type: pre_revenue, is_card_eligible: true}
         - {market_code: us_sp500, ticker: PRENO, company_type: pre_revenue, is_card_eligible: false}
+  - name: card_metrics_ratio_reclassified_pre_revenue_is_eligible
+    # A company reclassified pre_revenue via the NEW ratio branch (revenue positive but < 0.1% of
+    # market cap -- see card_metrics_company_type_classification for the classification pin alone)
+    # must flip to the pre_revenue eligibility branch correctly too, exactly like a company that
+    # classifies pre_revenue via the original revenue <= 0 branch above. DYL-like: revenue $1,000
+    # against a $2,000,000 market cap (0.05%, under the floor), with cash/debt present so
+    # net_cash_to_market_cap is computable -- matches real DYL, which has this field populated.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: au_asx200, ticker: RATIOOK, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0, info_market_cap: 2000000.0, stmt_cash_and_equivalents: 500000.0, stmt_total_debt: 100000.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: au_asx200, ticker: RATIOOK, company_name: Ratio OK, sector: Energy, currency: AUD}
+    expect:
+      rows:
+        - {market_code: au_asx200, ticker: RATIOOK, company_type: pre_revenue, is_card_eligible: true, missing_metrics: []}

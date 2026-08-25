@@ -227,6 +227,21 @@ metrics as (
             when s.stmt_total_revenue is not null
                 and s.stmt_total_revenue <= 0
                 then 'pre_revenue'
+            -- Revenue technically positive but negligible relative to how the market values the
+            -- company (< 0.1% of market cap) -- a development-stage company the strict <= 0 test
+            -- misses by a hair. Real example: Deep Yellow (ASX: DYL), a uranium developer with
+            -- $15,949 revenue against a $1.7B market cap (~0.001%) -- computing fcf_margin_pct/
+            -- ebit_margin_pct on that denominator produced a -129,810%/-90,334% outlier that swamped
+            -- its whole sector's range mark. Ratio, not an absolute currency floor: this app spans 5
+            -- currencies (AUD/USD/GBP/EUR/JPY) with no FX normalization anywhere in the pipeline, so
+            -- a flat dollar threshold would be unfair across markets. Requires market cap present and
+            -- positive; a missing market cap leaves the company operating (a data gap, not a signal).
+            when s.stmt_total_revenue is not null
+                and s.stmt_total_revenue > 0
+                and s.info_market_cap is not null
+                and s.info_market_cap > 0
+                and s.stmt_total_revenue / s.info_market_cap < 0.001
+                then 'pre_revenue'
             else 'operating'
         end as company_type
     from resolved as s
