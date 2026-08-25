@@ -153,20 +153,21 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
-**OPEN — MR !36 (`docs/cash-runway-learn-text-pre-revenue`):** `cash_runway_months`'s
-catalogue `learn` text widened from "For a pre-revenue company" to "For a company with
-little or no revenue", matching the population MR !33's classifier change created. One
-string plus the regenerated `frontend/metrics.json`; owner signed off on the exact phrasing
-2026-08-25. Copy only, no pipeline run needed (goes live on Render's auto-deploy at merge).
-Nine review rounds, four required reviewers — the payload was byte-stable from round 1 and
-every FAIL was against the surrounding handover/contract prose, mostly successive wrong
-claims about what `check_eligibility_baseline.py` compares. Round 8 broke that cycle by
-deleting the unverified conclusions instead of correcting them a fourth time, after
-scope-auditor pointed out ~18 lines of gate internals had accreted in this file purely as
-sediment from the review argument. Worth remembering as a pattern: when three rounds in a
-row correct the same sentence, the sentence is the problem, not the numbers in it.
-**Blocked on the owner merging it**, after which "Next concrete actions" item 1 (the manual
-`data-pipeline` run) is the next thing to do.
+**MERGED — MR !36 (`docs/cash-runway-learn-text-pre-revenue` → `gitlab/main` @ `cde3447`):
+`cash_runway_months`'s catalogue `learn` text widened to "For a company with little or no
+revenue" to match the population MR !33's classifier created; owner signed off on the exact
+phrasing 2026-08-25. Copy only, live on Render at merge (no pipeline run needed). Nine
+review rounds on a one-string payload that was byte-stable from round 1 — every FAIL was
+against the surrounding prose. **The lesson worth keeping:** three rounds in a row corrected
+the same sentence about what `check_eligibility_baseline.py` compares, each fixing the
+arithmetic one layer down and leaving a fresh unverified conclusion on top; round 8 ended it
+by deleting the conclusion instead of correcting it again. When a sentence fails review
+repeatedly, the sentence is the problem, not the numbers in it. Reviewers also flagged that
+~18 lines of gate internals had accreted in this file as sediment from the argument itself
+— removed. Also from that session: the plugin's reviewer agent types were not dispatchable,
+so each ran as a general-purpose agent reading its own role file verbatim (recorded in that
+MR's `review.md`), and `frontend/*` routing means a generated `frontend/metrics.json` pulls
+in cto-reviewer.
 
 **MERGED — MR #33 (`fix/pre-revenue-classification-threshold` → `gitlab/main` @ `1e6e33d`):
 the sector min/max data-quality issue fixed — Deep Yellow (ASX: DYL)'s outlier margins
@@ -487,9 +488,10 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: trigger the manual `data-pipeline` run once the
-   `docs/cash-runway-learn-text-pre-revenue` MR is merged.** Owner decided 2026-08-25: run
-   it now rather than waiting for the 2026-09-01 schedule. Measured reason, taken off live
+1. **← START HERE: trigger the manual `data-pipeline` run.** Nothing blocks it — MR !36
+   merged and needed no pipeline run of its own. Owner decided 2026-08-25: run it rather
+   than waiting for the 2026-09-01 schedule. **This is an owner action, not an agent one**
+   (see the web-UI-only constraint below). Measured reason, taken off live
    production (snapshot 2026-08-24, 907 eligible cards): DYL is still classified
    `operating`, so its own card shows -129,810% / -90,334% margins AND the 10 other
    eligible `au_asx200` Energy cards (ALD, BPT, NHC, PDN, STO, VEA, WDS, WHC, WOR, YAL)
