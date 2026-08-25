@@ -139,6 +139,28 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
+**MERGED — MR #29 (`fix/css-specificity-audit-p-tags` → `gitlab/main` @ `8fe21ab`): the
+Streamlit CSS-specificity bug MR #24 first found (bare single-class `<p>` selectors losing
+declared `font-size`/`margin-top` to a higher-specificity Streamlit emotion-cache ancestor
+rule) fixed across ~24 more classes app-wide** — scoped under each element's real parent
+class where one exists, `!important` where none does; every one re-verified live via
+computed styles, not just static analysis. Also fixed three unrelated dead sibling-combinator
+selectors found along the way, all near the card footer (`ss-freshness`, the footer's border
+separator, the Yahoo Finance link button's sizing) — same root cause (a marker `<div>`'s
+assumed DOM sibling doesn't exist; Streamlit wraps it, so the real sibling is one level up).
+Three review rounds: round 1 cto-reviewer FAILed with 2 real findings (fixed); round 2
+scope-auditor correctly ESCALATEd whether fixing the footer-separator bug (found mid-task,
+not part of the original ~24-class list) was in scope, and whether a border rendering for
+the first time was really "no visual change" — genuinely escalated, owner answered "fix all
+three" (including a third twin cto-reviewer found, the link button); round 3 both PASS. 207
+tests. **Flagged, not fixed here** (own follow-up task already spawned, chip in the session
+UI if still there — check `frontend/styles.py` directly for `.ss-action-shell`/
+`.ss-nav-row-marker` if it's gone): cto-reviewer spotted two MORE rules that may share this
+exact dead-selector pattern (the fixed Save/Skip action bar, the Discover/Saved/Search nav
+row) but didn't confirm live — deliberately kept out of this PR rather than expanding scope
+again without asking. The sector min/max data-quality issue is still the only other open
+item below.
+
 **MERGED — MR #27 (`chore/remove-dead-benchmark-indicator` → `gitlab/main` @ `d023078`):
 dead `benchmark_indicator()`/`_BENCHMARK_INDICATORS` removed from `frontend/card_copy.py`**
 — left over from Slice 6c's arrow-to-word benchmark label swap; sibling
@@ -391,13 +413,16 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    above — real, deliberately deferred, not started. Deep Yellow (ASX Energy)'s near-zero
    revenue denominator distorts its whole sector's FCF/EBIT margin range mark; needs a
    dbt-layer fix (denominator floor or exclusion), approach is the owner's call.
-2. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+2. **`.ss-action-shell`/`.ss-nav-row-marker` sibling-selector check** — flagged by MR #29's
+   Status entry above; cto-reviewer spotted these may share the same dead-selector pattern
+   just fixed three times over, but didn't confirm live. Own follow-up task already spawned
+   (chip in the session UI; if it's gone, check `frontend/styles.py` directly).
+3. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
-(The Streamlit CSS-specificity audit that used to be part of item 1 here is done — audited
-and fixed in the same session, ~24 classes, live-verified; will get its own Status entry
-once merged. The dead-code cleanup that used to be item 1 before that is done —
-`benchmark_indicator()`/`_BENCHMARK_INDICATORS`
+(The Streamlit CSS-specificity audit that used to be part of item 1 here is done — see the
+MR #29 Status entry above, ~24 classes, live-verified. The dead-code cleanup that used to be
+item 1 before that is done — `benchmark_indicator()`/`_BENCHMARK_INDICATORS`
 removed from `frontend/card_copy.py`, test coverage preserved for the still-live helpers in
 the same test file. The pipeline schedule that used to be item 1 before that is also done —
 see Status/Infra. `ci-runner-01`'s 403 is resolved; MR #19 is MERGED.)
