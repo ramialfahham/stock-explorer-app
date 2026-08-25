@@ -138,7 +138,7 @@ section[data-testid="stSidebar"] {
     border-radius: var(--ss-radius-surface);
     padding: 0.7rem 0.8rem 0.6rem;
 }
-.ss-meta-line {
+.ss-card-identity .ss-meta-line {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0 0 0.35rem;
@@ -164,28 +164,40 @@ section[data-testid="stSidebar"] {
     padding-bottom: 0;
     border-bottom: none;
 }
-.ss-sector-headline {
+.ss-sector-context .ss-sector-headline {
     font-size: var(--ss-caption-size);
     font-weight: 600;
     color: var(--ss-text);
     margin: 0 0 0.12rem;
     line-height: 1.3;
 }
-.ss-sector-gloss {
+.ss-sector-context .ss-sector-gloss {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0;
     line-height: 1.35;
 }
 
-.ss-company-summary {
+/* Scoped under .ss-card-identity, same wrapper as .ss-meta-line above (both render inside
+   build_card_html()'s `identity` section) -- see the .ss-metric .ss-metric-gloss comment
+   below for why a bare class isn't enough. */
+.ss-card-identity .ss-company-summary {
     font-size: 0.78rem;
     color: var(--ss-text);
     margin: 0 0 0.55rem;
     line-height: 1.45;
 }
 
-.ss-disclosure-preview {
+/* Scoped under .ss-disclosure-wrap (not a bare class) -- see the .ss-metric .ss-metric-gloss
+   comment below for why: a bare single-class <p> selector silently loses font-size (and any
+   non-zero margin-top/left/right) to a Streamlit emotion-cache `<ancestor> p` reset at higher
+   specificity. .ss-disclosure-wrap is the one, always-present wrapper disclosure_html()
+   renders around this content, also covering .ss-company-summary-full below (same wrapper,
+   different caller -- disclosure_html()'s full_body_html argument). .ss-company-summary
+   (no "-full") is a DIFFERENT class for a different case -- _company_summary_html()'s two
+   early-return branches that bypass disclosure_html() entirely for a short, non-truncated
+   description -- and is scoped separately under .ss-card-identity instead, below. */
+.ss-disclosure-wrap .ss-disclosure-preview {
     font-size: 0.78rem;
     color: var(--ss-text);
     margin: 0 0 0.28rem;
@@ -232,7 +244,7 @@ section[data-testid="stSidebar"] {
     margin-bottom: 0.35rem;
 }
 
-.ss-company-summary-full {
+.ss-disclosure-wrap .ss-company-summary-full {
     margin: 0;
     font-size: 0.78rem;
     color: var(--ss-text);
@@ -243,7 +255,9 @@ section[data-testid="stSidebar"] {
 .ss-health-block {
     margin: 0 0 0.55rem;
 }
-.ss-verdict-badge {
+/* Both scoped under .ss-health-block (their always-present wrapper, see _health_block_html())
+   -- see the .ss-metric .ss-metric-gloss comment below for why a bare class isn't enough. */
+.ss-health-block .ss-verdict-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -256,7 +270,7 @@ section[data-testid="stSidebar"] {
     padding: var(--ss-space-1) var(--ss-space-2);
     margin: 0 0 0.3rem;
 }
-.ss-ai-read {
+.ss-health-block .ss-ai-read {
     font-size: 0.78rem;
     color: var(--ss-text);
     margin: 0 0 0.28rem;
@@ -268,7 +282,7 @@ section[data-testid="stSidebar"] {
     padding-top: 0.55rem;
     border-top: 1px solid var(--ss-border);
 }
-.ss-learn-heading {
+.ss-learn-section .ss-learn-heading {
     font-size: var(--ss-caption-size);
     font-weight: 600;
     color: var(--ss-text);
@@ -287,8 +301,11 @@ section[data-testid="stSidebar"] {
     line-height: 1.35;
 }
 
-.ss-median-primer,
-.ss-benchmark-note {
+/* Scoped under .ss-learn-section, their always-present wrapper -- see the
+   .ss-metric .ss-metric-gloss comment below for why. (.ss-benchmark-note has no current
+   caller -- scoped anyway so it doesn't reintroduce this bug if it's ever used again.) */
+.ss-learn-section .ss-median-primer,
+.ss-learn-section .ss-benchmark-note {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0 0 0.45rem;
@@ -315,8 +332,11 @@ section[data-testid="stSidebar"] {
     font-weight: 600;
 }
 
+/* !important, not parent-scoped: rendered directly inside a bare st.columns() column with
+   no wrapping ancestor class -- see the .ss-metric .ss-metric-gloss comment below for the
+   underlying Streamlit specificity issue this and !important both work around. */
 .ss-filter-summary {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-caption-size) !important;
     color: var(--ss-muted);
     margin: 0;
     line-height: 1.35;
@@ -341,8 +361,9 @@ section[data-testid="stSidebar"] {
     padding: 0.35rem 0;
 }
 
-/* Metric label chip (Slice 6c) — applied uniformly, no hero/secondary split exists. */
-.ss-metric-label {
+/* Metric label chip (Slice 6c) — applied uniformly, no hero/secondary split exists.
+   Scoped under .ss-metric like .ss-metric-gloss below it — see that rule's comment. */
+.ss-metric .ss-metric-label {
     display: inline-block;
     font-size: var(--ss-label);
     font-weight: 600;
@@ -527,7 +548,7 @@ section[data-testid="stSidebar"] {
     border-top: 1px solid var(--ss-border);
     padding: 0.35rem 0;
 }
-.ss-metric-learn-heading {
+.ss-metric-learn-item .ss-metric-learn-heading {
     font-size: var(--ss-caption-size);
     font-weight: 700;
     color: var(--ss-text);
@@ -539,7 +560,7 @@ section[data-testid="stSidebar"] {
     margin: 0.35rem 0 0.2rem;
     line-height: 1.4;
 }
-.ss-metric-learn-body {
+.ss-metric-learn-item .ss-metric-learn-body {
     font-size: var(--ss-caption-size);
     color: var(--ss-muted);
     margin: 0;
@@ -554,34 +575,43 @@ section[data-testid="stSidebar"] {
     padding-top: 0.4rem;
     border-top: 1px solid var(--ss-border);
 }
-.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] {
+/* Found alongside the .ss-freshness fix below and sharing its exact root cause (same
+   review pass caught it): .ss-card-footer-shell's own next sibling is nothing (it's alone
+   inside its stMarkdownContainer) -- the real sibling relationship is one level up, between
+   the shell's stElementContainer and the following stLayoutWrapper, same as .ss-freshness.
+   Confirmed live this plain `+ div[data-testid="stHorizontalBlock"]` selector matched zero
+   elements, so this footer separator (border/spacing above Yahoo Finance link) has never
+   actually rendered. */
+[data-testid="stElementContainer"]:has(.ss-card-footer-shell) + [data-testid="stLayoutWrapper"] {
     margin-top: -0.35rem;
     padding-top: 0.45rem;
     border-top: 1px solid var(--ss-border);
 }
-.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] .ss-freshness {
+/* :has() is already used this way for the icon-button trigger further down this file. */
+[data-testid="stElementContainer"]:has(.ss-card-footer-shell) + [data-testid="stLayoutWrapper"] .ss-freshness {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0;
     line-height: 1.35;
 }
 /* Pre-existing rule (predates Slice 6b) — testid corrected from "stLinkButton" to the real
-   rendered value, "stBaseLinkButton-secondary" (confirmed live: the old selector matched
-   nothing, so this compact footer sizing has never actually applied until this fix). */
-.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] a[data-testid="stBaseLinkButton-secondary"] {
+   rendered value, "stBaseLinkButton-secondary", but the sibling-combinator prefix was the
+   same broken assumption as the two rules above (.ss-card-footer-shell has no next sibling
+   of its own -- the real relationship is one level up, stElementContainer -> stLayoutWrapper,
+   same as .ss-freshness and the footer separator). Confirmed live: this compact footer
+   sizing has never actually applied until this fix. */
+[data-testid="stElementContainer"]:has(.ss-card-footer-shell) + [data-testid="stLayoutWrapper"] a[data-testid="stBaseLinkButton-secondary"] {
     font-size: var(--ss-caption-size) !important;
     min-height: 2rem !important;
     padding: 0.25rem 0.5rem !important;
     text-decoration: none !important;
 }
-.ss-freshness {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-}
 
 /* Saved list */
+/* !important, not parent-scoped: same reasoning as .ss-filter-summary above (bare
+   st.markdown() call, no wrapping ancestor class). */
 .ss-saved-list-fresh {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-caption-size) !important;
     color: var(--ss-caption);
     margin: 0 0 0.65rem;
 }
@@ -629,13 +659,18 @@ section[data-testid="stSidebar"] {
     margin: 0.12rem 0 0;
 }
 
+/* !important on both font-size AND margin, not parent-scoped: same reasoning as
+   .ss-filter-summary above, but this one also sets a non-zero margin-top -- unlike its
+   siblings (which only ever set margin-bottom), that top value is the one Streamlit's
+   ancestor `p` rule actually zeroes, not just font-size. Confirmed live: without
+   !important, margin-top silently computed to 0 instead of the declared value. */
 .ss-saved-news-heading {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-caption-size) !important;
     font-weight: 600;
     color: var(--ss-muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin: var(--ss-space-3) 0 0.4rem;
+    margin: var(--ss-space-3) 0 0.4rem !important;
 }
 
 .ss-saved-news-list {
@@ -653,8 +688,10 @@ section[data-testid="stSidebar"] {
     padding-bottom: 0;
 }
 
-.ss-saved-news-line,
-.ss-disclosure-full {
+/* Both scoped under .ss-saved-news-item, their always-present wrapper (headline_item_html())
+   -- see the .ss-metric .ss-metric-gloss comment below for why. */
+.ss-saved-news-item .ss-saved-news-line,
+.ss-saved-news-item .ss-disclosure-full {
     font-size: 0.78rem;
     color: var(--ss-text);
     margin: 0;
@@ -689,7 +726,9 @@ section[data-testid="stSidebar"] {
 .ss-landing {
     padding: 1.5rem 0 1rem;
 }
-.ss-landing-eyebrow {
+/* All three scoped under .ss-landing, their always-present wrapper (render_landing()) --
+   see the .ss-metric .ss-metric-gloss comment below for why. */
+.ss-landing .ss-landing-eyebrow {
     font-size: var(--ss-caption-size);
     font-weight: 600;
     color: var(--ss-accent);
@@ -706,7 +745,7 @@ section[data-testid="stSidebar"] {
     margin: 0 0 0.55rem;
     line-height: 1.15;
 }
-.ss-landing-tagline {
+.ss-landing .ss-landing-tagline {
     font-size: 0.95rem;
     color: var(--ss-muted);
     line-height: 1.45;
@@ -722,7 +761,7 @@ section[data-testid="stSidebar"] {
 .ss-landing-points li {
     margin-bottom: 0.45rem;
 }
-.ss-landing-disclaimer {
+.ss-landing .ss-landing-disclaimer {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0 0 1.25rem;
@@ -732,7 +771,9 @@ section[data-testid="stSidebar"] {
 .ss-menu-panel {
     margin: 0 0 0.65rem;
 }
-.ss-menu-label {
+/* All three scoped under .ss-menu-panel, their always-present wrapper (menu_context_html())
+   -- see the .ss-metric .ss-metric-gloss comment below for why. */
+.ss-menu-panel .ss-menu-label {
     font-size: 0.68rem;
     font-weight: 600;
     color: var(--ss-muted);
@@ -740,19 +781,19 @@ section[data-testid="stSidebar"] {
     letter-spacing: 0.06em;
     margin: 0 0 0.2rem;
 }
-.ss-menu-label + .ss-menu-body {
+.ss-menu-panel .ss-menu-label + .ss-menu-body {
     margin-top: 0;
 }
-.ss-menu-label:not(:first-child) {
+.ss-menu-panel .ss-menu-label:not(:first-child) {
     margin-top: 0.55rem;
 }
-.ss-menu-body {
+.ss-menu-panel .ss-menu-body {
     font-size: var(--ss-caption-size);
     color: var(--ss-text);
     line-height: 1.4;
     margin: 0;
 }
-.ss-menu-tip {
+.ss-menu-panel .ss-menu-tip {
     font-size: var(--ss-caption-size);
     color: var(--ss-muted);
     line-height: 1.45;
