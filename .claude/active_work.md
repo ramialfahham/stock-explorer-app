@@ -163,6 +163,26 @@ population technically covers — flagged by equity-analyst-reviewer as non-bloc
 catalogue copy needs its own owner sign-off separate from this fix's SQL-threshold
 delegation, not sought here.
 
+**MERGED — MR #31 (`fix/action-bar-nav-row-sibling-selectors` → `gitlab/main` @ `5480d91`):
+same dead-sibling-selector bug fixed for `.ss-action-shell` (Save/Skip action bar) and
+`.ss-nav-row-marker` (nav row, 11 rules)** — found via a follow-up check MR #29's own
+reviewer flagged but didn't confirm live. `.ss-action-shell`'s breakage had real functional
+impact: Save/Skip was never actually pinned to the viewport bottom, so reaching it required
+scrolling through the entire card — a violation of the UX gate's own "Save still reachable
+on Discover" checklist item, not just subtle typography. Reported back before fixing; scope
+widened with explicit approval. Also fixed a second, distinct bug: the nav row's segmented-
+control sub-rules targeted a testid (`stSegmentedControl`) that doesn't exist in the
+installed Streamlit version — the real one is `stButtonGroup`, confirmed against the
+shipped source. Added `tests/frontend/test_styles.py`: this was the 5th–6th recurrence of
+the same bug class across 3 merged PRs with zero test coverage added each time — a static
+regex guard now pins the specific broken shape. Two review rounds: round 1 cto-reviewer
+FAILed on that missing-coverage gap (fixed); round 2 both PASS. 209 tests. **Minor,
+non-blocking note from round 2:** the new regex is tuned to the literal `.marker + div[...]`
+shape (every recurrence so far) — a hypothetical future variant with no `div` element prefix
+(`.marker + [data-testid=...]`) would slip past. Judged acceptable (Streamlit only ever
+renders these wrappers as `<div>` in the installed version) but worth knowing if this class
+of bug ever resurfaces in a different shape.
+
 **MERGED — MR #29 (`fix/css-specificity-audit-p-tags` → `gitlab/main` @ `8fe21ab`): the
 Streamlit CSS-specificity bug MR #24 first found (bare single-class `<p>` selectors losing
 declared `font-size`/`margin-top` to a higher-specificity Streamlit emotion-cache ancestor
