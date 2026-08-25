@@ -1,32 +1,34 @@
 # Review
 
-diff_sha256: 066f865934d862777a4692e396aa5b3096a87ed837f746bc9728b71e9ba328d0
+diff_sha256: 3e64c2ecd182d29c619cc53150f8f9b8dc1d2bc1d93100435a4b899ff91079c0
+
+Three rounds. Round 1: scope-auditor PASS, cto-reviewer FAIL (2 findings: unjustified
+`!important` on `.ss-company-summary` with a comment citing a nonexistent class; a
+pre-existing dead sibling-selector on the footer separator, same root cause as the
+`ss-freshness` fix). Round 2: scope-auditor ESCALATEd whether fixing the footer-separator
+bug (out of the original ~24-class list) was in scope, and whether a border rendering for
+the first time was really "no visual change" as claimed — genuinely escalated to the owner,
+who answered "fix all three" (including a third twin cto-reviewer found in its own round 2:
+the Yahoo Finance link-button sizing rule). Round 3 (below): both reviewers PASS. Full
+round-by-round record in this branch's own `.claude/task/contract.md` amendments.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- All files in diff within scope_paths (round 2, after round 1 FAILed on
-  `.claude/task/contract.md` missing from its own `scope_paths` — fixed and re-verified).
-- `benchmark_indicator()` and `_BENCHMARK_INDICATORS` confirmed truly dead: grepped the
-  whole repo, zero production references outside metadata/patch files.
-- Test coverage for `benchmark_position`, `benchmark_indicator_label`, and
-  `benchmark_compare_unavailable_learn` verified intact and passing; production call sites
-  for all three confirmed in `frontend/card_ui.py`.
-- No owner-level decision made silently — the owner pre-approved this item explicitly
-  ("go ahead") against a named, pre-existing `active_work.md` entry.
+- The round-2 ESCALATE's owner answer ("fix all three") is genuinely recorded in
+  contract.md's final amendment, not self-answered or retroactively rewritten to look like
+  it was always in scope — explicitly documented as an owner-approved mid-task widening.
+- All three sibling-combinator fixes (footer separator, ss-freshness, link button) use the
+  identical corrected selector prefix, cross-referenced in comments; no unapproved decision
+  beyond the three the owner actually approved.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Stray references to the removed symbols: grepped the whole repo (multiple extensions
-  plus one unrestricted pass) and read `frontend/card_ui.py` directly rather than trusting
-  the diff — confirmed zero remaining callers of `benchmark_indicator`/
-  `_BENCHMARK_INDICATORS`; the only textual hits are legitimate historical prose and a
-  gitignored, untracked `.pyc` cache file.
-- Test coverage regression: read the full before/after of
-  `tests/frontend/test_benchmark_indicators.py` — both renamed tests carry forward real
-  assertions on the still-live `benchmark_indicator_label()` (one gains coverage it didn't
-  have standalone before); ran the full suite independently (207 passed).
-- Guard/dependency/cost integrity: confirmed via `git diff --cached --stat` and a direct
-  diff against `.claude/review_routing.json`, `.gitlab-ci.yml`, `.claude/settings.json`,
-  and requirements files that none are touched.
+- Both round-2 findings independently re-verified against the actual Python DOM-generating
+  source (not just the CSS): the link-button selector now matches (traced through
+  card_ui.py's render_card_footer()); the `.ss-disclosure-wrap`/`.ss-company-summary`
+  comment now correctly distinguishes the two classes' different code paths.
+- Fourth-twin sweep: exactly 3 selector occurrences of `.ss-card-footer-shell` in the file,
+  byte-identical corrected prefix on all three, no remaining broken instance of this specific
+  pattern. Full test suite independently re-run (207 passed). Guard files untouched.
