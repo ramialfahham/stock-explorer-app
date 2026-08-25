@@ -15,14 +15,16 @@ compute, the Router mechanism, and both the deterministic health-verdict generat
 prose read are complete and merged, code-wise. **They ARE now live for real users, at full scale**
 — the app is deployed on Render (https://stock-explorer-app.onrender.com/) against a newly-created
 Supabase project (the old one is permanently inaccessible — see the Infra section for the full
-account-recovery story), serving **910 real eligible cards** across all 5 markets, confirmed
+account-recovery story), serving **907 real eligible cards** across all 5 markets (910 at the
+2026-08-20 full-universe run; the 2026-08-24 refresh returned 907 — see the card-count note
+in the Supabase section below), confirmed
 rendering end-to-end this session (fresh page load, no errors, benchmark words + health verdicts
 all correct). **GitLab CI/CD variables for the new Supabase project are now set** (all 6:
 `SUPABASE_URL`/`SUPABASE_DB_PASSWORD`/`SUPABASE_DB_HOST`/`SUPABASE_DB_PORT`/
 `SUPABASE_SERVICE_ROLE_KEY`/`ANTHROPIC_API_KEY`, all Protected, confirmed via `glab variable
 list`). **The pipeline schedule now exists too** (created 2026-08-24 via `glab api
 projects/:id/pipeline_schedules`, cron `0 6 1,15 * *` UTC, `main`, active — see Infra) —
-`data-pipeline` now refreshes the live app's 910 cards unattended, first run
+`data-pipeline` now refreshes the live app's 907 cards unattended, first run
 2026-09-01T06:00 UTC.
 **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
@@ -77,7 +79,8 @@ for manual access control) — this had a real consequence, see below.
   new `011_grant_roles.sql`, direct `db.{ref}.supabase.co:5432` connection — works from a
   home/dev machine; GitLab's shared runners still need the Session pooler host, unresolved,
   see CI/CD variables below).
-- **Full-universe ingestion completed and exported — 910 real eligible cards live**
+- **Full-universe ingestion completed and exported — 910 real eligible cards at that run**
+  (2026-08-20; the later 2026-08-24 refresh returned 907, see the card-count note below)
   (us_sp500 500, au_asx200 171, jp_nikkei225 109, uk_ftse100 91, de_dax 39; above the
   843-card eligibility baseline). Started as a 40-tickers-per-market sample (188 cards) to
   prove the pipeline quickly, then re-run at full scale once the export bugs below were
@@ -85,6 +88,17 @@ for manual access control) — this had a real consequence, see below.
   `check_eligibility_baseline`, `check_export_health`) green. Confirmed live on Render with
   a fresh page load (no cached-session artifacts) — 910 companies, real benchmark words,
   health verdicts rendering.
+- **Card-count note: the live count is 907, not 910.** Both numbers are real and describe
+  different runs, which is why this file used to state 910 in five places while the live
+  table said otherwise. Verified 2026-08-25 by querying production directly:
+  `snapshot_date` 2026-08-20 holds 910 eligible rows, 2026-08-24 holds 907. The three
+  missing tickers are all `au_asx200` — BXB, RMS, SPK — present on 08-20, absent on 08-24
+  (171 ASX cards then, 168 now). **Why those three dropped was not investigated**, and
+  neither was whether any eligibility gate ran against the 08-24 data at all: that export
+  did not come from the `data-pipeline` CI job (see Next concrete actions item 1 — the CI
+  path has never run against this Supabase project), so do not assume
+  `check_eligibility_baseline.py` watched this dip. Quote 907 as the current figure; quote
+  910 only about the 08-20 run.
 - **Two real bugs found and fixed while getting the export path working — MERGED** (MR #13,
   `fix/supabase-export-client-and-grants`, `gitlab/main` @ `aa63058`; three review rounds,
   four required reviewers, real findings every round — full detail in that MR's
@@ -134,7 +148,7 @@ for manual access control) — this had a real consequence, see below.
   remotes exist for now.
 
 **Next concrete action:** none on this track — the pipeline schedule above was the last
-piece needed, and it's done. `data-pipeline` now refreshes the live app's 910 cards on its
+piece needed, and it's done. `data-pipeline` now refreshes the live app's 907 cards on its
 own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
@@ -157,11 +171,16 @@ analytics-engineer-reviewer, equity-analyst-reviewer) — every round caught a r
 verifiability of owner-authority claims, a contract self-contradiction, a stale handover
 entry (this file, twice — the exact "handover fell behind actual state" failure mode this
 file's own Context/open items section already warned about), and a cross-file attribution
-gap; all resolved, round 5 all PASS. **Deliberately not touched:** `cash_runway_months`'s
-catalogue `learn` text reads slightly narrower than the newly-widened `pre_revenue`
-population technically covers — flagged by equity-analyst-reviewer as non-blocking;
-catalogue copy needs its own owner sign-off separate from this fix's SQL-threshold
-delegation, not sought here.
+gap; all resolved, round 5 all PASS. **The follow-on copy question is now answered:**
+`cash_runway_months`'s catalogue `learn` text read narrower than the newly-widened
+`pre_revenue` population covers (equity-analyst-reviewer flagged it non-blocking in that
+MR, and it was deliberately left for its own owner sign-off rather than folded into the
+SQL-threshold delegation). Owner signed off on 2026-08-25; "For a pre-revenue company"
+becomes "For a company with little or no revenue" on branch
+`docs/cash-runway-learn-text-pre-revenue`. Copy only, no SQL, and it needs no pipeline run
+to reach users: no dbt model refs the `metric_catalogue` seed and the export ships only
+`marts.mart_stock_cards`, so the card reads the regenerated `frontend/metrics.json` from
+the repo and the new text goes live on Render's auto-deploy at merge.
 
 **MERGED — MR #31 (`fix/action-bar-nav-row-sibling-selectors` → `gitlab/main` @ `5480d91`):
 same dead-sibling-selector bug fixed for `.ss-action-shell` (Save/Skip action bar) and
@@ -453,11 +472,42 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: does MR #33's pre-revenue-threshold fix need a manual production
-   pipeline re-run to take effect now, or does it ride the next scheduled run
-   (2026-09-01)?** Re-running now touches real yfinance ingestion and a production Supabase
-   write — owner call, not decided in that fix's own contract.
-2. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+1. **← START HERE: trigger the manual `data-pipeline` run once the
+   `docs/cash-runway-learn-text-pre-revenue` MR is merged.** Owner decided 2026-08-25: run
+   it now rather than waiting for the 2026-09-01 schedule. Measured reason, taken off live
+   production (snapshot 2026-08-24, 907 eligible cards): DYL is still classified
+   `operating`, so its own card shows -129,810% / -90,334% margins AND the 10 other
+   eligible `au_asx200` Energy cards (ALD, BPT, NHC, PDN, STO, VEA, WDS, WHC, WOR, YAL)
+   share a sector range running from DYL's -129,810% to +15% — every peer and the median
+   marker land at ~100% of that span, so the range bar is unreadable for the whole cohort.
+   The secondary reason matters as much: the CI path has never once run the export against
+   the new Supabase project, and 2026-09-01 is its first unattended firing — this is the
+   rehearsal, with someone watching.
+   **It must be triggered from the GitLab web UI** (Build → Pipelines → Run pipeline on
+   `main`, then play the manual `data-pipeline` job). `glab ci run` will NOT work: an
+   API-created pipeline has `CI_PIPELINE_SOURCE == "api"`, which matches neither of the
+   job's two rules (`schedule`, `web`) at `.gitlab-ci.yml:259-262`, so the job simply is
+   not created. Risk is bounded: the export upserts on
+   `(market_code, ticker, snapshot_date)` and `frontend/explore_filters.py:57` keeps the
+   latest snapshot per ticker (`dedupe_to_latest_snapshot`, `frontend/explore_filters.py:56`),
+   so a half-finished run degrades to "some tickers refreshed,
+   the rest keep 2026-08-24 data" with no gap in the card set. Expect ~907 Haiku reads to
+   regenerate (`generate_assessments.py` regenerates on input-hash change, and fresh prices
+   move nearly every hash).
+2. Fix `docs/data_contract.md:236-237` — it still justifies the `pre_revenue` eligibility
+   branch with "the operating metrics break for revenue ≤ 0", which MR !33 made incomplete
+   (they also break for positive-but-negligible revenue). The classification section 30
+   lines above it at `docs/data_contract.md:200-207` WAS updated; this line was missed.
+   Found independently by both analytics-engineer-reviewer and equity-analyst-reviewer
+   while reviewing the copy branch, and left out of it as out-of-scope. Internal doc prose,
+   not user-visible copy.
+3. Work out why BXB, RMS and SPK (all `au_asx200`) were eligible on the 2026-08-20 run and
+   absent on 2026-08-24. Found 2026-08-25 while reconciling the 910-vs-907 card counts
+   above, not investigated. The question is whether this is ordinary eligibility movement
+   or per-ticker ingestion loss, and only the second would be a bug. The manual run in
+   item 1 gives a third data point, and being a real CI run it will also put
+   `check_eligibility_baseline.py` over the result, which the 08-24 export may not have had.
+4. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
 (The `.ss-action-shell`/`.ss-nav-row-marker` sibling-selector check that used to be item 1
