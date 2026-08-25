@@ -139,6 +139,33 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
+**OPEN — sector min/max data-quality fix (branch `fix/pre-revenue-classification-threshold`,
+not yet an MR at time of writing): Deep Yellow (ASX: DYL)'s outlier margins fixed by
+widening the `pre_revenue` classification, not by patching the ratio.** Investigated live
+against production first: DYL is a genuine one-off (only company with |margin| > 1000%
+across all 5 markets), its real `stmt_total_revenue` is $15,949 (positive, not negative — an
+early check against a different yfinance field had suggested negative and was corrected)
+against a $1.7B market cap, ~0.001% — a uranium development-stage miner the existing
+`revenue <= 0` classifier missed by a hair. Owner chose the root-cause fix over floor/exclude
+alternatives and delegated the threshold ("option 1, you pick the threshold"); landed on
+revenue < 0.1% of market cap (a ratio, not a currency floor — 5 markets, no FX normalization
+anywhere in the pipeline), empirically checked against the full dataset (next-most-extreme
+company is 157x less extreme than DYL — wide safety margin). `dbt build` (107/107), layer/
+structure/doc checks, sqlfluff, and pytest (209) all pass. Several review rounds so far
+(all three required reviewers: scope-auditor, analytics-engineer-reviewer,
+equity-analyst-reviewer) — round 1 scope-auditor ESCALATEd that owner-authority claims
+weren't independently verifiable from the patch alone (fixed: verbatim quotes + a full
+reproduction section); round 2 both analytics-engineer-reviewer and equity-analyst-reviewer
+FAILed on this file not actually being updated despite saying it would be, and a contract
+amendment describing an abandoned first attempt instead
+of what shipped (both fixed — this entry is that fix). **Deliberately not touched:**
+`cash_runway_months`'s catalogue `learn` text reads slightly narrower than the newly-widened
+`pre_revenue` population technically covers — flagged by equity-analyst-reviewer as
+non-blocking; catalogue copy needs its own owner sign-off separate from this fix's
+SQL-threshold delegation, not sought here. **Still open, not decided:** does this need a
+manual production pipeline re-run to take effect now, or ride the 2026-09-01 scheduled run —
+see Next concrete actions.
+
 **MERGED — MR #29 (`fix/css-specificity-audit-p-tags` → `gitlab/main` @ `8fe21ab`): the
 Streamlit CSS-specificity bug MR #24 first found (bare single-class `<p>` selectors losing
 declared `font-size`/`margin-top` to a higher-specificity Streamlit emotion-cache ancestor
@@ -409,10 +436,10 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: the sector min/max data-quality issue** flagged in MR #24's Status entry
-   above — real, deliberately deferred, not started. Deep Yellow (ASX Energy)'s near-zero
-   revenue denominator distorts its whole sector's FCF/EBIT margin range mark; needs a
-   dbt-layer fix (denominator floor or exclusion), approach is the owner's call.
+1. **← START HERE: does the pre-revenue-threshold fix (below) need a manual production
+   pipeline re-run to take effect now, or does it ride the next scheduled run
+   (2026-09-01)?** Re-running now touches real yfinance ingestion and a production Supabase
+   write — owner call, not decided in that fix's own contract.
 2. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 

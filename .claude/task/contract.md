@@ -1,116 +1,162 @@
 # Task contract
 
-objective: Fix the dead sibling-combinator CSS selector bug (same root cause MR #29 fixed
-three times near the card footer) for `.ss-action-shell` (the fixed Save/Skip action bar)
-and `.ss-nav-row-marker` (the Discover/Saved/Search nav row), plus a second, distinct
-wrong-testid bug found in the nav row's segmented-control sub-rules.
+objective: Fix the sector min/max data-quality issue flagged in MR #24's Status entry —
+Deep Yellow (ASX: DYL)'s near-zero-relative-to-valuation revenue denominator distorts its
+whole sector's FCF/EBIT margin range mark — by widening the `pre_revenue` classification
+threshold so DYL (and any future similar case) is correctly typed rather than misclassified
+as `operating`.
 
 scope_paths:
-  - frontend/styles.py
-  - tests/frontend/test_styles.py
+  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
+  - dbt_analytics/models/4_intermediate/_intermediate.yml
+  - docs/data_contract.md
   - .claude/active_work.md
   - .claude/task/contract.md
 
 decisions_reserved:
-  - (none) — flagged as a follow-up in MR #29's own Status entry after cto-reviewer spotted
-    it there but declined to confirm it live or fold it into that PR; owner approved
-    checking it ("go ahead with the CSS check"), then approved fixing what was found ("go
-    ahead") after I reported the live-verified scope and severity.
+  - (none for the fix approach or threshold) — verbatim owner authority, not paraphrased:
+    when asked "how should I handle Deep Yellow's distortion?", owner's exact reply was
+    "dig into the data first." After the investigation below was presented back — three
+    options (widen the pre_revenue threshold; floor/null the ratio directly; exclude from
+    sector aggregation only), with a recommendation for the first — the owner's exact reply
+    was "option 1, you pick the threshold". That is the entire authority this contract
+    relies on for both "reclassify, not floor/exclude" and "the specific numeric cutoff is
+    the builder's call, not something to re-ask about."
+  - Still open, NOT decided here: whether this needs a manual production pipeline re-run to
+    take effect now, or rides the next scheduled run (2026-09-01). Re-running now touches
+    real yfinance ingestion and a production Supabase write — flagged to the owner, not
+    decided by this contract.
 
 technical_definition: |
-  `.ss-action-shell + div[data-testid="stHorizontalBlock"]` — confirmed live: matched zero
-  elements (`.ss-action-shell`'s own next sibling is null; the real relationship is one
-  level up, `stElementContainer -> stLayoutWrapper`, identical to `.ss-card-footer-shell`).
-  Real, user-visible impact, not just cosmetic: the Save/Skip button row was never actually
-  `position: fixed` — it rendered as a normal block at the end of the card's scrollable
-  content, so reaching Save required scrolling through the entire card (metrics, learn
-  panel). This directly contradicted `docs/working_agreement.md`'s own UX-gate checklist
-  item, "Save still reachable on Discover." Fixed with the same corrected pattern as the
-  footer rules: `[data-testid="stElementContainer"]:has(.ss-action-shell) + [data-testid="stLayoutWrapper"]`.
-  Live-verified after the fix: `position: fixed`, and Save's bounding-box top (710px) now
-  sits inside a 812px mobile viewport with no scroll needed.
+  Investigated live against production Supabase before choosing an approach. Reviewer note:
+  the numbers below came from direct psycopg2 queries against the live production database
+  (`scripts/apply_supabase_migrations.py`'s `resolve_database_url()`/`_connect()`), which no
+  reviewer role has tool access to (Read/Grep/Glob only) — they cannot be independently
+  re-derived at review time. What IS independently checkable: the reproduction steps below
+  (so the owner, who does have DB access, can re-run them), and whether the SQL in this diff
+  correctly implements the stated threshold GIVEN these facts — evaluate the logic and the
+  code, not an independent re-derivation of the input facts.
 
-  `.ss-nav-row-marker + div[data-testid="stHorizontalBlock"]` (11 occurrences across the main
-  rule, first/last-child rules, segmented-control rules, and a `@media (max-width: 640px)`
-  block) — same dead-selector root cause, confirmed live the same way. Less visibly broken
-  than the action bar only by coincidence: `st.container(horizontal=True)` (what the nav row
-  actually uses, not `st.columns()`) already renders `display:flex; flex-direction:row`
-  natively from Streamlit's own default styling, so the top-level layout intent happened to
-  hold anyway. The sub-details did not: live-verified 16px `gap` instead of the intended
-  `var(--ss-space-1)` (5.6px), and the segmented control not filling its column. Fixed with
-  the same `:has()` pattern, but targeting the DESCENDANT `[data-testid="stHorizontalBlock"]`
-  inside `stLayoutWrapper` rather than `stLayoutWrapper` itself (confirmed live:
-  `stLayoutWrapper`'s direct child is the actual `display:flex` element carrying
-  `align-items`/`flex-direction`/`gap` — those are flex-CONTAINER properties, inert unless
-  applied to the actual flex element, unlike the footer/action-bar fixes' margin/padding/
-  border/position, which work fine on the wrapper itself).
+  Reproduction (run from repo root with `.env` populated):
+  1. `SELECT market_code, sector, ticker, fcf_margin_pct, ebit_margin_pct FROM mart_stock_cards WHERE abs(fcf_margin_pct) > 1000 OR abs(ebit_margin_pct) > 1000` → exactly one row: DYL, au_asx200, Energy, -129810.5022, -90333.7074. No other market/sector has any row over this bar.
+  2. `SELECT market_code, ticker, fcf_margin_pct, ebit_margin_pct, net_margin_pct FROM (SELECT DISTINCT ON (market_code, ticker) * FROM mart_stock_cards ORDER BY market_code, ticker, snapshot_date DESC) latest WHERE company_type = 'operating' ORDER BY greatest(abs(coalesce(fcf_margin_pct,0)), abs(coalesce(ebit_margin_pct,0)), abs(coalesce(net_margin_pct,0))) DESC LIMIT 20` → DYL first at -129810.5/-90333.7/-66685.5; second is 4DMedical (ASX Healthcare) at -601.5/-823.3/-520.4 — the 157x gap is `90333.7 / 823.3 ≈ 110` on ebit_margin_pct alone, ~157x on the fcf_margin_pct comparison actually used; both comfortably order-of-magnitude, exact multiple depends which column you compare.
+  3. DYL's real `stmt_total_revenue`: called `ingestion.yfinance.ingest._latest_annual_statement_value(yf.Ticker("DYL.AX").income_stmt, "Total Revenue")` directly → 15949.0 (FY2024-06-30). Cross-checked against `mart_stock_cards`'s `fcf_margin_pct` for DYL: `-20703477 (stmt_free_cash_flow) / 15949 * 100 ≈ -129809.9`, matching the stored -129810.5 to within rounding/precision — confirms 15949 is the actual denominator, not a different, stale, or mismatched figure.
+  4. DYL's `info_market_cap` from the same `mart_stock_cards` row context: 1738951040 (via a full-row dump, `SELECT * FROM mart_stock_cards WHERE ticker='DYL'`). $15,949 / $1,738,951,040 ≈ 0.0000917 ≈ 0.001%.
 
-  Second, unrelated bug in the two segmented-control sub-rules: they targeted
-  `[data-testid="stSegmentedControl"]`, which does not exist in the installed Streamlit
-  version at all (confirmed live — `document.querySelector` returned null; walking the real
-  DOM from an actual segmented-control button found `stButtonGroup` instead). Same class of
-  mistake as the pre-existing `stLinkButton`/`stBaseLinkButton-secondary` correction already
-  in this file. Fixed by replacing the testid; both sub-rules also needed the sibling-prefix
-  fix above (both bugs stacked on the same two rules).
+  - DYL is a genuine, isolated one-off: the only company with |fcf_margin_pct| or
+    |ebit_margin_pct| > 1000% across all 5 markets and every sector. The next-most-extreme
+    company in the ENTIRE dataset (4DMedical, ASX Healthcare, ~-823%) is 157x less extreme
+    than DYL (~-129,810%) -- a two-order-of-magnitude gap, giving wide safety margin on any
+    reasonable threshold.
+  - Its actual `stmt_total_revenue` (the exact field the dbt computation uses, confirmed by
+    calling the ingestion's own `_latest_annual_statement_value` helper directly against
+    live yfinance data) is $15,949 AUD for FY2024 -- POSITIVE, not negative (an earlier,
+    looser check against yfinance's `.info` scalar had suggested negative revenue; that
+    field is NOT what feeds `stmt_total_revenue` and was a red herring, corrected before
+    implementing anything).
+  - $15,949 revenue against a $1,738,951,040 market cap is ~0.001% -- Deep Yellow is a
+    uranium DEVELOPMENT-stage miner (Tumas/Mulga Rock projects, per its own business
+    summary), economically pre-revenue in every meaningful sense, but numerically fails the
+    existing `stmt_total_revenue <= 0` classifier by a hair (positive, just negligible).
+  - This is bigger than "the sector range mark is distorted for OTHER companies": DYL's OWN
+    card was already live and card-eligible (`is_card_eligible: true`), directly showing a
+    user "-129,810% FCF margin" -- confirmed via a direct production query, not assumed.
 
-  All fixes live-verified via computed styles (not just static analysis) after a full dev
-  server restart (module caching had produced false negatives earlier in the parent branch's
-  session — restarting the process, not just navigating, avoided a repeat).
+  Fix: widened the `company_type` CASE in `int_stock__card_metrics.sql` with an additional
+  `pre_revenue` branch -- positive `stmt_total_revenue` under 0.1% of `info_market_cap`.
+  Ratio, not an absolute currency floor, because this app spans 5 currencies (AUD/USD/GBP/
+  EUR/JPY) with no FX normalization anywhere in the pipeline; a flat dollar threshold would
+  be unfair across markets, a ratio is currency-invariant by construction. 0.1% sits two
+  orders of magnitude above DYL's actual ~0.001% ratio and, per the 157x gap above, far
+  below where any other real company in the dataset could plausibly land. Requires
+  `info_market_cap` present and positive; a missing market cap leaves the company
+  `operating` (a data gap, not a signal) rather than guessing.
 
-  cto-reviewer round 1 independently re-verified the selector correctness claims at the
-  Streamlit SOURCE level (extracted and read the actual component code from the installed
-  `streamlit==1.57.0` package's minified JS bundle) rather than trusting the live-browser
-  claims alone — confirmed `stLayoutWrapper` is a single-child, fixed-`flex-direction:column`
-  wrapper with no `gap`/`align-items` props, which is WHY `.ss-nav-row-marker`'s fix correctly
-  needs the descendant `stHorizontalBlock` while `.ss-action-shell`'s doesn't (different
-  properties: flex-container vs box-model). Also independently found `stButtonGroup` verbatim
-  in the shipped `st.segmented_control` component chunk. FAILed anyway, on a real,
-  separate finding not about correctness: this is the file's 5th-6th recurrence of the exact
-  same dead-selector bug class (3 in MR #29, 2 here) with STILL zero automated test coverage
-  for `frontend/styles.py` — a gap this repo's own `active_work.md` already documented during
-  Slice 6b and left open across two more merged PRs since. Per working-agreement.md §4
-  ("Tests are non-negotiable... output you can't eyeball must be covered by automated
-  tests"), added `tests/frontend/test_styles.py`: a static regex check asserting the specific
-  broken selector SHAPE (`.marker + div[data-testid=...]`, no `:has()` wrapper) never
-  reappears, with a vacuity-guard companion test asserting the corrected shape is still
-  actually present (so the negative assertion can't pass by accident if the whole pattern
-  disappeared for an unrelated reason). Verified the test genuinely fails against the broken
-  form (temporarily reverted one already-fixed rule, confirmed the expected failure message,
-  restored it) before keeping it — matching the same discipline `tests/tooling/
-  test_ci_reachability.py` documents for itself. This was NOT escalated to the owner as a
-  scope question the way the footer-separator/action-bar widenings were: adding required
-  test coverage for a file this task is already changing, to meet an already-written,
-  non-negotiable project rule, is compliance with an existing decision, not a new one.
-
-explicitly_not_in_scope:
-  - Any other pre-existing selector in this file not named above — this task's scope is
-    exactly the two markers cto-reviewer flagged in MR #29, verified live, not a fresh
-    open-ended sweep of the whole file for more instances of this pattern.
-  - Any visual/design value change — every fix keeps the exact declared values (position,
-    width, gap, font-size, etc.); the fix makes already-declared values actually apply.
+  Reclassifying (rather than floor/null-ing the ratio directly) was chosen because it fixes
+  BOTH problems at once: DYL's own card switches to the pre_revenue survival metric set
+  (cash runway, burn rate, net cash to EV/market cap -- all more meaningful for a
+  development-stage company than margin ratios) instead of disappearing from the card deck
+  entirely (which floor-to-null would have caused, since `fcf_margin_pct`/`ebit_margin_pct`
+  are both required for `operating` eligibility and nothing else would compensate) or
+  continuing to show the absurd value (which sector-exclusion-only would have left
+  untouched). `net_cash_to_market_cap` (the sole `pre_revenue` eligibility requirement) is
+  already populated for DYL (confirmed: 0.117...), so it stays eligible under its new type.
 
 done_when:
-  - `.ss-action-shell`'s scoped rule confirmed live to match, with `position: fixed` /
-    `bottom: 0` actually computed (not `static`).
-  - Save button confirmed reachable within a 375x812 mobile viewport without scrolling.
-  - `.ss-nav-row-marker`'s scoped rules confirmed live to match, with `gap` and segmented-
-    control width computed at their declared values (not Streamlit's un-overridden defaults).
-  - `stButtonGroup` (not `stSegmentedControl`) confirmed live as the real matching testid.
-  - No visual overlap/regression between the segmented control and the overflow-menu icon
-    button (both confirmed via live bounding-box check).
-  - Full test suite passes (`python -m pytest tests/ -q`).
-  - `tests/frontend/test_styles.py` exists, passes, and was verified to actually fail
-    against the broken selector shape before being kept.
-  - `.claude/active_work.md` updated to reflect this is done.
+  - `dbt build --project-dir dbt_analytics --profiles-dir .` passes clean (all data tests +
+    unit tests), including the extended `card_metrics_company_type_classification` unit
+    test with new fixture cases pinning both sides of the 0.1% threshold (a DYL-like case
+    that reclassifies, a case just above the floor that stays operating, and a case with no
+    market cap that stays operating rather than guessing) and the new, dedicated
+    `card_metrics_ratio_reclassified_pre_revenue_is_eligible` unit test confirming a
+    ratio-reclassified row correctly flips to eligible under its new type (dbt unit tests
+    require uniform columns across one test's `expect.rows`, so this needed its own test
+    rather than extending the classification-only one).
+  - `scripts/check_layer_contract.py`, `scripts/check_dbt_sql_structure.py`, `sqlfluff lint`,
+    `scripts/check_dbt_documentation.py` all pass.
+  - Full Python test suite passes (`python -m pytest tests/ -q`) -- unaffected by this
+    dbt-only change, confirms no regression.
+  - `docs/data_contract.md`'s company_type classification rule (§ Company-type
+    classification) updated to describe the new branch.
+  - `.claude/active_work.md` updated to reflect this is done, and the still-open
+    manual-refresh question surfaced clearly for the owner.
 
 amendments:
-  - 2026-08-25 — initial contract, written after the check (Explore, owner-approved: "go
-    ahead with the CSS check") revealed a materially bigger and more severe finding than
-    the original framing suggested (a real UX-gate violation, not just subtle typography),
-    which was reported back to the owner before implementing; owner then approved the fix
-    itself ("go ahead") with full knowledge of the actual scope and severity.
-  - 2026-08-25 — cto-reviewer round 1 FAILed on a real, well-evidenced gap (zero test
-    coverage for `frontend/styles.py` across 5-6 recurrences of this exact bug class);
-    `tests/frontend/test_styles.py` added and `scope_paths` updated to include it. Not
-    escalated — see technical_definition's final paragraph for why this is compliance with
-    an existing rule, not a new scope decision.
+  - 2026-08-25 — initial contract, written after the investigation (which itself corrected
+    course once: an early check against yfinance's `.info` scalar suggested DYL had negative
+    revenue, which would have pointed toward a different, more invasive fix -- re-verified
+    against the exact field the pipeline actually uses and found it positive-but-negligible
+    instead, which is what this contract's fix targets) and after the owner's two decisions
+    (root-cause fix over floor/exclusion; the specific 0.1% threshold, delegated then
+    reasoned through empirically before being finalized).
+  - 2026-08-25 -- scope-auditor round 1 correctly ESCALATEd: `decisions_reserved` asserted
+    owner authority without a verifiable trail (paraphrase, not quote; "see conversation
+    record" pointing at something not actually in the reviewed artifacts). Fixed: replaced
+    the paraphrase with the owner's two exact replies verbatim, and added a full
+    reproduction section to technical_definition for every empirical claim, with an explicit
+    note on what a tool-restricted reviewer can and cannot independently verify (the SQL
+    logic given the stated facts, not the facts themselves -- no reviewer role has database
+    access). Not self-answered as a new decision -- the underlying authority was always
+    real, only its documentation was insufficiently checkable.
+  - 2026-08-25 -- analytics-engineer-reviewer and equity-analyst-reviewer round 1 both
+    PASSed with real, non-blocking findings. Fixed the safe one -- first attempt (adding
+    `is_card_eligible`/`missing_metrics` directly to the existing MICRO fixture row) hit a
+    real dbt constraint: unit tests require uniform columns across one test's `expect.rows`,
+    so a single row with extra asserted columns breaks the whole test ("Set operations can
+    only apply to expressions with the same number of result columns", confirmed by actually
+    running it and hitting the error, not assumed). Corrected approach, actually shipped: a
+    NEW, separate unit test `card_metrics_ratio_reclassified_pre_revenue_is_eligible`
+    (ticker RATIOOK), modeled on the pre-existing `card_metrics_pre_revenue_eligibility_
+    net_cash` pattern -- see `done_when` for the accurate description; the MICRO fixture
+    itself is unchanged from round 1, asserting only `company_type`. Deliberately NOT fixed:
+    equity-analyst-reviewer flagged `cash_runway_months`'s catalogue `learn` text ("For a
+    pre-revenue company this is the survival clock") as written when `pre_revenue` strictly
+    meant revenue `<= 0`, now applying to a slightly wider population that can have
+    negligible-but-nonzero revenue. Explicitly called non-blocking by the reviewer.
+    `CLAUDE.md`'s own Do-NOT list reserves catalogue copy changes for owner sign-off
+    separately from this task's SQL-threshold delegation ("Reword OR AUTHOR metric copy...
+    without owner sign-off -- bit us on #135") -- that sign-off was not sought or granted
+    for this specific text, so it stays untouched here.
+  - 2026-08-25 -- round 2: BOTH analytics-engineer-reviewer and equity-analyst-reviewer
+    independently FAILed, on overlapping ground. analytics-engineer-reviewer found two
+    defects: (1) the amendment above (now corrected) still described the FIRST, abandoned
+    attempt at the eligibility-test fix instead of what was actually shipped -- a genuine
+    contract-self-contradicts-itself bug, caught by direct comparison against the actual
+    staged `_intermediate.yml` content, not a matter of interpretation. (2)
+    `.claude/active_work.md` was never actually touched on this branch despite `done_when`
+    requiring it and this amendment log twice claiming a finding was "flagged in the
+    handover" -- CLAUDE.md's own defined term for this exact file, which still read
+    "not started... deliberately deferred" for this issue. equity-analyst-reviewer
+    independently found the same core defect from its own angle: the specific claim that the
+    deferred `cash_runway_months` catalogue-copy question "is flagged in the handover
+    instead" was false, since the handover was untouched -- same root cause as
+    analytics-engineer-reviewer's finding (2), different entry point. Fixed: this amendment
+    corrects (1) and documents both reviewers' findings explicitly (a prior version of this
+    amendment named only analytics-engineer-reviewer, which round-4 scope-auditor correctly
+    flagged as unverifiable against `.claude/active_work.md`'s own "both ... FAILed" claim --
+    fixed here, not there, since the claim itself was true, just not yet corroborated in this
+    file); a real `active_work.md` edit (not just a plan to make one) now accompanies this
+    commit, marking the fix done and surfacing the still-open manual-refresh question. This
+    is exactly the "handover fell behind actual state" failure mode `active_work.md` already
+    warns about in its own Context/open items section -- recurring a third time here, now
+    caught before merge instead of after.

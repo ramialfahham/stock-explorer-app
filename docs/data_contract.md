@@ -197,9 +197,14 @@ per-type `is_card_eligible` branch** (the `CASE company_type` switch key) and **
 Supabase**. Always non-null — evaluated in order, first match wins:
 
 1. `financial` — when `coalesce(info_sector, dim_stock.sector) = 'Financial Services'`.
-2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`.
-3. `operating` — else (the default). A **null** `stmt_total_revenue` is treated as a data gap and
-   stays `operating`, not `pre_revenue`.
+2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`, **or** when it's positive
+   but under 0.1% of `info_market_cap` (revenue negligible relative to valuation — e.g. a
+   development-stage miner/biotech the strict `<= 0` test alone misses; a ratio, not an absolute
+   currency floor, since this app spans 5 currencies with no FX normalization in the pipeline).
+   Real example: Deep Yellow (ASX: DYL) — $15,949 revenue against a $1.7B market cap (~0.001%).
+3. `operating` — else (the default). A **null** `stmt_total_revenue`, or a positive-but-negligible
+   `stmt_total_revenue` with no `info_market_cap` to compare it against, is treated as a data gap
+   and stays `operating`, not `pre_revenue`.
 
 `financial` takes precedence over `pre_revenue`. `company_type` drives the per-type metric sets,
 eligibility, and card display (the Sector/Lifecycle Router).
