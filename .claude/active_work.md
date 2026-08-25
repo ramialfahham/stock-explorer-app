@@ -88,17 +88,28 @@ for manual access control) — this had a real consequence, see below.
   `check_eligibility_baseline`, `check_export_health`) green. Confirmed live on Render with
   a fresh page load (no cached-session artifacts) — 910 companies, real benchmark words,
   health verdicts rendering.
-- **Card-count note: the live count is 907, not 910.** Both numbers are real and describe
-  different runs, which is why this file used to state 910 in five places while the live
-  table said otherwise. Verified 2026-08-25 by querying production directly:
-  `snapshot_date` 2026-08-20 holds 910 eligible rows, 2026-08-24 holds 907. The three
-  missing tickers are all `au_asx200` — BXB, RMS, SPK — present on 08-20, absent on 08-24
-  (171 ASX cards then, 168 now). **Why those three dropped was not investigated**, and
-  neither was whether any eligibility gate ran against the 08-24 data at all: that export
-  did not come from the `data-pipeline` CI job (see Next concrete actions item 1 — the CI
-  path has never run against this Supabase project), so do not assume
-  `check_eligibility_baseline.py` watched this dip. Quote 907 as the current figure; quote
-  910 only about the 08-20 run.
+- **Card-count note: 907 rows in the newest snapshot, but the app serves 910 cards.** Both
+  numbers are real and they measure different things — worth getting straight, because
+  chasing this the wrong way round wasted a review round on 2026-08-25. Verified that day by
+  querying production and then loading the live app:
+  - `mart_stock_cards` holds two snapshots. `snapshot_date` 2026-08-20 has 910 eligible
+    rows, 2026-08-24 has 907. Three `au_asx200` tickers — **BXB, RMS, SPK** — are in the
+    first and not the second (171 ASX rows then, 168 now).
+  - The app nonetheless shows "910 left · 1 of 910", confirmed on a live page load. That is
+    not a bug in the count: `dedupe_to_latest_snapshot` (`frontend/explore_filters.py:56`)
+    keeps the newest row **per (market, ticker)**, not the newest snapshot, so those three
+    keep their 08-20 row and stay in the deck. 907 + 3 = 910.
+  - So the three tickers did not disappear from the app — they went **stale in place**, and
+    nothing in the pipeline ever removes them. Each card carries its own "As of" line
+    (`freshness_line`), so a reader who looks sees August 20 on those three; the global
+    "About the data" date is a max across cards (`markets.latest_snapshot_label`) and so
+    reads August 24 for the whole deck.
+  **Why those three dropped out of the newer run was not investigated**, and neither was
+  whether any eligibility gate ran against the 08-24 data at all: that export did not come
+  from the `data-pipeline` CI job (see Next concrete actions item 1 — the CI path has never
+  run against this Supabase project), so do not assume `check_eligibility_baseline.py`
+  watched this dip. When quoting a figure, say which one you mean: 907 rows in the latest
+  snapshot, 910 cards in the deck.
 - **Two real bugs found and fixed while getting the export path working — MERGED** (MR #13,
   `fix/supabase-export-client-and-grants`, `gitlab/main` @ `aa63058`; three review rounds,
   four required reviewers, real findings every round — full detail in that MR's
@@ -153,20 +164,21 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
-**OPEN — MR !36 (`docs/cash-runway-learn-text-pre-revenue`):** `cash_runway_months`'s
-catalogue `learn` text widened from "For a pre-revenue company" to "For a company with
-little or no revenue", matching the population MR !33's classifier change created. One
-string plus the regenerated `frontend/metrics.json`; owner signed off on the exact phrasing
-2026-08-25. Copy only, no pipeline run needed (goes live on Render's auto-deploy at merge).
-Nine review rounds, four required reviewers — the payload was byte-stable from round 1 and
-every FAIL was against the surrounding handover/contract prose, mostly successive wrong
-claims about what `check_eligibility_baseline.py` compares. Round 8 broke that cycle by
-deleting the unverified conclusions instead of correcting them a fourth time, after
-scope-auditor pointed out ~18 lines of gate internals had accreted in this file purely as
-sediment from the review argument. Worth remembering as a pattern: when three rounds in a
-row correct the same sentence, the sentence is the problem, not the numbers in it.
-**Blocked on the owner merging it**, after which "Next concrete actions" item 1 (the manual
-`data-pipeline` run) is the next thing to do.
+**MERGED — MR !36 (`docs/cash-runway-learn-text-pre-revenue` → `gitlab/main` @ `cde3447`):
+`cash_runway_months`'s catalogue `learn` text widened to "For a company with little or no
+revenue" to match the population MR !33's classifier created; owner signed off on the exact
+phrasing 2026-08-25. Copy only, live on Render at merge (no pipeline run needed). Nine
+review rounds on a one-string payload that was byte-stable from round 1 — every FAIL was
+against the surrounding prose. **The lesson worth keeping:** three rounds in a row corrected
+the same sentence about what `check_eligibility_baseline.py` compares, each fixing the
+arithmetic one layer down and leaving a fresh unverified conclusion on top; round 8 ended it
+by deleting the conclusion instead of correcting it again. When a sentence fails review
+repeatedly, the sentence is the problem, not the numbers in it. Reviewers also flagged that
+~18 lines of gate internals had accreted in this file as sediment from the argument itself
+— removed. Also from that session: the plugin's reviewer agent types were not dispatchable,
+so each ran as a general-purpose agent reading its own role file verbatim (recorded in that
+MR's `review.md`), and `frontend/*` routing means a generated `frontend/metrics.json` pulls
+in cto-reviewer.
 
 **MERGED — MR #33 (`fix/pre-revenue-classification-threshold` → `gitlab/main` @ `1e6e33d`):
 the sector min/max data-quality issue fixed — Deep Yellow (ASX: DYL)'s outlier margins
@@ -487,9 +499,10 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: trigger the manual `data-pipeline` run once the
-   `docs/cash-runway-learn-text-pre-revenue` MR is merged.** Owner decided 2026-08-25: run
-   it now rather than waiting for the 2026-09-01 schedule. Measured reason, taken off live
+1. **← START HERE: trigger the manual `data-pipeline` run.** Nothing blocks it — MR !36
+   merged and needed no pipeline run of its own. Owner decided 2026-08-25: run it rather
+   than waiting for the 2026-09-01 schedule. **This is an owner action, not an agent one**
+   (see the web-UI-only constraint below). Measured reason, taken off live
    production (snapshot 2026-08-24, 907 eligible cards): DYL is still classified
    `operating`, so its own card shows -129,810% / -90,334% margins AND the 10 other
    eligible `au_asx200` Energy cards (ALD, BPT, NHC, PDN, STO, VEA, WDS, WHC, WOR, YAL)
@@ -517,11 +530,20 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    while reviewing the copy branch, and left out of it as out-of-scope. Internal doc prose,
    not user-visible copy.
 3. Work out why BXB, RMS and SPK (all `au_asx200`) were eligible on the 2026-08-20 run and
-   absent on 2026-08-24. Found 2026-08-25 while reconciling the 910-vs-907 card counts
-   above, not investigated. The question is whether this is ordinary eligibility movement
-   or per-ticker ingestion loss, and only the second would be a bug. The manual run in
-   item 1 gives a third data point, and being a real CI run it will also put
-   `check_eligibility_baseline.py` over the result, which the 08-24 export may not have had.
+   absent on 2026-08-24, and decide what should happen to a card whose ticker stops
+   appearing. Found 2026-08-25 while reconciling the card counts above. Two separate
+   questions, and the second is the one with no answer yet:
+   - Is the drop ordinary eligibility movement or per-ticker ingestion loss? Only the
+     second is a bug. The manual run in item 1 gives a third data point, and being a real
+     CI run it will also put `check_eligibility_baseline.py` over the result.
+   - Whatever the cause, a ticker that stops being exported keeps its last card in the deck
+     indefinitely, because the frontend dedupes to the newest row per ticker rather than to
+     the newest snapshot. There is no eviction anywhere in the pipeline or the app. Today
+     that is three cards five days stale, which the per-card "As of" line does disclose. It
+     is only a real problem if a ticker drops out for good — then the deck keeps serving a
+     card that ages without limit. **Deciding whether the deck should evict by snapshot age
+     is an owner call** (it changes what users see), so it is written down here rather than
+     designed.
 4. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
