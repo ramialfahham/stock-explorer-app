@@ -77,8 +77,10 @@ time** — cannot be locked out the same way again. New project: `stock-explorer
 for manual access control) — this had a real consequence, see below.
 - Schema migrated clean (`apply_supabase_migrations.py`, all 10 pre-existing migrations +
   new `011_grant_roles.sql`, direct `db.{ref}.supabase.co:5432` connection — works from a
-  home/dev machine; GitLab's shared runners still need the Session pooler host, unresolved,
-  see CI/CD variables below).
+  home/dev machine; GitLab's shared runners need the Session pooler host — **resolved and
+  proven 2026-08-25**: the first real CI `data-pipeline` run connected on its first attempt
+  with the pooler host/port already in the CI/CD variables, see the manual-run entry in
+  Status).
 - **Full-universe ingestion completed and exported — 910 real eligible cards at that run**
   (2026-08-20; the later 2026-08-24 refresh returned 907, see the card-count note below)
   (us_sp500 500, au_asx200 171, jp_nikkei225 109, uk_ftse100 91, de_dax 39; above the
@@ -163,6 +165,38 @@ piece needed, and it's done. `data-pipeline` now refreshes the live app's 907 ca
 own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
+
+**DONE — the manual `data-pipeline` run (2026-08-25, pipeline #94, job succeeded in 74 min).**
+Owner triggered it from the GitLab web UI; this was the first time the CI path ever ran
+against the new Supabase project. Outcome, verified against production rather than taken from
+the job log alone:
+- **The MR !33 fix works.** DYL is now `company_type = pre_revenue`, and the sector range it
+  was wrecking is fixed: `au_asx200` Energy `sector_min_fcf_margin_pct` went from
+  **-129,810.50%** to **-29.59%** (PDN, a real company), max unchanged at 15.29%. The 10
+  operating peers now spread across a readable band instead of collapsing onto ~100% of a
+  129,825-point span. DYL's own sector min/max are null, which is correct — pre-revenue cards
+  are excluded from the benchmark cohort.
+- **The CI-to-Supabase path is proven.** `apply_supabase_migrations.py` connected on its first
+  attempt through the Session pooler host, `dbt build` and all three health checks passed, and
+  `export_to_supabase: upserted 907 rows to 'public'`. That was the standing risk for the
+  2026-09-01 unattended run and it is now retired.
+- **Assessments regenerated fully:** `907 cards -> verdicts {red 271, yellow 372, green 264}`,
+  `reads generated=907 carried=0 failed=0`. Every input hash moved, as expected from fresh
+  prices; no Anthropic API failures.
+- **The pipeline shows `manual`, not `success`, and that is fine** — `supabase-migrate` and
+  `dev-schema-check` are unplayed manual jobs in the same pipeline, which keeps the overall
+  badge at `manual`. The `data-pipeline` job itself is `success`. Do not read the badge as a
+  failure.
+
+**Two gaps this run exposed, neither a defect in the fix:**
+- **DYL has no `cash_runway_months` and no `burn_rate_monthly`** (both null; `net_cash_to_market_cap`
+  is populated), so the company that motivated the whole reclassification now gets a thinner
+  pre-revenue card than its two peers. Either `stmt_cash_and_equivalents` is missing for it or
+  the annual-statement burn does not compute positive. **Not diagnosed.**
+- Only **3 pre_revenue cards exist** across all 5 markets (DYL, GGP, NXG — all `au_asx200`;
+  770 operating, 134 financial). The pre-revenue metric set and its copy therefore ride on a
+  very small population. Worth knowing before investing further in that branch of the Router.
+  Two of the three do carry a runway (GGP 1.5 months, NXG 41.3), so the copy does render.
 
 **MERGED — MR !36 (`docs/cash-runway-learn-text-pre-revenue` → `gitlab/main` @ `cde3447`):
 `cash_runway_months`'s catalogue `learn` text widened to "For a company with little or no
@@ -499,29 +533,9 @@ Historical design docs, kept only in case a future slice needs to consult prior 
 `~/.claude/plans/noble-forging-beaver.md`, `logical-roaming-brook.md`, `dynamic-snuggling-truffle.md`.
 Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
 
-1. **← START HERE: trigger the manual `data-pipeline` run.** Nothing blocks it — MR !36
-   merged and needed no pipeline run of its own. Owner decided 2026-08-25: run it rather
-   than waiting for the 2026-09-01 schedule. **This is an owner action, not an agent one**
-   (see the web-UI-only constraint below). Measured reason, taken off live
-   production (snapshot 2026-08-24, 907 eligible cards): DYL is still classified
-   `operating`, so its own card shows -129,810% / -90,334% margins AND the 10 other
-   eligible `au_asx200` Energy cards (ALD, BPT, NHC, PDN, STO, VEA, WDS, WHC, WOR, YAL)
-   share a sector range running from DYL's -129,810% to +15% — every peer and the median
-   marker land at ~100% of that span, so the range bar is unreadable for the whole cohort.
-   The secondary reason matters as much: the CI path has never once run the export against
-   the new Supabase project, and 2026-09-01 is its first unattended firing — this is the
-   rehearsal, with someone watching.
-   **It must be triggered from the GitLab web UI** (Build → Pipelines → Run pipeline on
-   `main`, then play the manual `data-pipeline` job). `glab ci run` will NOT work: an
-   API-created pipeline has `CI_PIPELINE_SOURCE == "api"`, which matches neither of the
-   job's two rules (`schedule`, `web`) at `.gitlab-ci.yml:259-262`, so the job simply is
-   not created. Risk is bounded: the export upserts on
-   `(market_code, ticker, snapshot_date)` and `frontend/explore_filters.py:57` keeps the
-   latest snapshot per ticker (`dedupe_to_latest_snapshot`, `frontend/explore_filters.py:56`),
-   so a half-finished run degrades to "some tickers refreshed,
-   the rest keep 2026-08-24 data" with no gap in the card set. Expect ~907 Haiku reads to
-   regenerate (`generate_assessments.py` regenerates on input-hash change, and fresh prices
-   move nearly every hash).
+1. Nothing is blocking. The manual `data-pipeline` run that used to be item 1 is **done —
+   see the Status entry for what it proved and what it left open.** Pick the next item by
+   what matters to you; 2 and 3 below are both small and neither is urgent.
 2. Fix `docs/data_contract.md:236-237` — it still justifies the `pre_revenue` eligibility
    branch with "the operating metrics break for revenue ≤ 0", which MR !33 made incomplete
    (they also break for positive-but-negligible revenue). The classification section 30
@@ -529,13 +543,15 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    Found independently by both analytics-engineer-reviewer and equity-analyst-reviewer
    while reviewing the copy branch, and left out of it as out-of-scope. Internal doc prose,
    not user-visible copy.
-3. Work out why BXB, RMS and SPK (all `au_asx200`) were eligible on the 2026-08-20 run and
-   absent on 2026-08-24, and decide what should happen to a card whose ticker stops
-   appearing. Found 2026-08-25 while reconciling the card counts above. Two separate
-   questions, and the second is the one with no answer yet:
+3. Work out why BXB, RMS and SPK (all `au_asx200`) dropped out, and decide what should
+   happen to a card whose ticker stops appearing. Two separate questions:
    - Is the drop ordinary eligibility movement or per-ticker ingestion loss? Only the
-     second is a bug. The manual run in item 1 gives a third data point, and being a real
-     CI run it will also put `check_eligibility_baseline.py` over the result.
+     second is a bug. **The 2026-08-25 CI run made this sharper, not softer:** all three are
+     present in the 08-20 snapshot and absent from BOTH 08-24 (local run) and 08-25 (CI run,
+     different machine, `check_eligibility_baseline.py` green). Two independent runs agree,
+     so this is persistent, not a transient yfinance blip. Still undiagnosed — the next step
+     is checking whether they are ingested at all (raw parquet) versus ingested and ruled
+     ineligible, which the mart alone cannot distinguish.
    - Whatever the cause, a ticker that stops being exported keeps its last card in the deck
      indefinitely, because the frontend dedupes to the newest row per ticker rather than to
      the newest snapshot. There is no eviction anywhere in the pipeline or the app. Today
