@@ -139,6 +139,16 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
+**MERGED — MR #27 (`chore/remove-dead-benchmark-indicator` → `gitlab/main` @ `d023078`):
+dead `benchmark_indicator()`/`_BENCHMARK_INDICATORS` removed from `frontend/card_copy.py`**
+— left over from Slice 6c's arrow-to-word benchmark label swap; sibling
+`benchmark_indicator_label()` unaffected, still used by `card_ui.py`. Test coverage for the
+other still-live helpers in the same test file preserved. Two review rounds — round 1
+scope-auditor FAILed on `.claude/task/contract.md` not listing itself in its own
+`scope_paths`, fixed, round 2 both PASSED. 207 tests. This was item 1 of the "Next concrete
+actions" list below; items 1-2 there now (sector data-quality issue, CSS-specificity audit)
+remain open.
+
 **MERGED — MR #24 (`feat/metric-cell-groups-and-range-redesign` → `gitlab/main` @
 `4e7b7d4`): universal direction cue (all 16 catalogued metrics, not just the 5
 benchmarked), range-mark layout redesign (numbers above the bar, word labels below),
