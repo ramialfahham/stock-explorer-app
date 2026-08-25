@@ -310,7 +310,7 @@
       "basis_column": "",
       "gloss": "Months of cash left at the current burn",
       "analogy": "Like dividing your savings by your monthly spending to see how many months you can go without new income.",
-      "learn": "Cash runway estimates how long the company can keep operating before it runs out of cash, at its current burn rate: cash on hand divided by the average monthly cash outflow. For a pre-revenue company this is the survival clock: a short runway means new funding is needed soon. It assumes the burn rate holds steady, which rarely happens exactly.",
+      "learn": "Cash runway estimates how long the company can keep operating before it runs out of cash, at its current burn rate: cash on hand divided by the average monthly cash outflow. For a company with little or no revenue this is the survival clock: a short runway means new funding is needed soon. It assumes the burn rate holds steady, which rarely happens exactly.",
       "importance_tier": 1,
       "display_order": 15,
       "benchmarkable": false,
