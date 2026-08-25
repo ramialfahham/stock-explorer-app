@@ -1,34 +1,33 @@
 # Review
 
-diff_sha256: 3e64c2ecd182d29c619cc53150f8f9b8dc1d2bc1d93100435a4b899ff91079c0
+diff_sha256: 1c0bc4eef448f6ee2dcd6a0985781e156b9f6163f2ade6359b1dd6c5adfb2441
 
-Three rounds. Round 1: scope-auditor PASS, cto-reviewer FAIL (2 findings: unjustified
-`!important` on `.ss-company-summary` with a comment citing a nonexistent class; a
-pre-existing dead sibling-selector on the footer separator, same root cause as the
-`ss-freshness` fix). Round 2: scope-auditor ESCALATEd whether fixing the footer-separator
-bug (out of the original ~24-class list) was in scope, and whether a border rendering for
-the first time was really "no visual change" as claimed — genuinely escalated to the owner,
-who answered "fix all three" (including a third twin cto-reviewer found in its own round 2:
-the Yahoo Finance link-button sizing rule). Round 3 (below): both reviewers PASS. Full
-round-by-round record in this branch's own `.claude/task/contract.md` amendments.
+Two rounds. Round 1: scope-auditor PASS, cto-reviewer FAIL — independently re-verified the
+CSS fix at the Streamlit source level (read the actual installed `streamlit==1.57.0`
+minified component code) and confirmed it correct, but FAILed on a separate, real finding:
+`frontend/styles.py` has now had this exact dead-CSS-selector bug fixed 5-6 times across 3
+merged PRs with zero test coverage added, a gap this repo's own handover already flagged
+during Slice 6b and left open since. Fixed by adding `tests/frontend/test_styles.py`. Round
+2 (below): both PASS.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- The round-2 ESCALATE's owner answer ("fix all three") is genuinely recorded in
-  contract.md's final amendment, not self-answered or retroactively rewritten to look like
-  it was always in scope — explicitly documented as an owner-approved mid-task widening.
-- All three sibling-combinator fixes (footer separator, ss-freshness, link button) use the
-  identical corrected selector prefix, cross-referenced in comments; no unapproved decision
-  beyond the three the owner actually approved.
+- The new test's regex is narrow to the actual bug shape (a `.ss-*` marker directly before
+  `+ div[data-testid=`), confirmed against the file's own legitimate sibling-combinator
+  rules (`.ss-menu-label + .ss-menu-body`, `.ss-learn-section + .ss-learn-section`) — neither
+  false-positives.
+- Adding the test was compliance with an already-written, non-negotiable project rule
+  (working-agreement.md §4), triggered by a required reviewer's own finding — not a new
+  scope decision requiring escalation, unlike the footer-separator/action-bar widenings
+  earlier in this session (which changed what ships; this doesn't).
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Both round-2 findings independently re-verified against the actual Python DOM-generating
-  source (not just the CSS): the link-button selector now matches (traced through
-  card_ui.py's render_card_footer()); the `.ss-disclosure-wrap`/`.ss-company-summary`
-  comment now correctly distinguishes the two classes' different code paths.
-- Fourth-twin sweep: exactly 3 selector occurrences of `.ss-card-footer-shell` in the file,
-  byte-identical corrected prefix on all three, no remaining broken instance of this specific
-  pattern. Full test suite independently re-run (207 passed). Guard files untouched.
+- Independently re-verified the "fails against the broken form" claim using a DIFFERENT
+  rule than the one the builder tested (`.ss-icon-btn-marker` vs. the builder's
+  `.ss-nav-row-marker`) — reverted, confirmed a clear failure message, restored, confirmed
+  zero net `git diff`. Real, working coverage, not hand-tuned to one case.
+- Confirmed `.gitlab-ci.yml` (untouched) already runs `pytest tests/ -q`, so the new test is
+  live in CI with no config change needed, not a local-only artifact. Full suite: 209 passed.
