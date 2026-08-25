@@ -413,14 +413,19 @@ Full slice-by-slice action history in `docs/handover_2026-08-18.md`.
    above — real, deliberately deferred, not started. Deep Yellow (ASX Energy)'s near-zero
    revenue denominator distorts its whole sector's FCF/EBIT margin range mark; needs a
    dbt-layer fix (denominator floor or exclusion), approach is the owner's call.
-2. **`.ss-action-shell`/`.ss-nav-row-marker` sibling-selector check** — flagged by MR #29's
-   Status entry above; cto-reviewer spotted these may share the same dead-selector pattern
-   just fixed three times over, but didn't confirm live. Own follow-up task already spawned
-   (chip in the session UI; if it's gone, check `frontend/styles.py` directly).
-3. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
+2. Sync local `main` (`git fetch gitlab && git merge --ff-only gitlab/main`) before starting anything
    new, if it's drifted behind `gitlab/main` again.
 
-(The Streamlit CSS-specificity audit that used to be part of item 1 here is done — see the
+(The `.ss-action-shell`/`.ss-nav-row-marker` sibling-selector check that used to be item 1
+here is done — will get its own Status entry once this branch merges. Turned out bigger
+than "check": `.ss-action-shell`'s dead selector meant Save/Skip was never actually pinned
+to the viewport bottom, a real violation of the UX gate's own "Save still reachable on
+Discover" checklist item, not just a subtle typography gap. Reported back before fixing;
+owner approved the fix with full knowledge of the actual scope. Also added
+`tests/frontend/test_styles.py` — `frontend/styles.py` had ZERO test coverage across 3
+merged PRs (MR #24, #29) all fixing this same dead-CSS-selector bug class; a static regex
+guard now pins the specific broken shape so it can't silently recur a 7th time. The Streamlit
+CSS-specificity audit that used to be part of item 1 before that is done — see the
 MR #29 Status entry above, ~24 classes, live-verified. The dead-code cleanup that used to be
 item 1 before that is done — `benchmark_indicator()`/`_BENCHMARK_INDICATORS`
 removed from `frontend/card_copy.py`, test coverage preserved for the still-live helpers in

@@ -1,143 +1,116 @@
 # Task contract
 
-objective: Fix the Streamlit CSS-specificity bug (documented in MR #24, audited this
-session) across the ~24 remaining bare single-class `<p>` selectors it affects — each was
-silently losing its declared `font-size` (and, for one class, `margin-top`) to a
-higher-specificity Streamlit emotion-cache ancestor rule, exactly like the classes MR #24
-already fixed for the metric cell.
+objective: Fix the dead sibling-combinator CSS selector bug (same root cause MR #29 fixed
+three times near the card footer) for `.ss-action-shell` (the fixed Save/Skip action bar)
+and `.ss-nav-row-marker` (the Discover/Saved/Search nav row), plus a second, distinct
+wrong-testid bug found in the nav row's segmented-control sub-rules.
 
 scope_paths:
   - frontend/styles.py
+  - tests/frontend/test_styles.py
   - .claude/active_work.md
   - .claude/task/contract.md
 
 decisions_reserved:
-  - (none) — this is item 1 of 2 already-listed "Next concrete actions" in active_work.md
-    (flagged, not fixed, in MR #24's own Status entry); owner approved the audit, then
-    approved proceeding with the fix, in two separate "go ahead"s this session.
-  - No product/visual decision is made here: every fixed class keeps its EXISTING declared
-    value (same font-size, same margin) — the bug was that the browser was silently
-    discarding an already-decided value, not that the value itself was ever in question.
-    Nothing here changes what anything looks like by design; it changes what actually
-    renders to match what was already specified.
+  - (none) — flagged as a follow-up in MR #29's own Status entry after cto-reviewer spotted
+    it there but declined to confirm it live or fold it into that PR; owner approved
+    checking it ("go ahead with the CSS check"), then approved fixing what was found ("go
+    ahead") after I reported the live-verified scope and severity.
 
 technical_definition: |
-  Verified live (not just from the MR #24 code comment) via the browser's own computed
-  styles and matched-rule inspection against the actual Streamlit emotion-cache stylesheet:
-  a bare single-class `<p class="ss-foo">` selector (specificity 0,1,0) loses to Streamlit's
-  own `.st-emotion-cache-<hash> p { font-size: inherit; ... }` rule (0,1,1) whenever that
-  `<p>` is nested inside the matching ancestor -- which is effectively everywhere, since
-  every `st.markdown(unsafe_allow_html=True)` call renders through one of these ancestors.
-  A second, narrower Streamlit rule (`margin-top: 0; margin-left: 0; margin-right: 0;`, also
-  0,1,1) additionally zeroes any NON-ZERO margin-top a bare class declares -- invisible for
-  the ~23 classes that only ever set margin-bottom, but real for the one that doesn't
-  (ss-saved-news-heading).
+  `.ss-action-shell + div[data-testid="stHorizontalBlock"]` — confirmed live: matched zero
+  elements (`.ss-action-shell`'s own next sibling is null; the real relationship is one
+  level up, `stElementContainer -> stLayoutWrapper`, identical to `.ss-card-footer-shell`).
+  Real, user-visible impact, not just cosmetic: the Save/Skip button row was never actually
+  `position: fixed` — it rendered as a normal block at the end of the card's scrollable
+  content, so reaching Save required scrolling through the entire card (metrics, learn
+  panel). This directly contradicted `docs/working_agreement.md`'s own UX-gate checklist
+  item, "Save still reachable on Discover." Fixed with the same corrected pattern as the
+  footer rules: `[data-testid="stElementContainer"]:has(.ss-action-shell) + [data-testid="stLayoutWrapper"]`.
+  Live-verified after the fix: `position: fixed`, and Save's bounding-box top (710px) now
+  sits inside a 812px mobile viewport with no scroll needed.
 
-  Fix technique matches MR #24's own established pattern: scope each bare selector under its
-  always-present parent class (e.g. `.ss-metric .ss-metric-label`, matching the already-fixed
-  `.ss-metric .ss-metric-gloss`), pushing specificity to 0,2,0. For the handful of classes
-  with no natural parent wrapper in the DOM (`ss-filter-summary`, `ss-saved-list-fresh`,
-  `ss-saved-news-heading`, `ss-company-summary` short-form), used `!important` instead --
-  already an established technique elsewhere in this same file (button/popover overrides),
-  simpler than inventing a new wrapper `<div>` purely for CSS-specificity purposes.
+  `.ss-nav-row-marker + div[data-testid="stHorizontalBlock"]` (11 occurrences across the main
+  rule, first/last-child rules, segmented-control rules, and a `@media (max-width: 640px)`
+  block) — same dead-selector root cause, confirmed live the same way. Less visibly broken
+  than the action bar only by coincidence: `st.container(horizontal=True)` (what the nav row
+  actually uses, not `st.columns()`) already renders `display:flex; flex-direction:row`
+  natively from Streamlit's own default styling, so the top-level layout intent happened to
+  hold anyway. The sub-details did not: live-verified 16px `gap` instead of the intended
+  `var(--ss-space-1)` (5.6px), and the segmented control not filling its column. Fixed with
+  the same `:has()` pattern, but targeting the DESCENDANT `[data-testid="stHorizontalBlock"]`
+  inside `stLayoutWrapper` rather than `stLayoutWrapper` itself (confirmed live:
+  `stLayoutWrapper`'s direct child is the actual `display:flex` element carrying
+  `align-items`/`flex-direction`/`gap` — those are flex-CONTAINER properties, inert unless
+  applied to the actual flex element, unlike the footer/action-bar fixes' margin/padding/
+  border/position, which work fine on the wrapper itself).
 
-  `ss-freshness` had a SEPARATE, unrelated bug: its intended scoped rule
-  (`.ss-card-footer-shell + div[data-testid="stHorizontalBlock"] .ss-freshness`) never
-  matched the real DOM at all (same root cause as the pre-Slice-6b stLinkButton/
-  stBaseLinkButton-secondary testid mismatch) -- confirmed live via `element.matches()`
-  against every stylesheet rule and a full ancestor-chain walk with real data-testid values.
-  Fixed with the verified-correct selector
-  (`[data-testid="stElementContainer"]:has(.ss-card-footer-shell) + [data-testid="stLayoutWrapper"] .ss-freshness`),
-  same `:has()` + adjacent-sibling technique already used for the icon-button trigger rule
-  later in the same file. The old bare `.ss-freshness { font-size: ...; color: ...; }`
-  fallback rule (which is what was actually rendering, silently, since the scoped rule never
-  fired) is removed as fully superseded now that the scoped rule works.
+  Second, unrelated bug in the two segmented-control sub-rules: they targeted
+  `[data-testid="stSegmentedControl"]`, which does not exist in the installed Streamlit
+  version at all (confirmed live — `document.querySelector` returned null; walking the real
+  DOM from an actual segmented-control button found `stButtonGroup` instead). Same class of
+  mistake as the pre-existing `stLinkButton`/`stBaseLinkButton-secondary` correction already
+  in this file. Fixed by replacing the testid; both sub-rules also needed the sibling-prefix
+  fix above (both bugs stacked on the same two rules).
 
-  `ss-benchmark-unavailable` and `ss-benchmark-note` are structurally the same kind of bare
-  selector but were confirmed NOT to need this fix: `ss-benchmark-unavailable` declares
-  neither font-size nor a non-zero margin (nothing for the bug to corrupt); `ss-benchmark-note`
-  has zero Python call sites repo-wide (dead CSS) -- scoped anyway alongside its live sibling
-  `ss-median-primer` so it doesn't reintroduce the bug if it's ever used.
+  All fixes live-verified via computed styles (not just static analysis) after a full dev
+  server restart (module caching had produced false negatives earlier in the parent branch's
+  session — restarting the process, not just navigating, avoided a repeat).
 
-  `ss-row-title`/`ss-row-sub` and the four classes MR #24 already fixed
-  (`ss-metric-gloss`, `ss-metric-range-unavailable`, `ss-metric-group-heading` in both its
-  contexts, `ss-metric-analogy`) were re-verified live as unaffected/already-correct --
-  served as positive controls proving the scoping technique actually works before applying
-  it to the rest.
-
-  `ss-explain-all`/`ss-explain-list` (+ its `dt`/`dd` children)/`ss-header-pool`/
-  `ss-market-breakdown*`/`ss-saved-fresh` are dead CSS (zero Python call sites, confirmed
-  repo-wide) -- noted, not touched; `ss-saved-fresh` shares this bug's vulnerable shape
-  (bare class, declares font-size) but nothing renders it, so nothing to fix; the other four
-  aren't even `<p>` selectors.
-
-  cto-reviewer round 1 found two real problems, both fixed and re-verified live before round
-  2: (1) `ss-company-summary` (short/non-truncated description) had genuinely used
-  `!important` on a false premise -- its own comment claimed "no wrapping ancestor class,"
-  but `_company_summary_html()`'s return value renders inside the SAME `.ss-card-identity`
-  section as `.ss-meta-line` two rules above it in every code path (both the truncated and
-  non-truncated branches), so it should have been parent-scoped like everything else.
-  Switched to `.ss-card-identity .ss-company-summary`, re-verified live by injecting a
-  synthetic element into a real `.ss-card-identity` and reading its computed style (real
-  card data with a short-enough description to hit this code path wasn't readily
-  reproducible by browsing). (2) A second, PRE-EXISTING sibling-selector bug sitting two
-  rules above the `ss-freshness` fix, same file, same root cause, not part of this task's
-  original ~24-class list because it isn't a `<p>` selector at all:
-  `.ss-card-footer-shell + div[data-testid="stHorizontalBlock"]` (the footer's top-border/
-  spacing separator) matched zero elements for the identical reason `ss-freshness` did --
-  `.ss-card-footer-shell` itself has no next sibling; the real sibling relationship is one
-  level up, between its `stElementContainer` and the following `stLayoutWrapper`. Fixed with
-  the same corrected pattern already worked out for `ss-freshness`
-  (`[data-testid="stElementContainer"]:has(.ss-card-footer-shell) + [data-testid="stLayoutWrapper"]`),
-  live-verified: the footer separator (a 1px top border above the Yahoo Finance link) now
-  actually renders for the first time. Fixing this was judged in-scope despite not being
-  part of the original ~24-class list -- same root cause, same fix, discovered as a direct
-  byproduct of the DOM archaeology this task already required, three lines from a rule this
-  diff was already touching; leaving a twin of a bug just fixed, right next to the fix,
-  would have been the "spot-fixing one layer at a time" anti-pattern CLAUDE.md itself warns
-  against.
+  cto-reviewer round 1 independently re-verified the selector correctness claims at the
+  Streamlit SOURCE level (extracted and read the actual component code from the installed
+  `streamlit==1.57.0` package's minified JS bundle) rather than trusting the live-browser
+  claims alone — confirmed `stLayoutWrapper` is a single-child, fixed-`flex-direction:column`
+  wrapper with no `gap`/`align-items` props, which is WHY `.ss-nav-row-marker`'s fix correctly
+  needs the descendant `stHorizontalBlock` while `.ss-action-shell`'s doesn't (different
+  properties: flex-container vs box-model). Also independently found `stButtonGroup` verbatim
+  in the shipped `st.segmented_control` component chunk. FAILed anyway, on a real,
+  separate finding not about correctness: this is the file's 5th-6th recurrence of the exact
+  same dead-selector bug class (3 in MR #29, 2 here) with STILL zero automated test coverage
+  for `frontend/styles.py` — a gap this repo's own `active_work.md` already documented during
+  Slice 6b and left open across two more merged PRs since. Per working-agreement.md §4
+  ("Tests are non-negotiable... output you can't eyeball must be covered by automated
+  tests"), added `tests/frontend/test_styles.py`: a static regex check asserting the specific
+  broken selector SHAPE (`.marker + div[data-testid=...]`, no `:has()` wrapper) never
+  reappears, with a vacuity-guard companion test asserting the corrected shape is still
+  actually present (so the negative assertion can't pass by accident if the whole pattern
+  disappeared for an unrelated reason). Verified the test genuinely fails against the broken
+  form (temporarily reverted one already-fixed rule, confirmed the expected failure message,
+  restored it) before keeping it — matching the same discipline `tests/tooling/
+  test_ci_reachability.py` documents for itself. This was NOT escalated to the owner as a
+  scope question the way the footer-separator/action-bar widenings were: adding required
+  test coverage for a file this task is already changing, to meet an already-written,
+  non-negotiable project rule, is compliance with an existing decision, not a new one.
 
 explicitly_not_in_scope:
-  - Deleting the dead CSS classes noted above (`ss-explain-all` etc.) -- separate cleanup,
-    unrelated to this bug.
-  - The sector min/max data-quality issue (Deep Yellow near-zero-revenue denominator) --
-    the other item in active_work.md's "Next concrete actions", tracked separately.
-  - Any visual/design change beyond making already-declared values actually render.
+  - Any other pre-existing selector in this file not named above — this task's scope is
+    exactly the two markers cto-reviewer flagged in MR #29, verified live, not a fresh
+    open-ended sweep of the whole file for more instances of this pattern.
+  - Any visual/design value change — every fix keeps the exact declared values (position,
+    width, gap, font-size, etc.); the fix makes already-declared values actually apply.
 
 done_when:
-  - All ~24 classes identified in the live audit show computed font-size (and, for
-    ss-saved-news-heading, margin-top) matching their declared CSS value, re-verified live
-    in the browser after the fix (not just inferred from the CSS source).
-  - `ss-freshness`'s scoped selector confirmed to actually match the real DOM
-    (`element.matches()`), not just assumed correct by construction.
+  - `.ss-action-shell`'s scoped rule confirmed live to match, with `position: fixed` /
+    `bottom: 0` actually computed (not `static`).
+  - Save button confirmed reachable within a 375x812 mobile viewport without scrolling.
+  - `.ss-nav-row-marker`'s scoped rules confirmed live to match, with `gap` and segmented-
+    control width computed at their declared values (not Streamlit's un-overridden defaults).
+  - `stButtonGroup` (not `stSegmentedControl`) confirmed live as the real matching testid.
+  - No visual overlap/regression between the segmented control and the overflow-menu icon
+    button (both confirmed via live bounding-box check).
   - Full test suite passes (`python -m pytest tests/ -q`).
-  - 480px mobile smoke check: no horizontal scroll; company + sector + health verdict +
-    first metric visible without scroll (per docs/working_agreement.md's UX PR gate).
-  - `.claude/active_work.md`'s "Next concrete actions" updated to reflect this is done.
+  - `tests/frontend/test_styles.py` exists, passes, and was verified to actually fail
+    against the broken selector shape before being kept.
+  - `.claude/active_work.md` updated to reflect this is done.
 
 amendments:
-  - 2026-08-24 — initial contract, written after the audit (Explore) and the fix
-    (Implement) -- the audit itself was presented to and approved by the owner ("go ahead
-    with the CSS audit first"), and the fix was separately approved after the audit report
-    ("go ahead with the fix"), so both steps this contract covers were confirmed in
-    conversation before being carried out, in the same pattern as the immediately preceding
-    dead-code-cleanup task this session.
-  - 2026-08-25 — cto-reviewer round 1 FAILed with two real findings (see
-    technical_definition's new paragraph); both fixed and re-verified live, `ss-saved-fresh`
-    added to the dead-CSS accounting per its "supporting observation." No owner escalation
-    needed -- both were within the task's own already-approved objective (fix this specific
-    Streamlit CSS-specificity bug pattern), not new decisions.
-  - 2026-08-25 — scope-auditor round 2 correctly ESCALATEd whether fixing the footer-
-    separator bug (a third, non-`<p>`, out-of-original-list instance of the exact same
-    dead-selector root cause) was within the builder's own authority to decide, and whether
-    a border rendering for the first time contradicts this contract's "no visual change"
-    claim. Genuinely escalated to the owner (not self-answered) -- owner chose "fix all
-    three": keep the footer-separator fix, and additionally fix the THIRD instance
-    cto-reviewer's own round 2 found in the same pass (the Yahoo Finance link button's
-    `stBaseLinkButton-secondary` sizing rule, same broken sibling-combinator prefix, same
-    corrected pattern), which had been deliberately left untouched pending this answer.
-    All three re-verified live after the fix (font-size/min-height/padding/text-decoration
-    on the link button; border-top on the footer separator). scope_paths/objective NOT
-    amended to retroactively describe these as originally in-scope -- they are documented
-    here, honestly, as an owner-approved widening mid-task, not as something the original
-    audit already covered.
+  - 2026-08-25 — initial contract, written after the check (Explore, owner-approved: "go
+    ahead with the CSS check") revealed a materially bigger and more severe finding than
+    the original framing suggested (a real UX-gate violation, not just subtle typography),
+    which was reported back to the owner before implementing; owner then approved the fix
+    itself ("go ahead") with full knowledge of the actual scope and severity.
+  - 2026-08-25 — cto-reviewer round 1 FAILed on a real, well-evidenced gap (zero test
+    coverage for `frontend/styles.py` across 5-6 recurrences of this exact bug class);
+    `tests/frontend/test_styles.py` added and `scope_paths` updated to include it. Not
+    escalated — see technical_definition's final paragraph for why this is compliance with
+    an existing rule, not a new scope decision.

@@ -805,8 +805,12 @@ section[data-testid="stSidebar"] {
     margin: 0.45rem 0 0.55rem;
 }
 
-/* Fixed action bar (Save / Skip) */
-.ss-action-shell + div[data-testid="stHorizontalBlock"] {
+/* Fixed action bar (Save / Skip). .ss-action-shell's own next sibling is nothing -- same
+   broken assumption as .ss-card-footer-shell above (confirmed live: this rule matched zero
+   elements, so Save/Skip has never actually been pinned to the viewport bottom; reaching it
+   required scrolling through the whole card). Real relationship is one level up,
+   stElementContainer -> stLayoutWrapper, same corrected pattern as the footer fixes. */
+[data-testid="stElementContainer"]:has(.ss-action-shell) + [data-testid="stLayoutWrapper"] {
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
@@ -854,8 +858,18 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     border-radius: var(--ss-radius-control) !important;
 }
 
-/* Nav row: Discover / Saved / Search + overflow menu (single line on mobile) */
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] {
+/* Nav row: Discover / Saved / Search + overflow menu (single line on mobile). Same broken
+   sibling assumption as .ss-card-footer-shell/.ss-action-shell above (confirmed live: this
+   prefix matched zero elements) -- fixed the same way. Less visibly broken than the action
+   bar only by coincidence: st.container(horizontal=True) already renders flex/row natively,
+   so the top-level intent happened to hold anyway; the gap/width/segmented-control sub-rules
+   below did not (confirmed live: 16px gap instead of the intended --ss-space-1, and the
+   segmented control at ~50% width instead of 100%). Descends one level further than the
+   footer/action-bar fixes (`... [data-testid="stHorizontalBlock"]`, not just
+   `[data-testid="stLayoutWrapper"]`) because these are flex-CONTAINER properties
+   (align-items/flex-direction/gap) -- they only do anything on the actual `display:flex`
+   element, confirmed live to be stLayoutWrapper's direct child, not stLayoutWrapper itself. */
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] {
     align-items: center !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -864,24 +878,29 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     margin: 0 0 0.45rem !important;
     gap: var(--ss-space-1) !important;
 }
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:first-child,
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] > div:first-child,
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
     min-width: 0 !important;
     flex: 1 1 auto !important;
     width: auto !important;
 }
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] > div:last-child,
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] > div:last-child,
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
     flex: 0 0 auto !important;
     width: auto !important;
     min-width: 0 !important;
     display: flex;
     align-items: stretch;
 }
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="stSegmentedControl"] {
+/* Second, separate bug in these two rules beyond the sibling-prefix one above: st.segmented_control()
+   does not render a `data-testid="stSegmentedControl"` element at all -- confirmed live, the
+   real wrapper carries `stButtonGroup` (same class of mistake as the stLinkButton/
+   stBaseLinkButton-secondary correction above; each button itself is
+   `stBaseButton-segmented_controlActive`/`...Inactive`, not checked here). */
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButtonGroup"] {
     width: 100%;
 }
-.ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="stSegmentedControl"] button {
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButtonGroup"] button {
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     min-height: 2.35rem !important;
@@ -924,17 +943,17 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     margin: 0 !important;
 }
 @media (max-width: 640px) {
-    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] {
+    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         flex-wrap: nowrap !important;
     }
-    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"] {
+    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"] {
         width: auto !important;
     }
-    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
+    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
         flex: 1 1 0 !important;
     }
-    .ss-nav-row-marker + div[data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
+    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
         flex: 0 0 auto !important;
     }
 }
