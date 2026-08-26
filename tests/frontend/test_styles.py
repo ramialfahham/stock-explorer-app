@@ -71,3 +71,37 @@ def test_the_correct_sibling_shape_is_actually_present():
         f"{MIN_CORRECT_INSTANCES}) -- either a real fix regressed back to the broken shape, "
         f"or this pattern has drifted from what frontend/styles.py actually uses now."
     )
+
+
+# The OTHER recurring bug class in this file, distinct from the sibling-combinator one
+# above: a bare single-class `<p>` selector (`.ss-thing { font-size: ... }`) silently
+# loses font-size and any non-zero margin to a Streamlit emotion-cache `<ancestor> p`
+# reset at higher specificity. MR #29 fixed ~24 of these at once. Every such rule must
+# be scoped under an ancestor class (or use !important where no ancestor exists), which
+# is what these labels do via `.ss-card-identity .ss-block-label`.
+CARD_FACE_P_CLASSES = ("ss-block-label",)
+
+
+def test_card_face_p_class_rules_are_scoped_not_bare():
+    """A bare `.ss-block-label { font-size: ... }` would render at Streamlit's paragraph
+    size instead of ours, and look correct in the source while being wrong on screen --
+    the exact failure mode MR #29 had to fix across two dozen classes.
+
+    Verified to fail against the broken form: temporarily rewrote
+    `.ss-card-identity .ss-block-label` back to a bare `.ss-block-label` and confirmed
+    this test failed before keeping it, same check the sibling guard above documents."""
+    css = STYLES_FILE.read_text(encoding="utf-8")
+    for cls in CARD_FACE_P_CLASSES:
+        bare = re.compile(r"(?m)^\s*\.%s\s*(,|\{)" % re.escape(cls))
+        assert not bare.search(css), (
+            f"`.{cls}` is used as a bare single-class selector at the start of a rule. "
+            f"A Streamlit emotion-cache `<ancestor> p` reset outranks it, so the declared "
+            f"font-size and margins are silently dropped on screen. Scope it under its "
+            f"wrapper (e.g. `.ss-card-identity .{cls}`) instead."
+        )
+        scoped = re.compile(r"\.ss-[\w-]+\s+\.%s\s*(,|\{)" % re.escape(cls))
+        assert scoped.search(css), (
+            f"no scoped rule found for `.{cls}` -- expected something like "
+            f"`.ss-card-identity .{cls}`. If the class was renamed or removed, update "
+            f"CARD_FACE_P_CLASSES so this guard keeps testing something real."
+        )

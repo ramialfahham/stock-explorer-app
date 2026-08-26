@@ -181,6 +181,19 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
     situation directly, and appending "Lower is better." on top would imply a more
     negative number is a better version of the same good news, when it's actually a
     different, broken state the ratio's normal direction no longer describes.
+
+    Re-confirmed 2026-08-26. The owner asked for the cue to be dropped as clutter, then
+    reopened it: the honest tension is that "better" is only true ceteris paribus, and
+    this app never teaches that concept. Kept anyway, and deliberately on EVERY metric
+    rather than only the inverted ones -- a cue that appears on some metrics and not
+    others makes its own absence ambiguous, which is worse than not having it. The bar
+    itself carries no direction (right is only "bigger"), so for the benchmarked inverted
+    metrics (net_debt_to_ebitda, forward_pe) a beginner has no way to read the mark without
+    this line -- and only 5 of the 16 catalogued metrics are benchmarkable at all, so for
+    the other 11 (current_ratio_stmt, dividend_yield_pct, working_capital and the rest)
+    this cue is the ONLY direction signal anywhere on the card face. The
+    clutter that prompted the question was addressed in presentation instead: the gloss
+    is now a step larger and lighter than the range mark's own axis labels.
     """
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return "Net cash: cash on hand exceeds debt"
@@ -455,7 +468,12 @@ def business_summary_is_truncated(
 
 # Health verdict (Slice 6c) — token -> emoji/label.
 VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
-VERDICT_BADGE_LABEL = {"green": "Sturdy", "yellow": "Mixed", "red": "Strained"}
+# Owner-chosen (§6, 2026-08-26), replacing Sturdy/Mixed/Strained: "sturdy" is not a word
+# people use. Health framing, deliberately not Strong/Weak, which read closer to a verdict on
+# the SHARE than on the company's finances — this app never implies buy or sell. These MUST
+# stay in step with VERDICT_MEANING in scripts/assessment_rules.py, which tells the model how
+# to end its paragraph; if they drift, a card's prose contradicts its own badge.
+VERDICT_BADGE_LABEL = {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
 
 
 def health_verdict_token(card: dict) -> str | None:

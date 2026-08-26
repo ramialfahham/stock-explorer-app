@@ -28,7 +28,20 @@ VERDICTS = (VERDICT_GREEN, VERDICT_YELLOW, VERDICT_RED)
 COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 
 # Bump to force a global 5b regeneration when the prompt/rubric field set changes.
-INPUT_HASH_VERSION = "5a.1"
+# 5a.2 (2026-08-26): READ_SYSTEM_PROMPT gained a no-dashes rule and a don't-sound-like-a-model
+# rule, and the verdict wording changed from sturdy/strained to healthy/fragile. Existing reads
+# were written under the old prompt and would otherwise survive untouched (reads regenerate on
+# input-hash change, and none of the NUMBERS moved), leaving em dashes and "sturdy" phrasing on
+# every card whose figures happen to be stable. The bump is what makes them regenerate.
+# Precisely: it advances the stored hash for EVERY record, so every card is offered for
+# regeneration on the next run. A card whose read actually regenerates gets new prose. A
+# card whose Haiku call FAILS is not covered by that guarantee -- attach_reads() counts it
+# and moves on without setting ai_read, while the record still carries the new hash into
+# the upsert, so the next run's regenerate test (hash differs OR ai_read empty) may skip
+# it. Whether the old prose survives or is nulled depends on how PostgREST treats a batch
+# whose rows have different keys, which nothing here pins. The last run reported failed=0,
+# so this is not known to have bitten -- do not claim it cannot.
+INPUT_HASH_VERSION = "5a.2"
 
 # Per-type card metric sets — mirror metric_catalogue.csv `applies_to`. These feed the
 # input hash (and, in 5b, the prompt), so they are the FULL displayed set per type, not
@@ -226,7 +239,7 @@ def compute_input_hash(
 
 # Owner-signed voice (§6). Educational, never advice; true-beginner language;
 # reason only from the given numbers; end on the verdict's meaning as financial
-# sturdiness/strain "on these figures", never as a buy/sell.
+# health/fragility "on these figures", never as a buy/sell.
 READ_SYSTEM_PROMPT = """You write a short, plain-language "read" of a company's financial health for a complete beginner using a stock-learning app. You are given the company type, a set of already-computed numbers, and a health verdict (green, yellow, or red) that fixed rules decided - not you. In 2-3 sentences, explain what those numbers say about the company's financial health, ending on what the verdict means in plain words.
 
 Rules:
@@ -236,7 +249,9 @@ Rules:
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
 - Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
 - Valuation (P/E, price-to-tangible-book) and growth are context only - never treat a low P/E as "cheap" or high growth as a reason to buy. The verdict measures financial health and resilience only.
-- End on the verdict's meaning, phrased as sturdiness or strain on these figures - e.g. "financially sturdy on these figures", "a mixed financial picture on these numbers", "under real financial strain on these figures". Never phrase it as a good or bad buy.
+- End on the verdict's meaning, phrased as health or fragility on these figures - e.g. "financially healthy on these figures", "a mixed financial picture on these numbers", "financially fragile on these figures". Never phrase it as a good or bad buy.
+- No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
+- Write like a person explaining this to someone they know, not like a model. Avoid the usual tells: no "not just X, but Y", no "it's worth noting" or "it's important to remember", no rhetorical questions, no three-item lists used for rhythm, no sentence that hedges and then pivots for the sake of sounding balanced. Vary your sentence lengths. Say the thing and stop. Plain is not the same as chatty, so stay calm and factual. This rule is about STYLE only: it never overrides the rules above or the company-type lens below. Where one of those requires a limit to be stated - above all the financial-company limit that these numbers cannot judge balance-sheet safety or capital strength - state it plainly and in full. A required caveat is never a tell to be trimmed.
 - Calm, clear, honest. No hype, no emoji, no exclamation marks.
 
 Company-type lens:
@@ -248,9 +263,9 @@ Company-type lens:
 # Plain-English meaning of each verdict token, given to the model so the read can
 # land on it. Mirrors the frontend token -> emoji mapping added in Slice 6.
 VERDICT_MEANING: dict[str, str] = {
-    VERDICT_GREEN: "green - financially sturdy on these figures",
+    VERDICT_GREEN: "green - financially healthy on these figures",
     VERDICT_YELLOW: "yellow - a mixed financial picture on these figures",
-    VERDICT_RED: "red - under real financial strain on these figures",
+    VERDICT_RED: "red - financially fragile on these figures",
 }
 
 

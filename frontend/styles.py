@@ -252,8 +252,41 @@ section[data-testid="stSidebar"] {
 }
 
 /* Verdict badge + AI read (Slice 6c) — Scan-tier signal, always visible. */
+/* The two card-face content blocks are visually distinct on purpose: the assessment is
+   model-written prose, the description is the company's own words. Before this they ran
+   together as one wall of text and a reader could not tell which was which. The panel
+   sits on --ss-bg inside the card's --ss-surface, one step darker, so the separation
+   survives without adding a new colour to the palette. */
 .ss-health-block {
+    /* Deliberately tight. Two new labels plus this panel's own padding cost real vertical
+       space on the card face, and docs/working_agreement.md's UX gate wants the first
+       metric value above the fold at 480px wide. Every value here was trimmed to the
+       smallest that still reads as a separate panel; do not pad this out without
+       re-running that check. */
+    margin: 0 0 var(--ss-space-2);
+    padding: var(--ss-space-1) var(--ss-space-2) var(--ss-space-2);
+    background: var(--ss-bg);
+    border: 1px solid var(--ss-border);
+    border-radius: var(--ss-radius-surface);
+}
+.ss-company-block {
     margin: 0 0 0.55rem;
+}
+/* Both block labels. Scoped under .ss-card-identity -- their always-present wrapper (see
+   build_card_html()'s `identity` section) -- and NOT written as a bare `.ss-block-label`
+   <p> selector, which would silently lose font-size and any non-zero margin to a
+   Streamlit emotion-cache `<ancestor> p` reset at higher specificity. That exact bug has
+   shipped six times in this file across three MRs; see the .ss-metric .ss-metric-gloss
+   comment below for the full explanation. Same small-uppercase accent treatment as
+   .ss-metric-group-heading, so the card has one labelling language rather than two. */
+.ss-card-identity .ss-block-label {
+    font-size: var(--ss-caption-size);
+    font-weight: 600;
+    color: var(--ss-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 0.2rem;
+    line-height: 1.2;
 }
 /* Both scoped under .ss-health-block (their always-present wrapper, see _health_block_html())
    -- see the .ss-metric .ss-metric-gloss comment below for why a bare class isn't enough. */
@@ -264,7 +297,9 @@ section[data-testid="stSidebar"] {
     font-size: var(--ss-label);
     font-weight: 600;
     color: var(--ss-text);
-    background: var(--ss-bg);
+    /* --ss-surface, not --ss-bg: the panel around it is now --ss-bg, and a chip cannot
+       sit on its own background colour and still read as a chip. */
+    background: var(--ss-surface);
     border: 1px solid var(--ss-border);
     border-radius: var(--ss-radius-control);
     padding: var(--ss-space-1) var(--ss-space-2);
@@ -491,11 +526,16 @@ section[data-testid="stSidebar"] {
    carries a `<ancestor-class> p { margin-top: 0; ... }` reset at (0,1,1) specificity,
    which silently wins over a same-weight single-class rule regardless of source order.
    Scoping under the parent keeps these at (0,2,0) so the margin actually applies. */
+/* Deliberately a step LARGER and LIGHTER than the range mark's own min/median/max
+   labels below it (--ss-caption-size / --ss-caption). This is the line that explains the
+   metric; those are axis furniture. At the same size and colour the explanation read as
+   a footnote to the bar rather than the point of the cell. 0.78rem matches the card's
+   other body copy (.ss-ai-read, .ss-company-summary). */
 .ss-metric .ss-metric-gloss {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
+    font-size: 0.78rem;
+    color: var(--ss-muted);
     margin: 0.5rem 0 0;
-    line-height: 1.25;
+    line-height: 1.35;
 }
 .ss-metric .ss-metric-range-unavailable {
     margin: 0.5rem 0 0;

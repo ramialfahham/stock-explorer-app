@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from assessment_rules import VERDICT_MEANING  # noqa: E402
+
 from card_copy import (  # noqa: E402
     ALL_METRICS,
     BENCHMARK_METRICS,
+    VERDICT_BADGE_LABEL,
     _BY_ID,
     metric_perspective_label,
     metrics_for_card,
 )
 from card_ui import (  # noqa: E402
+    BLOCK_LABEL_ASSESSMENT,
+    BLOCK_LABEL_DESCRIPTION,
     _company_summary_html,
     _health_block_html,
     build_card_html,
@@ -36,6 +41,62 @@ def test_company_summary_short_has_no_toggle() -> None:
     html = _company_summary_html(card)
     assert "<details" not in html
     assert "Read more" not in html
+
+
+def test_assessment_and_description_are_separate_labelled_blocks() -> None:
+    """The card face must not run the AI assessment and the company's own description
+    together as one wall of text — a reader cannot tell model-written prose from the
+    company's words. Each gets its own wrapper and a label naming where it came from."""
+    card = {
+        "company_name": "Test Co",
+        "ticker": "TST",
+        "market_code": "us_sp500",
+        "health_verdict": "green",
+        "ai_read": "Turns sales into profit at a healthy rate.",
+        "business_summary": "Test Co makes things and sells them worldwide.",
+    }
+    health = _health_block_html(card)
+    summary = _company_summary_html(card)
+
+    assert '<div class="ss-health-block">' in health
+    assert BLOCK_LABEL_ASSESSMENT in health
+    assert '<div class="ss-company-block">' in summary
+    assert BLOCK_LABEL_DESCRIPTION in summary
+    # Each label belongs to exactly one block — swapping them would defeat the point.
+    assert BLOCK_LABEL_DESCRIPTION not in health
+    assert BLOCK_LABEL_ASSESSMENT not in summary
+
+
+def test_assessment_label_says_ai_written_not_summary() -> None:
+    """Owner-chosen wording (§6). "Summary" would misdescribe it: the read is written
+    from the card's figures, it does not condense a longer text. Pinned so a later
+    tidy-up cannot quietly soften it back."""
+    assert BLOCK_LABEL_ASSESSMENT == "What the numbers say · AI-written"
+    assert BLOCK_LABEL_DESCRIPTION == "About the company"
+
+
+def test_description_block_label_present_whether_or_not_truncated() -> None:
+    """The wrapper is what separates this block visually, so it cannot appear only on
+    the truncated path — a short description would otherwise lose its label and merge
+    back into the assessment above it."""
+    long_card = {"business_summary": " ".join(f"word{i}" for i in range(30))}
+    short_card = {"business_summary": "Short blurb only."}
+    for card in (long_card, short_card):
+        html = _company_summary_html(card)
+        assert '<div class="ss-company-block">' in html
+        assert BLOCK_LABEL_DESCRIPTION in html
+
+
+def test_no_description_renders_nothing_at_all() -> None:
+    """No description means no empty labelled box announcing its own absence."""
+    assert _company_summary_html({"business_summary": None}) == ""
+    assert _company_summary_html({}) == ""
+
+
+def test_no_assessment_renders_nothing_at_all() -> None:
+    """Same for the assessment: a card with no matching card_assessments row shows no
+    panel, not a labelled empty one."""
+    assert _health_block_html({"company_name": "Test Co"}) == ""
 
 
 def _card_with_all_metrics(company_type: str) -> dict:
@@ -334,8 +395,69 @@ def test_health_block_present_with_full_assessment() -> None:
     card["ai_read"] = "This company shows healthy leverage and margins on these figures."
     html = _health_block_html(card)
     assert "🟢" in html
-    assert "Sturdy" in html
+    assert VERDICT_BADGE_LABEL["green"] in html
     assert "healthy leverage" in html
+
+
+def test_labels_render_inside_the_card_identity_section() -> None:
+    """The CSS that styles these labels is scoped `.ss-card-identity .ss-block-label`.
+    Testing the helpers alone would not catch build_card_html() later moving either block
+    into a different section, which would kill the selector silently — the exact way six
+    dead selectors reached production in this repo. Assert the ancestry, through the real
+    renderer."""
+    card = _card_with_all_metrics("operating")
+    card["health_verdict"] = "green"
+    card["ai_read"] = "Turns sales into profit at a healthy rate."
+    card["business_summary"] = "Test Co makes things and sells them worldwide."
+    html = build_card_html(card)
+    identity = html.split('<section class="ss-card ss-card-identity">', 1)[1]
+    identity = identity.split("</section>", 1)[0]
+    assert BLOCK_LABEL_ASSESSMENT in identity
+    assert BLOCK_LABEL_DESCRIPTION in identity
+
+
+def test_ai_label_never_appears_without_ai_text() -> None:
+    """A verdict can be stored with a null ai_read: 5a writes verdicts, and
+    generate_assessments isolates a per-card read failure rather than failing the batch.
+    The badge is rule-computed, so it must still render — but heading it "AI-written"
+    with no AI-written words under it would be a plain falsehood about where the
+    assessment came from."""
+    card = {"company_name": "Test Co", "ticker": "TST", "health_verdict": "green"}
+    html = _health_block_html(card)
+    assert VERDICT_BADGE_LABEL["green"] in html
+    assert BLOCK_LABEL_ASSESSMENT not in html
+    assert "ss-ai-read" not in html
+
+
+def test_ai_label_heads_the_prose_not_the_rule_computed_badge() -> None:
+    """Ordering is the claim being made: the verdict badge is decided by fixed rules in
+    scripts/assessment_rules.py, never by the model. If the AI label were to drift back
+    above the badge, the card would credit the deterministic half of the assessment to a
+    language model."""
+    card = {
+        "company_name": "Test Co",
+        "ticker": "TST",
+        "health_verdict": "green",
+        "ai_read": "Turns sales into profit at a healthy rate.",
+    }
+    html = _health_block_html(card)
+    assert html.index("ss-verdict-badge") < html.index("ss-block-label"), (
+        "the AI-written label must not precede the rules-computed verdict badge"
+    )
+
+
+def test_badge_labels_match_the_words_the_model_is_told_to_end_on() -> None:
+    """The badge and the prose must not contradict each other. VERDICT_MEANING is what
+    the model is told the verdict means, and the prompt tells it to end on that wording;
+    if the badge says one word and the paragraph under it lands on another, the card
+    argues with itself. Pins the owner-chosen set (§6, 2026-08-26)."""
+    assert VERDICT_BADGE_LABEL == {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
+    for token, badge in VERDICT_BADGE_LABEL.items():
+        assert badge.lower() in VERDICT_MEANING[token].lower(), (
+            f"badge {badge!r} for {token!r} does not appear in the model-facing meaning "
+            f"{VERDICT_MEANING[token]!r} — the prose would end on a different word than "
+            f"the badge shows."
+        )
 
 
 def test_health_block_absent_without_matching_assessment() -> None:
