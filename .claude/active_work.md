@@ -166,6 +166,31 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
+**IN FLIGHT: a manual `data-pipeline` run was triggered from the GitLab web UI (pipeline #111
+on `main`, job id `16123372465`). Steps 1 and 2 were NOT waiting for the 2026-09-01 schedule.**
+Check whether it finished before doing anything else: `glab api projects/:id/pipelines/2793073998`.
+Last comparable run took about 75 minutes, and the long tail is roughly 910 Haiku calls that
+print nothing until they complete.
+
+**What to verify when it lands, because all three are expected and none is a regression:**
+1. **The card count rises above 907.** Step 1 dropped `forward_pe` from the operating and
+   financial eligibility sets and moved pre-revenue onto `net_cash`, which needs no market cap.
+   Both changes are strictly weaker, so the deck grows. The exact size could not be measured
+   beforehand: the mart stores only eligible rows.
+2. **32 cards read Mixed instead of Healthy**, because their revenue is down year over year.
+   Red should be unchanged. That count was measured against the pre-step-1 907-row snapshot, so
+   treat it as approximate now.
+3. **Every AI paragraph is rewritten** (`INPUT_HASH_VERSION` is `5a.3`). This is the FIRST real
+   evidence on whether the prompt changes worked, because there is no `ANTHROPIC_API_KEY` on the
+   dev machine and the prompt could never be sampled locally. **Read a few cards and judge:** no
+   em dashes, no "growth is not a health signal", no changelog line, and prose that does not
+   read as machine-written. If it still reads wrong, the rules need sharpening and you will know
+   exactly which sentence to change.
+
+Also worth a look once it lands: whether BXB, RMS and SPK come back. They are `au_asx200` tickers
+that fell out of two consecutive runs while staying in the index, and nothing evicts their stale
+cards. A third data point settles whether it is eligibility movement or per-ticker ingestion loss.
+
 **MERGED — MR !43 (`feat/verdict-reads-growth` → `gitlab/main` @ `f950b3e9`): the health verdict
 now reads revenue growth, one way only.** **Step 2 of 3 done.** Step 3 (sector-calibrated
 thresholds) is NOT started. Every metric a card shows now feeds the verdict, with one recorded
@@ -282,9 +307,9 @@ while looking at the live card. Six review rounds, three reviewers.
 **Live now:** the two labelled blocks, the badge wording, and the metric gloss being a step
 larger/lighter/looser than the bullet graph's own axis labels (recorded in
 `docs/ui/card_metric_cell.md`). **Not live until the next pipeline run:** the prompt rules.
-`INPUT_HASH_VERSION` was `5a.2` here and is `5a.3` since step 2, so stored reads are offered for regeneration on 2026-09-01 —
+`INPUT_HASH_VERSION` was `5a.2` here and is `5a.3` since step 2, so stored reads are offered for regeneration on the next run —
 until then cards show the NEW badge wording above OLD prose ending on "sturdy", em dashes
-included. **2026-09-01 is the checkpoint: read a few cards and judge whether the no-dashes
+included. **The next run is the checkpoint: read a few cards and judge whether the no-dashes
 and don't-sound-like-a-model rules actually worked.** That is the only way to know — there is
 no `ANTHROPIC_API_KEY` locally, so the new prompt could not be sampled before shipping.
 
