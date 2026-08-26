@@ -200,7 +200,7 @@ def build_learn_panel_body_html(card: dict) -> str:
 # Card-face section labels. These name the SOURCE of each block, not its topic: the
 # assessment is model-written prose, the description is the company's own text passed
 # through untouched. A reader who cannot tell those apart is the problem these solve.
-# Owner-chosen copy (§6, 2026-08-26) — see .claude/task/contract.md decisions_reserved
+# Owner-chosen copy (§6). See .claude/task/contract.md decisions_reserved
 # before rewording either. "AI-written" deliberately, not "AI summary": the read is
 # written from the card's figures, it does not condense a longer text.
 BLOCK_LABEL_ASSESSMENT = "What the numbers say · AI-written"

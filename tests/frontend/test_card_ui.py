@@ -224,7 +224,7 @@ def test_direction_cue_catalogue_assumptions_still_hold() -> None:
     with the single source of truth they're supposed to stay consistent with
     (docs/data_contract.md's "Card metrics -- dbt formulas" section)."""
     # forward_pe used to be the second lower_better metric checked here. It was dropped from
-    # the catalogue on 2026-08-26 (it carries the share price, which a twice-monthly pipeline
+    # the catalogue (it carries the share price, which a twice-monthly pipeline
     # cannot keep current), so burn_rate_monthly is now the other one.
     assert _BY_ID["burn_rate_monthly"]["direction"] == "lower_better"
     assert _BY_ID["net_debt_to_ebitda"]["direction"] == "lower_better"
@@ -343,7 +343,7 @@ def test_build_card_financial_shows_bank_metrics() -> None:
     html = build_card_html(_card_with_all_metrics("financial"))
     for label in ("Net margin", "Return on assets", "Return on equity"):
         assert label in html
-    # The bank card lost its three price-carrying metrics on 2026-08-26.
+    # The bank card lost its three price-carrying metrics.
     for label in ("Forward P/E", "Price / tangible book", "Dividend yield"):
         assert label not in html
 
@@ -437,7 +437,7 @@ def test_badge_labels_match_the_words_the_model_is_told_to_end_on() -> None:
     """The badge and the prose must not contradict each other. VERDICT_MEANING is what
     the model is told the verdict means, and the prompt tells it to end on that wording;
     if the badge says one word and the paragraph under it lands on another, the card
-    argues with itself. Pins the owner-chosen set (§6, 2026-08-26)."""
+    argues with itself. Pins the owner-chosen set (§6)."""
     assert VERDICT_BADGE_LABEL == {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
     for token, badge in VERDICT_BADGE_LABEL.items():
         assert badge.lower() in VERDICT_MEANING[token].lower(), (
@@ -554,5 +554,5 @@ def test_metric_groups_also_render_in_learn_panel() -> None:
     assert "ss-metric-group-heading" in html
     # Profitability is the first lens on an operating card now. It used to be Valuation, which
     # led the card purely because the lens taxonomy put it first -- and its only metric,
-    # forward_pe, was dropped on 2026-08-26. No card leads with price any more.
+    # forward_pe, was dropped. No card leads with price any more.
     assert ">Profitability<" in html

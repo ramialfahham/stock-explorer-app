@@ -165,7 +165,7 @@ def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
 
 def render_metric_playgrounds(card: dict[str, Any], *, widget_key_prefix: str = "card") -> None:
     """Hypothetical number playgrounds — safe sandbox, no live API calls."""
-    # The P/E playground was removed on 2026-08-26 with forward_pe itself. It looked the
+    # The P/E playground was removed with forward_pe itself. It looked the
     # metric up in METRIC_LABELS, which is built from frontend/metrics.json -- dropping the
     # metric from the catalogue would have made that raise KeyError on every card that opened
     # "Understand these numbers", since this panel renders unconditionally and P/E was tab 0.

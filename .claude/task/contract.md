@@ -1,182 +1,140 @@
 # Task contract
 
-objective: Stop showing metrics that depend on the share price, so that every metric on a
-  card can feed the verdict. Drop `forward_pe`, `price_to_tangible_book` and
-  `dividend_yield_pct` from the catalogue, and replace pre-revenue's
-  `net_cash_to_market_cap` (a ratio against market cap) with `net_cash`, the same idea as a
-  money amount. Step 1 of three; the verdict redesign and sector-calibrated thresholds are
-  separate branches.
+objective: Make the health verdict read revenue growth on the operating and bank cards, so
+  that every metric a card shows feeds the verdict. Growth enters as a ONE-SIDED axis: a
+  shrinking top line blocks green, growth never earns green, and growth never causes red.
+  Step 2 of three; sector-calibrated thresholds are step 3 and are NOT in this branch.
 
 scope_paths:
-  - dbt_analytics/seeds/metric_catalogue.csv
-  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
-  - dbt_analytics/models/4_intermediate/_intermediate.yml
-  - dbt_analytics/models/5_marts/mart_stock_cards.sql
-  - dbt_analytics/models/5_marts/_marts.yml
-  - supabase/migrations/013_net_cash.sql
-  - scripts/export_to_supabase.py
   - scripts/assessment_rules.py
   - scripts/seed_ci_raw_fixtures.py
-  - dbt_analytics/tests/assert_eligible_mart_rows_have_all_metrics.sql
-  - frontend/metric_school.py
-  - frontend/card_copy.py
-  - docs/ux_principles_finanz_lern_apps.md
-  - docs/ui/card_metric_cell.md
-  - docs/engineering_standards.md
-  - dbt_analytics/models/_docs.md
-  - frontend/metrics.json
   - docs/data_contract.md
+  - docs/ui/card_metric_cell.md
+  - docs/ux_principles_finanz_lern_apps.md
+  - dbt_analytics/**
+  - frontend/card_copy.py
+  - frontend/card_ui.py
+  - frontend/metric_school.py
   - tests/**
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - **Why these three metrics go, owner-decided 2026-08-26.** Two reasons, both the owner's.
-    First: "If we don't use a metric for the verdict then we don't show it" — the card showed
-    8 metrics while the verdict used 6, and led with Forward P/E, which the verdict ignores
-    entirely. Second, on Forward P/E specifically: "as we have the stock price in it and we
-    update every twice a month, it is questionable to show it at all". The agent's separate
-    objection — that price-based metrics would make a health verdict move with the share
-    price, which is a buy signal — is ALSO resolved by removing them, but it was not the
-    owner's reason and must not be recorded as such.
-  - **The replacement is a money amount**, owner-chosen from two options put to them
-    ("net cash as a money amount" vs "cash / total debt"). Same numerator as the metric it
-    replaces, no denominator, so no share price and no divide-by-zero.
-  - **NOT decided, and a real consequence to check:** a money amount has no scale-free
-    "good" threshold, so the pre-revenue verdict's net-cash axis degrades from "net cash is
-    at least 20% of market value" to "net cash is positive". Green becomes slightly easier
-    to reach for pre-revenue cards. Flagged in the MR; not silently absorbed.
-  - **NOT decided:** the exact user-visible copy for `net_cash` (label, gloss, analogy,
-    learn). Adapted from the approved `net_cash_to_market_cap` copy by removing the price
-    comparison, so the concept is the owner's and only the phrasing is derived. Listed in
-    the MR for approval.
-  - **`READ_SYSTEM_PROMPT` was reworded, and that is a §6 change.** `scripts/assessment_rules.py`
-    marks that block "Owner-signed voice (§6)" twice, and the previous branch's contract said in
-    terms: do not reword either rule without going back to the owner. Two edits were forced here,
-    both factual rather than stylistic. The rule "Valuation (P/E, price-to-tangible-book) and
-    growth are context only" now names growth alone and states that no valuation figure is passed
-    to the model at all, because none exists; and `READ_METRIC_BRIEF`'s `net_cash` gloss was
-    rewritten with the metric. Leaving the old wording would have instructed the model about
-    metrics it can no longer be given. **Listed for the owner's approval alongside the `net_cash`
-    copy, not treated as pre-approved.**
-  - **Still open, raised by equity-analyst-reviewer and NOT closed here:** the bank card is now
-    four profitability/returns/growth numbers, and nothing in any catalogue text tells a reader
-    those numbers cannot judge a bank's capital adequacy or asset quality. `price_to_tangible_book`
-    carried the only hint ("below 1 can signal doubts about asset quality") and it is gone. The
-    limit survives only as an instruction in the LLM prompt, which CI pins for presence in the
-    prompt but never in the generated read — so on a card with a null `ai_read` the warning
-    reaches nobody. Closing it needs new bank-card copy, which is owner content.
-  - Scope choice: stop SHOWING the three metrics (remove from the catalogue), do not rip
-    their columns out of the warehouse. Ripping them out touches ~30 files across every dbt
-    layer plus a Supabase migration, buys nothing today, and is hard to reverse.
+  - **Growth is one-sided, and that is the whole design.** It can block green; it can never
+    cause red and never earns green. Growth was excluded from the verdict originally for a
+    good reason — a company can grow into losses, so high growth is not health — and the
+    owner's rule ("if we don't use a metric for the verdict then we don't show it") had to
+    be satisfied without discarding that reasoning. One-sidedness does both: a shrinking
+    business is a genuine health risk, a fast-growing one has proved nothing about
+    resilience. Do NOT "simplify" this later into a symmetric good/weak axis.
+  - **Threshold is 0%, owner-decided 2026-08-26.** Any year-over-year decline blocks green.
+    The agent proposed -5% on the argument that a single quarter is noisy; the owner rejected
+    it ("Then you have never talked to a CFO"). That rejection is correct on the mechanics
+    too: YoY compares the same quarter a year earlier, so it already controls for
+    seasonality, and the "noise" framing was wrong rather than merely cautious. Revenue going
+    backwards is a signal, not measurement error. **Do not reintroduce a tolerance band.**
+  - **`burn_rate_monthly` stays shown but unread, a deliberate exception to the owner's own
+    rule.** Owner-decided in the same exchange, after the agent's first justification was
+    challenged and partly withdrawn. What survives: cash runway is a RATIO, and a ratio
+    destroys magnitude. Two companies both showing 18 months — one burning $2M/month on $36M,
+    one burning $50M/month on $900M — are completely different businesses, and burn is the
+    only number on the card that says which one you are looking at. It also shows the lever,
+    since runway moves either by raising cash or cutting spend and the quotient hides which.
+    **The argument that did NOT survive:** that a reader can check the arithmetic. They
+    cannot — runway is cash / burn but the card shows NET cash (cash minus debt), so the sum
+    does not reconcile from displayed numbers. Do not repeat that justification.
+  - Not a new decision: making the verdict read burn as its own axis would double-count, since
+    runway already IS cash divided by burn.
+  - **The LLM prompt's growth rule had to change, and that is §6 owner-signed content.** It
+    told the model growth is "context only, not a health signal", which the verdict now
+    contradicts. Left alone it would have been worse than stale: the cards downgraded by this
+    change regenerate their prose, so each new paragraph would be written under an instruction
+    denying the reason for its own downgrade. Owner approved the replacement wording in-session.
+    The anti-advice guard is preserved in substance, not verbatim: "never treat high growth as
+    a reason to buy" became "is never a reason to buy", and the sentence "The verdict measures
+    financial health and resilience only" was dropped because the verdict now also reads
+    growth. A third thing went with them: a parenthetical telling the model that no P/E or
+    price-to-book figure exists. It was a changelog line the owner had already rejected from
+    the prompt, and it is redundant anyway since no valuation field is passed. All three
+    changes are owner-approved.
+
+  - **OPEN, escalated to the owner, NOT resolved in this branch: the growth metric's card copy
+    now argues with the badge.** `metric_catalogue.csv`'s `learn` text for
+    `revenue_growth_yoy_pct` reads "One quarter can be noisy, so look for a pattern over time",
+    and it RENDERS, in "Understand these numbers" on exactly the two card types this gate
+    applies to. On the 32 downgraded cards a reader sees a badge that moved Healthy to Mixed on
+    one quarter, and one click away is text telling them one quarter is noisy. The copy was
+    consistent while growth was shown-and-unread; this branch is what makes it contradictory.
+    A second, related gap: every base-effect caveat in that copy warns about the UPSIDE only
+    ("a small prior-year base can inflate the percentage"), while the downside is now the
+    actionable half, and nothing warns that an inflated prior-year base can manufacture a
+    decline. **To be accurate about why it is untouched: the seed IS inside `scope_paths` via
+    `dbt_analytics/**`, so this was a choice, not a scope limit.** It is §6 user-visible metric
+    copy and the owner rewrites it, not the agent.
 
 done_when:
-  - The three price-based metrics no longer appear on any card; `frontend/metrics.json` is
-    regenerated from the seed and matches it (the no-drift lock).
-  - `net_cash` is computed in the intermediate model, carried through the mart, exported to
-    Supabase (with a migration adding the column), and renders as a money amount.
-  - Eligibility no longer requires a metric the card does not show: `forward_pe` is dropped
-    from the operating and financial eligibility tests, and pre-revenue keys on `net_cash`.
-  - `scripts/assessment_rules.py` reads `net_cash` instead of `net_cash_to_market_cap`
-    wherever the pre-revenue verdict and the prose brief reference it.
-  - `dbt build` passes; pytest passes; the layer-contract and doc-check gates pass.
-  - A dbt unit test pins the CHANGE's headline effect, not just its absence of breakage: an
-    operating and a financial company with a null `forward_pe`, and a pre-revenue company
-    with no market cap at all, must all now be eligible. Without this the eligibility change
-    passes a green build with no row exercising the difference, which is exactly what
-    happened on the first attempt.
-  - UX gate (`docs/working_agreement.md`): this changes card composition — the bank card
-    goes from 7 metrics to 4, the operating card's first lens changes from Valuation to
-    Profitability (its only valuation metric is gone), the pre-revenue card reorders because
-    net_cash moved lens, and a tab is removed from "Understand these numbers". Item 2
-    (component specs) therefore applies and `docs/ui/card_metric_cell.md` is updated in this
-    branch. Item 4's wireframe and item 5's 480px check go in the MR body.
-  - Review cycle: scope-auditor, analytics-engineer-reviewer, cto-reviewer,
-    data-engineer-reviewer (supabase/*) and equity-analyst-reviewer PASS.
+  - `_verdict_operating` and `_verdict_financial` read `revenue_growth_yoy_pct`: growth below
+    0% blocks green and does nothing else. Red is bit-for-bit unchanged for every card.
+  - A null growth value never blocks green — absent data is not a decline.
+  - `INPUT_FIELDS_BY_TYPE` is unchanged (growth was already in the hashed input set, so the
+    prose read already saw it; only the verdict changes).
+  - Tests pin the one-sidedness explicitly: a card with strong growth and weak fundamentals
+    does not become green, and a card with excellent fundamentals and a shrinking top line
+    does not become red.
+  - pytest passes; the layer/doc/sql gates pass.
+  - `docs/data_contract.md`'s verdict section states the growth axis and its one-sidedness.
+  - Review cycle: scope-auditor, cto-reviewer, equity-analyst-reviewer and
+    analytics-engineer-reviewer (`*.sql`, `dbt_analytics/*.yml`) PASS. More than the three this task would suggest, because the date-stamp sweep pulled dbt
+    and frontend files into the diff and the routing follows the files, not the intent.
+    data-engineer-reviewer is NOT required: no `supabase/*` file is staged (see below).
 
-impact_map: This changes what the deck contains, not just what a card shows.
-  - **More cards will become eligible.** Operating and financial eligibility currently
-    require `forward_pe` to be non-null; dropping that requirement admits companies Yahoo
-    has no forward P/E for. The size of that increase CANNOT be measured before a run — the
-    mart stores only eligible rows — so it will first appear in the next pipeline run's
-    card count. Expect the count to rise above 907 and do not treat that as a regression.
-  - **Bank cards lose 3 of their 7 metrics** (Forward P/E, price/tangible book, dividend
-    yield), leaving growth, ROE, net margin and ROA. Three of those four are what the bank
-    verdict reads; `revenue_growth_yoy_pct` is NOT — the verdict excludes growth on purpose.
-    So the owner's rule ("if we don't use a metric for the verdict then we don't show it")
-    is satisfied for valuation and still unsatisfied for growth, on both the bank and the
-    operating card. That is step 2's job, not this branch's, and must not be described as
-    already done.
-  - Pre-revenue cards keep all four metrics; one changes shape from a ratio to an amount.
-  - `sector_median_forward_pe` / min / max become dead columns in the mart and Supabase.
-    Left in place deliberately (see scope choice); flagged for a later cleanup.
-  - **Every stored AI read regenerates on the next pipeline run, ~910 Haiku calls.** Not from
-    an `INPUT_HASH_VERSION` bump (still `5a.2`) but as a side effect: `compute_input_hash`
-    hashes the per-type field set itself, and this change alters that set for ALL THREE
-    company types, so every card's digest moves. That is arguably desirable — stored reads
-    still discuss a P/E the card no longer shows — but API volume is an owner-level concern
-    under §6 and it must be recorded rather than discovered. Found by cto-reviewer, not
-    disclosed in the first draft of this contract.
+impact_map: Two behavioural changes. The verdict itself, and the prose on every card: the
+  prompt was corrected and `INPUT_HASH_VERSION` bumped, so all ~910 stored reads rewrite. No metric definition, no seed and no
+  schema change. The diff does touch dbt models, frontend modules and a dbt test, but only in
+  comments and column descriptions, as part of removing the scattered date stamps.
+  - **Measured: 32 cards move green -> yellow, nothing else moves.** Measured against the 907
+    rows of the 2026-08-24 snapshot, which is NOT the whole deck: the app serves 910, because
+    the frontend keeps the newest row per ticker and BXB/RMS/SPK survive from an older
+    snapshot. Three live cards are outside the measurement. The baseline also predates merged
+    step 1, which widened eligibility, so the absolute before/after totals below will not be
+    what the next run shows. Only the isolated delta of this change holds.
+    Green 264 -> 232. Yellow 372 -> 404. Red 271 -> 271, unchanged, which is the design working.
+  - Every one of those 32 is a company the app currently calls "Healthy" while its revenue is
+    shrinking year over year.
+  - **This changes an already-shipped, user-visible verdict on 32 live cards** (§6). It is the
+    point of the branch, not a side effect, but it is the reason the branch exists at all and
+    must be stated plainly in the MR.
+  - **Every stored AI read regenerates on the next run: roughly 910 Haiku calls.** The verdict
+    alone would have regenerated only the 32 cards whose colour moved, because the hash covers
+    the verdict. But the PROMPT changed too, and the hash does not cover the prompt, so the
+    other ~875 cards would have kept prose written under an instruction telling the model
+    growth is "not a health signal", which is the exact contradiction this branch exists to
+    remove. `INPUT_HASH_VERSION` is bumped to `5a.3` to force them all. Owner-approved: API
+    volume is a §6 cost decision and the run was already scheduled.
+  - `burn_rate_monthly` remains shown and unread on the 3 pre-revenue cards, by owner decision
+    recorded above.
 
 amendments:
-  - 2026-08-26 — round 1, three reviewers FAIL. The serious one: dropping `forward_pe` from
-    the catalogue would have crashed the live app. `frontend/metric_school.py` rendered a
-    "P/E" playground as tab 0 of the "Understand these numbers" panel, reading
-    `METRIC_LABELS['forward_pe']` from the generated metrics.json — a `KeyError` on every
-    card that opened the panel, with pytest staying green because the tests only import the
-    seed helpers. The playground is removed. Also fixed: the `expression_is_true` eligibility
-    mirrors in BOTH `_intermediate.yml` and `_marts.yml` still asserted the old rule and
-    would have gone red on the first company the change admits; `net_cash` had no column
-    documentation in either layer, which fails the doc gate; the Supabase migration created
-    the column as `double precision` while every sibling metric column and this branch's own
-    data contract say `numeric`; and stale prose in the export-contract dbt test, the CI raw
-    fixtures, and four places in `docs/data_contract.md`. scope_paths widened for the three
-    files that needed edits outside it. The analytics reviewer also established that the
-    local build passed VACUOUSLY — no fixture row had a null forward_pe — which is why the
-    new unit test above exists.
-  - 2026-08-26 — round 2, three reviewers FAIL. `scope_paths` widened again, for
-    `frontend/card_copy.py`, `docs/ui/card_metric_cell.md`, `docs/engineering_standards.md`
-    and `dbt_analytics/models/_docs.md` — all four carried prose this change falsified, and
-    `_docs.md` is the block `_intermediate.yml` points readers at for the eligibility rules.
-    Also fixed: `test_hash_handles_nan_like_none` had been made VACUOUS by the diff (it
-    mutated `forward_pe`, which left the hashed field set, so it asserted h == h and the NaN
-    guard lost its only coverage); the metric_school crash was spot-fixed without closing the
-    bug class, so a guard test now scans that file for label lookups and checks each id
-    against the catalogue; and the full-deck Haiku regeneration was added to impact_map after
-    cto-reviewer found it undisclosed.
-  - 2026-08-26 — round 3, three reviewers FAIL. equity-analyst-reviewer found the `net_cash`
-    copy I drafted was financially wrong in three ways, all now corrected: the analogy said
-    net cash is "what is actually yours", which describes equity, not net cash, and breaks
-    outright on the negative half of a range the metric's own text calls normal; the `learn`
-    and `interpretation` text asserted a company "could repay every borrowing today", when
-    `stmt_total_debt` excludes payables and other obligations AND `stmt_cash_and_equivalents`
-    is the narrow row excluding short-term investments — where young companies actually hold
-    their money, so the claim can be flatly false for exactly this metric's population; and
-    nothing warned that a money amount is not scale-free, which is the very reason the
-    verdict threshold had to collapse to zero. The same false wording sat in the LLM brief,
-    instructing the model to write it onto live cards. Copy rewritten with both limits
-    stated. **Still owner-pending as wording.**
-  - 2026-08-26 — rounds 4 and 5, scope-auditor FAIL both times, on the same thing: stale
-    prose surfacing one site per round. Round 4 also caught a fix applied to the WRONG row —
-    a generic anchor matched twice and the "no longer catalogued" note landed on `roa_pct`,
-    which is still catalogued and still on the bank card, while `price_to_tangible_book`
-    (the row it was meant for) kept its "Rendered for financials" line. Reverted and
-    reapplied correctly. Round 5 closed the lens counts, the module docstring and the
-    worked example; round 6 closed the last two, one of which needed `scope_paths` widened
-    again for `docs/ux_principles_finanz_lern_apps.md` (the playground spec, which described
-    five playgrounds after this branch removed one). The lesson for the next branch that
-    renames or drops a catalogued metric: sweep for the id AND for every count that
-    describes the catalogue ("five metrics", "all 16", "the 5 with a range mark") in one
-    pass, up front.
-  - 2026-08-26 — round 7, scope-auditor FAIL: four MORE sites of the same class, all
-    `sector_min_forward_pe` / `sector_max_forward_pe` still described as a "(card range
-    mark)" in `_intermediate.yml` and `_marts.yml`, when no card can draw one now. Annotated
-    as kept-but-unused. Round 8 then failed on THIS log for claiming the tail closed at
-    round 6 — which is itself the lesson, so it is recorded rather than quietly corrected:
-    **seven review rounds went on stale prose alone, always one or two sites at a time,
-    because each sweep searched for the metric ids and not for the things said ABOUT them**
-    (counts, lens lists, "card range mark", worked examples, playground inventories). A
-    future branch dropping or renaming a catalogued metric should grep for the id, every
-    catalogue count, and every phrase describing what the metric does, in one pass, before
-    the first review round.
+  - Owner rejected a changelog line the agent had previously put inside `READ_SYSTEM_PROMPT`
+    ("And why is this in the prompt??? Hell no"). Removed. Development history must never ship
+    inside the product; the prompt already instructs the model to reason only from the numbers
+    given, so explaining an absent metric added nothing and dated the prompt.
+  - Owner rejected date-stamped annotations scattered across the repo ("if we use change logs,
+    we use them in one place, not randomly on any document or file. This is highly
+    unprofessional"). 58 such annotations across 17 files were removed in this branch, which is
+    why `scope_paths` is wide: the sweep touches every file the previous branches stamped.
+    **Code and docs now describe the current state only**; history lives in git, this contract,
+    the review record and the handover. Reasoning is kept only where it stops someone undoing a
+    deliberate decision, and even there without a date.
+    **One deliberate exception: `supabase/migrations/013_net_cash.sql` keeps its dates and is
+    NOT in this branch.** It is already applied, and `apply_supabase_migrations.py` tracks
+    migrations by filename with no checksum, so an edit could never reach the database. Editing
+    it would only make the repo describe a schema comment that differs from the live one.
+    Applied migrations are immutable. A future sweep must skip it rather than "finish the job".
+  - The `INPUT_HASH_VERSION` comment was rewritten from a narrative of which bump happened when
+    into a description of what the constant does and the one case it does not cover (a failed
+    Haiku call keeps the new hash without new prose).
+  - A test asserted the literal phrase "context only" appeared in the prompt. It now pins the
+    DIRECTION the growth note states instead, so wording can change without breaking the test
+    while the meaning stays covered.

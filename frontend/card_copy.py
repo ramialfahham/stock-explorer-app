@@ -175,7 +175,7 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
     carries a caveat, e.g. revenue growth's "growth is not health -- a company can grow into
     losses" -- the caveat is about using the metric as a standalone judgment, not about
     which way its own axis points. The example used to be forward P/E's "always read next
-    to growth", which stopped being checkable when that metric was dropped on 2026-08-26;
+    to growth", which stopped being checkable when that metric was dropped;
     this one is a live catalogue row on purpose, so a reader can verify it). Applies whether or not the metric currently has a range mark; a metric
     without one yet (not in the 4 benchmarked today) still gets the same plain cue.
     Suppressed for net_debt_to_ebitda's value-aware "Net cash" branch and
@@ -184,7 +184,7 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
     negative number is a better version of the same good news, when it's actually a
     different, broken state the ratio's normal direction no longer describes.
 
-    Re-confirmed 2026-08-26. The owner asked for the cue to be dropped as clutter, then
+    Re-confirmed. The owner asked for the cue to be dropped as clutter, then
     reopened it: the honest tension is that "better" is only true ceteris paribus, and
     this app never teaches that concept. Kept anyway, and deliberately on EVERY metric
     rather than only the inverted ones -- a cue that appears on some metrics and not
@@ -193,7 +193,7 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
     metric (net_debt_to_ebitda) a beginner has no way to read the mark without this line --
     and only 4 of the 13 catalogued metrics are benchmarkable at all, so for the other 9
     (current_ratio_stmt, working_capital, net_cash and the rest) this cue is the ONLY
-    direction signal anywhere on the card face. (Counts changed on 2026-08-26 when the three
+    direction signal anywhere on the card face. (Counts changed when the three
     price-carrying metrics were dropped; forward_pe used to be the second inverted one.) The
     clutter that prompted the question was addressed in presentation instead: the gloss
     is now a step larger and lighter than the range mark's own axis labels.
@@ -471,7 +471,7 @@ def business_summary_is_truncated(
 
 # Health verdict (Slice 6c) — token -> emoji/label.
 VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
-# Owner-chosen (§6, 2026-08-26), replacing Sturdy/Mixed/Strained: "sturdy" is not a word
+# Owner-chosen (§6), replacing Sturdy/Mixed/Strained: "sturdy" is not a word
 # people use. Health framing, deliberately not Strong/Weak, which read closer to a verdict on
 # the SHARE than on the company's finances — this app never implies buy or sell. These MUST
 # stay in step with VERDICT_MEANING in scripts/assessment_rules.py, which tells the model how

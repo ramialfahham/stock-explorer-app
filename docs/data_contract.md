@@ -155,7 +155,7 @@ Nullable — e.g. financials have no current/non-current split, so `stmt_current
 
 | # | Card metric | Formula | Primary inputs |
 |---|-------------|---------|----------------|
-| 1 | `forward_pe` | `info_forward_pe` (**no longer catalogued 2026-08-26** — still computed and stored, no card renders it) | `ticker.info` |
+| 1 | `forward_pe` | `info_forward_pe` (**no longer catalogued** — still computed and stored, no card renders it) | `ticker.info` |
 | 2 | `ebit_margin_pct` | TTM: `sum(eff_op_0..3) / sum(qtr_total_revenue_0..3) * 100`; else annual `eff_stmt_op / stmt_total_revenue * 100` | quarterly + annual income_stmt |
 | 3 | `revenue_growth_yoy_pct` | `info_revenue_growth * 100` | `ticker.info` |
 | 4 | `net_debt_to_ebitda` | `coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda` | `ticker.info` |
@@ -180,12 +180,12 @@ data-only intermediates (the info-scalar duplicates, `interest_coverage`, `compu
 - `interest_coverage` = `eff_stmt_op / abs(stmt_interest_expense)` (operating income over interest; `abs()` defends the landed sign).
 - `current_ratio_stmt` = `stmt_current_assets / stmt_current_liabilities` (statement-based; coexists with the info-scalar `current_ratio`; null for financials).
 - `working_capital` = `stmt_current_assets - stmt_current_liabilities` (currency level; null for financials).
-- `price_to_tangible_book` = `info_market_cap / stmt_tangible_book_value` (both totals; guarded on tangible book > 0). **No longer catalogued** since 2026-08-26 — computed and stored, but no card renders it.
+- `price_to_tangible_book` = `info_market_cap / stmt_tangible_book_value` (both totals; guarded on tangible book > 0). **No longer catalogued** — computed and stored, but no card renders it.
 - `net_margin_pct` = `stmt_net_income / stmt_total_revenue * 100`.
 - `roa_pct` = `stmt_net_income / stmt_total_assets * 100` (total net income over total assets; leverage-neutral).
 - `statement_roe_pct` = `stmt_net_income_common / stmt_stockholders_equity * 100` (common income over common equity — both exclude minority interest; coexists with the info-scalar `roe_pct`).
-- `dividend_yield_pct` = `info_dividend_yield` (Yahoo `dividendYield`, already in percent — e.g. 0.94 = 0.94%; no ×100). **No longer catalogued** since 2026-08-26 — computed and stored, but no card renders it.
-- `net_cash` = `stmt_cash_and_equivalents - stmt_total_debt` (a money amount in the company's reporting currency). Pre-revenue card metric; replaced `net_cash_to_market_cap` on 2026-08-26 because that ratio divided by market cap and therefore moved with the share price, which a twice-monthly pipeline cannot keep current.
+- `dividend_yield_pct` = `info_dividend_yield` (Yahoo `dividendYield`, already in percent — e.g. 0.94 = 0.94%; no ×100). **No longer catalogued** — computed and stored, but no card renders it.
+- `net_cash` = `stmt_cash_and_equivalents - stmt_total_debt` (a money amount in the company's reporting currency). Pre-revenue card metric; replaced `net_cash_to_market_cap` because that ratio divided by market cap and therefore moved with the share price, which a twice-monthly pipeline cannot keep current.
 - `computed_fcf` = `stmt_operating_cash_flow + stmt_capital_expenditure` (capex negative; a transparent FCF distinct from `stmt_free_cash_flow` / `info_free_cashflow`; the burn basis for cash runway).
 - `cash_runway_months` = `stmt_cash_and_equivalents / (-computed_fcf) * 12` when `computed_fcf < 0` (null when not burning).
 - `burn_rate_monthly` = `-computed_fcf / 12` when `computed_fcf < 0` (null when not burning).
@@ -237,7 +237,7 @@ substitute ROE, ROA, or hand-built ROIC.
 - **pre_revenue** — `net_cash` non-null, i.e. cash and total debt are both present (the
   operating metrics break for revenue ≤ 0, and for positive-but-negligible revenue).
 
-**Changed 2026-08-26:** `forward_pe` was dropped from the operating and financial sets, and
+`forward_pe` was dropped from the operating and financial sets, and
 pre_revenue moved from `net_cash_to_market_cap` to `net_cash`. A card must not be gated on a
 metric it does not display, and all three price-carrying metrics were removed from the
 catalogue (see below). The practical effect is that **more companies qualify**: eligibility
@@ -260,7 +260,7 @@ Computed per `(market_code, sector)` over **card-eligible** tickers in that mark
 | Output | Description |
 |--------|-------------|
 | `sector_peer_count` | Count of eligible peers in sector |
-| `sector_median_*` | Median for each benchmarked metric (5 until 2026-08-26, 4 since forward_pe was dropped) |
+| `sector_median_*` | Median for each benchmarked metric (4; forward_pe is no longer one) |
 | `sector_min_*` | Minimum for each benchmarked metric (card range mark) |
 | `sector_max_*` | Maximum for each benchmarked metric (card range mark) |
 
@@ -319,7 +319,7 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `sector` | text | |
 | `currency` | text | |
 | `business_summary` | text | Yahoo `longBusinessSummary`; nullable |
-| `forward_pe` | numeric | Superseded 2026-08-26; still computed and stored, no longer catalogued. |
+| `forward_pe` | numeric | Superseded; still computed and stored, no longer catalogued. |
 | `ebit_margin_pct` | numeric | |
 | `revenue_growth_yoy_pct` | numeric | |
 | `net_debt_to_ebitda` | numeric | |
@@ -327,11 +327,11 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `debt_to_equity` | numeric | Operating-card solvency (statement-based); nullable. |
 | `current_ratio_stmt` | numeric | Operating-card liquidity (statement-based); nullable, null for financials. |
 | `statement_roe_pct` | numeric | Operating/financial-card returns (statement-based, period-end); nullable. |
-| `price_to_tangible_book` | numeric | Superseded 2026-08-26; still computed and stored, no longer catalogued. Nullable. |
+| `price_to_tangible_book` | numeric | Superseded; still computed and stored, no longer catalogued. Nullable. |
 | `net_margin_pct` | numeric | Financial-card profitability; nullable. |
 | `roa_pct` | numeric | Financial-card returns (statement-based, period-end); nullable. |
-| `dividend_yield_pct` | numeric | Superseded 2026-08-26; still computed and stored, no longer catalogued. Nullable. |
-| `net_cash_to_market_cap` | numeric | Superseded 2026-08-26 by `net_cash`; still computed and stored, no longer catalogued. Nullable. |
+| `dividend_yield_pct` | numeric | Superseded; still computed and stored, no longer catalogued. Nullable. |
+| `net_cash_to_market_cap` | numeric | Superseded by `net_cash`; still computed and stored, no longer catalogued. Nullable. |
 | `net_cash` | numeric | Pre-revenue-card cash metric (cash minus total debt, a money amount); nullable. |
 | `working_capital` | numeric | Pre-revenue-card liquidity (current assets − liabilities, a currency amount); nullable. |
 | `cash_runway_months` | numeric | Pre-revenue-card cash (months of cash left; null when not burning); nullable. |
@@ -386,12 +386,26 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `generated_at` | timestamptz | last write |
 
 **Verdict rules (deterministic, per `company_type`).** The color is decided by transparent rules — **not**
-the LLM — and measures **financial health / resilience** on the card's own numbers; it deliberately
-excludes growth. Conservative — one serious weakness caps it:
+the LLM — and measures **financial health / resilience** on the card's own numbers.
+Conservative — one serious weakness caps it:
 - **operating** — leverage (`net_debt_to_ebitda`), profitability (`ebit_margin_pct`), cash (`fcf_margin_pct`);
   `debt_to_equity` / `current_ratio_stmt` / `statement_roe_pct` are supporting (tie-breakers).
 - **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
   adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the bank verdict stays modest).
+- **`revenue_growth_yoy_pct` — ONE-SIDED, on operating and financial cards**.
+  Growth below `GROWTH_DECLINE_THRESHOLD_PCT` (0.0, any year-over-year decline, no tolerance
+  band) **blocks green**. It can do nothing else: growth never earns green, and it never causes
+  red. That asymmetry is deliberate and load-bearing — a shrinking top line is a real health
+  risk, while fast growth proves nothing about resilience (a company can grow into losses),
+  which is why growth sat outside the verdict entirely until the rule "every metric a card
+  shows must feed the verdict" forced the question. Null growth is NOT a decline and never
+  blocks green. Do not make this a symmetric good/weak axis.
+  **For a financial company the caveat differs and is not covered by the wording above.** A
+  bank's top line is net interest income plus fees, which moves with the rate cycle rather
+  than with the bank's own resilience, and a bank deliberately shrinking a loan book can
+  improve its resilience while its revenue falls. The gate is still defensible there because
+  it only ever withholds green and never causes red, but the reason a bank's line moved is
+  not the reason an operating company's did.
 - **pre_revenue** — `cash_runway_months` / `net_cash` / `working_capital`. The net-cash axis
   now bands on zero for both weak and good (is there more cash than debt?), because a money
   amount has no scale-free "good" level the way the old ratio's 0.2 did.

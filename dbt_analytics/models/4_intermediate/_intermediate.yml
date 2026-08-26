@@ -189,15 +189,15 @@ models:
       - name: net_cash_to_market_cap
         description: >
           Net cash relative to market cap: (stmt_cash_and_equivalents - stmt_total_debt) /
-          info_market_cap. Guarded against zero market cap. Monotonic (no sign flip). Superseded on
-          2026-08-26 by net_cash: this ratio divides by market cap, so it moves with the share price,
+          info_market_cap. Guarded against zero market cap. Monotonic (no sign flip). Superseded
+          by net_cash: this ratio divides by market cap, so it moves with the share price,
           which a twice-monthly pipeline cannot keep current. Still computed and exported; NO LONGER
           catalogued, so no card renders it, and no longer part of eligibility.
       - name: net_cash
         description: >
           Net cash as a money amount in the company's reporting currency:
           stmt_cash_and_equivalents - stmt_total_debt, null unless both are present. Pre-revenue-card
-          cash metric and the pre_revenue eligibility key since 2026-08-26; catalogued + exported.
+          cash metric and the pre_revenue eligibility key; catalogued + exported.
           Positive means more cash than borrowings. Two limits the user-facing copy also states:
           stmt_total_debt is borrowings and leases, not every obligation, and
           stmt_cash_and_equivalents is the narrow row excluding short-term investments, so a
@@ -221,7 +221,7 @@ models:
         description: >
           True when the company_type's required metrics are present (operating: a four-metric AND;
           financial: statement_roe_pct + net_margin_pct; pre_revenue: net_cash). forward_pe was
-          dropped from the operating and financial sets on 2026-08-26 because a card must not be
+          dropped from the operating and financial sets because a card must not be
           gated on a metric it no longer displays, which widens eligibility. False excludes the
           ticker from the discovery queue.
       - name: missing_metrics
@@ -299,10 +299,10 @@ models:
           Median forward_pe among eligible peers. Null when sector_peer_count < 8.
       - name: sector_min_forward_pe
         description: >
-          Minimum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue on 2026-08-26; the column is kept, unused. Null when sector_peer_count < 8.
+          Minimum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue; the column is kept, unused. Null when sector_peer_count < 8.
       - name: sector_max_forward_pe
         description: >
-          Maximum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue on 2026-08-26; the column is kept, unused. Null when sector_peer_count < 8.
+          Maximum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue; the column is kept, unused. Null when sector_peer_count < 8.
       - name: sector_median_ebit_margin_pct
         description: >
           Median ebit_margin_pct among eligible peers. Null when sector_peer_count < 8.
@@ -1016,7 +1016,7 @@ unit_tests:
       rows:
         - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
   - name: card_metrics_eligibility_no_longer_needs_forward_pe
-    # The headline effect of the 2026-08-26 change, pinned. Before it, an operating or financial
+    # The headline effect of the change, pinned. Before it, an operating or financial
     # company with a null forward_pe was INELIGIBLE and never reached a card; now it qualifies on
     # the remaining metrics alone. Nothing else in the suite covers this: the CI fixture set has
     # forward_pe populated on every row, so the eligibility change passed a green build without a
@@ -1046,7 +1046,7 @@ unit_tests:
     # (has cash + debt). PREOK has both -> eligible; PRENO lacks cash -> net_cash null -> ineligible.
     # Both classify pre_revenue (Healthcare, revenue 0).
     #
-    # Changed 2026-08-26 with the switch from net_cash_to_market_cap to net_cash. PRENO used to be the
+    # Changed with the switch from net_cash_to_market_cap to net_cash. PRENO used to be the
     # missing-MARKET-CAP case, because the old ratio divided by it. It no longer does, so a missing
     # market cap cannot make a pre-revenue card ineligible any more -- that is the intended effect of
     # taking the share price out, and it means MORE pre-revenue companies qualify than before.
