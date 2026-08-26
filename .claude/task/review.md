@@ -1,92 +1,114 @@
 # Review
 
-diff_sha256: a8e0e45812153e02a5a1a1daef10d96dd5c4f95d2639e4c0beba3fc8d54cdf1c
+diff_sha256: 2e89b2d9f48761174aae0aed7dc3a37e076d4661597d2b86e6b8dab1b1d41282
 
-Six rounds. Required by routing: scope-auditor (always) and cto-reviewer (`frontend/*`,
-`scripts/*`, `tests/*`). equity-analyst-reviewer was added voluntarily beyond the routing,
-because this branch changes financial wording on a live product surface — and it produced
-the two most important findings of the cycle, so the addition earned itself.
+Eight rounds, five reviewers. Required by routing: scope-auditor (always),
+analytics-engineer-reviewer (`*.sql`, `*.csv`, `dbt_analytics/*.yml`), cto-reviewer
+(`scripts/*`, `tests/*`, `frontend/*`), data-engineer-reviewer (`supabase/*`) and
+equity-analyst-reviewer (`*metric_catalogue.csv`, `docs/data_contract.md`).
 
-**Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable
-in this session, so each ran as a general-purpose agent instructed to read its own role
-definition verbatim first. Same role text, same cold blinded input
-(`.claude/task/review_input.patch`), read-only.
+**Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
+this session, so each ran as a general-purpose agent instructed to read its own role definition
+verbatim first. Same role text, same cold blinded input, read-only.
 
-**The two findings worth remembering:**
+**Verdict provenance, stated plainly because the hash moved between them.** The final hash
+carries scope-auditor's round-8 verdict. The other four passed on earlier hashes:
+data-engineer at round 1 (its findings were the `double precision` type and the two stale
+eligibility mirrors, all fixed immediately), analytics-engineer and cto-reviewer at round 2,
+equity-analyst at round 3. Everything staged after their respective passes was documentation
+text and contract amendments -- no SQL, Python, seed, migration or test assertion moved, which
+scope-auditor verified explicitly in rounds 7 and 8. Round 8's finding was this trail itself:
+the amendments log claimed the stale-prose tail closed at round 6 when round 7 had found four
+more sites. Corrected in the same commit.
 
-1. **The AI label sat above the rules-computed verdict badge** (equity-analyst, round 1).
-   The verdict is decided by fixed rules and never by the model — the code, the data
-   contract and north_star all say so — yet the card was about to head that badge with
-   "AI-written", crediting the one auditable part of the assessment to a language model.
-   Worse, a verdict can be stored with a null `ai_read`, which would have rendered the
-   heading over zero AI-written words. Fixed: badge renders first, the label heads the
-   prose only and is omitted entirely when there is no prose. Both pinned by tests.
-2. **The restored direction cue's justification was factually wrong** (equity-analyst,
-   round 5). It cited `current_ratio` as a metric whose BAR needs the cue;
-   `current_ratio_stmt` is `benchmarkable: false` and has no bar. The claim had been copied
-   into three files. Corrected to the true and still-sufficient version: only 5 of 16
-   metrics are benchmarkable, so for the other 11 the cue is the only direction signal
-   anywhere on the card face.
+**The three findings worth remembering:**
 
-**Round history:** r1 all three FAIL (stale rename prose; `sys.path` hack duplicating
-conftest; untested CSS ancestry; two false contract claims; the AI-label placement; a style
-rule readable as licence to trim the required bank caveat). r2 scope-auditor FAIL (the
-badge/label reorder is §6 composition, resolved on a reviewer finding rather than owner
-authority — now recorded as agent-initiated and awaiting veto). r3 both FAIL (UX gate item 2
-falsely discharged as "no metric-cell change" when the gloss IS the metric cell; missing
-acceptance criteria; undocumented line-height change; stale handover). r4 cto FAIL (the
-`INPUT_HASH_VERSION` bump does not guarantee every read rewrites — a failed Haiku call keeps
-the new hash without new prose). r5 both FAIL (a fourth unqualified instance of that claim
-survived in `done_when`). r6 all PASS.
+1. **Dropping `forward_pe` from the catalogue would have crashed the live app** (scope-auditor,
+   round 1). `frontend/metric_school.py` rendered a "P/E" playground as tab 0 of the "Understand
+   these numbers" panel and looked the metric up in `METRIC_LABELS`, built from the generated
+   metrics.json -- a KeyError on every card that opened the panel. pytest stayed green because
+   the tests imported only the seed helpers and never touched the render path. The playground is
+   removed and a guard test now scans that file for label lookups and checks each id against the
+   catalogue.
+2. **The local `dbt build` passed vacuously** (analytics-engineer, round 1). Not one row in the
+   35-row CI fixture set had a null `forward_pe`, so the eligibility change -- the whole point of
+   the branch -- was exercised by nothing. A unit test now pins all three newly-admitted paths
+   and fails on revert.
+3. **The `net_cash` copy drafted here was financially wrong** (equity-analyst, round 1). The
+   analogy said net cash is "what is actually yours", which describes equity; the learn text said
+   a company "could repay every borrowing today", when `stmt_total_debt` excludes payables and
+   `stmt_cash_and_equivalents` is the narrow row excluding short-term investments -- where young
+   companies actually hold their money, so the claim could be flatly false for exactly this
+   metric's population. The same wording sat in the LLM brief, instructing the model to write it
+   onto live cards. Rewritten with both limits stated.
 
-**Accepted non-blocking notes, not fixed** (raised in the final round, recorded rather than
-triggering a seventh cycle): `.claude/active_work.md` puts quotation marks around two
-catalogue sentences that are near-paraphrases rather than verbatim (meaning preserved in
-both), and `frontend/card_copy.py`'s docstring says the cue applies "on EVERY metric" when
-two value-aware branches suppress it — exceptions the same docstring states ten lines above.
+**The process lesson, also recorded in the contract:** seven of the eight rounds turned on stale
+prose, surfacing one or two sites at a time, because each sweep searched for the metric ids and
+not for the things said ABOUT them -- counts ("all 16", "the five metrics"), lens lists, "card
+range mark", worked examples, playground inventories. One round also applied a fix to the wrong
+row: a generic anchor matched twice and marked `roa_pct` as no longer catalogued when it is
+still on the bank card. Reverted and reapplied.
+
+**Open, recorded for the owner, NOT resolved here:** the `net_cash` user-visible copy; the
+`READ_SYSTEM_PROMPT` rewording (§6 owner-signed content, two edits forced by the metric
+removals); the pre-revenue verdict threshold collapsing from 0.2 to 0.0, which makes that axis
+binary; the ~910+ Haiku regeneration on the next run; and the bank card's capital/asset-quality
+blind spot, whose only disclosure now lives in non-deterministic LLM prose.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- All nine staged paths inside `scope_paths`; `scripts/generate_assessments.py` confirmed
-  genuinely untouched, so the stale docstring it carries was flagged rather than fixed.
-- `docs/ui/card_metric_cell.md`'s addition to scope audited specifically: confined to the
-  element this branch restyles, descriptive of what shipped, not a wider spec rewrite.
-- The deferred sector-relative band rework is genuinely not started — no threshold, band,
-  sector or peer logic touched anywhere in the diff.
-- The agent-initiated badge/label ordering is disclosed as agent-initiated in the contract,
-  in the handover as an open question, and in the MR — surfaced, not slipped.
-- Contract self-consistency: `done_when` now matches `impact_map` and both match the code.
+- All 25 staged paths inside `scope_paths`; four separate widenings, each disclosed in an
+  amendment and each confined to what the change genuinely reaches.
+- Steps 2 and 3 (verdict redesign, sector-calibrated thresholds) genuinely not started.
+- Owner-level decisions all recorded as pending rather than absorbed.
+- Counts verified against the parsed seed (13 metrics, 10/3 direction split, 4 benchmarkable)
+  rather than trusted from prose.
+- Behavioural neutrality of the last three rounds confirmed: only description text and contract
+  amendments moved.
+
+## analytics-engineer-reviewer
+VERDICT: PASS
+risks_checked:
+- `net_cash` SQL null-safe on both operands, correct layer placement.
+- Seed parses to 13 rows x 21 columns with no quote-induced column shift; `frontend/metrics.json`
+  byte-identical to the regenerated export.
+- Eligibility mirrors in `_intermediate.yml`, `_marts.yml` and the singular export-contract test
+  all state the same rule as the model.
+- The new unit test exercises all three newly-admitted paths and fails on revert.
+- `check_eligibility_baseline.py` gates drops only, so the intended rise cannot trip it.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Both CSS bug classes this repo has shipped six times: `.ss-block-label` is written only as
-  `.ss-card-identity .ss-block-label`, the new guard discriminates bare from scoped, and the
-  ancestry is asserted through the real `build_card_html` rather than the helpers alone.
-- `metric_gloss()` body byte-identical to HEAD after the cue was removed and restored, so
-  the pre-existing cue tests exercise unchanged logic.
-- The `INPUT_HASH_VERSION` bump traced end to end: idempotent on re-run, and the one
-  non-idempotent edge (a failed read carrying the new hash) is stated at all four sites and
-  escalated as an owner call rather than fixed in-branch.
-- No new mechanism, dependency, CI step, hook, permission or secret; the new guard fails
-  closed and carries a vacuity assertion.
-- Cost disclosed and owner-approved: roughly 907 Haiku calls on the next run.
+- `metric_school.py` removal complete; no other frontend module reads a dropped metric by key; a
+  pre_revenue card renders correctly with `net_cash` absent entirely (the window between deploy
+  and export).
+- `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC` / `READ_METRIC_BRIEF` mutually consistent with
+  the catalogue, no orphan keys.
+- The NaN-canonicalisation test was made vacuous by the diff and now mutates an in-set field.
+- Full-deck Haiku regeneration traced and disclosed as owner-level cost.
+
+## data-engineer-reviewer
+VERDICT: PASS
+risks_checked:
+- Migration idempotent (`add column if not exists`), sorts after 012, picked up by
+  `apply_supabase_migrations.py`, and its `--target dev` rewrite converts cleanly.
+- No GRANT needed: table-level privileges from `011_grant_roles.sql` cover later-added columns;
+  migration 012 is the precedent.
+- `net_cash` added to `EXPORT_COLUMNS`; the export fails loudly (PGRST204), never silently, if
+  the column is missing.
+- `data-pipeline` runs migrations before the export, so the column cannot outrun its writer.
+- Type corrected to `numeric`, matching every sibling metric column and the data contract.
 
 ## equity-analyst-reviewer
 VERDICT: PASS
 risks_checked:
-- Healthy/Mixed/Fragile describe company finances, never the share; Strong/Weak was rejected
-  for exactly that reason, and `VERDICT_MEANING` keeps its "on these figures" qualifier.
-- Badge and prose pinned in step by test, so a one-sided rename fails CI instead of shipping
-  a card whose paragraph contradicts its own badge.
-- The new style rule's carve-out verified to protect the financial-company capital-strength
-  limit, which is the one place the rubric's own blind spot is disclosed to a reader.
-- The restored cue's justification re-checked against the catalogue rather than accepted:
-  5 of 16 metrics benchmarkable, and the 11 without a bar have no other direction signal.
-- Gloss typography measured for contrast, not eyeballed: roughly 7.3:1, up from 6.2:1, at a
-  larger size — legibility improved.
-- **Open owner question raised, not resolved:** three `higher_better` metrics
-  (`dividend_yield_pct`, `current_ratio_stmt`, `revenue_growth_yoy_pct`) carry "Higher is
-  better." on the card face while their own catalogue copy warns against reading the axis
-  naively. Pre-existing, not created or widened here; the counter-caveat is one tap away.
+- Removing valuation and dividend yield is consistent with north_star's own rule that cards show
+  fundamentals, not batch-pipeline prices; the verdict never read them.
+- `net_cash` arithmetic matches the standard net-cash construction and the catalogue copy.
+- The rewritten copy states both real limits and the scale warning, and the bias direction was
+  verified against `ingestion/yfinance/balance_sheet.py` -- narrow cash understates.
+- The false repayment claim reaches no user-visible surface and is out of the LLM brief.
+- Pre-revenue green still asserts something real, but the axis is now binary -- disclosed.
+- Bank card blind spot open and escalated, not silently carried.
