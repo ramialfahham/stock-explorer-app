@@ -195,24 +195,6 @@ def test_range_mark_direction_cue_matches_higher_better_metric() -> None:
     assert "Operating profit as share of sales (TTM). Lower is better." not in html
 
 
-def test_range_mark_direction_cue_shown_for_forward_pe() -> None:
-    """forward_pe is also catalogued lower_better -- the cue applies uniformly to both
-    lower_better metrics. This is a ceteris-paribus statement about the metric's own axis
-    (a lower P/E is more attractively priced for the same growth/quality profile), not a
-    health judgment; it doesn't conflict with assessment_rules.py excluding P/E from the
-    health verdict, which is about not letting P/E alone drive a composite score. The
-    caveat that P/E should be read alongside growth belongs in the metric's deep-dive
-    explanation, not a hedge in this short gloss line (owner decision)."""
-    card = _card_with_all_metrics("operating")
-    card["sector_peer_count"] = 20
-    card["forward_pe"] = 45.0
-    card["sector_min_forward_pe"] = 10.0
-    card["sector_median_forward_pe"] = 18.0
-    card["sector_max_forward_pe"] = 150.0
-    html = build_card_html(card)
-    assert "Lower is better." in html
-
-
 def test_range_mark_direction_cue_suppressed_for_net_cash() -> None:
     """A negative net_debt_to_ebitda already renders the value-aware "Net cash" gloss,
     which states the favorable read directly -- restating the axis on top of it is
@@ -241,8 +223,10 @@ def test_direction_cue_catalogue_assumptions_still_hold() -> None:
     catalogue content -- instead of the code's comments silently drifting out of sync
     with the single source of truth they're supposed to stay consistent with
     (docs/data_contract.md's "Card metrics -- dbt formulas" section)."""
-    assert _BY_ID["forward_pe"]["direction"] == "lower_better"
-    assert "growth" in _BY_ID["forward_pe"]["interpretation"].lower()
+    # forward_pe used to be the second lower_better metric checked here. It was dropped from
+    # the catalogue on 2026-08-26 (it carries the share price, which a twice-monthly pipeline
+    # cannot keep current), so burn_rate_monthly is now the other one.
+    assert _BY_ID["burn_rate_monthly"]["direction"] == "lower_better"
     assert _BY_ID["net_debt_to_ebitda"]["direction"] == "lower_better"
     assert "safer" in _BY_ID["net_debt_to_ebitda"]["interpretation"].lower()
 
@@ -357,15 +341,18 @@ def test_build_card_range_mark_omitted_for_degenerate_sector() -> None:
 
 def test_build_card_financial_shows_bank_metrics() -> None:
     html = build_card_html(_card_with_all_metrics("financial"))
-    for label in ("Price / tangible book", "Net margin", "Return on assets", "Dividend yield"):
+    for label in ("Net margin", "Return on assets", "Return on equity"):
         assert label in html
+    # The bank card lost its three price-carrying metrics on 2026-08-26.
+    for label in ("Forward P/E", "Price / tangible book", "Dividend yield"):
+        assert label not in html
 
 
 def test_build_card_pre_revenue_shows_survival_metrics_no_dash() -> None:
     html = build_card_html(_card_with_all_metrics("pre_revenue"))
-    for label in ("Net cash vs price", "Working capital", "Cash runway", "Cash burn (monthly)"):
+    for label in ("Net cash", "Working capital", "Cash runway", "Cash burn (monthly)"):
         assert label in html
-    for label in ("Forward P/E", "Operating margin", "Return on equity"):
+    for label in ("Operating margin", "Return on equity"):
         assert label not in html  # operating/financial metrics omitted for pre-revenue
     assert 'ss-metric-value">—<' not in html
     assert 'ss-metric-value">$' in html  # currency_compact metrics render with the card's currency symbol
@@ -565,4 +552,7 @@ def test_metric_groups_also_render_in_learn_panel() -> None:
     card = _card_with_all_metrics("operating")
     html = build_learn_panel_body_html(card)
     assert "ss-metric-group-heading" in html
-    assert ">Valuation<" in html  # first lens for an operating card, from the fixture above
+    # Profitability is the first lens on an operating card now. It used to be Valuation, which
+    # led the card purely because the lens taxonomy put it first -- and its only metric,
+    # forward_pe, was dropped on 2026-08-26. No card leads with price any more.
+    assert ">Profitability<" in html

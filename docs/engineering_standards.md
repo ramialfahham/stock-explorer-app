@@ -185,7 +185,7 @@ data_tests:
   - dbt_utils.expression_is_true:
       arguments:
         expression: >-
-          is_card_eligible = (forward_pe is not null and ...)
+          is_card_eligible = (ebit_margin_pct is not null and ...)
 unit_tests:
   - name: card_metrics_eligible_when_all_inputs_present
     model: int_stock__card_metrics

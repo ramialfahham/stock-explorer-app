@@ -166,6 +166,55 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
+**OPEN — MR for `feat/drop-price-metrics`: every metric that carries the share price is gone
+from the cards, and the pre-revenue card's net-cash ratio became a money amount.** This is
+**step 1 of 3** in rebuilding the assessment; steps 2 and 3 are NOT started.
+
+**How this came about (the reasoning matters more than the diff):** the owner noticed the card
+showed 8 metrics while the verdict used 6, and led with Forward P/E, which the verdict ignores
+entirely. Their rule: *"If we don't use a metric for the verdict then we don't show it."* Plus,
+on Forward P/E specifically: it carries the share price and this pipeline refreshes twice a
+month, so it is stale by construction in a way statement-derived metrics are not. Checking which
+metrics touch price found three, not one — `forward_pe`, `price_to_tangible_book`,
+`dividend_yield_pct` — plus `net_cash_to_market_cap` on the pre-revenue card.
+
+**Why this also settled a design argument.** The agent had objected that widening the verdict to
+include valuation would make a health badge move with the share price, which is a buy signal.
+Removing the price metrics dissolves that: everything left describes the business, so a verdict
+over all of it needs no careful communication to stay advice-free.
+
+**What changed:** three metrics dropped from the catalogue (13 remain, was 16); `net_cash`
+(cash − total debt, a money amount) added through the intermediate model, mart, export and a
+Supabase migration, replacing `net_cash_to_market_cap`; eligibility no longer requires
+`forward_pe` for operating or financial, and pre-revenue keys on `net_cash`.
+
+**Consequences to expect, not to treat as regressions:**
+- **The deck will GROW.** Eligibility no longer requires a forward P/E, and a pre-revenue
+  company no longer needs a market cap. The size of the increase cannot be measured before a
+  run — the mart stores only eligible rows — so it first appears in the next run's card count.
+- **Every stored AI read regenerates, ~910 Haiku calls.** Not from an `INPUT_HASH_VERSION` bump
+  (still `5a.2`) but because the hash covers the per-type field set, which changed for all three
+  company types. Desirable here (stored reads still discuss a P/E the card no longer shows), but
+  it is real API spend.
+- **Bank cards drop from 7 metrics to 4.** Sparse. Three of the four are what the bank verdict
+  reads; growth still is not, which is step 2's job.
+
+**Still open after this branch — the owner's rule is only half satisfied:** `revenue_growth_yoy_pct`
+is shown on both the operating and bank cards and read by neither verdict. Step 2 (redesign the
+verdict over every remaining metric) is what closes that.
+
+**Steps 2 and 3, agreed and deliberately not started:**
+2. Redesign the verdict to read every metric still on the card, instead of 6 of 8.
+3. Sector-calibrated absolute thresholds. **Percentile ranking was explicitly rejected** by the
+   owner: *"Being in some top percentile can still mean an unhealthy state if the whole sector is
+   in an unhealthy state."* That is correct and it matches practice — rating agencies publish
+   fixed per-industry thresholds, not peer ranks. Measured evidence for why global thresholds
+   fail: Utilities run −6.7% median FCF margin and 5.6x leverage, Real Estate 5.7x, Technology
+   near zero net debt with 19% margins. One global number cannot serve those.
+   **Also found while scoping: `interest_coverage` is ALREADY computed in the pipeline**
+   (`docs/data_contract.md`, EBIT ÷ interest expense) and never catalogued. It is the standard
+   solvency measure this rubric lacks entirely, it is absolute, and the data is already there.
+
 **MERGED — MR !39 (`feat/separate-assessment-and-description` → `gitlab/main` @ `d0f69d2`):
 the card face now separates the AI assessment from the company description into two labelled
 blocks, the health badge reads Healthy/Mixed/Fragile, and the generation prompt gained two
@@ -189,8 +238,8 @@ no `ANTHROPIC_API_KEY` locally, so the new prompt could not be sampled before sh
   vetoable; the owner merged without objecting.
 - "Higher/Lower is better." stays on EVERY metric. Dropped and then restored after the owner
   named the real tension (it is only true ceteris paribus, a concept this app never teaches).
-  Only 5 of 16 metrics carry a bar, so for the other 11 it is the ONLY direction signal on
-  the card face. The code there is identical to before; the decision was genuinely re-taken.
+  Only 4 of 13 metrics carry a bar (was 5 of 16 before the price metrics were dropped), so
+  for the other 9 it is the ONLY direction signal on the card face. The code there is identical to before; the decision was genuinely re-taken.
 - Badge wording is Healthy/Mixed/Fragile. Strong/Weak was rejected for reading as a verdict
   on the share rather than on the company's finances.
 

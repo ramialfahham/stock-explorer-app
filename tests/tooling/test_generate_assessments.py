@@ -21,7 +21,7 @@ _ROWS = [
      "snapshot_date": "2026-07-01", "statement_roe_pct": 13.0, "net_margin_pct": 30.0, "roa_pct": 1.2},
     # pre_revenue, red (short runway) — non-USD to exercise currency-aware money amounts
     {"market_code": "jp_topix", "ticker": "PREX", "company_type": "pre_revenue", "currency": "JPY",
-     "snapshot_date": "2026-07-01", "cash_runway_months": 8.0, "net_cash_to_market_cap": 0.1,
+     "snapshot_date": "2026-07-01", "cash_runway_months": 8.0, "net_cash": 1.0e8,
      "working_capital": -5.0e7},
 ]
 

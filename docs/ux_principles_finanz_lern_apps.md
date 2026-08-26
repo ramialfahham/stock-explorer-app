@@ -59,18 +59,19 @@ No streaks, XP, or leaderboards in v1. Optional “understood this metric” che
 
 ## Kennzahlen-Schule pattern (metric school)
 
-For each of the five fundamentals:
+For each of the four fundamentals with a playground:
 
 1. **Analogy** — one beginner metaphor (doc: “Amortisationszeit” for P/E)
 2. **Definition** — short plain-language explanation (`METRIC_LEARN`)
 3. **Playground** — low-cardinality inputs; hypothetical numbers only
 
-Port **patterns** onto Stock Explorer’s five metrics (forward P/E, operating margin, revenue
+Port **patterns** onto Stock Explorer's four playground metrics (operating margin, revenue
 growth YoY, net debt/EBITDA, FCF margin) — do not swap to EPS/KGV/KBV/ROE/D/E from the doc examples.
+Forward P/E had the fifth playground until 2026-08-26, when it was dropped from the catalogue
+along with the other price-carrying metrics; its tab was removed from `metric_school.py` with it.
 
 | Stock Explorer metric | Doc analogue | Analogy direction |
 |----------------------|--------------|-----------------|
-| Forward P/E | KGV | Years of expected earnings priced into the share |
 | Operating margin | Profitability | Share of each sales dollar kept as operating profit |
 | Rev growth YoY | Momentum | Growing, flat, or shrinking vs one year ago |
 | Net debt / EBITDA | D/E / solvency | Years of operating profit to repay net debt |

@@ -51,6 +51,7 @@ EXPORT_COLUMNS = [
     "roa_pct",
     "dividend_yield_pct",
     "net_cash_to_market_cap",
+    "net_cash",
     "working_capital",
     "cash_runway_months",
     "burn_rate_monthly",

@@ -58,9 +58,9 @@ def test_financial_green_when_roa_absent() -> None:
 
 
 def test_pre_revenue_verdicts() -> None:
-    green = {"company_type": "pre_revenue", "cash_runway_months": 36.0, "net_cash_to_market_cap": 0.4, "working_capital": 2.1e9}
-    red = {"company_type": "pre_revenue", "cash_runway_months": 8.0, "net_cash_to_market_cap": 0.1, "working_capital": -5.0e7}
-    yellow = {"company_type": "pre_revenue", "cash_runway_months": 18.0, "net_cash_to_market_cap": 0.3, "working_capital": 1.0e6}
+    green = {"company_type": "pre_revenue", "cash_runway_months": 36.0, "net_cash": 4.0e8, "working_capital": 2.1e9}
+    red = {"company_type": "pre_revenue", "cash_runway_months": 8.0, "net_cash": 1.0e8, "working_capital": -5.0e7}
+    yellow = {"company_type": "pre_revenue", "cash_runway_months": 18.0, "net_cash": 3.0e8, "working_capital": 1.0e6}
     assert rules.compute_verdict(green) == rules.VERDICT_GREEN
     assert rules.compute_verdict(red) == rules.VERDICT_RED
     assert rules.compute_verdict(yellow) == rules.VERDICT_YELLOW
@@ -68,10 +68,10 @@ def test_pre_revenue_verdicts() -> None:
 
 def test_pre_revenue_null_runway_is_not_burning() -> None:
     # Null runway = not burning cash (positive); green still reachable via net-cash + WC.
-    row = {"company_type": "pre_revenue", "cash_runway_months": None, "net_cash_to_market_cap": 0.5, "working_capital": 1.0e8}
+    row = {"company_type": "pre_revenue", "cash_runway_months": None, "net_cash": 5.0e8, "working_capital": 1.0e8}
     assert rules.compute_verdict(row) == rules.VERDICT_GREEN
     # ...but a net-debt position still caps it red regardless of runway.
-    row_red = {"company_type": "pre_revenue", "cash_runway_months": None, "net_cash_to_market_cap": -0.1, "working_capital": 1.0e8}
+    row_red = {"company_type": "pre_revenue", "cash_runway_months": None, "net_cash": -1.0e8, "working_capital": 1.0e8}
     assert rules.compute_verdict(row_red) == rules.VERDICT_RED
 
 
@@ -88,7 +88,7 @@ def test_boundaries() -> None:
     assert rules.compute_verdict(op(net_debt_to_ebitda=3.0)) == rules.VERDICT_YELLOW
     assert rules.compute_verdict(op(net_debt_to_ebitda=3.01)) == rules.VERDICT_RED
     # pre_revenue runway exactly 24 good, exactly 12 ok, below 12 weak.
-    pr = lambda r: {"company_type": "pre_revenue", "cash_runway_months": r, "net_cash_to_market_cap": 0.5, "working_capital": 1.0}
+    pr = lambda r: {"company_type": "pre_revenue", "cash_runway_months": r, "net_cash": 5.0e8, "working_capital": 1.0}
     assert rules.compute_verdict(pr(24.0)) == rules.VERDICT_GREEN
     assert rules.compute_verdict(pr(12.0)) == rules.VERDICT_YELLOW
     assert rules.compute_verdict(pr(11.9)) == rules.VERDICT_RED
@@ -113,7 +113,7 @@ def test_all_unknown_falls_back_to_yellow() -> None:
 def test_verdict_is_total_over_a_grid() -> None:
     vals = [None, float("nan"), -1.0, 0.0, 0.5, 10.0, 1000.0]
     fields = ["net_debt_to_ebitda", "ebit_margin_pct", "fcf_margin_pct", "cash_runway_months",
-              "net_cash_to_market_cap", "working_capital", "statement_roe_pct", "net_margin_pct", "roa_pct"]
+              "net_cash", "working_capital", "statement_roe_pct", "net_margin_pct", "roa_pct"]
     for ctype in ("operating", "financial", "pre_revenue", "mystery", None):
         for combo in product(vals, repeat=3):
             row = {"company_type": ctype}
@@ -132,7 +132,7 @@ def test_unknown_company_type_uses_operating() -> None:
 # --- Input hash ---------------------------------------------------------------------------
 
 def _op_row() -> dict:
-    return {"company_type": "operating", "forward_pe": 18.0, "ebit_margin_pct": 20.0,
+    return {"company_type": "operating", "ebit_margin_pct": 20.0,
             "revenue_growth_yoy_pct": 8.0, "net_debt_to_ebitda": 1.0, "fcf_margin_pct": 12.0,
             "debt_to_equity": 0.6, "current_ratio_stmt": 1.9, "statement_roe_pct": 15.0}
 
@@ -181,8 +181,13 @@ def test_hash_only_covers_the_per_type_input_set() -> None:
 def test_hash_handles_nan_like_none() -> None:
     row = _op_row()
     v = rules.compute_verdict(row)
-    with_none = {**row, "forward_pe": None}
-    with_nan = {**row, "forward_pe": float("nan")}
+    # Must mutate a field that is actually IN the operating input set, or the hash never reads
+    # it and this asserts h == h. forward_pe was used here until 2026-08-26; dropping it from
+    # INPUT_FIELDS_BY_TYPE silently emptied this test, which is the only coverage
+    # _canonical_number's NaN -> None guard has.
+    assert "debt_to_equity" in rules.INPUT_FIELDS_BY_TYPE["operating"]
+    with_none = {**row, "debt_to_equity": None}
+    with_nan = {**row, "debt_to_equity": float("nan")}
     assert rules.compute_input_hash(with_none, v) == rules.compute_input_hash(with_nan, v)
 
 
@@ -225,7 +230,6 @@ def test_read_brief_covers_every_input_field() -> None:
 def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
     row = {
         "company_type": "operating",
-        "forward_pe": 18.5,
         "ebit_margin_pct": 24.0,
         "revenue_growth_yoy_pct": 9.0,
         "net_debt_to_ebitda": 1.1,
@@ -244,8 +248,10 @@ def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
     for field in rules.INPUT_FIELDS_BY_TYPE["operating"]:
         assert rules.READ_METRIC_BRIEF[field]["label"] in user
     assert "24.0%" in user  # percent formatting
-    # valuation + growth are both flagged context-only, never a health signal
-    assert user.lower().count("context only") >= 2
+    # growth is flagged context-only, never a health signal. Valuation used to be tagged the
+    # same way; there is no valuation metric left to tag since 2026-08-26.
+    assert user.lower().count("context only") >= 1
+    assert "forward_pe" not in rules.INPUT_FIELDS_BY_TYPE["operating"]
 
 
 def test_build_read_messages_omits_missing_metrics() -> None:
@@ -254,11 +260,11 @@ def test_build_read_messages_omits_missing_metrics() -> None:
         "net_debt_to_ebitda": 1.1,
         "ebit_margin_pct": 24.0,
         "fcf_margin_pct": 16.0,
-        # supporting metrics + valuation/growth all absent
+        # supporting metrics + growth all absent
     }
     _system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
     assert rules.READ_METRIC_BRIEF["debt_to_equity"]["label"] not in user
-    assert rules.READ_METRIC_BRIEF["forward_pe"]["label"] not in user
+    assert rules.READ_METRIC_BRIEF["current_ratio_stmt"]["label"] not in user
     assert rules.READ_METRIC_BRIEF["net_debt_to_ebitda"]["label"] in user
     assert "None" not in user  # missing values never render as a number
 
@@ -279,7 +285,7 @@ def test_build_read_messages_pre_revenue_uses_survival_metrics() -> None:
     row = {
         "company_type": "pre_revenue",
         "currency": "GBP",
-        "net_cash_to_market_cap": 0.4,
+        "net_cash": 4.0e8,
         "working_capital": 2.1e9,
         "cash_runway_months": 36.0,
         "burn_rate_monthly": 5.0e6,

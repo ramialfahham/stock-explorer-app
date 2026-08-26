@@ -77,9 +77,12 @@ grouped and ordered by analytical lens, via `metrics_for_card()` /
   per metric. The **same** helper renders both the card-face metric cells and the
   learn panel's per-metric definitions, so the two surfaces always group identically.
 - Which lenses actually appear, and how many metrics land in each, varies by
-  `company_type` — e.g. an operating card spans all 7 lenses (including two metrics
+  `company_type` — e.g. an operating card spans 6 of the 7 lenses (including two metrics
   under **Solvency**: net debt/EBITDA and debt/equity — a real per-lens count, not a
-  bug), while the pre-revenue survival set only touches Valuation/Liquidity/Cash. There
+  bug), while the pre-revenue survival set only touches Liquidity/Cash. Valuation is
+  empty on every card since 2026-08-26: forward P/E was the operating card's only
+  valuation metric and net cash moved to the Cash lens when it stopped being a ratio
+  against market cap. There
   is no hardcoded per-type metric list in this doc to keep in sync — read
   `metrics_for_card()` for the authoritative set.
 
@@ -115,27 +118,30 @@ When adding a new value-aware metric, update `card_copy.py` **and** this table i
 
 ## Universal direction cue
 
-Every metric with a known catalogue `direction` (currently all 16 — 11 `higher_better`,
-5 `lower_better`, none `neutral` today) gets its gloss line suffixed with a plain
+Every metric with a known catalogue `direction` (currently all 13 — 10 `higher_better`,
+3 `lower_better`, none `neutral` today) gets its gloss line suffixed with a plain
 `". Higher is better."` / `". Lower is better."`, via `metric_direction()` /
 `metric_gloss()` in `frontend/card_copy.py`.
 
-- **Applies to every metric, not just the 5 with a range mark.** A metric without a
+- **Applies to every metric, not just the 4 with a range mark.** A metric without a
   mark (not `benchmarkable: true`, or a marked metric whose sector fell below the peer
   threshold this card) still gets the same plain cue — see the next section for why
   the mark itself is more limited. This decouples two things the old (pre-2026-08-24)
   design conflated: whether a range MARK can be drawn (needs a sector cohort to compare
   against) and whether the direction CUE can be stated (a fact about the metric's own
   axis, independent of any cohort).
-- **This is a ceteris-paribus statement about the metric's own axis** — e.g. a lower
-  P/E is more attractively priced for the same growth/quality profile — not a health
-  judgment. It doesn't conflict with `assessment_rules.py` excluding P/E from the
-  health verdict, which is about not letting P/E alone drive a composite score, a
+- **This is a ceteris-paribus statement about the metric's own axis** — e.g. higher
+  revenue growth is more growth, for the same quality of business — not a health
+  judgment. It doesn't conflict with `assessment_rules.py` excluding growth from the
+  health verdict, which is about not letting one metric drive a composite score, a
   different and higher-stakes claim than naming which way one axis points (owner
-  decision). The caveat that P/E should be read alongside growth belongs in forward
-  P/E's own deep-dive explanation (analogy/learn text in "Understand these numbers"),
-  not a hedge stuffed into this short gloss line — an earlier draft tried exactly that
-  hedge and was correctly rejected as giving "no guidance at all."
+  decision). A caveat like "growth is not health" belongs in that metric's own deep-dive
+  explanation (analogy/learn text in "Understand these numbers"), not a hedge stuffed
+  into this short gloss line — an earlier draft tried exactly that hedge and was
+  correctly rejected as giving "no guidance at all."
+  (This bullet was written about forward P/E, which carried the same shape of caveat.
+  That metric was dropped from the catalogue on 2026-08-26, so the example moved to a
+  metric a reader can still look up.)
 - **Suppressed** for `net_debt_to_ebitda`'s "Net cash" branch and `debt_to_equity`'s
   "Negative equity" branch (see the value-aware gloss table above) — both already state
   the actual situation directly, and appending "Lower is better." on top would imply a
@@ -200,7 +206,7 @@ Every metric with a known catalogue `direction` (currently all 16 — 11 `higher
   must not run into the min/max labels at the track's own edges. The bar's actual gap
   still renders at the true, unclamped `median_pct`; only the label text is nudged
   inward. Verified against every real range-mark row in production (3,967 rows across
-  all 5 benchmarked metrics, incl. a sector with a -129,810.5% FCF-margin outlier — see
+  all benchmarked metrics (5 at the time; 4 since 2026-08-26), incl. a sector with a -129,810.5% FCF-margin outlier — see
   the data-quality note below) plus synthetic cases beyond today's real spread; the
   tightest real numbers-row gap currently live is ~12px, comfortably non-colliding.
   This is a fixed floor, not width-aware — an even more extreme future data shape could
@@ -211,10 +217,13 @@ Every metric with a known catalogue `direction` (currently all 16 — 11 `higher
   precision the value itself already uses, no separate formatting logic. No "min "/"max "
   text prefix on the numbers row (that was the old design) — the words row directly
   below carries "min"/"median"/"max" instead, once, for the whole row.
-- Only the 5 metrics with `benchmarkable: true` in the metric catalogue get a range
-  mark today (forward P/E, operating margin, revenue growth, net debt/EBITDA, FCF
-  margin) — financial and pre-revenue metrics aren't benchmarked yet, a separate
-  follow-up. (The direction cue is not limited this way — see above.)
+- Only the 4 metrics with `benchmarkable: true` in the metric catalogue get a range
+  mark today (operating margin, revenue growth, net debt/EBITDA, FCF margin) — financial
+  and pre-revenue metrics aren't benchmarked yet, a separate follow-up. (The direction cue
+  is not limited this way — see above.) Was 5 until 2026-08-26, when forward P/E was dropped
+  from the catalogue along with the other two price-carrying metrics; the bank card lost 3
+  of its 7 metrics in the same change, and the pre-revenue card swapped its net-cash ratio
+  for a money amount, which moved that metric from the valuation lens to cash.
 - Full median primer and per-metric compare lines still live in **How we compare to
   similar companies** inside **Understand these numbers** — that recap list is unchanged,
   still text-only (`.ss-bench-indicator`, `benchmark_indicator_label()`); the scanability

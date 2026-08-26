@@ -41,8 +41,10 @@ TTM_QUARTER_FIXTURE = {
 def _bank_fundamentals(market_code: str) -> dict:
     """One Financial Services fixture per market — bank-shaped so the financial card + eligibility
     are locally verifiable. No current-asset/liability split and no EBITDA (as for real banks);
-    has tangible book, ROE, net margin, ROA and a percent dividend yield. The financial core three
-    (forward_pe + statement_roe_pct + net_margin_pct) are present, so it is card-eligible.
+    has tangible book, ROE, net margin, ROA and a percent dividend yield. The financial required
+    pair (statement_roe_pct + net_margin_pct) is present, so it is card-eligible. forward_pe left
+    that set on 2026-08-26 with the metric itself; info_forward_pe is still ingested and stored, it
+    just no longer gates anything.
     P/TBV = 200/55; net_margin = 12/80*100 = 15%; statement_roe = 11/60*100 ≈ 18.3%; roa = 12/800*100 = 1.5%.
     """
     return {
@@ -95,9 +97,10 @@ def _bank_fundamentals(market_code: str) -> dict:
 def _pre_revenue_fundamentals(market_code: str) -> dict:
     """One pre-revenue (loss-making, cash-burning) fixture per market so the survival card +
     eligibility are locally verifiable. Revenue 0 -> pre_revenue; burning cash (negative OCF +
-    capex -> computed_fcf < 0); has cash, debt and market cap -> net_cash_to_market_cap present -> eligible.
-    net_cash_to_market_cap = (2100-100)/5000 = 0.4; runway = 2100/700*12 = 36 months;
-    burn = 700/12 ≈ 58.3M/mo; working_capital = 2500-400 = 2100M. Fails the operating/bank gates (no P/E).
+    capex -> computed_fcf < 0); has cash and debt -> net_cash present -> eligible. Market cap is no
+    longer required for pre-revenue eligibility (net_cash replaced net_cash_to_market_cap on
+    2026-08-26 and has no price in it). net_cash = 2100-100 = 2000; runway = 2100/700*12 = 36 months;
+    burn = 700/12 ≈ 58.3M/mo; working_capital = 2500-400 = 2100M. Fails the operating/bank gates (no ROE, no net margin).
     """
     return {
         "market_code": market_code,
