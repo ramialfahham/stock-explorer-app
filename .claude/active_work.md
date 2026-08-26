@@ -166,87 +166,33 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
-**OPEN — MR for `feat/separate-assessment-and-description`:** the card face now separates the
-AI assessment from the company description into two labelled blocks, and the health verdict
-is reworded. Owner-driven, in one session, scope widened repeatedly as they looked at the live card:
-- **Two labelled blocks.** The assessment (verdict badge + AI prose) sits in a tinted panel;
-  the Yahoo description sits outside it. Labels: "What the numbers say · AI-written" and
-  "About the company". No source suffix on the second — the About-the-data panel already
-  credits Yahoo Finance.
-- **Badge wording: Sturdy/Mixed/Strained → Healthy/Mixed/Fragile.** "Sturdy" is not a word
-  people use. Strong/Weak was considered and rejected: it reads closer to a verdict on the
-  SHARE than on the company's finances.
-- **Two new rules in `READ_SYSTEM_PROMPT`** after the owner saw em dashes in live card text:
-  no dashes as punctuation, and don't write like a model (with an explicit carve-out that
-  style never overrides a required caveat). `INPUT_HASH_VERSION` bumped to `5a.2` so every
-  stored read is offered for regeneration on the next run — without it the change is
-  invisible, since reads regenerate on input-hash change and none of the numbers moved.
-  **"Offered", not "guaranteed"** — see the follow-up below.
+**MERGED — MR !39 (`feat/separate-assessment-and-description` → `gitlab/main` @ `d0f69d2`):
+the card face now separates the AI assessment from the company description into two labelled
+blocks, the health badge reads Healthy/Mixed/Fragile, and the generation prompt gained two
+rules (no dashes as punctuation; don't write like a model, with a carve-out that style never
+overrides a required caveat).** Owner-driven across one session, scope widened repeatedly
+while looking at the live card. Six review rounds, three reviewers.
 
-- **Metric cell typography.** The gloss (the explanation line under the bullet graph) is now
-  a step larger, lighter and looser than the graph's own min/median/max labels, so it reads
-  as the point of the cell rather than a footnote to the bar. Recorded in
-  `docs/ui/card_metric_cell.md`.
-- **The "Higher/Lower is better." cue was dropped and then restored.** The owner asked to
-  remove it as clutter, then reopened it: the claim is only true ceteris paribus and this app
-  never teaches that concept. Kept, and deliberately on EVERY metric — a cue present on some
-  and absent on others makes its own absence ambiguous. The bar carries no direction of its
-  own (right is only "bigger"), so for the benchmarked inverted metrics
-  (`net_debt_to_ebitda`, `forward_pe`) a beginner cannot read the mark without it — and only
-  5 of 16 metrics are benchmarkable, so for the other 11 the cue is the ONLY direction
-  signal on the card face. **The code in this area is identical to before;
-  the decision behind it was genuinely re-taken. Do not remove it as dead debate.**
+**Live now:** the two labelled blocks, the badge wording, and the metric gloss being a step
+larger/lighter/looser than the bullet graph's own axis labels (recorded in
+`docs/ui/card_metric_cell.md`). **Not live until the next pipeline run:** the prompt rules.
+`INPUT_HASH_VERSION` is `5a.2`, so stored reads are offered for regeneration on 2026-09-01 —
+until then cards show the NEW badge wording above OLD prose ending on "sturdy", em dashes
+included. **2026-09-01 is the checkpoint: read a few cards and judge whether the no-dashes
+and don't-sound-like-a-model rules actually worked.** That is the only way to know — there is
+no `ANTHROPIC_API_KEY` locally, so the new prompt could not be sampled before shipping.
 
-**Follow-up this branch surfaced but does not fix:** a card whose Haiku read FAILS is not
-retried reliably. `attach_reads()` counts the failure and moves on without setting
-`ai_read`, but the record still carries the NEW `input_hash` into the upsert, so the next
-run's regenerate test (hash differs OR `ai_read` empty) can skip it — leaving prose written
-under an older prompt permanently. Whether the old text survives or is nulled depends on how
-PostgREST handles a batch whose rows have different keys, which nothing pins and which was
-not verified (it needs a real API round trip). The 2026-08-25 run reported `failed=0`, so
-this is not known to have bitten. Worth a deliberate look before a run that regenerates
-everything at once, which the `5a.2` bump makes the next one. Fixing it means retrying or
-clearing stranded reads — a new mechanism, so an owner call. **Start by distrusting
-`attach_reads()`'s own docstring** (`scripts/generate_assessments.py:182-183`): it states
-that a failed read "stays null-read and retries next run (self-healing)", which is the
-belief this branch found reason to doubt. That file was out of scope here and deliberately
-untouched, so the stale docstring is still there.
-
-**Four owner questions raised in review and NOT resolved in the branch:**
-1. **Does "Fragile" overstate what red actually measures?** For an operating company, red
-   fires when ANY ONE of three core axes is weak, on a single snapshot. A profitable,
-   net-cash company with one heavy-capex year of negative free cash flow now reads
-   "Fragile". "Strained" sat closer to that evidence. Green is unaffected.
-2. **480px fold.** The gate wants the first metric value above the fold. At 480x900 it is;
-   at 480x740 it sits ~38px below, because two labels plus the panel cost ~47px and the
-   spacing is already at the minimum that still reads as a panel. The gate names no height.
-3. **"Higher is better." contradicts our own learn copy on three metrics.** Raised by
-   equity-analyst-reviewer while re-checking the restored cue. `dividend_yield_pct` is the
-   sharpest: the card face says "Higher is better." while the catalogue's own owner-authored
-   interpretation says "A very high yield can flag a falling price or a payout at risk, not
-   just generosity." Same shape, milder, for `current_ratio_stmt` ("a very high ratio is not
-   automatically good, since it can mean cash sitting idle") and `revenue_growth_yoy_pct`
-   (growth is not a health signal, and this card is about health). The counter-caveat is one
-   tap away in the learn panel, so the harm is bounded — but two owner-authored surfaces
-   disagree about the same number. Neutral options: leave it and accept the tension, or add
-   a third non-directional state for those metrics, which is new catalogue copy and a new
-   `direction` value. Not decided.
-4. **Badge-before-label ordering is AGENT-INITIATED and awaiting the owner's veto.** §6
-   reserves user-visible composition and ordering to the owner. The badge was put above the
-   AI label on a reviewer finding, not owner instruction, because the alternative shipped a
-   card crediting a deterministic rules engine to a language model. If the owner would rather
-   the label head the whole panel, the fix is different wording, not a different order.
-
-**Deferred by the owner, deliberately:** making the verdict BANDS sector-relative instead of
-fixed global thresholds. Raised when the owner asked where the rules came from and whether
-professionals use them. Honest answer: the metrics are standard and the thresholds are
-conventional rules of thumb, but they are sector-blind, single-snapshot, and thin for banks
-(no CET1 from yfinance). The app already computes sector median/min/max for three of the
-verdict's own core axes, so the ingredients exist — but min/max are outlier-driven (DYL
-proved that), so it needs quartiles added upstream, and a pure peer-relative verdict would
-call the median company healthy in a sick sector. The shape that was sketched: keep absolute
-floors for red, use peer-relative to separate green from yellow, fall back to fixed bands
-below the 8-peer threshold. **Its own slice, not a tweak.**
+**Decisions locked, do not silently re-litigate:**
+- The verdict badge renders ABOVE the "AI-written" label, and the label is omitted entirely
+  when `ai_read` is null. The verdict is rule-computed, never model-written; a heading
+  claiming AI authorship must not sit over it. Flagged in MR !39 as agent-initiated and
+  vetoable; the owner merged without objecting.
+- "Higher/Lower is better." stays on EVERY metric. Dropped and then restored after the owner
+  named the real tension (it is only true ceteris paribus, a concept this app never teaches).
+  Only 5 of 16 metrics carry a bar, so for the other 11 it is the ONLY direction signal on
+  the card face. The code there is identical to before; the decision was genuinely re-taken.
+- Badge wording is Healthy/Mixed/Fragile. Strong/Weak was rejected for reading as a verdict
+  on the share rather than on the company's finances.
 
 **DONE — the manual `data-pipeline` run (2026-08-25, pipeline #94, job succeeded in 74 min).**
 Owner triggered it from the GitLab web UI; this was the first time the CI path ever ran
