@@ -166,56 +166,62 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
-**OPEN — MR for `feat/verdict-reads-growth`: the health verdict now reads revenue growth, and
-it reads it one way only.** **Step 2 of 3.** Step 3 (sector-calibrated thresholds) is NOT started.
+**MERGED — MR !43 (`feat/verdict-reads-growth` → `gitlab/main` @ `f950b3e9`): the health verdict
+now reads revenue growth, one way only.** **Step 2 of 3 done.** Step 3 (sector-calibrated
+thresholds) is NOT started. Every metric a card shows now feeds the verdict, with one recorded
+exception (`burn_rate_monthly`, below).
 
-**The design, which is the part worth keeping.** A shrinking top line blocks a green verdict.
-Growth never earns green, and growth never causes red. That asymmetry is deliberate: growth was
-excluded from the verdict originally because a company can grow into losses, so momentum is not
-health, and the owner's rule that every metric shown must feed the verdict had to be satisfied
-without throwing that away. One-sidedness does both. **Do not "simplify" it into a normal
-good/weak axis** — that would let momentum buy a health verdict, which is exactly what the
-exclusion existed to prevent.
+**The design, and the part to protect.** A shrinking top line blocks green. Growth never earns
+green and never causes red. Growth sat outside the verdict because a company can grow into
+losses, so momentum is not health; one-sided entry satisfies the rule that everything shown must
+feed the verdict without discarding that. **Do not let a later change make this a normal
+good/weak axis** — that would let momentum buy a health verdict.
 
-**Threshold is 0%, no tolerance band.** Any year-over-year decline. The agent proposed -5% on
-the argument that a single quarter is noisy and the owner rejected it: *"Then you have never
-talked to a CFO."* That rejection was also right on the mechanics — YoY compares the same
-quarter a year earlier, so it already controls for seasonality, and the noise framing was simply
-wrong. Revenue going backwards is a signal.
+**Threshold 0%, no tolerance band.** Any year-over-year decline. A -5% band was proposed on the
+argument that one quarter is noisy and the owner rejected it: *"Then you have never talked to a
+CFO."* Year-over-year already compares like quarters, so the noise framing was wrong on the
+mechanics. It is still one quarter and cannot separate a real decline from a divestment, FX
+move or contract timing, which is exactly why the axis can only withhold green, never cause red.
 
-**Measured: 32 cards move green to yellow. Red is unchanged.** Measured on the 907 rows of the
-2026-08-24 snapshot, which is not the whole deck (the app serves 910) and predates step 1's
-eligibility widening, so treat the delta as real and the absolute totals as stale.
+**Measured: 32 cards green to yellow, red unchanged.** Measured on the 907-row 2026-08-24
+snapshot, which is neither the whole deck (910) nor post-step-1, so the delta is real and the
+absolute totals are stale.
 
-**`burn_rate_monthly` stays shown and unread on the pre-revenue card**, a deliberate exception
-to the owner's own rule. Runway is cash divided by burn, so reading burn separately would
-double-count. It stays visible because runway is a RATIO and a ratio destroys magnitude: 18
-months at $2M a month and 18 months at $50M a month are completely different companies. (The
-argument that a reader can check the arithmetic does NOT hold — the card shows net cash, not
-raw cash, so the sum does not reconcile. Do not repeat it.)
+**`burn_rate_monthly` stays shown and unread**, a deliberate exception. Runway is cash divided
+by burn, so reading burn separately double-counts. It stays visible because runway is a ratio
+and a ratio destroys magnitude: 18 months at $2M a month and 18 months at $50M a month are
+different companies. (The "a reader can check the arithmetic" argument does NOT hold, since the
+card shows net cash rather than raw cash. Do not repeat it.)
 
-**`INPUT_HASH_VERSION` bumped to `5a.3`, so ~910 reads regenerate on the next run.** The verdict
-alone would have rewritten only the 32 changed cards. But the prompt changed too, and the hash
-does not cover the prompt, so the rest would have kept prose written under an instruction saying
-growth is "not a health signal". Owner approved the cost.
+**`INPUT_HASH_VERSION` is `5a.3`, so ~910 reads regenerate on the next run.** The verdict alone
+would have rewritten only the 32 changed cards, but the prompt changed too and the hash does not
+cover the prompt.
 
-**A process failure worth not repeating.** This branch left 58 dated annotations across 17 files
-("as of <date>", "superseded <date>"), plus a changelog line inside the production LLM prompt.
-The owner rejected both: *"if we use change logs, we use them in one place, not randomly on any
-document or file. This is highly unprofessional"* and, on the prompt, *"And why is this in the
-prompt??? Hell no"*. **Code and docs describe the present. Git, this file, the contract and the
-review record carry the history.** The mechanism that produced it: each review round flagged a
-stale sentence, the fix stamped a date on it, and the next round verified the date was accurate.
-Accuracy was the only test ever applied, because the reviewer briefs only ever asked "is this
-true" and never "should this exist". **Reviewer briefs must now ask about noise, not just
-correctness** — no reviewer role owns repo cleanliness by default.
-**The cleanup then broke 13 places** by using a blanket regex (dangling clauses, comment lines
-starting with a bare comma). Fix sloppiness precisely, or you make it worse.
+**OPEN, owner's call, not resolved:** the growth metric's card copy says *"One quarter can be
+noisy, so look for a pattern over time"* and renders on the card types this gate downgrades, so
+a reader on one of the 32 sees a badge that moved on one quarter and, one click away, text
+saying one quarter is noisy. Its base-effect caveats also cover only the upside, while the
+downside is now the actionable half. §6 metric copy in `metric_catalogue.csv`, which IS inside
+scope and was left alone by choice.
 
-**One thing that must NOT be swept again:** `supabase/migrations/013_net_cash.sql` keeps its
-dates on purpose. It is already applied, and the migration runner tracks by filename with no
-checksum, so an edit can never reach the database — it would only make the repo describe a
-comment that differs from the live one. **Applied migrations are immutable.**
+**Two process rules this branch established the hard way, both worth more than the code:**
+1. **Changelogs live in one place.** 58 dated annotations had been scattered across 17 files,
+   plus a changelog line inside the production LLM prompt. Owner: *"if we use change logs, we
+   use them in one place, not randomly on any document or file. This is highly unprofessional"*
+   and *"And why is this in the prompt??? Hell no"*. **Code and docs describe the present. Git,
+   this file, the contract and the review record carry the history.** The mechanism that
+   produced it: every review round flagged a stale sentence, the fix stamped a date on it, and
+   the next round verified the date was accurate. Accuracy was the only test ever applied,
+   because the reviewer briefs only ever asked "is this true" and never "should this exist".
+   **No reviewer role owns repo cleanliness — put it in the brief explicitly.**
+2. **Fix sloppiness precisely.** The cleanup used a blanket regex and broke 13 places. Only the
+   two that broke the dbt parse were caught on the first pass; eleven compiled fine and were
+   missed twice more. Damage that still compiles is the damage you have to go looking for.
+
+**Must NOT be swept again:** `supabase/migrations/013_net_cash.sql` keeps its dates on purpose.
+It is already applied and the runner tracks by filename with no checksum, so an edit can never
+reach the database — it would only make the repo describe a comment that differs from the live
+one. **Applied migrations are immutable.**
 
 **MERGED — MR !41 (`feat/drop-price-metrics` → `gitlab/main` @ `8bc3f30`): every metric that
 carries the share price is gone from the cards, and the pre-revenue card's net-cash ratio is
