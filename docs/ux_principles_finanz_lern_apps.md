@@ -67,7 +67,7 @@ For each of the four fundamentals with a playground:
 
 Port **patterns** onto Stock Explorer's four playground metrics (operating margin, revenue
 growth YoY, net debt/EBITDA, FCF margin) — do not swap to EPS/KGV/KBV/ROE/D/E from the doc examples.
-Forward P/E had the fifth playground until 2026-08-26, when it was dropped from the catalogue
+Forward P/E had the fifth playground before it was dropped from the catalogue
 along with the other price-carrying metrics; its tab was removed from `metric_school.py` with it.
 
 | Stock Explorer metric | Doc analogue | Analogy direction |

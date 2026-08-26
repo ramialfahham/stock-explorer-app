@@ -219,16 +219,15 @@ def test_metrics_for_card_financial_omits_bank_inapplicable() -> None:
     metrics = metrics_for_card(_full_card("financial"))
     assert _BANK_INAPPLICABLE.isdisjoint(metrics)
     # No valuation metric survives on any card: forward_pe, price_to_tangible_book and
-    # dividend_yield_pct were dropped on 2026-08-26 for carrying the share price.
+    # dividend_yield_pct were dropped for carrying the share price.
     for dropped in ("forward_pe", "price_to_tangible_book", "dividend_yield_pct"):
         assert dropped not in metrics
 
 
-# The bank card: 4 metrics, lens-grouped (profitability, growth, returns x2). Was 7 until
-# 2026-08-26, when the three price-carrying metrics were dropped. Three of the four that
-# remain are what the bank verdict reads; revenue_growth_yoy_pct is NOT -- the verdict
-# excludes growth on purpose. So valuation now satisfies the rule "if we don't use it for the
-# verdict we don't show it" and growth still does not. That is step 2's job.
+# The bank card: 4 metrics, lens-grouped (profitability, growth, returns x2). It was 7 before
+# the three price-carrying metrics were dropped. All four now feed the bank verdict: three as
+# full axes, and revenue_growth_yoy_pct one-sidedly (a decline blocks green, growth never
+# earns it).
 _BANK_CARD = (
     "net_margin_pct",
     "revenue_growth_yoy_pct",
@@ -253,7 +252,7 @@ def test_metrics_for_card_financial_omits_operating_only_and_the_new_bank_metric
 
 
 # The pre-revenue survival card (4c): 4 metrics, lens-grouped (liquidity, cash x3). net_cash
-# replaced net_cash_to_market_cap on 2026-08-26 -- same cash-minus-debt idea, as a money
+# replaced net_cash_to_market_cap -- same cash-minus-debt idea, as a money
 # amount rather than a ratio against market cap, so no share price is involved. That also
 # moved its lens from valuation to cash, which is why it now renders AFTER working_capital
 # (liquidity sorts before cash) rather than first. Cash-minus-debt is a cash figure; it only

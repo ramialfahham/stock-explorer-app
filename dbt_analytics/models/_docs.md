@@ -12,7 +12,7 @@ required set is per company type (the Sector/Lifecycle Router):
   (the operating solvency/cash metrics are unsourceable for banks).
 - **pre_revenue** — `net_cash` (cash minus total debt; the operating metrics break for revenue ≤ 0).
 
-`forward_pe` left the operating and financial sets on 2026-08-26, and pre_revenue moved off
+`forward_pe` left the operating and financial sets, and pre_revenue moved off
 `net_cash_to_market_cap`, when all three price-carrying metrics were dropped from the
 catalogue. A card must not be gated on a metric it does not display. Both changes WIDEN
 eligibility: no forward P/E is required, and a pre-revenue company no longer needs a market cap.

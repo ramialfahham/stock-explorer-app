@@ -2,10 +2,11 @@
 
 Pure, no I/O. The verdict COLOR is decided here by transparent rules — never by the
 LLM (5b writes only the prose read). The verdict measures **financial health /
-resilience** from the card's own numbers; it deliberately excludes growth, and it is
-**not** investment advice. It used to exclude valuation too — as of 2026-08-26 there is no
-valuation metric left to exclude, since every price-carrying metric was dropped from the
-catalogue.
+resilience** from the card's own numbers, and it is **not** investment advice. Growth was
+excluded from the verdict and now enters ONE-SIDED: a shrinking top line blocks green, while
+growth never earns green and never causes red (see the policy comment below). Valuation used
+to be excluded too; there is no valuation metric left to exclude, since every price-carrying
+metric was dropped from the catalogue.
 
 `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC` mirror `dbt_analytics/seeds/metric_catalogue.csv`
 (`applies_to` / `direction`) — the same field set 5b hashes and prompts over, so
@@ -29,21 +30,18 @@ VERDICTS = (VERDICT_GREEN, VERDICT_YELLOW, VERDICT_RED)
 
 COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 
-# Bump to force a global 5b regeneration when the prompt/rubric field set changes.
-# 5a.2 (2026-08-26): READ_SYSTEM_PROMPT gained a no-dashes rule and a don't-sound-like-a-model
-# rule, and the verdict wording changed from sturdy/strained to healthy/fragile. Existing reads
-# were written under the old prompt and would otherwise survive untouched (reads regenerate on
-# input-hash change, and none of the NUMBERS moved), leaving em dashes and "sturdy" phrasing on
-# every card whose figures happen to be stable. The bump is what makes them regenerate.
-# Precisely: it advances the stored hash for EVERY record, so every card is offered for
-# regeneration on the next run. A card whose read actually regenerates gets new prose. A
-# card whose Haiku call FAILS is not covered by that guarantee -- attach_reads() counts it
-# and moves on without setting ai_read, while the record still carries the new hash into
-# the upsert, so the next run's regenerate test (hash differs OR ai_read empty) may skip
-# it. Whether the old prose survives or is nulled depends on how PostgREST treats a batch
-# whose rows have different keys, which nothing here pins. The last run reported failed=0,
-# so this is not known to have bitten -- do not claim it cannot.
-INPUT_HASH_VERSION = "5a.2"
+# Bump this to force every stored 5b read to regenerate. Reads normally regenerate only when
+# a card's own input hash moves, so a change to the PROMPT or to the verdict wording leaves
+# existing prose untouched -- none of the numbers moved, so nothing tells the pipeline the
+# text is stale. Bumping the version moves every card's hash and makes them all eligible.
+#
+# "Eligible", not "guaranteed". A card whose Haiku call fails is counted and skipped without
+# ai_read being set, while the record still carries the new hash into the upsert, so the next
+# run's regenerate test (hash differs OR ai_read empty) can skip it and leave prose written
+# under an older prompt in place. Whether the old text survives or is nulled depends on how
+# PostgREST treats a batch whose rows have different keys, which nothing here pins and which
+# has not been verified. Worth checking before any run that regenerates the whole deck.
+INPUT_HASH_VERSION = "5a.3"
 
 # Per-type card metric sets — mirror metric_catalogue.csv `applies_to`. These feed the
 # input hash (and, in 5b, the prompt), so they are the FULL displayed set per type, not
@@ -123,12 +121,37 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 
 
 # --- Per-type verdict policies (owner-signed §6 bands; conservative worst-axis-wins) ---
-# The verdict is HEALTH/resilience only: leverage, profitability, cash, liquidity, runway.
-# Growth is excluded on purpose. Valuation used to be excluded here too; as of 2026-08-26
-# there is no valuation metric left to exclude -- forward_pe, price_to_tangible_book and
-# dividend_yield_pct were dropped from the catalogue because they carry the share price and
-# this pipeline refreshes twice a month. Step 2 of that work will widen the verdict to read
-# every remaining metric; until then it still reads only the health axes below.
+# The verdict is HEALTH/resilience: leverage, profitability, cash, liquidity, runway, and
+# revenue growth, but growth counts in ONLY one direction. Valuation used to be excluded
+# here too; there is no valuation metric left to exclude, since forward_pe,
+# price_to_tangible_book and dividend_yield_pct were dropped from the catalogue for carrying
+# the share price this twice-monthly pipeline cannot keep current.
+#
+# GROWTH IS ONE-SIDED, and that asymmetry is the entire design. A shrinking top line blocks
+# green; growth never earns green and never causes red. Growth was excluded from the verdict
+# originally for a real reason -- a company can grow into losses, so high growth is not health
+# -- and the owner's rule that every metric shown must feed the verdict had to be satisfied
+# without discarding that. One-sidedness does both. Do NOT "simplify" this into a symmetric
+# good/weak axis: that would let momentum buy a health verdict, which is the thing the
+# exclusion existed to prevent.
+GROWTH_DECLINE_THRESHOLD_PCT = 0.0
+# Any year-over-year decline, with no tolerance band. An earlier draft proposed -5% on the
+# argument that a single quarter is noisy; the owner rejected it. Year-over-year compares the
+# same quarter a year earlier, so the figure is not seasonal noise. It is still only one
+# quarter: a decline can also come from a divestment, FX translation, contract timing or an
+# unusually strong prior-year base, none of which this number distinguishes. That is why the
+# axis is one-sided and can only withhold green, never cause red.
+# Do not reintroduce a tolerance band.
+
+
+def _is_shrinking(row: Mapping[str, Any]) -> bool:
+    """True when revenue went backwards year over year. Null growth is NOT shrinking --
+    absent data must never block a green verdict, the same way every other axis treats a
+    missing value as unknown rather than bad."""
+    value = row.get("revenue_growth_yoy_pct")
+    if _is_missing(value):
+        return False
+    return float(value) < GROWTH_DECLINE_THRESHOLD_PCT
 
 
 def _verdict_operating(row: Mapping[str, Any]) -> str:
@@ -146,7 +169,11 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
     )
     if any(b == "weak" for b in core):
         return VERDICT_RED
-    if all(b == "good" for b in core) and not any(b == "weak" for b in supporting):
+    if (
+        all(b == "good" for b in core)
+        and not any(b == "weak" for b in supporting)
+        and not _is_shrinking(row)
+    ):
         return VERDICT_GREEN
     return VERDICT_YELLOW
 
@@ -159,7 +186,12 @@ def _verdict_financial(row: Mapping[str, Any]) -> str:
     roa = _axis(row, "roa_pct", weak_th=0.0, good_th=0.8)
     if roe == "weak" or margin == "weak":
         return VERDICT_RED
-    if roe == "good" and margin == "good" and roa in ("good", "unknown"):
+    if (
+        roe == "good"
+        and margin == "good"
+        and roa in ("good", "unknown")
+        and not _is_shrinking(row)
+    ):
         return VERDICT_GREEN
     return VERDICT_YELLOW
 
@@ -172,7 +204,7 @@ def _verdict_pre_revenue(row: Mapping[str, Any]) -> str:
     runway = "good" if _is_missing(runway_val) else _axis(
         row, "cash_runway_months", weak_th=12.0, good_th=24.0
     )
-    # net_cash is a MONEY AMOUNT since 2026-08-26, not the old ratio against market cap, so
+    # net_cash is a MONEY AMOUNT, not the old ratio against market cap, so
     # there is no scale-free "good" level any more: 0.2 meant "net cash worth a fifth of the
     # company's market value", and no equivalent exists in currency terms across companies of
     # different sizes. Both thresholds collapse to zero, i.e. the axis now asks only "is there
@@ -254,7 +286,7 @@ Rules:
 - Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
 - Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
-- Growth is context only - never treat high growth as a reason to buy. The verdict measures financial health and resilience only. (Valuation metrics were removed from this app on 2026-08-26, so there is no P/E or price-to-book figure to be given to you at all.)
+- Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy.
 - End on the verdict's meaning, phrased as health or fragility on these figures - e.g. "financially healthy on these figures", "a mixed financial picture on these numbers", "financially fragile on these figures". Never phrase it as a good or bad buy.
 - No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
 - Write like a person explaining this to someone they know, not like a model. Avoid the usual tells: no "not just X, but Y", no "it's worth noting" or "it's important to remember", no rhetorical questions, no three-item lists used for rhythm, no sentence that hedges and then pivots for the sake of sounding balanced. Vary your sentence lengths. Say the thing and stop. Plain is not the same as chatty, so stay calm and factual. This rule is about STYLE only: it never overrides the rules above or the company-type lens below. Where one of those requires a limit to be stated - above all the financial-company limit that these numbers cannot judge balance-sheet safety or capital strength - state it plainly and in full. A required caveat is never a tell to be trimmed.
@@ -278,8 +310,8 @@ VERDICT_MEANING: dict[str, str] = {
 # Per-metric beginner brief for the facts block: label + one plain gloss + a value
 # format. Keys MUST cover every field in INPUT_FIELDS_BY_TYPE (a tests/tooling guard
 # asserts it). Wording is drawn from dbt_analytics/seeds/metric_catalogue.csv;
-# the growth line is tagged "context only" so the read never
-# turns them into a buy cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
+# the growth line states which way growth counts, so the read never turns it into a buy
+# cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
 READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "ebit_margin_pct": {
         "label": "Operating margin",
@@ -289,7 +321,7 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "revenue_growth_yoy_pct": {
         "label": "Revenue growth vs a year ago",
         "fmt": "pct",
-        "gloss": "how fast sales are growing - context only, not a health signal; a huge percentage can just mean a very small prior-year base, not real momentum",
+        "gloss": "how fast the top line is growing; for a financial company that is net interest plus fees, not sales. A fall counts against the verdict, a rise does not count for it. A very big percentage either way can just mean an unusual prior year rather than real change",
     },
     "net_debt_to_ebitda": {
         "label": "Net debt / EBITDA",

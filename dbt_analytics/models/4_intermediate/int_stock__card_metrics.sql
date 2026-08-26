@@ -265,7 +265,7 @@ eligibility as (
     -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a bank-appropriate
     -- pair, since the operating solvency/cash metrics are unsourceable for them; pre_revenue
     -- qualifies on net_cash alone (its survival card); operating keeps a four-metric AND.
-    -- forward_pe was dropped from BOTH the financial and operating sets on 2026-08-26: a card
+    -- forward_pe was dropped from BOTH the financial and operating sets: a card
     -- must not be gated on a metric it does not display, and forward_pe is no longer
     -- catalogued (owner's call -- it carries the share price, which this twice-monthly
     -- pipeline cannot keep current). This ADMITS companies Yahoo has no forward P/E for, so

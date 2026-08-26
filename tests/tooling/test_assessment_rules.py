@@ -42,6 +42,94 @@ def test_operating_supporting_weakness_blocks_green() -> None:
     assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
 
 
+def test_growth_is_one_sided_shrinking_blocks_green() -> None:
+    """A shrinking top line stops a card being called Healthy, on both card types that show
+    growth. This is the whole point of step 2: growth was on the card and unread."""
+    op = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "revenue_growth_yoy_pct": -0.4,
+    }
+    assert rules.compute_verdict(op) == rules.VERDICT_YELLOW
+    fin = {
+        "company_type": "financial", "statement_roe_pct": 13.0, "net_margin_pct": 30.0,
+        "roa_pct": 1.2, "revenue_growth_yoy_pct": -0.4,
+    }
+    assert rules.compute_verdict(fin) == rules.VERDICT_YELLOW
+
+
+def test_growth_is_one_sided_shrinking_never_causes_red() -> None:
+    """The asymmetry, half one. A solvent, profitable, cash-generating company having a bad
+    year is not in distress -- growth may block green, never trigger red. Without this, one
+    weak quarter would put a sturdy balance sheet in the same bucket as a company burning
+    cash with negative margins."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 0.5, "ebit_margin_pct": 25.0,
+        "fcf_margin_pct": 18.0, "revenue_growth_yoy_pct": -40.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_growth_is_one_sided_growth_never_earns_green() -> None:
+    """The asymmetry, half two, and the reason growth was excluded from the verdict for so
+    long: a company can grow into losses. Spectacular growth must not rescue weak
+    fundamentals -- this card is red on its core axes and stays red."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 6.0, "ebit_margin_pct": -5.0,
+        "fcf_margin_pct": -8.0, "revenue_growth_yoy_pct": 300.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_RED
+    # and it cannot lift a merely-yellow card either
+    mid = {
+        "company_type": "operating", "net_debt_to_ebitda": 2.0, "ebit_margin_pct": 5.0,
+        "fcf_margin_pct": 2.0, "revenue_growth_yoy_pct": 300.0,
+    }
+    assert rules.compute_verdict(mid) == rules.VERDICT_YELLOW
+
+
+def test_absent_growth_does_not_block_green() -> None:
+    """Missing data is not a decline. Every other axis treats null as unknown rather than
+    bad, and growth must not be the exception -- a company Yahoo has no growth figure for
+    would otherwise be capped at yellow forever."""
+    for value in (None, float("nan")):
+        row = {
+            "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+            "fcf_margin_pct": 12.0, "revenue_growth_yoy_pct": value,
+        }
+        assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+    del row["revenue_growth_yoy_pct"]
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+
+
+def test_growth_threshold_is_zero_with_no_tolerance_band() -> None:
+    """Owner-decided: any year-over-year decline blocks green. An earlier draft proposed a
+    -5% tolerance on the argument that a single quarter is noisy; that was rejected. YoY
+    compares the same quarter a year earlier, so the figure is not seasonal noise, though it
+    is still one quarter and cannot separate a real decline from a divestment or FX move.
+    That is what the one-sidedness is for. Pinned so the band cannot creep back."""
+    assert rules.GROWTH_DECLINE_THRESHOLD_PCT == 0.0
+    base = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0,
+    }
+    assert rules.compute_verdict({**base, "revenue_growth_yoy_pct": 0.0}) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**base, "revenue_growth_yoy_pct": -0.1}) == rules.VERDICT_YELLOW
+
+
+def test_pre_revenue_verdict_still_ignores_burn_rate() -> None:
+    """burn_rate_monthly is shown on the pre-revenue card and deliberately NOT read by the
+    verdict -- an owner-decided exception to "everything shown feeds the verdict". Reading it
+    as its own axis would double-count, because cash runway already IS cash divided by burn.
+    It stays on the card because runway is a ratio and a ratio destroys magnitude: 18 months
+    at $2M a month and 18 months at $50M a month are very different companies."""
+    base = {
+        "company_type": "pre_revenue", "cash_runway_months": 36.0, "net_cash": 4.0e8,
+        "working_capital": 2.1e9,
+    }
+    assert rules.compute_verdict(base) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**base, "burn_rate_monthly": 5.0e8}) == rules.VERDICT_GREEN
+    assert "burn_rate_monthly" in rules.INPUT_FIELDS_BY_TYPE["pre_revenue"]  # still hashed + in the prose read
+
+
 def test_financial_verdicts() -> None:
     green = {"company_type": "financial", "statement_roe_pct": 13.0, "net_margin_pct": 30.0, "roa_pct": 1.2}
     red = {"company_type": "financial", "statement_roe_pct": -5.0, "net_margin_pct": 10.0}
@@ -182,7 +270,7 @@ def test_hash_handles_nan_like_none() -> None:
     row = _op_row()
     v = rules.compute_verdict(row)
     # Must mutate a field that is actually IN the operating input set, or the hash never reads
-    # it and this asserts h == h. forward_pe was used here until 2026-08-26; dropping it from
+    # it and this asserts h == h. forward_pe was used here before it was dropped, and removing it from
     # INPUT_FIELDS_BY_TYPE silently emptied this test, which is the only coverage
     # _canonical_number's NaN -> None guard has.
     assert "debt_to_equity" in rules.INPUT_FIELDS_BY_TYPE["operating"]
@@ -248,9 +336,15 @@ def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
     for field in rules.INPUT_FIELDS_BY_TYPE["operating"]:
         assert rules.READ_METRIC_BRIEF[field]["label"] in user
     assert "24.0%" in user  # percent formatting
-    # growth is flagged context-only, never a health signal. Valuation used to be tagged the
-    # same way; there is no valuation metric left to tag since 2026-08-26.
-    assert user.lower().count("context only") >= 1
+    # The growth line must tell the model which way growth counts, since the verdict reads it
+    # one-sidedly. Pinning the direction rather than a catchphrase: a falling top line counts
+    # against the verdict, a rising one does not count for it.
+    # Assert against the BUILT message, not the constant. Reading the constant would prove
+    # only that it contains the words, so deleting the gloss from build_read_messages' f-string
+    # would leave the whole suite green and the model would never be told which way growth
+    # counts. Nothing else in this file covers gloss text reaching the prompt.
+    assert "counts against the verdict" in user.lower()
+    assert "does not count for it" in user.lower()
     assert "forward_pe" not in rules.INPUT_FIELDS_BY_TYPE["operating"]
 
 

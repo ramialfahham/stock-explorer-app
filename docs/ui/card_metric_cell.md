@@ -47,7 +47,7 @@
    close to the number or to the bullet graph." Both rules are scoped
    `.ss-metric .ss-metric-gloss` / `.ss-metric .ss-metric-range-unavailable`, not bare
    single-class selectors — see the anti-pattern below, this isn't cosmetic.
-   Typography (2026-08-26, owner feedback on a live card): `0.78rem` / `--ss-muted` /
+   Typography (owner feedback on a live card): `0.78rem` / `--ss-muted` /
    `line-height: 1.35`, deliberately one step LARGER and LIGHTER than the range mark's own
    `.ss-metric-range-number` / `.ss-metric-range-word` (`--ss-caption-size` /
    `--ss-caption`). At matched size and colour the explanation read as a footnote to the
@@ -80,7 +80,7 @@ grouped and ordered by analytical lens, via `metrics_for_card()` /
   `company_type` — e.g. an operating card spans 6 of the 7 lenses (including two metrics
   under **Solvency**: net debt/EBITDA and debt/equity — a real per-lens count, not a
   bug), while the pre-revenue survival set only touches Liquidity/Cash. Valuation is
-  empty on every card since 2026-08-26: forward P/E was the operating card's only
+  empty on every card: forward P/E was the operating card's only
   valuation metric and net cash moved to the Cash lens when it stopped being a ratio
   against market cap. There
   is no hardcoded per-type metric list in this doc to keep in sync — read
@@ -126,21 +126,21 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - **Applies to every metric, not just the 4 with a range mark.** A metric without a
   mark (not `benchmarkable: true`, or a marked metric whose sector fell below the peer
   threshold this card) still gets the same plain cue — see the next section for why
-  the mark itself is more limited. This decouples two things the old (pre-2026-08-24)
-  design conflated: whether a range MARK can be drawn (needs a sector cohort to compare
+  the mark itself is more limited. This decouples two things an earlier design
+  conflated: whether a range MARK can be drawn (needs a sector cohort to compare
   against) and whether the direction CUE can be stated (a fact about the metric's own
   axis, independent of any cohort).
 - **This is a ceteris-paribus statement about the metric's own axis** — e.g. higher
   revenue growth is more growth, for the same quality of business — not a health
-  judgment. It doesn't conflict with `assessment_rules.py` excluding growth from the
-  health verdict, which is about not letting one metric drive a composite score, a
-  different and higher-stakes claim than naming which way one axis points (owner
+  judgment. The health verdict reads growth one-sidedly: a falling top line can hold a
+  company back from green, while growth never earns it. Naming which way an axis points is
+  a different and lower-stakes claim than letting one metric drive a composite score (owner
   decision). A caveat like "growth is not health" belongs in that metric's own deep-dive
   explanation (analogy/learn text in "Understand these numbers"), not a hedge stuffed
   into this short gloss line — an earlier draft tried exactly that hedge and was
   correctly rejected as giving "no guidance at all."
   (This bullet was written about forward P/E, which carried the same shape of caveat.
-  That metric was dropped from the catalogue on 2026-08-26, so the example moved to a
+  That metric was dropped from the catalogue, so the example moved to a
   metric a reader can still look up.)
 - **Suppressed** for `net_debt_to_ebitda`'s "Net cash" branch and `debt_to_equity`'s
   "Negative equity" branch (see the value-aware gloss table above) — both already state
@@ -168,8 +168,8 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - **When either condition fails, or the metric isn't `benchmarkable: true` at all**,
   `_metric_range_html()` returns `""` and `_metric_cell_html()` falls back to
   `_metric_range_unavailable_html()` — a single calm line, `"No sector comparison for
-  this metric."` (`.ss-metric-range-unavailable`). Added 2026-08-24 after owner
-  feedback that a silent gap where the mark would have been "still looks like a bug"
+  this metric."` (`.ss-metric-range-unavailable`). Added after owner feedback that a
+  silent gap where the mark would have been "still looks like a bug"
   — a missing element, not an intentional absence. The direction cue (previous
   section) still shows either way, mark or placeholder.
 - Three rows: numbers (`.ss-metric-range-numbers`), bar (`.ss-metric-range-track`),
@@ -206,7 +206,7 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   must not run into the min/max labels at the track's own edges. The bar's actual gap
   still renders at the true, unclamped `median_pct`; only the label text is nudged
   inward. Verified against every real range-mark row in production (3,967 rows across
-  all benchmarked metrics (5 at the time; 4 since 2026-08-26), incl. a sector with a -129,810.5% FCF-margin outlier — see
+  all benchmarked metrics (5 at the time, 4 now), incl. a sector with a -129,810.5% FCF-margin outlier — see
   the data-quality note below) plus synthetic cases beyond today's real spread; the
   tightest real numbers-row gap currently live is ~12px, comfortably non-colliding.
   This is a fixed floor, not width-aware — an even more extreme future data shape could
@@ -220,7 +220,7 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - Only the 4 metrics with `benchmarkable: true` in the metric catalogue get a range
   mark today (operating margin, revenue growth, net debt/EBITDA, FCF margin) — financial
   and pre-revenue metrics aren't benchmarked yet, a separate follow-up. (The direction cue
-  is not limited this way — see above.) Was 5 until 2026-08-26, when forward P/E was dropped
+  is not limited this way — see above.) Was 5 before forward P/E was dropped
   from the catalogue along with the other two price-carrying metrics; the bank card lost 3
   of its 7 metrics in the same change, and the pre-revenue card swapped its net-cash ratio
   for a money amount, which moved that metric from the valuation lens to cash.

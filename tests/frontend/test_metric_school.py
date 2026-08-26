@@ -48,7 +48,7 @@ def test_extreme_negative_revenue_growth_clamps_current_revenue() -> None:
 
 
 def test_every_hardcoded_metric_label_key_exists_in_the_catalogue() -> None:
-    """Closes the bug class that shipped a live crash on 2026-08-26.
+    """Closes the bug class that shipped a live crash.
 
     `metric_school.py` renders playgrounds with hard-coded `METRIC_LABELS['<id>']`
     subscripts, and `METRIC_LABELS` is built from the generated `frontend/metrics.json`.
