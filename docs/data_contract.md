@@ -381,7 +381,7 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴 in Slice 6) |
 | `ai_read` | text | Claude Haiku prose read (`claude-haiku-4-5`); educational, never advice; reasons only from the card's numbers |
 | `read_model` | text | model id that wrote `ai_read` (from the Claude API response) |
-| `input_hash` | text | sha256 of the verdict inputs; drives 5b regenerate-on-change |
+| `input_hash` | text | sha256 of the verdict inputs plus the display currency; drives 5b regenerate-on-change |
 | `snapshot_date` | date | the mart snapshot the assessment reflects |
 | `generated_at` | timestamptz | last write |
 
@@ -415,9 +415,12 @@ Thresholds live in `scripts/assessment_rules.py`, whose `INPUT_FIELDS_BY_TYPE` /
 mirror this seed's `applies_to` / `direction` (a `tests/tooling` guard enforces it).
 
 **`input_hash`:** sha256 over the per-type card metric set + `company_type` + `health_verdict` +
-`INPUT_HASH_VERSION` (numerics rounded to 6dp, NaN → null). The verdict + hash recompute every run; the
-prose read regenerates only when the hash changes or `ai_read` is null — bump `INPUT_HASH_VERSION` to force
-a global read refresh (e.g. after a prompt or model change).
+the card's display currency + `INPUT_HASH_VERSION` (numerics rounded to 6dp, NaN → null). The currency is
+in the payload because the prompt names it and the prose read quotes it, so a card whose currency is
+corrected upstream has to regenerate rather than keep prose naming the old one; it is hashed in its
+normalised display form, so a `GBp`/`GBP` case change does not churn every FTSE read. The verdict + hash
+recompute every run; the prose read regenerates only when the hash changes or `ai_read` is null. Bump
+`INPUT_HASH_VERSION` to force a global read refresh (e.g. after a prompt or model change).
 
 ---
 

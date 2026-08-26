@@ -1,6 +1,6 @@
 """Deterministic per-type financial-health verdict + regeneration hash (Slice 5a).
 
-Pure, no I/O. The verdict COLOR is decided here by transparent rules — never by the
+Pure, no I/O. The verdict COLOR is decided here by transparent rules, never by the
 LLM (5b writes only the prose read). The verdict measures **financial health /
 resilience** from the card's own numbers, and it is **not** investment advice. Growth was
 excluded from the verdict and now enters ONE-SIDED: a shrinking top line blocks green, while
@@ -9,9 +9,11 @@ to be excluded too; there is no valuation metric left to exclude, since every pr
 metric was dropped from the catalogue.
 
 `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC` mirror `dbt_analytics/seeds/metric_catalogue.csv`
-(`applies_to` / `direction`) — the same field set 5b hashes and prompts over, so
+(`applies_to` / `direction`), the same metric set 5b hashes and prompts over, so
 "regenerate the read iff a prompt input changed" holds by construction. A
-`tests/tooling` guard asserts this mirror stays in sync with the seed.
+`tests/tooling` guard asserts this mirror stays in sync with the seed. The hash covers one
+thing beyond that set, the display currency, because the prompt names it and the read quotes
+it; see `compute_input_hash`.
 """
 
 from __future__ import annotations
@@ -41,9 +43,9 @@ COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 # under an older prompt in place. Whether the old text survives or is nulled depends on how
 # PostgREST treats a batch whose rows have different keys, which nothing here pins and which
 # has not been verified. Worth checking before any run that regenerates the whole deck.
-INPUT_HASH_VERSION = "5a.3"
+INPUT_HASH_VERSION = "5a.4"
 
-# Per-type card metric sets — mirror metric_catalogue.csv `applies_to`. These feed the
+# Per-type card metric sets, mirroring metric_catalogue.csv `applies_to`. These feed the
 # input hash (and, in 5b, the prompt), so they are the FULL displayed set per type, not
 # only the health axes the verdict reads.
 INPUT_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
@@ -70,7 +72,7 @@ INPUT_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# Direction per metric — mirrors metric_catalogue.csv `direction`.
+# Direction per metric, mirroring metric_catalogue.csv `direction`.
 DIRECTION_BY_METRIC: dict[str, str] = {
     "ebit_margin_pct": "higher_better",
     "revenue_growth_yoy_pct": "higher_better",
@@ -179,7 +181,7 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
 
 
 def _verdict_financial(row: Mapping[str, Any]) -> str:
-    # Banks: profitability/returns only — capital adequacy (CET1/Tier 1) is unsourceable
+    # Banks: profitability/returns only. Capital adequacy (CET1/Tier 1) is unsourceable
     # from yfinance, so this verdict is deliberately modest (documented in data_contract).
     roe = _axis(row, "statement_roe_pct", weak_th=0.0, good_th=8.0)
     margin = _axis(row, "net_margin_pct", weak_th=0.0, good_th=15.0)
@@ -197,7 +199,7 @@ def _verdict_financial(row: Mapping[str, Any]) -> str:
 
 
 def _verdict_pre_revenue(row: Mapping[str, Any]) -> str:
-    # Survival story. cash_runway_months is null when NOT burning cash (a positive) —
+    # Survival story. cash_runway_months is null when NOT burning cash (a positive),
     # treat null runway as good; the net-cash and working-capital axes independently
     # catch a genuinely fragile pre-revenue company.
     runway_val = row.get("cash_runway_months")
@@ -254,16 +256,22 @@ def _canonical_number(value: Any) -> float | None:
 def compute_input_hash(
     row: Mapping[str, Any], verdict: str, *, version: str = INPUT_HASH_VERSION
 ) -> str:
-    """sha256 hex over the canonicalized per-type input set + company_type + verdict + version.
+    """sha256 hex over the canonicalized per-type input set + company_type + verdict +
+    display currency + version.
 
-    5b regenerates the prose read only when this hash changes. Numbers only — name/sector
-    are context, not signals ("reason only from the given numbers").
+    5b regenerates the prose read only when this hash changes. Numbers only, plus the
+    currency: name/sector are context, not signals ("reason only from the given numbers"),
+    but the currency is named in the prompt and the read quotes it, so a card whose currency
+    is corrected upstream must regenerate rather than keep prose naming the old one. Hashed
+    through `_display_currency` so a GBp/GBP change, which the card face never shows, does
+    not churn every FTSE read for nothing.
     """
     ctype = normalize_company_type(row.get("company_type"))
     payload = {
         "version": version,
         "company_type": ctype,
         "verdict": verdict,
+        "currency": _display_currency(row.get("currency")) or None,
         "inputs": {field: _canonical_number(row.get(field)) for field in INPUT_FIELDS_BY_TYPE[ctype]},
     }
     blob = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -285,8 +293,10 @@ Rules:
 - Write for someone who knows no finance vocabulary. If you use a term, gloss it in plain words or an everyday comparison. Leave no jargon unexplained.
 - Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
+- A margin is a percentage, not money. Explaining one as the amount kept out of every unit of revenue is good teaching and is encouraged, but it must use the currency given on the "Currency this company trades in" line below and no other, whichever currency that turns out to be. Where that currency has no everyday small unit, say it per 100 units of that same currency instead. If there is no such line, describe the margin as a percentage or a share and do not phrase it per unit of money at all. Never mix two currencies in one explanation. A margin is per unit of revenue, never per item sold: you are not told how many units the company sells and must never imply profit per item.
+- Returns and growth are NOT amounts per unit of revenue, so never phrase them that way. Return on equity is profit measured against the owners' money, and return on assets is profit measured against everything the company owns. Revenue growth compares the latest reported quarter with the same quarter a year earlier, so it is one quarter's change, never a full year's: do not write "this year" or "over the year" about it.
 - Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
-- Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy.
+- Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy. When growth is positive, never give it as the reason the verdict is not green, because the rules only ever count a fall. Describing a nearly flat top line accurately is fine; blaming the verdict on it is not.
 - End on the verdict's meaning, phrased as health or fragility on these figures - e.g. "financially healthy on these figures", "a mixed financial picture on these numbers", "financially fragile on these figures". Never phrase it as a good or bad buy.
 - No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
 - Write like a person explaining this to someone they know, not like a model. Avoid the usual tells: no "not just X, but Y", no "it's worth noting" or "it's important to remember", no rhetorical questions, no three-item lists used for rhythm, no sentence that hedges and then pivots for the sake of sounding balanced. Vary your sentence lengths. Say the thing and stop. Plain is not the same as chatty, so stay calm and factual. This rule is about STYLE only: it never overrides the rules above or the company-type lens below. Where one of those requires a limit to be stated - above all the financial-company limit that these numbers cannot judge balance-sheet safety or capital strength - state it plainly and in full. A required caveat is never a tell to be trimmed.
@@ -316,7 +326,7 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "ebit_margin_pct": {
         "label": "Operating margin",
         "fmt": "pct",
-        "gloss": "share of each sales dollar kept as operating profit (higher = more profitable); can look extreme when revenue is very small",
+        "gloss": "share of sales kept as operating profit (higher = more profitable); can look extreme when revenue is very small",
     },
     "revenue_growth_yoy_pct": {
         "label": "Revenue growth vs a year ago",
@@ -331,7 +341,7 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "fcf_margin_pct": {
         "label": "Free cash flow margin",
         "fmt": "pct",
-        "gloss": "real cash kept from each sales dollar (higher = stronger); negative = burning cash; can look extreme when revenue is very small",
+        "gloss": "share of sales kept as real cash (higher = stronger); negative = burning cash; can look extreme when revenue is very small",
     },
     "debt_to_equity": {
         "label": "Debt / equity",
@@ -351,7 +361,7 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "net_margin_pct": {
         "label": "Net margin",
         "fmt": "pct",
-        "gloss": "final profit kept from each revenue dollar after all costs (higher = more profitable); for a financial company \"revenue\" means net interest plus fees, not sales",
+        "gloss": "share of revenue kept as final profit after all costs (higher = more profitable); for a financial company \"revenue\" means net interest plus fees, not sales",
     },
     "roa_pct": {
         "label": "Return on assets",
@@ -385,6 +395,28 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
 # read names the SAME currency the card face shows. Unknown code -> the code itself
 # (never a fake symbol). The app spans US/UK/JP/AU/DE markets, so "$" is not a safe default.
 _CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
+
+
+def _display_currency(currency: str | None) -> str:
+    """The currency the CARD FACE shows, as the read should name it: '£ (GBP)', 'CHF', ''.
+
+    The mart's `currency` is a DISPLAY code, not the statement currency (`stmt_currency`
+    exists in fct_fundamentals_snapshot but is not carried into the mart), so this is
+    deliberately phrased as what the reader sees rather than as what the company files.
+    Upper-casing is what makes 'GBp' safe: yfinance reports LSE tickers in pence, and every
+    other consumer (_compact_amount, frontend/card_copy.py) already collapses it to GBP so
+    the card face shows a pound sign. Passing the raw code to the model would name a unit
+    that appears nowhere on the card.
+    """
+    # Guarded here, not only in build_read_messages: compute_input_hash calls this too, and
+    # a NaN currency would raise on .strip().
+    if _is_missing(currency):
+        return ""
+    code = str(currency).strip().upper()
+    if not code:
+        return ""
+    symbol = _CURRENCY_SYMBOLS.get(code)
+    return f"{symbol} ({code})" if symbol else code
 
 
 def _compact_amount(value: float, currency: str | None) -> str:
@@ -421,7 +453,12 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
     covers). Missing metrics are omitted - never guessed. No I/O, no anthropic import.
     """
     ctype = normalize_company_type(row.get("company_type"))
-    currency = row.get("currency")  # names the money amounts in the card's own currency
+    # This line is the ONLY route by which the currency reaches the model on operating and
+    # financial cards: every field on those types is pct or ratio, so _format_metric_value
+    # never renders a currency for them. Delete it and the model has none, and invents one.
+    currency = row.get("currency")
+    if _is_missing(currency):
+        currency = None
     lines: list[str] = []
     for field in INPUT_FIELDS_BY_TYPE[ctype]:
         value = row.get(field)
@@ -432,8 +469,11 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
         lines.append(f"- {brief['label']}: {rendered} - {brief['gloss']}")
     facts = "\n".join(lines) if lines else "- (no metric values available)"
     meaning = VERDICT_MEANING.get(verdict, verdict)
+    display_currency = _display_currency(currency)
+    currency_line = f"Currency this company trades in: {display_currency}\n" if display_currency else ""
     user = (
         f"Company type: {ctype}\n"
+        f"{currency_line}"
         f"Health verdict: {meaning}\n\n"
         f"Numbers for this company:\n{facts}\n\n"
         "Write the 2-3 sentence read."

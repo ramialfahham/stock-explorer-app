@@ -385,3 +385,34 @@ def test_benchmark_range_clamps_value_outside_min_max() -> None:
     rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
     assert rng is not None
     assert rng["position_pct"] == 100.0
+
+
+def test_hardcoded_analogy_overrides_name_no_currency() -> None:
+    """`metric_analogy` can return a hardcoded string instead of the catalogue one (the
+    annual-basis operating-margin override, the negative-equity ones). Those live in
+    card_copy.py, not in the seed, so the catalogue currency guard in tests/tooling cannot
+    see them: this is the second home for the same defect and needs its own check.
+
+    A margin is a percentage and carries no currency, so a beginner reading a Nikkei or DAX
+    card must not be told about dollars, pounds or cents.
+    """
+    import re
+
+    currency_words = ("dollar", "cent", "pound", "pence", "penny", "euro", "yen", "franc")
+    symbols = ("$", "£", "¥", "€")
+    cards = (
+        None,
+        {"ebit_margin_basis": "annual_latest"},
+        {"ebit_margin_basis": "ttm_quarters"},
+    )
+    for metric in ALL_METRICS:
+        for card in cards:
+            for value in (12.0, -1.5, None):
+                text = metric_analogy(metric, value, card)
+                lowered = text.lower()
+                for word in currency_words:
+                    assert not re.search(rf"\b{word}s?\b", lowered), (
+                        f"{metric} analogy names a currency: {text!r}"
+                    )
+                for symbol in symbols:
+                    assert symbol not in text, f"{metric} analogy names {symbol}: {text!r}"

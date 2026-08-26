@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import csv
 import math
+import re
 from itertools import product
 from pathlib import Path
+
+import pytest
 
 import assessment_rules as rules
 
@@ -413,3 +416,214 @@ def test_build_read_messages_unknown_type_falls_back_to_operating() -> None:
         {"company_type": None, "ebit_margin_pct": 10.0}, rules.VERDICT_YELLOW
     )
     assert "Company type: operating" in user
+
+
+# --- Currency naming in the prose read -----------------------------------------------------
+# The prompt names the card's currency so the read can explain a margin as an amount kept
+# per unit of revenue without inventing one. Operating and financial cards carry no
+# `currency`-fmt metric, so the dedicated prompt line is their only route to it.
+
+# A deny-list, with the limits that implies. Currency is NOT declared per market anywhere:
+# docs/market_registry.yml has no currency field, and the value comes from yfinance
+# `info_currency` per ticker, so nothing in the repo can enumerate what may turn up. These
+# eight cover the currencies the nine registered markets actually return today (five active:
+# USD, GBp, JPY, EUR, AUD; four dormant: fr_cac40/nl_aex/es_ibex35 EUR, ch_smi CHF, which is
+# why "franc" is here ahead of need). EXTEND IT when a market is added, when a dormant one is
+# activated by flipping ingest_active, or when yfinance starts returning a currency these
+# words miss. There is no mechanical trigger for any of those, which is the weakness of a
+# deny-list and the reason to prefer catching this in review.
+_CURRENCY_WORDS = (
+    "dollar", "cent", "pound", "pence", "penny", "euro", "yen", "franc",
+)
+
+# Every catalogue column that `scripts/export_metric_definitions_json.py` copies into
+# frontend/metrics.json. Four of them (gloss, analogy, learn, label) are bound to the card
+# face by frontend/card_copy.py; the rest ship to the client unbound. Guarding all of them
+# keeps a currency word out of anything a future binding could surface.
+_VISIBLE_COPY_FIELDS = (
+    "label", "gloss", "analogy", "learn", "interpretation", "applicability",
+    "description", "calculation",
+)
+
+
+def _names_a_currency(text: str) -> bool:
+    """Whole-word match plus symbols. Substring matching would fire on "percent" in a check
+    whose whole subject is percentages."""
+    lowered = text.lower()
+    if any(re.search(rf"\b{word}s?\b", lowered) for word in _CURRENCY_WORDS):
+        return True
+    return any(symbol.strip() in text for symbol in rules._CURRENCY_SYMBOLS.values())
+
+
+def test_names_a_currency_helper_is_not_fooled_by_percent() -> None:
+    assert not _names_a_currency("share of sales kept as operating profit")
+    assert not _names_a_currency("a percentage, not a percent of recent incentives")
+    assert _names_a_currency("for every dollar of sales")
+    assert _names_a_currency("keeps 24 cents per sale")
+    assert _names_a_currency("every £ of sales")
+
+
+def test_metric_glosses_name_no_currency() -> None:
+    """A gloss naming a currency hands the model one for a number that has none, and it
+    then applies it to companies reporting in four other currencies."""
+    for metric, brief in rules.READ_METRIC_BRIEF.items():
+        if brief["fmt"] == "currency":
+            continue  # money amounts SHOULD carry their currency
+        assert not _names_a_currency(brief["gloss"]), f"{metric} gloss names a currency"
+
+
+@pytest.mark.parametrize(
+    ("company_type", "row"),
+    [
+        ("operating", {"ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}),
+        ("financial", {"statement_roe_pct": 12.0, "net_margin_pct": 20.0}),
+        ("pre_revenue", {"net_cash": 5.0e8, "working_capital": 2.0e8}),
+    ],
+)
+def test_build_read_messages_names_the_currency_for_every_card_type(company_type, row) -> None:
+    _system, user = rules.build_read_messages(
+        {"company_type": company_type, "currency": "AUD", **row}, rules.VERDICT_GREEN
+    )
+    assert "AUD" in user, f"{company_type} card never tells the model its currency"
+
+
+def test_build_read_messages_normalises_gbp_pence_to_the_symbol_the_card_shows() -> None:
+    """yfinance reports LSE tickers as `GBp`, i.e. pence. Every other consumer upper-cases
+    before formatting, so the card face shows a pound sign; passing the raw code would name
+    the model a unit that appears nowhere on the card."""
+    _system, user = rules.build_read_messages(
+        {"company_type": "operating", "currency": "GBp", "ebit_margin_pct": 24.0},
+        rules.VERDICT_GREEN,
+    )
+    assert "£" in user
+    assert "GBP" in user
+    assert "GBp" not in user
+
+
+def test_display_currency_falls_back_to_the_bare_code_never_a_fake_symbol() -> None:
+    assert rules._display_currency("CHF") == "CHF"
+    assert rules._display_currency("JPY") == "¥ (JPY)"
+    assert rules._display_currency(None) == ""
+    assert rules._display_currency("  ") == ""
+
+
+def test_build_read_messages_omits_the_currency_line_when_absent() -> None:
+    # Absent currency must not render an empty or "None"/"nan" label, the same "if a number
+    # is missing, don't mention it" rule the facts block already follows.
+    for absent in (None, float("nan"), ""):
+        _system, user = rules.build_read_messages(
+            {"company_type": "operating", "currency": absent, "ebit_margin_pct": 24.0},
+            rules.VERDICT_GREEN,
+        )
+        assert "Currency this company trades in:" not in user
+        # whole words: "nan" is a substring of "financially", "None" of "None-the-less"
+        assert not re.search(r"\b(None|nan|NaN)\b", user)
+
+
+def test_currency_is_hashed_so_a_corrected_currency_regenerates_the_read() -> None:
+    """The prompt names the currency and the read quotes it, so it must move the hash.
+    Otherwise a card whose currency is corrected upstream keeps prose naming the old one."""
+    base = {"company_type": "operating", "ebit_margin_pct": 24.0, "currency": "USD"}
+    usd = rules.compute_input_hash(base, rules.VERDICT_GREEN)
+    eur = rules.compute_input_hash({**base, "currency": "EUR"}, rules.VERDICT_GREEN)
+    assert usd != eur
+
+
+def test_gbp_case_change_alone_does_not_churn_every_ftse_read() -> None:
+    # GBp and GBP render identically on the card, so they must hash identically: a harmless
+    # upstream case change should not force ~90 needless Haiku calls.
+    base = {"company_type": "operating", "ebit_margin_pct": 24.0}
+    assert rules.compute_input_hash({**base, "currency": "GBp"}, rules.VERDICT_GREEN) == (
+        rules.compute_input_hash({**base, "currency": "GBP"}, rules.VERDICT_GREEN)
+    )
+
+
+# --- The one-sided growth axis, as the prose must state it ---------------------------------
+
+def test_system_prompt_scopes_the_per_unit_idiom_to_margins_only() -> None:
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "a margin is a percentage, not money" in system
+    assert 'the currency given on the "currency this company trades in" line below' in system
+    # returns and growth have different denominators, so the idiom must not reach them
+    assert "returns and growth are not amounts per unit of revenue" in system
+
+
+def test_system_prompt_tells_the_model_what_to_do_with_no_currency() -> None:
+    # Fails open otherwise: the rule points at a currency "named above" that isn't there,
+    # which is the guess that produced the defect in the first place.
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "if there is no such line" in system
+    assert "do not phrase it per unit of money at all" in system
+
+
+def test_system_prompt_bars_blaming_the_verdict_on_positive_growth() -> None:
+    """The verdict downgrades only on an actual decline (GROWTH_DECLINE_THRESHOLD_PCT is
+    0.0), so prose blaming the badge on positive growth supplies a reason the badge does not
+    contain, and re-establishes the two-sided axis the design forbids. It must NOT go further
+    and deny that a flat top line is a weakness at all: +0.2% is a real-terms decline."""
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "never give it as the reason the verdict is not green" in system
+    assert "describing a nearly flat top line accurately is fine" in system
+    assert "never a weakness" not in system
+
+
+def test_system_prompt_pins_the_growth_period_to_one_quarter() -> None:
+    """`revenue_growth_yoy_pct` is the latest reported quarter against the same quarter a
+    year earlier, not a full year (seed `description` and `learn` both say so). This rule is
+    the only place the prompt states the period, so a wrong one here reaches every read."""
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "latest reported quarter" in system
+    assert "one quarter's change, never a full year's" in system
+
+
+def test_system_prompt_bars_profit_per_item() -> None:
+    # A margin is per unit of REVENUE. "per unit sold" is profit per item, a different
+    # number the model has no volume data to compute, so it could only fabricate it.
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "per unit of revenue, never per item sold" in system
+
+
+def test_bank_only_metric_copy_never_says_sales() -> None:
+    """`net_margin_pct` and `roa_pct` render ONLY on financial cards, where revenue is net
+    interest plus fees rather than sales. Catalogue copy for them must not say "sale"."""
+    financial_only = [
+        row for row in _catalogue_rows()
+        if row["applies_to"].strip() == "financial"
+    ]
+    assert financial_only, "expected at least one financial-only metric"
+    for row in financial_only:
+        for field in _VISIBLE_COPY_FIELDS:
+            assert not re.search(r"\bsales?\b", row[field], re.I), (
+                f"{row['metric_id']}.{field} says 'sale' on a bank-only metric: {row[field]!r}"
+            )
+
+
+def test_system_prompt_names_no_specific_currency() -> None:
+    """The prompt is shared by all ~921 cards across five markets. A worked example naming a
+    real currency ("24 cents in every dollar") is the same pressure that produced the defect:
+    it seeds one market's currency into every other market's read."""
+    assert not _names_a_currency(rules.READ_SYSTEM_PROMPT)
+
+
+def test_catalogue_user_visible_copy_names_no_currency() -> None:
+    """The seed is the source of truth for the card FACE via frontend/metrics.json. Without
+    this, the next seed edit can put "each dollar of sales" back in front of a Japanese
+    reader with CI green: nothing else checks these fields."""
+    for row in _catalogue_rows():
+        for field in _VISIBLE_COPY_FIELDS:
+            value = row.get(field) or ""
+            assert not _names_a_currency(value), (
+                f"{row['metric_id']}.{field} names a currency on the card face: {value!r}"
+            )
+
+
+def test_prompt_pointer_names_a_line_the_message_actually_contains() -> None:
+    """The system prompt points the model at a named line. If the user message ever stops
+    emitting that exact label, the pointer dangles and the currency rule loses its anchor."""
+    _system, user = rules.build_read_messages(
+        {"company_type": "operating", "currency": "AUD", "ebit_margin_pct": 24.0},
+        rules.VERDICT_GREEN,
+    )
+    label = "Currency this company trades in"
+    assert label in user
+    assert label.lower() in rules.READ_SYSTEM_PROMPT.lower()

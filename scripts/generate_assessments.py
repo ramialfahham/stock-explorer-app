@@ -43,8 +43,9 @@ READ_MODEL = "claude-haiku-4-5"
 READ_MAX_TOKENS = 256
 
 # Union of every per-type card metric (derived from the rules module so it can't drift),
-# plus the keys the verdict/hash and dedupe need. `currency` is carried only so the 5b
-# read can name the money amounts in the card's own currency (it is NOT hashed/scored).
+# plus the keys the verdict/hash and dedupe need. `currency` is named to the model whenever
+# it is present, on every card type, and is part of the input hash, so a corrected currency
+# regenerates the read.
 _METRIC_COLUMNS = sorted({m for fields in INPUT_FIELDS_BY_TYPE.values() for m in fields})
 ASSESSMENT_INPUT_COLUMNS = [
     "market_code",
