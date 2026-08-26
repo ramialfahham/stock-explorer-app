@@ -3,15 +3,19 @@
 A ticker is **card-eligible** when its `company_type`'s required metrics are all non-null. The
 required set is per company type (the Sector/Lifecycle Router):
 
-- **operating** — all five discovery metrics:
-  1. `forward_pe` — Yahoo `forwardPE`
-  2. `ebit_margin_pct` — TTM sum of four quarterly Operating Income / Total Revenue × 100
-  3. `revenue_growth_yoy_pct` — `revenueGrowth × 100`
-  4. `net_debt_to_ebitda` — `netDebt / ebitda` (both required; no statement fallback)
-  5. `fcf_margin_pct` — latest annual `Free Cash Flow / Total Revenue × 100`
-- **financial** (banks) — the core three: `forward_pe` + `statement_roe_pct` + `net_margin_pct`
+- **operating** — all four discovery metrics:
+  1. `ebit_margin_pct` — TTM sum of four quarterly Operating Income / Total Revenue × 100
+  2. `revenue_growth_yoy_pct` — `revenueGrowth × 100`
+  3. `net_debt_to_ebitda` — `netDebt / ebitda` (both required; no statement fallback)
+  4. `fcf_margin_pct` — latest annual `Free Cash Flow / Total Revenue × 100`
+- **financial** (banks) — the pair: `statement_roe_pct` + `net_margin_pct`
   (the operating solvency/cash metrics are unsourceable for banks).
-- **pre_revenue** — `net_cash_to_market_cap` (compare cash to price; the operating metrics break for revenue ≤ 0).
+- **pre_revenue** — `net_cash` (cash minus total debt; the operating metrics break for revenue ≤ 0).
+
+`forward_pe` left the operating and financial sets on 2026-08-26, and pre_revenue moved off
+`net_cash_to_market_cap`, when all three price-carrying metrics were dropped from the
+catalogue. A card must not be gated on a metric it does not display. Both changes WIDEN
+eligibility: no forward P/E is required, and a pre-revenue company no longer needs a market cap.
 
 Missing any required metric excludes the ticker from the Streamlit discovery queue.
 See `docs/data_contract.md` for the canonical per-type definition.

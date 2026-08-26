@@ -1,28 +1,6 @@
 {
   "metrics": [
     {
-      "metric_id": "forward_pe",
-      "label": "Forward P/E",
-      "description": "Price relative to expected next-year earnings; sourced from ticker.info forwardPE.",
-      "calculation": "Share price ÷ forecast earnings per share for next year (Yahoo forwardPE).",
-      "interpretation": "Higher = the market pays more per dollar of expected profit (priced for quality/growth, or simply expensive). Always read next to growth.",
-      "applicability": "Undefined for loss-makers (negative or near-zero forecast earnings): the value is meaningless, not \"cheap.\"",
-      "format": "ratio_1",
-      "perspective": "valuation",
-      "direction": "lower_better",
-      "basis_column": "",
-      "gloss": "Price vs expected next-year earnings",
-      "analogy": "Think payback time: how many years of expected earnings are priced into one share today.",
-      "learn": "P/E (price-to-earnings) divides the share price by earnings per share. Forward P/E uses analyst estimates for next year's earnings, not last year's results. A higher number often means investors expect faster growth, or are paying a premium today. A lower number can mean the stock is genuinely cheap, or that investors expect slower growth ahead.",
-      "importance_tier": 1,
-      "display_order": 1,
-      "benchmarkable": true,
-      "applies_to": [
-        "operating",
-        "financial"
-      ]
-    },
-    {
       "metric_id": "ebit_margin_pct",
       "label": "Operating margin (TTM)",
       "description": "TTM operating income divided by TTM total revenue (four quarterly statements), times 100; falls back to latest annual when four quarters are unavailable, with the basis recorded in ebit_margin_basis. Not Yahoo's single-quarter operatingMargins.",
@@ -172,27 +150,6 @@
       ]
     },
     {
-      "metric_id": "price_to_tangible_book",
-      "label": "Price / tangible book",
-      "description": "Market value relative to tangible book value (equity minus goodwill and other intangibles), from the latest annual balance sheet.",
-      "calculation": "Market cap ÷ tangible book value (latest annual balance sheet).",
-      "interpretation": "Lower = you pay less per dollar of hard, tangible net worth. For banks it is a core valuation yardstick; below 1 can signal doubts about asset quality.",
-      "applicability": "Tangible book value is equity minus goodwill and other intangibles, a key yardstick for banks. Not shown when intangibles exceed equity (tangible book zero or negative): the ratio would be meaningless.",
-      "format": "ratio_2",
-      "perspective": "valuation",
-      "direction": "lower_better",
-      "basis_column": "",
-      "gloss": "Price vs hard book value",
-      "analogy": "Like paying for a house versus its rebuild-from-scratch value: how far above (or below) the tangible net worth is the price?",
-      "learn": "Tangible book value strips goodwill and other intangibles out of shareholders' equity, leaving the hard net worth. Price-to-tangible-book divides market value by that figure. Banks are valued heavily on this: near or below 1 means the market is cautious about the balance sheet.",
-      "importance_tier": 1,
-      "display_order": 9,
-      "benchmarkable": false,
-      "applies_to": [
-        "financial"
-      ]
-    },
-    {
       "metric_id": "net_margin_pct",
       "label": "Net margin",
       "description": "Bottom-line profit (after everything) as a percent of revenue, from the latest annual statements.",
@@ -235,40 +192,19 @@
       ]
     },
     {
-      "metric_id": "dividend_yield_pct",
-      "label": "Dividend yield",
-      "description": "Annual dividend as a percent of the share price (Yahoo dividendYield, already in percent).",
-      "calculation": "Annual dividend per share ÷ share price × 100 (Yahoo dividendYield).",
-      "interpretation": "Higher = more cash returned per dollar invested. A very high yield can mean a falling price or a payout under strain, not just generosity.",
-      "applicability": "Cash paid to shareholders as a percent of the share price. A very high yield can flag a falling price or a payout at risk, not just generosity. Absent when the company pays no dividend.",
-      "format": "percent_1",
-      "perspective": "returns",
+      "metric_id": "net_cash",
+      "label": "Net cash",
+      "description": "Cash on hand minus total debt, from the latest annual balance sheet: what is left if every borrowing were repaid today.",
+      "calculation": "Cash and equivalents minus total debt (latest annual balance sheet).",
+      "interpretation": "Positive = more cash than borrowings. Negative = borrowings exceed the cash counted here. Read it next to the size of the business: a large amount is not automatically a long cushion.",
+      "applicability": "Cash and equivalents minus total debt, as a money amount. Total debt means borrowings and leases, not every bill the company owes, and the cash figure excludes short-term investments, so a company holding its money in marketable securities can look worse than it is. A money amount is not comparable between companies of different sizes: read it against the burn rate.",
+      "format": "currency_compact",
+      "perspective": "cash",
       "direction": "higher_better",
       "basis_column": "",
-      "gloss": "Annual dividend vs share price",
-      "analogy": "Like the interest a savings account pays, except the dividend can be cut and the share price moves.",
-      "learn": "Dividend yield is the annual dividend divided by the share price. It is the cash income a share throws off, before any price change. A high yield can simply mean the price fell, or that the payout is at risk, not generosity.",
-      "importance_tier": 2,
-      "display_order": 12,
-      "benchmarkable": false,
-      "applies_to": [
-        "financial"
-      ]
-    },
-    {
-      "metric_id": "net_cash_to_market_cap",
-      "label": "Net cash vs price",
-      "description": "Net cash (cash minus debt) as a fraction of the market price (market cap), from the latest balance sheet.",
-      "calculation": "(Cash − total debt) ÷ market cap.",
-      "interpretation": "Higher = more of the market price is backed by spare cash. Above 1 means the company holds more net cash than its whole market price: it is trading below its cash.",
-      "applicability": "Cash minus debt, divided by the company's market price (market cap). A cushion for a company not yet profitable. Goes negative when debt exceeds cash (a net-debt position).",
-      "format": "ratio_2",
-      "perspective": "valuation",
-      "direction": "higher_better",
-      "basis_column": "",
-      "gloss": "Net cash as a share of the market price",
-      "analogy": "Like buying something and finding a chunk of the price is just cash in the drawer.",
-      "learn": "For a company that is not profitable yet, cash is the lifeline. This divides its net cash (cash minus debt) by its market price. A high figure, especially above 1, means a large share of the price, or more than all of it, is simply cash on the balance sheet. Higher is safer here.",
+      "gloss": "Cash left after clearing all debt",
+      "analogy": "Like your savings minus your loans. Not your net worth, and not every bill you owe, just cash against borrowings.",
+      "learn": "Net cash is cash and equivalents minus total debt. For a company that is not profitable yet, cash is the lifeline, and this shows how much of it is not already owed to lenders. Positive means the cash counted here is larger than the borrowings; negative means the reverse. Two limits matter. Total debt covers borrowings and leases, not payables or other obligations, so this is not everything the company owes. And the cash figure is the narrow one, excluding short-term investments, which is where many young companies actually park their money. Read it alongside the burn rate: a big number is only a long cushion if the company spends slowly.",
       "importance_tier": 1,
       "display_order": 13,
       "benchmarkable": false,

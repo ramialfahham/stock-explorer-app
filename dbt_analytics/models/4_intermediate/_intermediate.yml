@@ -24,16 +24,14 @@ models:
             expression: >-
               is_card_eligible = case company_type
                 when 'financial' then (
-                  forward_pe is not null
-                  and statement_roe_pct is not null
+                  statement_roe_pct is not null
                   and net_margin_pct is not null
                 )
                 when 'pre_revenue' then (
-                  net_cash_to_market_cap is not null
+                  net_cash is not null
                 )
                 else (
-                  forward_pe is not null
-                  and ebit_margin_pct is not null
+                  ebit_margin_pct is not null
                   and revenue_growth_yoy_pct is not null
                   and net_debt_to_ebitda is not null
                   and fcf_margin_pct is not null
@@ -186,13 +184,24 @@ models:
         description: >
           Net cash relative to enterprise value: (stmt_cash_and_equivalents - stmt_total_debt) /
           (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents). Guarded against zero EV.
-          Data-only — superseded on the pre-revenue card by net_cash_to_market_cap (which avoids the
-          negative-EV sign flip when net cash exceeds EV); not in the catalogue or export.
+          Data-only — superseded on the pre-revenue card by net_cash (a money amount); not in the
+          catalogue or export.
       - name: net_cash_to_market_cap
         description: >
           Net cash relative to market cap: (stmt_cash_and_equivalents - stmt_total_debt) /
-          info_market_cap. Guarded against zero market cap. Monotonic (no sign flip). Pre-revenue-card
-          valuation metric; the pre_revenue eligibility metric; catalogued + exported.
+          info_market_cap. Guarded against zero market cap. Monotonic (no sign flip). Superseded on
+          2026-08-26 by net_cash: this ratio divides by market cap, so it moves with the share price,
+          which a twice-monthly pipeline cannot keep current. Still computed and exported; NO LONGER
+          catalogued, so no card renders it, and no longer part of eligibility.
+      - name: net_cash
+        description: >
+          Net cash as a money amount in the company's reporting currency:
+          stmt_cash_and_equivalents - stmt_total_debt, null unless both are present. Pre-revenue-card
+          cash metric and the pre_revenue eligibility key since 2026-08-26; catalogued + exported.
+          Positive means more cash than borrowings. Two limits the user-facing copy also states:
+          stmt_total_debt is borrowings and leases, not every obligation, and
+          stmt_cash_and_equivalents is the narrow row excluding short-term investments, so a
+          company holding its money in marketable securities reads lower than it really is.
       - name: company_type
         description: >
           Lifecycle/sector classification for the Sector Router: financial when
@@ -210,9 +219,11 @@ models:
                 values: ["operating", "financial", "pre_revenue"]
       - name: is_card_eligible
         description: >
-          True when the company_type's required metrics are present (operating: the five-metric AND;
-          financial: forward_pe + statement_roe_pct + net_margin_pct; pre_revenue: net_cash_to_market_cap);
-          false excludes ticker from discovery queue.
+          True when the company_type's required metrics are present (operating: a four-metric AND;
+          financial: statement_roe_pct + net_margin_pct; pre_revenue: net_cash). forward_pe was
+          dropped from the operating and financial sets on 2026-08-26 because a card must not be
+          gated on a metric it no longer displays, which widens eligibility. False excludes the
+          ticker from the discovery queue.
       - name: missing_metrics
         description: >
           VARCHAR list of card metric column names that are null for this snapshot.
@@ -288,10 +299,10 @@ models:
           Median forward_pe among eligible peers. Null when sector_peer_count < 8.
       - name: sector_min_forward_pe
         description: >
-          Minimum forward_pe among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue on 2026-08-26; the column is kept, unused. Null when sector_peer_count < 8.
       - name: sector_max_forward_pe
         description: >
-          Maximum forward_pe among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue on 2026-08-26; the column is kept, unused. Null when sector_peer_count < 8.
       - name: sector_median_ebit_margin_pct
         description: >
           Median ebit_margin_pct among eligible peers. Null when sector_peer_count < 8.
@@ -610,8 +621,8 @@ unit_tests:
               currency: GBP,
             }
     expect:
-      # HSBA is financial; per-type eligibility (4b) judges it on the financial core three
-      # (forward_pe + statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs
+      # HSBA is financial; per-type eligibility (4b) judges it on the financial required pair
+      # (statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs
       # (it targets the annual ebit_margin fallback), so it lacks statement ROE and net margin and is
       # ineligible — but ebit_margin still falls back to the annual figure correctly.
       rows:
@@ -667,8 +678,8 @@ unit_tests:
             }
     expect:
       # This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
-      # inputs. Under per-type eligibility (4b) LLOY is financial and judged on the financial core three
-      # (forward_pe + statement_roe_pct + net_margin_pct); lacking statement ROE and net margin it is
+      # inputs. Under per-type eligibility (4b) LLOY is financial and judged on the financial required pair
+      # (statement_roe_pct + net_margin_pct); lacking statement ROE and net margin it is
       # ineligible — but ebit_margin is still computed correctly from operating revenue - expense.
       rows:
         - {
@@ -970,9 +981,9 @@ unit_tests:
             debt_to_equity: -0.5,
             statement_roe_pct: 20.0,
           }
-  - name: card_metrics_financial_eligibility_core_three
-    # Per-type eligibility (Router 4b): a financial is eligible on the core three (forward_pe +
-    # statement_roe_pct + net_margin_pct). BANKOK has all three -> eligible; BANKNO lacks revenue
+  - name: card_metrics_financial_eligibility_required_pair
+    # Per-type eligibility (Router 4b): a financial is eligible on the required pair
+    # (statement_roe_pct + net_margin_pct). BANKOK has both -> eligible; BANKNO lacks revenue
     # so net_margin_pct is null -> ineligible, even as a financial.
     model: int_stock__card_metrics
     given:
@@ -1004,16 +1015,47 @@ unit_tests:
     expect:
       rows:
         - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
+  - name: card_metrics_eligibility_no_longer_needs_forward_pe
+    # The headline effect of the 2026-08-26 change, pinned. Before it, an operating or financial
+    # company with a null forward_pe was INELIGIBLE and never reached a card; now it qualifies on
+    # the remaining metrics alone. Nothing else in the suite covers this: the CI fixture set has
+    # forward_pe populated on every row, so the eligibility change passed a green build without a
+    # single row exercising the difference. OPNOPE is operating with no forward P/E, FINNOPE is a
+    # bank with none; both must now be eligible. PRENOCAP is the pre-revenue half of the same
+    # story -- no market cap at all, which used to make net_cash_to_market_cap null and the card
+    # ineligible, and which net_cash does not need.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: OPNOPE, snapshot_date: "2026-01-01", info_sector: Technology, stmt_total_revenue: 1000.0, info_forward_pe: null, info_revenue_growth: 0.1, info_net_debt: 200.0, info_ebitda: 400.0, stmt_operating_income: 250.0, stmt_free_cash_flow: 150.0}
+          - {market_code: us_sp500, ticker: FINNOPE, snapshot_date: "2026-01-01", info_sector: "Financial Services", stmt_total_revenue: 1000.0, info_forward_pe: null, stmt_net_income: 200.0, stmt_net_income_common: 200.0, stmt_stockholders_equity: 1000.0}
+          - {market_code: us_sp500, ticker: PRENOCAP, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, stmt_cash_and_equivalents: 900.0, stmt_total_debt: 400.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: OPNOPE, company_name: Op No PE, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: FINNOPE, company_name: Fin No PE, sector: "Financial Services", currency: USD}
+          - {market_code: us_sp500, ticker: PRENOCAP, company_name: Pre No Cap, sector: Healthcare, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: OPNOPE, company_type: operating, is_card_eligible: true, net_cash: null}
+        - {market_code: us_sp500, ticker: FINNOPE, company_type: financial, is_card_eligible: true, net_cash: null}
+        - {market_code: us_sp500, ticker: PRENOCAP, company_type: pre_revenue, is_card_eligible: true, net_cash: 500.0}
   - name: card_metrics_pre_revenue_eligibility_net_cash
-    # Per-type eligibility (Router 4c): a pre_revenue company is eligible when net_cash_to_market_cap is
-    # computable (has market cap + cash + debt). PREOK has all three -> eligible; PRENO lacks market
-    # cap -> net_cash_to_market_cap null -> ineligible. Both classify pre_revenue (Healthcare, revenue 0).
+    # Per-type eligibility (Router 4c): a pre_revenue company is eligible when net_cash is computable
+    # (has cash + debt). PREOK has both -> eligible; PRENO lacks cash -> net_cash null -> ineligible.
+    # Both classify pre_revenue (Healthcare, revenue 0).
+    #
+    # Changed 2026-08-26 with the switch from net_cash_to_market_cap to net_cash. PRENO used to be the
+    # missing-MARKET-CAP case, because the old ratio divided by it. It no longer does, so a missing
+    # market cap cannot make a pre-revenue card ineligible any more -- that is the intended effect of
+    # taking the share price out, and it means MORE pre-revenue companies qualify than before.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
         rows:
           - {market_code: us_sp500, ticker: PREOK, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, info_market_cap: 5000.0, stmt_cash_and_equivalents: 2100.0, stmt_total_debt: 100.0}
-          - {market_code: us_sp500, ticker: PRENO, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, stmt_cash_and_equivalents: 2100.0, stmt_total_debt: 100.0}
+          - {market_code: us_sp500, ticker: PRENO, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, info_market_cap: 5000.0, stmt_total_debt: 100.0}
       - input: ref('dim_stock')
         rows:
           - {market_code: us_sp500, ticker: PREOK, company_name: Pre OK, sector: Healthcare, currency: USD}
@@ -1028,7 +1070,7 @@ unit_tests:
     # must flip to the pre_revenue eligibility branch correctly too, exactly like a company that
     # classifies pre_revenue via the original revenue <= 0 branch above. DYL-like: revenue $1,000
     # against a $2,000,000 market cap (0.05%, under the floor), with cash/debt present so
-    # net_cash_to_market_cap is computable -- matches real DYL, which has this field populated.
+    # net_cash is computable -- matches real DYL, which has cash and debt populated.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')

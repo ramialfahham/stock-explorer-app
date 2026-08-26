@@ -2,8 +2,10 @@
 
 Pure, no I/O. The verdict COLOR is decided here by transparent rules — never by the
 LLM (5b writes only the prose read). The verdict measures **financial health /
-resilience** from the card's own numbers; it deliberately excludes valuation (P/E,
-P/TBV) and growth, and it is **not** investment advice.
+resilience** from the card's own numbers; it deliberately excludes growth, and it is
+**not** investment advice. It used to exclude valuation too — as of 2026-08-26 there is no
+valuation metric left to exclude, since every price-carrying metric was dropped from the
+catalogue.
 
 `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC` mirror `dbt_analytics/seeds/metric_catalogue.csv`
 (`applies_to` / `direction`) — the same field set 5b hashes and prompts over, so
@@ -48,7 +50,6 @@ INPUT_HASH_VERSION = "5a.2"
 # only the health axes the verdict reads.
 INPUT_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
     "operating": (
-        "forward_pe",
         "ebit_margin_pct",
         "revenue_growth_yoy_pct",
         "net_debt_to_ebitda",
@@ -58,16 +59,13 @@ INPUT_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
         "statement_roe_pct",
     ),
     "financial": (
-        "forward_pe",
         "revenue_growth_yoy_pct",
         "statement_roe_pct",
-        "price_to_tangible_book",
         "net_margin_pct",
         "roa_pct",
-        "dividend_yield_pct",
     ),
     "pre_revenue": (
-        "net_cash_to_market_cap",
+        "net_cash",
         "working_capital",
         "cash_runway_months",
         "burn_rate_monthly",
@@ -76,7 +74,6 @@ INPUT_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
 
 # Direction per metric — mirrors metric_catalogue.csv `direction`.
 DIRECTION_BY_METRIC: dict[str, str] = {
-    "forward_pe": "lower_better",
     "ebit_margin_pct": "higher_better",
     "revenue_growth_yoy_pct": "higher_better",
     "net_debt_to_ebitda": "lower_better",
@@ -84,11 +81,9 @@ DIRECTION_BY_METRIC: dict[str, str] = {
     "debt_to_equity": "lower_better",
     "current_ratio_stmt": "higher_better",
     "statement_roe_pct": "higher_better",
-    "price_to_tangible_book": "lower_better",
     "net_margin_pct": "higher_better",
     "roa_pct": "higher_better",
-    "dividend_yield_pct": "higher_better",
-    "net_cash_to_market_cap": "higher_better",
+    "net_cash": "higher_better",
     "working_capital": "higher_better",
     "cash_runway_months": "higher_better",
     "burn_rate_monthly": "lower_better",
@@ -129,7 +124,11 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 
 # --- Per-type verdict policies (owner-signed §6 bands; conservative worst-axis-wins) ---
 # The verdict is HEALTH/resilience only: leverage, profitability, cash, liquidity, runway.
-# Valuation (forward_pe, price_to_tangible_book) and growth are excluded on purpose.
+# Growth is excluded on purpose. Valuation used to be excluded here too; as of 2026-08-26
+# there is no valuation metric left to exclude -- forward_pe, price_to_tangible_book and
+# dividend_yield_pct were dropped from the catalogue because they carry the share price and
+# this pipeline refreshes twice a month. Step 2 of that work will widen the verdict to read
+# every remaining metric; until then it still reads only the health axes below.
 
 
 def _verdict_operating(row: Mapping[str, Any]) -> str:
@@ -173,7 +172,14 @@ def _verdict_pre_revenue(row: Mapping[str, Any]) -> str:
     runway = "good" if _is_missing(runway_val) else _axis(
         row, "cash_runway_months", weak_th=12.0, good_th=24.0
     )
-    net_cash = _axis(row, "net_cash_to_market_cap", weak_th=0.0, good_th=0.2)
+    # net_cash is a MONEY AMOUNT since 2026-08-26, not the old ratio against market cap, so
+    # there is no scale-free "good" level any more: 0.2 meant "net cash worth a fifth of the
+    # company's market value", and no equivalent exists in currency terms across companies of
+    # different sizes. Both thresholds collapse to zero, i.e. the axis now asks only "is there
+    # more cash than debt". That makes green marginally easier to reach for a pre-revenue
+    # card; the runway and working-capital axes still carry the rest of the judgement.
+    # Flagged to the owner rather than absorbed silently -- see .claude/task/contract.md.
+    net_cash = _axis(row, "net_cash", weak_th=0.0, good_th=0.0)
     working_capital = _axis(row, "working_capital", weak_th=0.0, good_th=0.0)
     if runway == "weak" or net_cash == "weak" or working_capital == "weak":
         return VERDICT_RED
@@ -248,7 +254,7 @@ Rules:
 - Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
 - Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
-- Valuation (P/E, price-to-tangible-book) and growth are context only - never treat a low P/E as "cheap" or high growth as a reason to buy. The verdict measures financial health and resilience only.
+- Growth is context only - never treat high growth as a reason to buy. The verdict measures financial health and resilience only. (Valuation metrics were removed from this app on 2026-08-26, so there is no P/E or price-to-book figure to be given to you at all.)
 - End on the verdict's meaning, phrased as health or fragility on these figures - e.g. "financially healthy on these figures", "a mixed financial picture on these numbers", "financially fragile on these figures". Never phrase it as a good or bad buy.
 - No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
 - Write like a person explaining this to someone they know, not like a model. Avoid the usual tells: no "not just X, but Y", no "it's worth noting" or "it's important to remember", no rhetorical questions, no three-item lists used for rhythm, no sentence that hedges and then pivots for the sake of sounding balanced. Vary your sentence lengths. Say the thing and stop. Plain is not the same as chatty, so stay calm and factual. This rule is about STYLE only: it never overrides the rules above or the company-type lens below. Where one of those requires a limit to be stated - above all the financial-company limit that these numbers cannot judge balance-sheet safety or capital strength - state it plainly and in full. A required caveat is never a tell to be trimmed.
@@ -272,14 +278,9 @@ VERDICT_MEANING: dict[str, str] = {
 # Per-metric beginner brief for the facts block: label + one plain gloss + a value
 # format. Keys MUST cover every field in INPUT_FIELDS_BY_TYPE (a tests/tooling guard
 # asserts it). Wording is drawn from dbt_analytics/seeds/metric_catalogue.csv;
-# valuation / growth / income lines are tagged "context only" so the read never
+# the growth line is tagged "context only" so the read never
 # turns them into a buy cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
 READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
-    "forward_pe": {
-        "label": "Forward P/E",
-        "fmt": "ratio",
-        "gloss": "how many years of expected profit the price reflects - valuation context only, not a health signal; meaningless (not \"cheap\") if the company is a loss-maker",
-    },
     "ebit_margin_pct": {
         "label": "Operating margin",
         "fmt": "pct",
@@ -315,11 +316,6 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
         "fmt": "pct",
         "gloss": "profit earned on the owners' money (higher = more efficient; can look spuriously positive if equity is negative)",
     },
-    "price_to_tangible_book": {
-        "label": "Price / tangible book",
-        "fmt": "ratio",
-        "gloss": "price versus hard net worth - valuation context only, not a health signal",
-    },
     "net_margin_pct": {
         "label": "Net margin",
         "fmt": "pct",
@@ -330,15 +326,10 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
         "fmt": "pct",
         "gloss": "profit earned on everything the company owns (higher = more efficient)",
     },
-    "dividend_yield_pct": {
-        "label": "Dividend yield",
-        "fmt": "pct",
-        "gloss": "annual dividend as a share of the price - income context, not a health signal; a very high yield can flag a falling price or a payout at risk, not just generosity",
-    },
-    "net_cash_to_market_cap": {
-        "label": "Net cash vs price",
-        "fmt": "ratio",
-        "gloss": "spare cash (cash minus debt) as a share of the market price (higher = more cushion; above 1 = more cash than its whole price)",
+    "net_cash": {
+        "label": "Net cash",
+        "fmt": "currency",
+        "gloss": "cash and equivalents minus borrowings, a money amount (positive = more cash than borrowings). Not every obligation, and the cash figure excludes short-term investments; a big number is only a long cushion if the burn is slow",
     },
     "working_capital": {
         "label": "Working capital",

@@ -22,16 +22,6 @@ def _clamp(value: float, *, min_value: float, max_value: float | None = None) ->
     return max(min_value, value)
 
 
-def seed_forward_pe_playground(card: dict[str, Any]) -> tuple[float, float]:
-    default_pe = card.get("forward_pe")
-    default_price = 100.0
-    default_eps = default_price / default_pe if default_pe and default_pe > 0 else 5.0
-    return (
-        _clamp(default_price, min_value=1.0),
-        _clamp(round(default_eps, 2), min_value=0.1),
-    )
-
-
 def seed_net_debt_playground(card: dict[str, Any]) -> tuple[float, float]:
     ratio = card.get("net_debt_to_ebitda")
     default_ebitda = 10.0
@@ -73,29 +63,6 @@ def seed_fcf_margin_playground(card: dict[str, Any]) -> tuple[float, float]:
         _clamp(revenue, min_value=1.0),
         _clamp(round(fcf, 2), min_value=-500.0, max_value=500.0),
     )
-
-
-def _render_forward_pe_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{METRIC_LABELS['forward_pe']}**")
-    default_price, default_eps = seed_forward_pe_playground(card)
-
-    price = st.number_input(
-        "Hypothetical share price ($)",
-        min_value=1.0,
-        value=float(default_price),
-        step=1.0,
-        key=_key(prefix, card, "play_pe_price"),
-    )
-    eps = st.number_input(
-        "Expected earnings per share next year ($)",
-        min_value=0.1,
-        value=float(default_eps),
-        step=0.1,
-        key=_key(prefix, card, "play_pe_eps"),
-    )
-    if eps > 0:
-        simulated = price / eps
-        st.info(f"Simulated forward P/E: **{simulated:.1f}**")
 
 
 def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
@@ -198,9 +165,14 @@ def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
 
 def render_metric_playgrounds(card: dict[str, Any], *, widget_key_prefix: str = "card") -> None:
     """Hypothetical number playgrounds — safe sandbox, no live API calls."""
+    # The P/E playground was removed on 2026-08-26 with forward_pe itself. It looked the
+    # metric up in METRIC_LABELS, which is built from frontend/metrics.json -- dropping the
+    # metric from the catalogue would have made that raise KeyError on every card that opened
+    # "Understand these numbers", since this panel renders unconditionally and P/E was tab 0.
+    # tests/frontend/test_metric_school.py now guards the whole class by scanning this file
+    # for label lookups and checking each id against the catalogue.
     tabs = st.tabs(
         [
-            "P/E",
             "Margin",
             "Growth",
             "Debt",
@@ -208,12 +180,10 @@ def render_metric_playgrounds(card: dict[str, Any], *, widget_key_prefix: str = 
         ]
     )
     with tabs[0]:
-        _render_forward_pe_playground(card, prefix=widget_key_prefix)
-    with tabs[1]:
         _render_ebit_margin_playground(card, prefix=widget_key_prefix)
-    with tabs[2]:
+    with tabs[1]:
         _render_revenue_growth_playground(card, prefix=widget_key_prefix)
-    with tabs[3]:
+    with tabs[2]:
         _render_net_debt_playground(card, prefix=widget_key_prefix)
-    with tabs[4]:
+    with tabs[3]:
         _render_fcf_margin_playground(card, prefix=widget_key_prefix)

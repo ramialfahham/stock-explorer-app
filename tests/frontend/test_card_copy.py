@@ -67,7 +67,7 @@ def test_metric_analogy_and_learn_text_cover_negative_equity() -> None:
 
 
 # --- Universal direction cue (metric_direction / metric_gloss's ". Higher/Lower is
-# better." suffix) -- applies to every catalogued metric, not just the 5 with a range
+# better." suffix) -- applies to every catalogued metric, not just the 4 with a range
 # mark (owner's ceteris-paribus generalization; see card_copy.metric_gloss docstring).
 # Integration smoke checks that build_card_html() renders this live in test_card_ui.py;
 # the branch coverage over metric_direction()/metric_gloss() itself lives here.
@@ -78,11 +78,11 @@ def test_metric_direction_higher_better() -> None:
 
 
 def test_metric_direction_lower_better() -> None:
-    assert metric_direction("forward_pe") == "lower"
+    assert metric_direction("net_debt_to_ebitda") == "lower"
 
 
 def test_metric_direction_unknown_metric_defaults_neutral() -> None:
-    """Defensive fallback -- no catalogued metric is actually 'neutral' today (all 16
+    """Defensive fallback -- no catalogued metric is actually 'neutral' today (all 13
     are higher_better or lower_better), but an unrecognized id must not raise or
     silently pick a direction it has no basis for."""
     assert metric_direction("not_a_real_metric") == "neutral"
@@ -93,12 +93,12 @@ def test_metric_gloss_appends_higher_is_better_cue() -> None:
 
 
 def test_metric_gloss_appends_lower_is_better_cue() -> None:
-    assert metric_gloss("forward_pe", 18.0).endswith(". Lower is better.")
+    assert metric_gloss("burn_rate_monthly", 1.0e6).endswith(". Lower is better.")
 
 
 def test_metric_gloss_cue_applies_without_a_range_mark() -> None:
     """The cue is universal now -- it does not depend on whether this metric is one of
-    the 5 with a sector range mark. working_capital has no range mark at all."""
+    the 4 with a sector range mark. working_capital has no range mark at all."""
     assert metric_gloss("working_capital", 2_100_000_000.0).endswith(". Higher is better.")
 
 
@@ -119,7 +119,7 @@ def test_metric_gloss_net_cash_suppresses_the_cue() -> None:
 
 def test_metric_perspective_label_title_cases_the_catalogue_lens() -> None:
     assert metric_perspective_label("ebit_margin_pct") == "Profitability"
-    assert metric_perspective_label("forward_pe") == "Valuation"
+    assert metric_perspective_label("net_debt_to_ebitda") == "Solvency"
 
 
 def test_metric_perspective_label_unknown_metric_is_blank() -> None:
@@ -218,18 +218,22 @@ def test_metrics_for_card_operating_includes_new_metrics_in_order() -> None:
 def test_metrics_for_card_financial_omits_bank_inapplicable() -> None:
     metrics = metrics_for_card(_full_card("financial"))
     assert _BANK_INAPPLICABLE.isdisjoint(metrics)
-    assert "forward_pe" in metrics  # valuation still applies to banks
+    # No valuation metric survives on any card: forward_pe, price_to_tangible_book and
+    # dividend_yield_pct were dropped on 2026-08-26 for carrying the share price.
+    for dropped in ("forward_pe", "price_to_tangible_book", "dividend_yield_pct"):
+        assert dropped not in metrics
 
 
-# The bank card (4b): 7 metrics, lens-grouped (valuation, valuation, profitability, growth, returns×3).
+# The bank card: 4 metrics, lens-grouped (profitability, growth, returns x2). Was 7 until
+# 2026-08-26, when the three price-carrying metrics were dropped. Three of the four that
+# remain are what the bank verdict reads; revenue_growth_yoy_pct is NOT -- the verdict
+# excludes growth on purpose. So valuation now satisfies the rule "if we don't use it for the
+# verdict we don't show it" and growth still does not. That is step 2's job.
 _BANK_CARD = (
-    "forward_pe",
-    "price_to_tangible_book",
     "net_margin_pct",
     "revenue_growth_yoy_pct",
     "statement_roe_pct",
     "roa_pct",
-    "dividend_yield_pct",
 )
 
 
@@ -241,17 +245,22 @@ def test_metrics_for_card_financial_omits_operating_only_and_the_new_bank_metric
     financial = set(metrics_for_card(_full_card("financial")))
     operating = set(metrics_for_card(_full_card("operating")))
     # the 4 new bank metrics render on the bank card, not the operating card
-    for metric in ("price_to_tangible_book", "net_margin_pct", "roa_pct", "dividend_yield_pct"):
+    for metric in ("net_margin_pct", "roa_pct"):
         assert metric in financial and metric not in operating
     # operating solvency/cash metrics are not on the bank card
     for metric in ("ebit_margin_pct", "net_debt_to_ebitda", "fcf_margin_pct"):
         assert metric in operating and metric not in financial
 
 
-# The pre-revenue survival card (4c): 4 metrics, lens-grouped (valuation, liquidity, cash, cash).
+# The pre-revenue survival card (4c): 4 metrics, lens-grouped (liquidity, cash x3). net_cash
+# replaced net_cash_to_market_cap on 2026-08-26 -- same cash-minus-debt idea, as a money
+# amount rather than a ratio against market cap, so no share price is involved. That also
+# moved its lens from valuation to cash, which is why it now renders AFTER working_capital
+# (liquidity sorts before cash) rather than first. Cash-minus-debt is a cash figure; it only
+# sat under valuation while it was measured against the share price.
 _PRE_REVENUE_CARD = (
-    "net_cash_to_market_cap",
     "working_capital",
+    "net_cash",
     "cash_runway_months",
     "burn_rate_monthly",
 )
@@ -264,8 +273,8 @@ def test_metrics_for_card_pre_revenue_is_the_survival_set() -> None:
 def test_metrics_for_card_pre_revenue_omits_operating_and_financial_metrics() -> None:
     pre = set(metrics_for_card(_full_card("pre_revenue")))
     for metric in (
-        "forward_pe", "ebit_margin_pct", "net_debt_to_ebitda", "fcf_margin_pct",
-        "price_to_tangible_book", "roa_pct", "dividend_yield_pct", "statement_roe_pct",
+        "ebit_margin_pct", "net_debt_to_ebitda", "fcf_margin_pct",
+        "roa_pct", "statement_roe_pct",
     ):
         assert metric not in pre
 
@@ -304,7 +313,7 @@ def test_metrics_for_card_tier_split() -> None:
     tier2 = metrics_for_card(card, tier=2)
     assert set(tier1).isdisjoint(tier2)
     assert set(tier1) | set(tier2) == set(metrics_for_card(card))
-    assert "forward_pe" in tier1  # hero three
+    assert "ebit_margin_pct" in tier1  # tier-1 metrics render on the card face
     assert "statement_roe_pct" in tier2  # balance metric below the fold
 
 

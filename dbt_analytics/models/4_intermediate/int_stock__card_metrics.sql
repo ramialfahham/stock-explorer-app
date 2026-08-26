@@ -221,6 +221,17 @@ metrics as (
                 and s.info_market_cap != 0
                 then (s.stmt_cash_and_equivalents - s.stmt_total_debt) / s.info_market_cap
         end as net_cash_to_market_cap,
+        -- Net cash as a money amount: the same numerator as net_cash_to_market_cap above,
+        -- without the market-cap denominator. It replaces that ratio on the pre-revenue
+        -- card because the ratio moves with the share price, and this pipeline refreshes
+        -- twice a month -- a price-derived figure goes stale in a way the statement-derived
+        -- ones do not. net_cash_to_market_cap itself is KEPT in the warehouse (it is simply
+        -- no longer catalogued, so no card renders it); see .claude/task/contract.md.
+        case
+            when s.stmt_cash_and_equivalents is not null
+                and s.stmt_total_debt is not null
+                then s.stmt_cash_and_equivalents - s.stmt_total_debt
+        end as net_cash,
         case
             when coalesce(s.info_sector, st.sector) = 'Financial Services'
                 then 'financial'
@@ -252,14 +263,18 @@ metrics as (
 
 eligibility as (
     -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a bank-appropriate
-    -- core three, since the operating solvency/cash metrics are unsourceable for them; pre_revenue
-    -- qualifies on net_cash_to_market_cap alone (its survival card); operating keeps the five-metric AND.
+    -- pair, since the operating solvency/cash metrics are unsourceable for them; pre_revenue
+    -- qualifies on net_cash alone (its survival card); operating keeps a four-metric AND.
+    -- forward_pe was dropped from BOTH the financial and operating sets on 2026-08-26: a card
+    -- must not be gated on a metric it does not display, and forward_pe is no longer
+    -- catalogued (owner's call -- it carries the share price, which this twice-monthly
+    -- pipeline cannot keep current). This ADMITS companies Yahoo has no forward P/E for, so
+    -- expect the eligible-card count to rise; that is the intended effect, not a regression.
     select
         *,
         case company_type
             when 'financial' then list_filter(
                 list_value(
-                    if(forward_pe is null, 'forward_pe', null),
                     if(statement_roe_pct is null, 'statement_roe_pct', null),
                     if(net_margin_pct is null, 'net_margin_pct', null)
                 ),
@@ -267,13 +282,12 @@ eligibility as (
             )
             when 'pre_revenue' then list_filter(
                 list_value(
-                    if(net_cash_to_market_cap is null, 'net_cash_to_market_cap', null)
+                    if(net_cash is null, 'net_cash', null)
                 ),
                 metric -> metric is not null
             )
             else list_filter(
                 list_value(
-                    if(forward_pe is null, 'forward_pe', null),
                     if(ebit_margin_pct is null, 'ebit_margin_pct', null),
                     if(revenue_growth_yoy_pct is null, 'revenue_growth_yoy_pct', null),
                     if(net_debt_to_ebitda is null, 'net_debt_to_ebitda', null),
@@ -284,16 +298,14 @@ eligibility as (
         end as missing_metrics,
         case company_type
             when 'financial' then (
-                forward_pe is not null
-                and statement_roe_pct is not null
+                statement_roe_pct is not null
                 and net_margin_pct is not null
             )
             when 'pre_revenue' then (
-                net_cash_to_market_cap is not null
+                net_cash is not null
             )
             else (
-                forward_pe is not null
-                and ebit_margin_pct is not null
+                ebit_margin_pct is not null
                 and revenue_growth_yoy_pct is not null
                 and net_debt_to_ebitda is not null
                 and fcf_margin_pct is not null

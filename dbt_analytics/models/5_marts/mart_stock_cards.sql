@@ -29,6 +29,7 @@ final as (
         m.roa_pct,
         m.dividend_yield_pct,
         m.net_cash_to_market_cap,
+        m.net_cash,
         m.working_capital,
         m.cash_runway_months,
         m.burn_rate_monthly,

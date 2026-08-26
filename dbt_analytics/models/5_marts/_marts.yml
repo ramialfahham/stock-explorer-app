@@ -23,16 +23,14 @@ models:
             expression: >-
               is_card_eligible = case company_type
                 when 'financial' then (
-                  forward_pe is not null
-                  and statement_roe_pct is not null
+                  statement_roe_pct is not null
                   and net_margin_pct is not null
                 )
                 when 'pre_revenue' then (
-                  net_cash_to_market_cap is not null
+                  net_cash is not null
                 )
                 else (
-                  forward_pe is not null
-                  and ebit_margin_pct is not null
+                  ebit_margin_pct is not null
                   and revenue_growth_yoy_pct is not null
                   and net_debt_to_ebitda is not null
                   and fcf_margin_pct is not null
@@ -74,7 +72,9 @@ models:
           Yahoo founded year for card plain-summary prefix; nullable when Yahoo omits it.
       - name: forward_pe
         description: >
-          Card metric 1 — forward P/E (multiple). See data_contract § card metrics.
+          Forward P/E (multiple). No longer catalogued since 2026-08-26 — still computed and
+          exported, no card renders it, and it no longer gates eligibility. See
+          data_contract § card metrics.
       - name: ebit_margin_pct
         description: >
           Card metric 2 — operating margin percent (0–100 scale).
@@ -105,8 +105,8 @@ models:
           for financial-card eligibility.
       - name: price_to_tangible_book
         description: >
-          Financial-card valuation metric — market cap / tangible book value (nullable). Rendered
-          for financials; not part of eligibility.
+          Market cap / tangible book value (nullable). No longer catalogued since 2026-08-26 —
+          still computed and exported, no card renders it, not part of eligibility.
       - name: net_margin_pct
         description: >
           Financial-card profitability metric — net income / revenue × 100 (nullable). Required for
@@ -118,11 +118,16 @@ models:
       - name: dividend_yield_pct
         description: >
           Financial-card income metric — Yahoo dividend yield, already in percent (nullable; null
-          when no dividend). Rendered for financials; not part of eligibility.
+          when no dividend). No longer catalogued since 2026-08-26; still computed and exported, not rendered, not part of eligibility.
       - name: net_cash_to_market_cap
         description: >
-          Pre-revenue-card valuation metric — net cash (cash − debt) / market cap (nullable).
-          Required for pre_revenue-card eligibility.
+          Net cash (cash − debt) / market cap (nullable). Superseded on 2026-08-26 by net_cash;
+          still computed and exported, no longer catalogued and no longer part of eligibility.
+      - name: net_cash
+        description: >
+          Pre-revenue-card cash metric — cash − total debt, a money amount in the company's
+          reporting currency (nullable). Required for pre_revenue-card eligibility since
+          2026-08-26.
       - name: working_capital
         description: >
           Pre-revenue-card liquidity metric — current assets − current liabilities, a currency amount
@@ -137,9 +142,10 @@ models:
           when not burning). Rendered for pre_revenue; not part of eligibility.
       - name: is_card_eligible
         description: >
-          Whether the company_type's required metrics are present (operating on the five-metric set;
-          financial on forward_pe + statement_roe_pct + net_margin_pct; pre_revenue on net_cash_to_market_cap);
-          drives discovery queue inclusion.
+          Whether the company_type's required metrics are present (operating on a four-metric set;
+          financial on statement_roe_pct + net_margin_pct; pre_revenue on net_cash). forward_pe left
+          both sets on 2026-08-26 along with the metric itself, which widens eligibility.
+          Drives discovery queue inclusion.
         data_tests:
           - not_null
       - name: company_type
@@ -161,10 +167,10 @@ models:
           Sector median benchmark for forward P/E; null if peer count < 8.
       - name: sector_min_forward_pe
         description: >
-          Sector minimum for forward P/E (card range mark); null if peer count < 8.
+          Sector minimum for forward P/E; null if peer count < 8. No card renders this mark since forward_pe left the catalogue on 2026-08-26; the column is kept, unused.
       - name: sector_max_forward_pe
         description: >
-          Sector maximum for forward P/E (card range mark); null if peer count < 8.
+          Sector maximum for forward P/E; null if peer count < 8. No card renders this mark since forward_pe left the catalogue on 2026-08-26; the column is kept, unused.
       - name: sector_median_ebit_margin_pct
         description: >
           Sector median benchmark for EBIT margin; null if peer count < 8.
