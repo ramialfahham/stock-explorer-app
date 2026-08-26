@@ -166,54 +166,54 @@ own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
-**OPEN — MR for `feat/drop-price-metrics`: every metric that carries the share price is gone
-from the cards, and the pre-revenue card's net-cash ratio became a money amount.** This is
-**step 1 of 3** in rebuilding the assessment; steps 2 and 3 are NOT started.
+**MERGED — MR !41 (`feat/drop-price-metrics` → `gitlab/main` @ `8bc3f30`): every metric that
+carries the share price is gone from the cards, and the pre-revenue card's net-cash ratio is
+now a money amount.** **Step 1 of 3.** Steps 2 and 3 are NOT started.
 
-**How this came about (the reasoning matters more than the diff):** the owner noticed the card
-showed 8 metrics while the verdict used 6, and led with Forward P/E, which the verdict ignores
-entirely. Their rule: *"If we don't use a metric for the verdict then we don't show it."* Plus,
-on Forward P/E specifically: it carries the share price and this pipeline refreshes twice a
-month, so it is stale by construction in a way statement-derived metrics are not. Checking which
-metrics touch price found three, not one — `forward_pe`, `price_to_tangible_book`,
-`dividend_yield_pct` — plus `net_cash_to_market_cap` on the pre-revenue card.
+**The reasoning, which matters more than the diff.** The owner noticed the card showed 8
+metrics while the verdict used 6, and led with Forward P/E, which the verdict ignores. Their
+rule: *"If we don't use a metric for the verdict then we don't show it."* And Forward P/E
+carries the share price, which a twice-monthly pipeline cannot keep current. Checking which
+metrics touch price found three: `forward_pe`, `price_to_tangible_book`, `dividend_yield_pct`,
+plus `net_cash_to_market_cap` on the pre-revenue card. **13 metrics remain, was 16.** The
+columns are all still computed and exported — they are simply no longer catalogued.
 
-**Why this also settled a design argument.** The agent had objected that widening the verdict to
+**This also settled a design argument.** The agent had objected that widening the verdict to
 include valuation would make a health badge move with the share price, which is a buy signal.
-Removing the price metrics dissolves that: everything left describes the business, so a verdict
-over all of it needs no careful communication to stay advice-free.
+Removing the price metrics dissolves that: everything left describes the business.
 
-**What changed:** three metrics dropped from the catalogue (13 remain, was 16); `net_cash`
-(cash − total debt, a money amount) added through the intermediate model, mart, export and a
-Supabase migration, replacing `net_cash_to_market_cap`; eligibility no longer requires
-`forward_pe` for operating or financial, and pre-revenue keys on `net_cash`.
+**Consequences — expect them, they are not regressions:**
+- **The deck GROWS.** Both eligibility changes are strictly weaker (no forward P/E required; a
+  pre-revenue company no longer needs a market cap). Unmeasurable before a run — the mart holds
+  only eligible rows — so it first shows in the next run's card count, which will exceed 907.
+- **~910+ Haiku reads regenerate on the next run.** Not a version bump: the input hash covers
+  the per-type field set, which changed for all three types.
+- **Bank cards went from 7 metrics to 4.**
 
-**Consequences to expect, not to treat as regressions:**
-- **The deck will GROW.** Eligibility no longer requires a forward P/E, and a pre-revenue
-  company no longer needs a market cap. The size of the increase cannot be measured before a
-  run — the mart stores only eligible rows — so it first appears in the next run's card count.
-- **Every stored AI read regenerates, ~910 Haiku calls.** Not from an `INPUT_HASH_VERSION` bump
-  (still `5a.2`) but because the hash covers the per-type field set, which changed for all three
-  company types. Desirable here (stored reads still discuss a P/E the card no longer shows), but
-  it is real API spend.
-- **Bank cards drop from 7 metrics to 4.** Sparse. Three of the four are what the bank verdict
-  reads; growth still is not, which is step 2's job.
+**Open decisions the owner has NOT ruled on** (all recorded in MR !41):
+1. The `net_cash` user-visible copy. Concept approved, wording not.
+2. `READ_SYSTEM_PROMPT` was reworded — §6 owner-signed content. Two edits forced by the
+   removals (the rule naming P/E as context-only had no P/E left to name).
+3. The pre-revenue verdict's net-cash axis is now BINARY. A money amount has no scale-free
+   "good" level, so both thresholds are zero and the middle band is unreachable. Green is
+   easier to reach for pre-revenue cards.
+4. **The bank card's blind spot.** Its four remaining metrics are all profitability, returns
+   and growth, and no catalogue text says they cannot judge capital adequacy or asset quality.
+   `price_to_tangible_book` carried the only hint. The limit now survives only as an LLM
+   instruction, which CI pins for presence in the PROMPT but never in the generated read — so a
+   card with a null `ai_read` warns nobody. Needs new bank-card copy, which is owner content.
 
-**Still open after this branch — the owner's rule is only half satisfied:** `revenue_growth_yoy_pct`
-is shown on both the operating and bank cards and read by neither verdict. Step 2 (redesign the
-verdict over every remaining metric) is what closes that.
-
-**Steps 2 and 3, agreed and deliberately not started:**
-2. Redesign the verdict to read every metric still on the card, instead of 6 of 8.
-3. Sector-calibrated absolute thresholds. **Percentile ranking was explicitly rejected** by the
-   owner: *"Being in some top percentile can still mean an unhealthy state if the whole sector is
-   in an unhealthy state."* That is correct and it matches practice — rating agencies publish
-   fixed per-industry thresholds, not peer ranks. Measured evidence for why global thresholds
-   fail: Utilities run −6.7% median FCF margin and 5.6x leverage, Real Estate 5.7x, Technology
-   near zero net debt with 19% margins. One global number cannot serve those.
-   **Also found while scoping: `interest_coverage` is ALREADY computed in the pipeline**
-   (`docs/data_contract.md`, EBIT ÷ interest expense) and never catalogued. It is the standard
-   solvency measure this rubric lacks entirely, it is absolute, and the data is already there.
+**Review lesson, worth reading before the next metric rename.** Eight rounds. Three real
+findings: the change would have **crashed the live app** (a P/E playground read a label that no
+longer existed, on a panel that renders on every card, while pytest stayed green because no
+test touched the render path — a guard test now scans that file); the local `dbt build` passed
+**vacuously** because no fixture row had a null `forward_pe`, so the eligibility change was
+tested by nothing (a unit test now pins all three newly-admitted paths); and the `net_cash`
+copy was financially wrong in three ways. **The other five rounds were all stale prose**,
+one or two sites at a time, because each sweep searched for the metric IDs and not for the
+things written ABOUT them — counts ("all 16", "the five metrics"), lens lists, "card range
+mark", worked examples, playground inventories. **Next time: grep for the id, every catalogue
+count, and every phrase describing what the metric does, in one pass, before round 1.**
 
 **MERGED — MR !39 (`feat/separate-assessment-and-description` → `gitlab/main` @ `d0f69d2`):
 the card face now separates the AI assessment from the company description into two labelled
