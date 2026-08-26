@@ -660,6 +660,61 @@ awaiting owner review). Next work here is whatever the owner scopes after Slice 
   touch 6b (Landing/Overflow) or 6c (rendering the new card content). Don't widen a UI-phase PR to cover a
   later phase's scope.
 
+## Step 3: sector-calibrated verdict thresholds (THE next fundamental piece)
+
+Steps 1 and 2 arranged what feeds the verdict. Step 3 is what makes the verdict credible. The
+health thresholds are fixed global numbers: the same margin bar for a supermarket and a software
+company, the same leverage bar for a utility and a retailer. The owner raised this themselves by
+asking where the rules came from and whether professionals use them.
+
+**Honest answer given at the time:** the metrics are standard and the numbers are conventional
+rules of thumb (net debt/EBITDA under 1.5x good and over 3x weak is a real credit convention;
+current ratio, ROE around 10%, bank ROA around 1% are all textbook). What separates them from
+practice is that they are sector-blind, single-snapshot, and thin for banks.
+
+**Percentile ranking was proposed and REJECTED by the owner, correctly:** *"Being in some top
+percentile can still mean an unhealthy state if the whole sector is in an unhealthy state."*
+Do not revive it. It is also not what practitioners use for solvency; it is a relative-valuation
+screening tool. Rating agencies publish per-industry ABSOLUTE thresholds, which is the shape to
+copy.
+
+**Measured evidence for why one global set cannot work** (operating cards, p25/median/p75):
+
+| Sector | EBIT margin | FCF margin | Net debt/EBITDA |
+|---|---|---|---|
+| Utilities | 14.6 / 21.5 / 24.5 | **-15.4 / -6.7 / 0.5** | 3.8 / **5.6** / 6.3 |
+| Real Estate | 18.2 / 29.3 / 45.8 | 16.4 / 35.8 / 51.0 | 4.9 / **5.7** / 7.5 |
+| Technology | 11.2 / 19.4 / 30.8 | 11.2 / 19.0 / 27.7 | -0.2 / **0.5** / 1.5 |
+| Consumer Defensive | 4.4 / 12.1 / 17.5 | 3.1 / 8.2 / 11.6 | 1.3 / 2.5 / 3.2 |
+| Industrials | 7.1 / 11.2 / 18.8 | 5.0 / 9.5 / 14.7 | 0.8 / 1.8 / 2.9 |
+
+Under today's global bars, most of Utilities is structurally red on cash flow and most of Real
+Estate is red on leverage, for being normal examples of their industry.
+
+**The second half: interest coverage.** Operating profit divided by interest expense, i.e. can
+the company service its debt. It is the standard solvency measure and the rubric has nothing
+like it. **`interest_coverage` is ALREADY computed** in
+`int_stock__card_metrics.sql`, but it stops there: it is NOT in `mart_stock_cards`, NOT exported,
+and therefore invisible to the verdict, which reads mart rows. Adding it means a mart column, an
+export column, a Supabase migration, and a catalogue row (and cataloguing it means the card shows
+it, which by the owner's own rule means the verdict must read it).
+
+**Two standard scores checked and NOT usable here:** Altman Z needs retained earnings, which is
+not ingested. Piotroski F needs year-over-year comparisons, and only the latest annual snapshot
+is stored.
+
+**Suggested sequencing, not yet agreed:**
+1. Plumb `interest_coverage` through to the mart and export so its real distribution can be seen.
+   No verdict change yet. Its thresholds cannot be calibrated from data until one run has landed.
+2. Set per-sector thresholds. Open question the owner has not ruled on: all 11 GICS sectors, or a
+   handful of groups (capital-intensive / asset-light / cyclical / financial) to keep the table
+   tractable. Either way the numbers are owner decisions, and there are roughly 6 metrics x N
+   sectors of them.
+3. Measure the verdict shift against live cards before shipping, the way steps 1 and 2 did.
+
+**Do NOT start this by writing code.** The threshold table is the deliverable and it is owner
+content; the code around it is small.
+
 ## Next concrete actions
 
 **Slice 6 (UI redesign) is fully done — 6a, 6b, 6c all merged.** Nothing queued on that track.
