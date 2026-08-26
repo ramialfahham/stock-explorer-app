@@ -197,24 +197,41 @@ def build_learn_panel_body_html(card: dict) -> str:
     )
 
 
+# Card-face section labels. These name the SOURCE of each block, not its topic: the
+# assessment is model-written prose, the description is the company's own text passed
+# through untouched. A reader who cannot tell those apart is the problem these solve.
+# Owner-chosen copy (§6, 2026-08-26) — see .claude/task/contract.md decisions_reserved
+# before rewording either. "AI-written" deliberately, not "AI summary": the read is
+# written from the card's figures, it does not condense a longer text.
+BLOCK_LABEL_ASSESSMENT = "What the numbers say · AI-written"
+BLOCK_LABEL_DESCRIPTION = "About the company"
+
+
+def _block_label_html(text: str) -> str:
+    return f'<p class="ss-block-label">{_esc(text)}</p>'
+
+
 def _company_summary_html(card: dict) -> str:
-    """Card-face preview. When truncated, gets its own inline Read more/Show less right
-    where a reader would click it — not a separate section at the bottom of the learn
-    panel. Short descriptions render plain, nothing more to reveal."""
+    """Card-face preview, in its own labelled block. When truncated, gets its own inline
+    Read more/Show less right where a reader would click it — not a separate section at
+    the bottom of the learn panel. Short descriptions render plain, nothing more to
+    reveal. The wrapper is what visually separates this from the assessment above it, so
+    it is emitted whenever there is any description at all."""
     preview = business_summary_preview(card)
     if not preview:
         return ""
-    if not business_summary_is_truncated(card):
-        return f'<p class="ss-company-summary">{_esc(preview)}</p>'
+    label = _block_label_html(BLOCK_LABEL_DESCRIPTION)
     full = business_summary_full(card)
-    if not full:
-        return f'<p class="ss-company-summary">{_esc(preview)}</p>'
-    return disclosure_html(
-        _esc(preview),
-        f'<p class="ss-company-summary-full">{_esc(full)}</p>',
-        more_label="Read more",
-        less_label="Show less",
-    )
+    if not business_summary_is_truncated(card) or not full:
+        body = f'<p class="ss-company-summary">{_esc(preview)}</p>'
+    else:
+        body = disclosure_html(
+            _esc(preview),
+            f'<p class="ss-company-summary-full">{_esc(full)}</p>',
+            more_label="Read more",
+            less_label="Show less",
+        )
+    return f'<div class="ss-company-block">{label}{body}</div>'
 
 
 def _health_block_html(card: dict) -> str:
@@ -229,9 +246,21 @@ def _health_block_html(card: dict) -> str:
         f'<span class="ss-verdict-label">{_esc(VERDICT_BADGE_LABEL[token])}</span>'
         f"</p>"
     )
+    # The badge comes FIRST, above the label, and that ordering is load-bearing: the
+    # verdict is decided by fixed rules in scripts/assessment_rules.py, never by the model
+    # (see that file's header, docs/data_contract.md and docs/north_star.md, which all say
+    # so). Putting an "AI-written" label above the badge would credit the one auditable,
+    # deterministic part of this block to a language model — exactly backwards. The label
+    # heads the prose, which is the only part a model actually writes, and is omitted
+    # entirely when there is no prose: a verdict can be stored with a null ai_read (5a
+    # writes verdicts; generate_assessments isolates per-card read failures), and a heading
+    # reading "AI-written" over zero AI-written words would be a plain falsehood.
     read = ai_read(card)
-    read_html = f'<p class="ss-ai-read">{_esc(read)}</p>' if read else ""
-    return f'<div class="ss-health-block">{badge}{read_html}</div>'
+    if not read:
+        return f'<div class="ss-health-block">{badge}</div>'
+    label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
+    read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
+    return f'<div class="ss-health-block">{badge}{label}{read_html}</div>'
 
 
 def _metric_stack_with_groups(card: dict, cell_fn) -> str:

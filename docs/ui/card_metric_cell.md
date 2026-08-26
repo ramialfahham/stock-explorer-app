@@ -47,6 +47,11 @@
    close to the number or to the bullet graph." Both rules are scoped
    `.ss-metric .ss-metric-gloss` / `.ss-metric .ss-metric-range-unavailable`, not bare
    single-class selectors — see the anti-pattern below, this isn't cosmetic.
+   Typography (2026-08-26, owner feedback on a live card): `0.78rem` / `--ss-muted` /
+   `line-height: 1.35`, deliberately one step LARGER and LIGHTER than the range mark's own
+   `.ss-metric-range-number` / `.ss-metric-range-word` (`--ss-caption-size` /
+   `--ss-caption`). At matched size and colour the explanation read as a footnote to the
+   bar instead of the point of the cell. Keep the two tiers distinct if either changes.
 
 Deep copy (analogy, learn text) lives in **Understand these numbers** (`st.expander` — one
 panel per card), not in the cell. Inside that panel, the analogy line renders unconditionally
