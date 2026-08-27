@@ -120,8 +120,11 @@ python scripts/check_supabase_connection.py
 
 ---
 
-## Ingestion skill (future)
+## Ingestion skills
 
-When fundamentals ingestion stabilizes, add `.claude/skills/stock-swipe-ingestion/SKILL.md`
-pointing agents at registry, raw-only rule, parquet paths, and market activation checklist.
-Do not derive metrics in Python.
+`.claude/skills/onboard-market/` covers adding or activating a market. It points at the
+activation checklist in [`data_contract.md`](data_contract.md) rather than restating it, and
+carries the traps that are recorded in no other document.
+
+Still uncovered, and worth a skill when ingestion work resumes: the raw-only rule and parquet
+paths.

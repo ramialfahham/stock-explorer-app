@@ -17,6 +17,9 @@ Where a passage below says "all 5 markets", it is recording a measurement taken 
 and is accurate as history.
 
 **Read `docs/data_contract.md`'s market activation checklist before onboarding any of them.**
+The `onboard-market` skill routes you there and carries the two traps no document holds (Wikipedia
+rejecting pandas' default user agent, and the constituent `table_index` being positional and
+silently wrong), but the checklist is the procedure.
 It exists, it is now correct, and France was done without reading it: the result was a missing
 `public.markets` row that would have failed the next production export for every market on a
 foreign key, with CI green throughout. The checklist gained four steps it was missing and lost one escape hatch that never existed
