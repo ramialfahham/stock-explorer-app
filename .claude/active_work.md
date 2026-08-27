@@ -196,8 +196,12 @@ requirements (`ebit_margin_pct`, `revenue_growth_yoy_pct`, `net_debt_to_ebitda`,
 ingestion run or a CI artifact, since the mart holds only eligible rows. They still sit in the
 deck on stale 08-20 rows, so the app shows 924.
 
-**IN FLIGHT: `fix/read-prompt-currency-and-growth`, NOT yet committed.** Fixes the two prose
-defects the run exposed, and was widened with the owner's approval to cover the card copy too.
+**MERGED, MR !47 (`fix/read-prompt-currency-and-growth` -> `gitlab/main` @ `1ab08911`): the
+read names the card's own currency, and the prose no longer blames the verdict on positive
+growth.** Fixed the two prose defects the 2026-08-26 run exposed, widened with the owner's
+approval to cover the card copy too. **The card-face half is LIVE on Render now** (the seed
+generates `frontend/metrics.json`, no pipeline run needed). **The AI-paragraph half is NOT
+live until the next run**, which regenerates all ~921 reads.
 - **Invented currencies, 246 of 921 reads (27%).** 60 S&P 500 cards described US companies in
   pounds and pence, 67 Nikkei cards described Japanese ones in dollars and cents, some hedging
   across both ("2.8p or 2.8c ... for every pound or dollar it sells", CBRE). **Root cause:**
@@ -216,6 +220,25 @@ defects the run exposed, and was widened with the owner's approval to cover the 
   volume as the 2026-08-26 run). Without it the corrected prompt would ship and every stored
   read would keep its defective prose, since the hash never covered the prompt text. Note the
   card-face copy needs no run at all; only the AI paragraph depends on this.
+
+**The next run is the checkpoint for this fix, exactly as the last one was for the previous
+prompt change.** There is still no `ANTHROPIC_API_KEY` locally, so MR !47 proved the PROMPT
+correct and could not prove the PROSE. When the next run lands, re-measure the same way: pull
+`card_assessments` and check that no read names a currency belonging to another market (the
+pre-fix rate was 246 of 921) and that none blames the badge on positive growth (83 of 921).
+The scratchpad scripts that measured it are gone with the session; the queries are simple
+(`market_code` + `ai_read`, regex for currency words, and growth >= 0 against weakness
+language).
+
+**Review lesson from MR !47, worth reading before the next copy change.** Five reviewers,
+five rounds. The single biggest finding was that the fix was HALF a fix: the same "each sales
+dollar" framing was live in the card-face copy, not just the LLM prompt, so fixing the prompt
+alone would have left the identical defect beside it on every non-US card. **When a defect is
+a phrase, grep every layer that renders text BEFORE scoping the branch.** Second: a
+find-and-replace across shared copy has to be checked per `applies_to`, because
+`net_margin_pct` renders only on bank cards and "each sale" is the wrong noun there. Third:
+claims about the diff (test counts, sweep coverage) were wrong three rounds running because
+they were written from memory between edits. Measure them.
 
 **Known limitation recorded, not fixed:** the mart's `currency` is the DISPLAY/trading currency
 (`coalesce(info_currency, dim_stock.currency)`). The real reporting currency is `stmt_currency`,
