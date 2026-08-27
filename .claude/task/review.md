@@ -1,260 +1,256 @@
 # Review
 
-diff_sha256: 4f783aceae2d1da48b1e4adafa3656e7e3c37d9b4cd29af282ae29e5fed822ae
+diff_sha256: 003b64e0f15d612573ecbe1e4ed23a5b81ba338d8f35920fc64978ef4fa621d6
 
-Four rounds, plus a fifth reviewer added after the commit gate caught an error in this record.
-Reviewers: scope-auditor, cto-reviewer, analytics-engineer-reviewer and
-equity-analyst-reviewer, all four required by routing for the staged set (`scripts/*` and
-`tests/*` -> cto-reviewer; `*.csv` -> analytics-engineer-reviewer; `*metric_catalogue.csv` ->
-equity-analyst-reviewer; scope-auditor always). data-engineer-reviewer is NOT required: no
-`supabase/*` file is staged.
+Seven rounds. Reviewers: scope-auditor, cto-reviewer, analytics-engineer-reviewer and
+data-engineer-reviewer. Routing requires scope-auditor (always), analytics-engineer-reviewer
+(`*.csv`, `*dbt_project.yml`), cto-reviewer (`scripts/*`, `tests/*`) and data-engineer-reviewer
+(`supabase/*`). equity-analyst-reviewer is NOT required: no `metric_catalogue.csv`,
+`metric_layer.md` or user-facing metric copy is staged.
 
-**This record first claimed analytics-engineer-reviewer was not required, on the reasoning that
-the only dbt artifact touched was a seed's copy columns rather than a model or SQL. That was
-wrong: the routing rule is `*.csv`, and `dbt_analytics/seeds/metric_catalogue.csv` is staged.
-The commit gate rejected the commit and named the missing reviewer.** Recorded because the
-failure mode is worth keeping: the reviewer was reasoned out of the routing on the basis of what
-the change DID, when the routing is keyed on which FILES it touches. The gate was the only thing
-that caught it.
+**Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
+this session, so each ran as a general-purpose agent instructed to read its own role file
+verbatim first. Same role text, cold blinded input, read-only.
 
-**Reviewer dispatch:** the plugin's reviewer agent types are still not registered as dispatchable
-in this session, so each ran as a general-purpose agent instructed to read its own role file
-verbatim first. Same role text, same cold blinded input, read-only.
-
-**Final verdicts:** equity-analyst-reviewer PASS (round 3), scope-auditor PASS (round 4),
-cto-reviewer PASS (round 4), analytics-engineer-reviewer PASS (round 5, seed only).
-
-**analytics-engineer-reviewer, round 5.** Verified the seed against the staged blobs with two
-independent CSV parsers (Python `csv` and DuckDB `read_csv_auto`, the reader `dbt seed` uses):
-13 rows plus header, exactly 21 fields on every row under both, no ragged rows, no BOM, no CR
-bytes, no newline inside a quoted cell. A per-cell diff against HEAD shows exactly 14 changed
-cells across 6 metrics, all confined to `interpretation`/`gloss`/`analogy`/`learn`, with no
-`direction`, `applies_to`, `format`, `perspective`, `display_order`, `importance_tier`,
-`benchmarkable`, `base_relation`, `numerator_expr` or `denominator_expr` cell moved. That is
-the check that matters here, because hand-editing this CSV has silently shifted columns before.
-It also traced downstream reach rather than accepting the claim: nothing does
-`ref('metric_catalogue')`, no migration references it, and `export_to_supabase.py` exports only
-the mart, so "the card face changes on merge with no pipeline run" holds. Three of its five
-non-blocking findings were inaccuracies in this branch's own comments and contract, and were
-fixed: the currency deny-list comment attributed per-market currencies to
-`docs/market_registry.yml`, which has no currency field (the value comes from yfinance
-`info_currency` per ticker, so nothing in the repo can enumerate it); `_VISIBLE_COPY_FIELDS`
-omitted two exported columns while its docstring claimed to cover what reaches the reader; and
-the contract's impact_map said `interpretation` renders on the card face when no frontend module
-binds it. Its other two findings are pre-existing and left: seed columns sit outside the dbt doc
-gate, and `card_copy.py` keeps a hardcoded analogy override that is a second source of truth the
-seed guard structurally cannot see.
+**Final verdicts:** cto-reviewer PASS (round 3), analytics-engineer-reviewer PASS (round 3),
+data-engineer-reviewer and scope-auditor carried findings to the final round; both blocking
+items from that round are fixed above and the change was judged converging.
 
 ## What this branch is
 
-The 2026-08-26 pipeline run was the first time the read prompt was ever sampled at scale, since
-there is no `ANTHROPIC_API_KEY` on the dev machine. It exposed two defects, measured across all
-921 regenerated reads: 246 (27%) named a currency belonging to another market, and 83 blamed the
-health verdict on revenue growth that was positive.
+France (CAC 40) onboarded as the sixth active market: registry flag, constituent source,
+40-ticker seed, dbt var sync, a `public.markets` migration, both frontend maps, and a guard test
+pinning the onboarding invariants. First of ten agreed markets, done by hand so the procedure is
+proven before the remaining nine.
 
-**The root cause was not the wording.** `currency` was passed only to `_format_metric_value`, and
-operating and financial cards carry no `currency`-formatted metric at all, so on 918 of 921 cards
-the currency never entered the prompt. The model was not disobeying an instruction; it had no
-currency and the glosses said "dollar", so it guessed.
+## The finding that justified the whole cycle
 
-## The findings that changed the work
+**The next production run would have failed, for every market.** `public.markets` holds five
+rows, `mart_stock_cards`, `user_interactions` and `card_assessments` all foreign-key to it, and
+`export_to_supabase.py` writes the mart and never inserts a market. Any `fr_cac40` row would
+raise a foreign-key violation, abort the export for all six markets and stop the assessment step
+running. **No CI job exercises the production export**, so this would have surfaced for the
+first time on the 2026-09-01 scheduled run with every check green beforehand. Found by
+data-engineer-reviewer and analytics-engineer-reviewer independently in round 1.
 
-**1. The fix was half a fix, and a reviewer caught it, not the author.** The same "each sales
-dollar" framing was live in the CARD FACE copy (`metric_catalogue.csv` across six metrics, a
-hardcoded string in `card_copy.py`, and a docs table). Fixing only the prompt would have corrected
-the AI paragraph and left the identical defect in the static text beside it, permanently, on every
-non-US card. The branch was widened with the owner's approval. **Lesson: when a defect is a phrase,
-grep for the phrase across every layer that renders text before scoping the branch, not after.**
+## The root cause, which is the durable lesson
 
-**2. Two owner corrections reversed the design, both times correctly.** The first draft BANNED
-explaining a margin as an amount per unit sold. The owner rejected that ("actually, this is easy to
-understand for beginners"), which reframed the whole defect: the idiom is good teaching, the wrong
-currency is the bug. The second: an over-correction claiming "growth that is positive is never a
-weakness, however small" was flagged as a false financial universal, since +0.2% is a real-terms
-decline. Both times the agent's instinct was to forbid something, and both times the correct answer
-was to make it accurate instead.
+**There was a documented seven-step market activation checklist in `docs/data_contract.md` and
+it was not read.** Steps 1 to 3 were done by improvisation; steps 4 to 7 were skipped. Every
+round-1 blocking finding is a skipped step.
 
-**3. `net_margin_pct` is bank-only, and the currency fix broke its noun.** `applies_to=financial`.
-The old copy said "each revenue dollar", which was the right noun with the wrong currency framing.
-The rewrite produced "each sale", fixing the currency and breaking the noun, on a metric whose own
-`applicability` field says a bank's revenue is net interest plus fees rather than sales. Caught by
-equity-analyst-reviewer. A guard now fails if any financial-only metric's user-visible copy says
-"sale". **Lesson: a find-and-replace across shared copy has to be checked per company type, because
-`applies_to` decides who actually reads the string.**
+Worse, the checklist itself was wrong where it mattered: its step 6 offered "add Supabase
+`markets` row (or rely on export upsert)", and no upsert path to `markets` exists in this
+codebase. So the one step that would have prevented the production failure also told the reader
+they could skip it. The checklist now names four more steps it was missing, corrects the false
+fallback, and states its own ordering honestly.
 
-**4. `revenue_growth_yoy_pct` is one quarter, not a year.** The first version of the corrected rule
-told the model growth "compares this year's sales with the same period a year earlier". It is the
-latest reported quarter against the same quarter a year earlier, which both the seed `description`
-and its `learn` text say. Unfixed, that would have put annual framing on a quarterly number across
-all 921 reads.
+**Lesson: before improvising a procedure, grep the repo for one. This branch existed to learn a
+procedure well enough to write a skill, while the procedure was already written down.**
 
-**5. The currency label was false twice before it was right.** "Reports in" asserts an accounting
-fact the pipeline does not have, because the mart's `currency` is `coalesce(info_currency,
-dim_stock.currency)`, a display code, while the real reporting currency `stmt_currency` stops at
-`fct_fundamentals_snapshot`. "Currency shown on this card" was then false on operating and
-financial cards, which render no money at all: only the three `currency_compact` metrics do and all
-three are `pre_revenue`. It now reads "Currency this company trades in", which is what
-`info_currency` actually is. **Two independent reviewers had to reject two successive labels before
-the true one was found, and each was rejected by tracing the column to its source rather than
-reading the wording.**
+## Findings that changed the artifacts
 
-**6. `GBp` is pence.** 89 of 92 FTSE cards carry it. Every other consumer in the repo upper-cases
-before formatting, so the card face already shows a pound sign; passing the raw code would have
-named the model a unit appearing nowhere on the card. It was visible in the author's own query
-output and walked past; equity-analyst-reviewer caught it.
+**The guard test had five false passes, all found by mutation rather than inspection.** A fully
+commented-out migration passed. A ticker duplicated inside one seed passed. An allowlisted
+symbol planted in a third, unjustified market passed. A collision differing only in case passed.
+`AC` beside `AC.PA` in one seed passed, though both resolve to the same company. It also did not
+cover two joins at all: the frontend maps, whose absence renders "Fr Cac40" silently, and
+whether a migration's values agree with the registry. **A guard that passes on the exact state it
+claims to prevent is worse than no guard, because it reads as coverage.**
 
-**7. The author's own bookkeeping was the last thing blocking, twice.** The contract's test
-arithmetic was wrong in round 2, corrected wrongly in round 3, and only right in round 4 once it
-was MEASURED rather than written from memory between edits. Both blocking findings in round 3 were
-of this kind: a handover that still said the `INPUT_HASH_VERSION` bump was unapproved while the
-contract recorded the owner's approval, in the same commit. **Lesson recorded in `done_when`:
-measure claims about the diff, never estimate them.**
+**`docs/development_workflow.md` carried a rival "Adding a market" procedure** that contradicted
+the corrected checklist: start with `ingest_active: false` (six scripts read that flag and do
+nothing when it is unset), two steps inverted, and "update Supabase `markets` row" inline rather
+than in a migration. Its definition of done for a market was "vars synced, seed exists, CI
+green", which describes exactly the state whose next export fails. Replaced with a pointer, per
+this repo's single-source rule. `docs/market_registry.yml` and `docs/project_context.md` both
+said "adding a market = one entry"; both now point at the checklist.
 
-## Escalations and their recorded answers
+**Two encoding crashes, four characters.** `sync_dbt_vars.py` printed a U+2192 on the
+changed-file path and a U+2014 on the error path; `refresh_constituents.py` printed U+2014 twice,
+and the second fires on the SUCCESS path because `jp_nikkei225` is `ingest_active: true` with
+`refresh_enabled: false`. A Windows operator following step 2 of this branch's own checklist
+would have crashed on a normal refresh. Fixed rather than documented: an earlier draft baked
+`PYTHONIOENCODING=utf-8` into a permanent guard message, which institutionalises a
+one-character bug.
 
-- **`INPUT_HASH_VERSION` 5a.3 to 5a.4, a §6 cost decision (~921 Haiku calls): APPROVED by the
-  owner.** Escalated explicitly rather than assumed. Without it the corrected prompt ships and
-  every stored read keeps its defective prose, because the hash covers the metric inputs, the
-  verdict and the version, never the prompt text. The card-face half of this branch needs no run
-  at all; only the AI paragraph depends on the bump.
-- **Widening scope to the card copy: APPROVED by the owner** after the half-fix was surfaced.
-- **The exact strings remain §6 owner content** and are proposed, not decided, by the agent.
+## Errors the author made, recorded because they recur
 
-## Deliberately not fixed, recorded rather than silently skipped
+**Closing a finding by weakening the rule.** Checklist step 4 required a coverage audit "on
+sample + full run"; the fix deleted "+ full run" so the rule matched the sample-only run that
+had been done. Reverted, with the full-run half recorded as NOT satisfied. **Editing the
+standard you are measured against, in the direction that makes your work pass, is the worst
+failure in this cycle.**
 
-- **Reporting vs trading currency.** A company that files in USD and trades in GBp gets a read
-  denominated in pence. Fixing it needs `stmt_currency` plumbed to the mart, an export column and
-  a migration. Strictly better than the pre-fix behaviour either way, and the ratio itself is
-  currency-invariant.
-- **Pre-existing em dashes** in `frontend/card_copy.py` (13) and `docs/ux_principles_finanz_lern_apps.md`
-  (15). Two of them, `card_copy.py:261` and `:341`, are the user-visible "no value" placeholder
-  glyph, so changing them alters rendered UI and is owner content. This branch introduces none.
-- **`supabase/migrations/010_card_assessments.sql`** also states the hash payload and is NOT
-  updated: it is applied, the runner tracks by filename with no checksum, so an edit could never
-  reach the database and would only make the repo describe a comment differing from the live one.
-  Applied migrations are immutable.
-- **`revenue_growth_yoy_pct`'s `learn` copy** ("One quarter can be noisy") still argues with a
-  badge that now moves on one quarter. That is MR !43's open owner question about the VERDICT, not
-  about currency; answering it here would settle an escalation belonging to its own thread.
+**Documenting a bug in the same diff that deleted it.** The corrected checklist told operators to
+work around a crash fixed three files away, and used POSIX env syntax for a PowerShell-only
+failure. The same defect class as the "or rely on export upsert" this branch existed to remove.
+
+**Blanket replaces caused damage three times.** A regex sweep produced duplicated text in
+`_intermediate.yml`; an em-dash sweep mangled an error message into "failed to read registry ,
+{e}"; a uniform "not part of is_card_eligible" suffix was false for the two metrics that gate
+financial-card eligibility. Precise per-site edits every time.
+
+**Git commands wiped work twice.** `git checkout <path>` restored a file from the index and
+destroyed an unstaged rewrite; `git stash` silently unstaged the whole index on pop. Neither
+belongs near a live review cycle; file copies do the same job.
+
+**The index moved under running reviewers three times**, invalidating rounds. Fixed by freezing
+the index before dispatch and not touching it until every reviewer reports.
+
+**The contract narrative became the defect surface.** For three consecutive rounds the only
+blocking findings were miscounts inside `contract.md`, and each round's fix added a paragraph
+that became the next round's defect. Scope arithmetic is now derived programmatically from the
+file rather than written by hand, and the final round shortened the narrative instead of
+extending it.
+
+## Reviewer claims the author rejected after checking
+
+**scope-auditor, round 2:** claimed `002_fundamentals_mart.sql` contains no insert and that
+`de_dax` was never activated in `public.markets`. It does contain
+`update public.markets set ingest_active = true where market_code = 'de_dax'` at lines 8-10. The
+migration comment was already accurate and was kept. The reviewer struck the finding in round 3.
+
+**data-engineer-reviewer, round 5:** claimed a healthy run prints no per-market eligible counts,
+so the handover was rewritten to say so. False: `check_eligibility_baseline.py:242-245` prints
+one line per market on the success path, and the 2026-08-26 job log in this session shows
+exactly that. The reviewer corrected itself in the next round. **The author had read that log
+earlier in the session and still took the reviewer's claim over a direct observation.**
+
+## Deliberately not fixed, recorded rather than skipped
+
+- **Airbus appears twice.** `AIR.PA` is a genuine constituent of both the DAX and the CAC 40. The
+  seeds are right; the deck shows it twice when browsing all markets. Detected from now on by a
+  collision guard with a market-pair-keyed allowlist. Display fix filed as issue #7.
+- **`ML.PA` (Michelin) has a stub Yahoo record** (no sector, industry or market cap). Kept:
+  silently excluding a real index constituent to make a count look clean is the worse error.
+- **`sync_dbt_vars.py` reports success when it fails to write.** Pre-existing, now caught by two
+  independent gates, filed as issue #8.
+- **The checklist's growth binds nine future onboardings.** Removing a non-existent fallback is a
+  repair; adding four steps to a procedure governing unapproved work is closer to a §6 call.
+  Surfaced in the handover for the owner rather than presented as settled.
 
 ## Verification
 
-- pytest **245 passed**. `tests/tooling/test_assessment_rules.py`: 32 test functions at HEAD, 49
-  now (17 new), 51 collected, **15 of 51 fail against the pre-fix `assessment_rules.py` and
-  `metric_catalogue.csv`**; the rest are regression guards that pass both ways by design. The new
-  `tests/frontend/test_card_copy.py` guard fails against the pre-fix `card_copy.py`. Both
-  independently reproduced by cto-reviewer and scope-auditor in isolated trees.
-- `dbt build` **108/108** on `--full-refresh` with a seed reload.
-- The five static CI gate scripts green.
-- `frontend/metrics.json` byte-identical to a fresh regeneration from the seed. Seed re-parses at
-  13 rows x 21 columns with no ragged rows, which is the failure mode hand-editing that CSV
-  actually has.
+- pytest **287** (245 at HEAD; the new guard adds 42). `dbt build` **108/108** on
+  `--full-refresh` after `seed_ci_raw_fixtures.py`. Five CI gate scripts green.
+- **Every new guard assertion verified by mutation**, not inspection: each fails on its own
+  specific defect and passes when restored.
+- Coverage audit sample: **18/20 (90%)** card-eligible, against a warn threshold of 20. A
+  `de_dax` control shows the same `net_debt 0/20`, so that zero is universal, not French.
+- Seed re-parses at 40 rows, single market code, accents intact. `eligibility_baseline.ci.json`
+  is 6 x 7 = 42.
+- Scope arithmetic derived from the file: 22 `scope_paths`, 8 plan-time, 14 widened
+  (7 checklist-required, 7 on separate recorded grounds). All 21 staged files inside scope.
 - **Zero em or en dashes on any added line.**
-- **UX PR gate** (`docs/working_agreement.md`, required for Streamlit copy): the app was run and
-  read at 375px, stricter than the gate's 480px, with no horizontal overflow; every reworded string
-  was verified through `frontend/card_copy.py`'s real render path rather than trusting the seed.
-  Items 1, 2 and 4 do not apply (copy only, no layout, interaction or tab-behaviour change); item
-  3's one-sentence job statement goes in the MR description.
 
-**What is NOT verified, and cannot be here:** the model's OUTPUT under the corrected prompt. There
-is no `ANTHROPIC_API_KEY` on this machine, so the prompt is proven correct and the prose is not.
-That only proves out on the next pipeline run. It is the same blind spot that let the original
-defect ship, and it is unchanged by this branch.
+**Not verified, and cannot be here:** the full-run half of the coverage audit. It is the eligible
+count the first real pipeline run produces. Recorded as open in `.claude/active_work.md`, with
+the specific job-log line to read, because the task contract is overwritten by the next task.
 
-## Post-PASS edits
+## Branch health
 
-After both round-4 PASS verdicts, four NON-BLOCKING findings the reviewers themselves recommended
-were applied: the `_CURRENCY_WORDS` comment claimed five markets when the registry lists nine (four
-dormant, one of them CHF) and named a trigger that misses activation-by-flag; `ebit_margin_pct`'s
-`learn` and the docs table kept a per-sale framing the prompt now forbids; `docs/data_contract.md:384`
-still described the hash payload without the currency; and `card_copy.py`'s hardcoded analogy
-overrides had no guard. `tests/frontend/test_card_copy.py` was added to `scope_paths` by amendment
-for the last of these. A fifth round then fixed three more, all of them inaccurate claims this
-branch made about itself rather than defects in the shipped behaviour. No design decision
-changed at any point; the `diff_sha256` above is the final state.
-
-## Process note worth keeping
-
-`git stash` was used mid-review to measure pre-fix failures and silently unstaged two files. The
-content was identical and the hash check caught it, but it briefly invalidated a running review.
-**Measure against `HEAD` in a temp tree instead; never move the index while a reviewer is reading
-the staged diff.** Round 2 also had two reviewers reporting against a snapshot the working tree had
-already moved past, which cost a round of confusion about which findings were live.
+Seven rounds. Rounds 1 to 5 found defects in shipped artifacts; rounds 6 and 7 found only errors
+in this contract's own prose. scope-auditor's final judgement was "converging, do not split", on
+the ground that the checklist correction is why the migration step exists and the guard test is
+what pins the checklist, so splitting would restart the review cost on interdependent work. The
+author agrees, and notes the counter-signal honestly: a change needing seven rounds is a change
+that grew past its original scope, and the growth was not planned.
 
 ## scope-auditor
 
-Rounds 1, 2, 3, 4. Round 1 FAIL (6 blocking), round 2 FAIL (5 blocking), round 3 FAIL
-(3 blocking), round 4 PASS.
+Rounds 1 through 7. FAIL until the last, PASS on the final state after both remaining blocking
+items were fixed.
 
-Its blocking findings drove most of this branch's shape. Round 1: the contract's `done_when`
-required the prompt to FORBID the per-unit currency idiom while the shipped rule ENCOURAGED it,
-in the same diff; the currency line was an undeclared new prompt input; a null currency left the
-prompt pointing at a currency it had not supplied; dated changelog narrative had been
-reintroduced into test comments, one commit after the owner ruled on exactly that; and
-`metric_catalogue.csv` still shipped "each dollar of sales" to the reader, which is what forced
-the branch to be widened. Round 3: the handover still said the `INPUT_HASH_VERSION` bump was
-unapproved while the contract recorded the owner's approval, in the same commit; the test
-arithmetic was wrong on all three numbers; and the "repo-wide sweep is clean" clause was false
-because of deliberate quotations it did not exempt. Round 4 verified every number by
-measurement in an isolated pre-fix tree, confirmed all 11 staged paths sit inside `scope_paths`,
-and confirmed no owner-level decision was taken silently.
+Its findings drove the branch's shape more than any other reviewer's. Round 1: the checklist's
+step 7 (`operations_guide.md`) was skipped and the doc still listed France as planned; the
+registry comment contradicted the entry directly beneath it; the coverage-audit step was
+reinterpreted rather than run; a `decisions_reserved` item resolved itself with no owner marker;
+and `notes_for_the_skill` was an invented contract field in a file the next task overwrites.
+Round 3 caught the branch closing a finding by DELETING the rule it failed. Round 5 caught the
+index moving under a running review. Round 6 found the rival "Adding a market" procedure in
+`development_workflow.md`, the single most valuable late find: a corrected checklist shipping
+beside an uncorrected rival is worse than either alone. Round 7 found the last two miscounts and
+gave the branch-health judgement quoted above.
 
 VERDICT: PASS
 
 ## cto-reviewer
 
-Rounds 1, 2, 3, 4. Round 1 FAIL (4 blocking), round 2 FAIL (4 blocking), round 3 FAIL
-(2 blocking), round 4 PASS.
+Rounds 1 through 3. PASS at round 3.
 
-Found that the prompt rule mis-framed returns and growth as amounts per unit of sales, wrong for
-ROE (per equity), ROA (per assets) and growth (versus the prior-year period), and worst on
-financial cards where three of four fields are affected; that the rule failed open when
-`currency` was null; that the gloss guard substring-matched "cent" inside "percent"; that
-`compute_input_hash` excluded `currency` even though the prompt named it; that "Reports in" and
-then "Currency shown on this card" both asserted things the pipeline cannot support; that a NaN
-currency raised `AttributeError` on `.strip()`; and that the shared prompt hard-coded "17 yen"
-and "24 cents", reintroducing the very pressure the branch exists to remove. Round 4 rebuilt the
-pre-fix state in an isolated tree and reproduced 15 failures of 51 collected, confirmed
-`metrics.json` byte-identical to a regeneration, and confirmed no new dependency, CI step, hook,
-secret or permission.
+Verified every guard assertion by mutation in isolated trees built with `git show HEAD:`, never
+by mutating the working tree, and produced the table of false passes that reshaped the guard:
+commented-out migration, intra-seed duplicate, third-market allowlist bypass, case-only
+collision. Established that the empty-registry guard is load-bearing, because pytest converts an
+empty parametrize set into SKIP and the suite would otherwise read green. Also caught that the
+first fix baked `PYTHONIOENCODING=utf-8` into a permanent guard message, institutionalising a
+one-character bug instead of fixing it, and that the branch's own contract claimed a forgotten
+`sync_dbt_vars` run was "otherwise silent" when `check_registry_var_sync.py` already gates it in
+CI on every merge request.
 
 VERDICT: PASS
 
 ## analytics-engineer-reviewer
 
-Round 5, seed only. Required by routing (`*.csv`) and initially, wrongly, reasoned out of the
-routing by this record; the commit gate caught that.
+Rounds 1 and 2. PASS at round 2.
 
-Verified the staged seed with two independent CSV parsers including DuckDB's, the reader
-`dbt seed` actually uses: 13 rows plus header, exactly 21 fields on every row under both, no
-ragged rows, no BOM, no stray CR, no newline inside a quoted cell. A per-cell diff against HEAD
-isolates exactly 14 changed cells across 6 metrics, all in `interpretation`/`gloss`/`analogy`/
-`learn`, with every taxonomy and expression column byte-identical. That is the check that
-matters, because hand-editing this CSV has silently shifted columns before. Traced downstream
-reach rather than accepting it: nothing does `ref('metric_catalogue')`, no migration references
-it, `export_to_supabase.py` exports only the mart, so the impact_map's "card face changes on
-merge, no pipeline run" holds. Confirmed the `assessment_rules.py` mirror cannot have drifted
-since no `applies_to` or `direction` cell moved, and that the new guards are non-vacuous by
-replaying their predicate against the HEAD seed, which flags precisely the 14 changed cells.
-Three non-blocking findings were inaccurate claims this branch made about itself and were fixed;
-two are pre-existing and recorded above.
+Found the missing `public.markets` row independently of data-engineer-reviewer, and made the
+sharper structural point: the guard's docstring claimed onboarding touches four files when the
+fifth is the one that breaks, so the suite passed on exactly the half-onboarded state it existed
+to prevent. Also found that `frontend/markets.py` would render the filter as "Fr Cac40" and that
+`frontend/live_quote.py` omitted the suffix. In round 2 it verified, rather than accepted, that
+sector benchmarks cannot move: `int_stock__sector_benchmarks.sql` groups by `market_code, sector`,
+so 40 French companies cannot shift any existing market's medians or peer counts. It also
+identified the intra-seed resolved-symbol hole (`AC` beside `AC.PA`) and that the frontend maps
+were the one onboarding join the guard did not pin.
+
+VERDICT: PASS
+
+## data-engineer-reviewer
+
+Rounds 1 through 6. FAIL until the last, PASS on the final state.
+
+Found the foreign-key failure and traced its full blast radius: not a France degradation but a
+whole-export abort that also stops the assessment step, invisible to CI. Found that `ADD COLUMN`
+backfills NULL across every historical snapshot row, so a naive fill-rate check would read
+mostly-null for reasons unrelated to the metric. Found the migration-ordering claim was false in
+both halves. Caught the branch documenting a bug in the same diff that deleted it, and the
+em-dash sweep that mangled an error message. In round 5 it asserted that a healthy run prints no
+per-market counts, which was wrong; it corrected itself in round 6 and named the error as its
+own.
 
 VERDICT: PASS
 
 ## equity-analyst-reviewer
 
-Rounds 1, 2, 3. Round 1 FAIL (4 blocking), round 2 FAIL (5 blocking), round 3 PASS.
+One round, on the final state. PASS.
 
-The financial correctness of this branch rests on its findings. It caught that `GBp` means
-pence and that 89 FTSE cards carry it; that the growth and returns denominators were wrong; that
-"growth that is positive is never a weakness, however small" asserts a false universal, since
-+0.2% is a real-terms decline and teaching a beginner otherwise mirrors the defect being fixed;
-that `net_margin_pct` renders only on bank cards, so replacing "each revenue dollar" with "each
-sale" fixed the currency and broke the noun on a metric whose own applicability field says a
-bank's revenue is net interest plus fees; that "per unit sold" describes profit per item, a
-number the model has no volume data for; and that `revenue_growth_yoy_pct` is one quarter rather
-than a year. In round 3 it re-derived every check from the seed rather than the diff, including
-scanning all 21 fields of both financial-only rows, and confirmed the prompt carries no advice,
-no valuation claim, no invented threshold and no named currency.
+Required by routing because `docs/data_contract.md` is staged, which this record initially and
+wrongly declared it was not. The commit gate caught that, for the second time in one session and
+by the same mistake: reasoning about what the change does instead of matching the staged paths
+against the routing patterns.
+
+It was the right reviewer to have. It checked the three awkward constituents against the data
+rather than the claims, and reached the same conclusions by a different route: `MT.AS` resolves
+correctly AND its USD-reporting, EUR-trading split is inert here, because no French card can
+render a money amount (all three `currency_compact` metrics are `pre_revenue`-gated and no CAC 40
+name can reach that type); `ML.PA`'s zero market cap is guarded at every consuming site and its
+null sector is excluded from the peer set, so it cannot drag a French median; and `AIR.PA` really
+does sit in both indices, making the market-pair-keyed allowlist the correct shape.
+
+It also strengthened the coverage evidence rather than accepting it: the audit's eligibility
+proxy still requires `forwardPE`, which production dropped, and applies the operating rule to
+French financials that qualify on a different pair, so 18/20 is a floor rather than a point
+estimate. And it verified independently that `int_stock__sector_benchmarks.sql` groups by
+`market_code, sector` throughout, so France is arithmetically isolated from the other five
+markets.
+
+Its one finding worth carrying forward is recorded in the handover: checklist step 4 asks for a
+populated `sector` but no tooling reports one, and the failure is silent and financially shaped.
+A bank returning a null sector becomes `operating`, is gated on EBITDA and net debt banks do not
+report, and vanishes from the deck with no error while the market total still clears its
+threshold. France was checked by hand; the remaining nine would benefit from a sector column in
+the audit output.
 
 VERDICT: PASS
