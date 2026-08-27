@@ -72,7 +72,7 @@ along with the other price-carrying metrics; its tab was removed from `metric_sc
 
 | Stock Explorer metric | Doc analogue | Analogy direction |
 |----------------------|--------------|-----------------|
-| Operating margin | Profitability | Share of each sales dollar kept as operating profit |
+| Operating margin | Profitability | Share of sales kept as operating profit |
 | Rev growth YoY | Momentum | Growing, flat, or shrinking vs one year ago |
 | Net debt / EBITDA | D/E / solvency | Years of operating profit to repay net debt |
 | FCF margin | Cash quality | Cash left after running the business |

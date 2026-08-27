@@ -15,16 +15,16 @@ compute, the Router mechanism, and both the deterministic health-verdict generat
 prose read are complete and merged, code-wise. **They ARE now live for real users, at full scale**
 — the app is deployed on Render (https://stock-explorer-app.onrender.com/) against a newly-created
 Supabase project (the old one is permanently inaccessible — see the Infra section for the full
-account-recovery story), serving **907 real eligible cards** across all 5 markets (910 at the
-2026-08-20 full-universe run; the 2026-08-24 refresh returned 907 — see the card-count note
-in the Supabase section below), confirmed
+account-recovery story), serving **921 real eligible cards** across all 5 markets as of the
+2026-08-26 run, which the app shows as 924 (three stale ASX rows persist; see the card-count
+note in the Supabase section below), confirmed
 rendering end-to-end this session (fresh page load, no errors, benchmark words + health verdicts
 all correct). **GitLab CI/CD variables for the new Supabase project are now set** (all 6:
 `SUPABASE_URL`/`SUPABASE_DB_PASSWORD`/`SUPABASE_DB_HOST`/`SUPABASE_DB_PORT`/
 `SUPABASE_SERVICE_ROLE_KEY`/`ANTHROPIC_API_KEY`, all Protected, confirmed via `glab variable
 list`). **The pipeline schedule now exists too** (created 2026-08-24 via `glab api
 projects/:id/pipeline_schedules`, cron `0 6 1,15 * *` UTC, `main`, active — see Infra) —
-`data-pipeline` now refreshes the live app's 907 cards unattended, first run
+`data-pipeline` now refreshes the live app's cards unattended, first run
 2026-09-01T06:00 UTC.
 **Slice 6 (UI redesign) is fully MERGED — all three phases done:** **6a**
 (MR #4 — tokens, shared row primitive, Search styling), **6b** (MR #8 revert + MR #9 —
@@ -90,8 +90,10 @@ for manual access control) — this had a real consequence, see below.
   `check_eligibility_baseline`, `check_export_health`) green. Confirmed live on Render with
   a fresh page load (no cached-session artifacts) — 910 companies, real benchmark words,
   health verdicts rendering.
-- **Card-count note: 907 rows in the newest snapshot, but the app serves 910 cards.** Both
-  numbers are real and they measure different things — worth getting straight, because
+- **Card-count note, first worked out on the 2026-08-24 data: 907 rows in that snapshot while
+  the app served 910 cards.** The same gap persists at the 2026-08-26 run (921 rows, 924 cards)
+  and the mechanism below is what causes it. Both numbers are real and they measure different
+  things, which is worth getting straight, because
   chasing this the wrong way round wasted a review round on 2026-08-25. Verified that day by
   querying production and then loading the live app:
   - `mart_stock_cards` holds two snapshots. `snapshot_date` 2026-08-20 has 910 eligible
@@ -110,8 +112,10 @@ for manual access control) — this had a real consequence, see below.
   whether any eligibility gate ran against the 08-24 data at all: that export did not come
   from the `data-pipeline` CI job (see Next concrete actions item 1 — the CI path has never
   run against this Supabase project), so do not assume `check_eligibility_baseline.py`
-  watched this dip. When quoting a figure, say which one you mean: 907 rows in the latest
-  snapshot, 910 cards in the deck.
+  watched this dip. When quoting a figure, say which one you mean. As of the 2026-08-26 run
+  that is 921 rows in the latest snapshot and 924 cards in the deck; the three stale tickers
+  are still BXB, RMS and SPK, and the Status section records what the third data point
+  settled about them.
 - **Two real bugs found and fixed while getting the export path working — MERGED** (MR #13,
   `fix/supabase-export-client-and-grants`, `gitlab/main` @ `aa63058`; three review rounds,
   four required reviewers, real findings every round — full detail in that MR's
@@ -160,36 +164,64 @@ for manual access control) — this had a real consequence, see below.
 - Whether/when to restore `main` branch-protection expectations if GitHub access is ever restored — two
   remotes exist for now.
 
-**Next concrete action:** none on this track — the pipeline schedule above was the last
-piece needed, and it's done. `data-pipeline` now refreshes the live app's 907 cards on its
+**Next concrete action:** none on this track. The pipeline schedule above was the last
+piece needed, and it's done. `data-pipeline` now refreshes the live app's cards on its
 own; first scheduled run 2026-09-01T06:00 UTC.
 
 ## Status
 
-**IN FLIGHT: a manual `data-pipeline` run was triggered from the GitLab web UI (pipeline #111
-on `main`, job id `16123372465`). Steps 1 and 2 were NOT waiting for the 2026-09-01 schedule.**
-Check whether it finished before doing anything else: `glab api projects/:id/pipelines/2793073998`.
-Last comparable run took about 75 minutes, and the long tail is roughly 910 Haiku calls that
-print nothing until they complete.
+**DONE: the manual `data-pipeline` run finished (pipeline #111, job `16123372465`, success in
+73 minutes).** All three expected outcomes landed, none was a regression:
+1. **The deck grew to 921 cards** (was 907): us_sp500 500, au_asx200 180, jp_nikkei225 110,
+   uk_ftse100 92, de_dax 39. Step 1's eligibility loosening was strictly weaker, as predicted.
+2. **Verdicts: green 238, yellow 409, red 274.** `check_eligibility_baseline` green at 921
+   against the 843 baseline; `export_to_supabase` upserted 921 rows.
+3. **Every read regenerated**: `reads generated=921 carried=0 failed=0`.
 
-**What to verify when it lands, because all three are expected and none is a regression:**
-1. **The card count rises above 907.** Step 1 dropped `forward_pe` from the operating and
-   financial eligibility sets and moved pre-revenue onto `net_cash`, which needs no market cap.
-   Both changes are strictly weaker, so the deck grows. The exact size could not be measured
-   beforehand: the mart stores only eligible rows.
-2. **32 cards read Mixed instead of Healthy**, because their revenue is down year over year.
-   Red should be unchanged. That count was measured against the pre-step-1 907-row snapshot, so
-   treat it as approximate now.
-3. **Every AI paragraph is rewritten** (`INPUT_HASH_VERSION` is `5a.3`). This is the FIRST real
-   evidence on whether the prompt changes worked, because there is no `ANTHROPIC_API_KEY` on the
-   dev machine and the prompt could never be sampled locally. **Read a few cards and judge:** no
-   em dashes, no "growth is not a health signal", no changelog line, and prose that does not
-   read as machine-written. If it still reads wrong, the rules need sharpening and you will know
-   exactly which sentence to change.
+**The prompt fixes were sampled for the first time and MOSTLY worked.** Measured against the
+907-read baseline captured just before the export: em/en dashes fell from 887 of 907 (97.8%) to
+20 of 921 (2.2%); 848 of 921 now end on the required verdict phrasing; one still says "sturdy";
+zero "not a health signal"; zero changelog lines; "not just X but Y" fell from 6 to 1. **Two
+real defects survived and are being fixed on `fix/read-prompt-currency-and-growth` (see
+below).**
 
-Also worth a look once it lands: whether BXB, RMS and SPK come back. They are `au_asx200` tickers
-that fell out of two consecutive runs while staying in the index, and nothing evicts their stale
-cards. A third data point settles whether it is eligibility movement or per-ticker ingestion loss.
+**BXB, RMS and SPK did NOT come back**, and the third data point settles it: **this is not
+per-ticker ingestion loss.** Ingestion was clean for the whole index that run
+(`constituents=200 tickers_requested=200 fundamentals_ok=200 fundamentals_failed=0`), so all
+three were fetched fine and fall out at the ELIGIBILITY gate. They are now absent from three
+consecutive snapshots (08-24, 08-25, 08-26) while present in 08-20, and they did not return even
+though ASX grew 168 -> 180 on strictly weaker gates. So one of the four operating-card
+requirements (`ebit_margin_pct`, `revenue_growth_yoy_pct`, `net_debt_to_ebitda`,
+`fcf_margin_pct`) is null for them. **Which one is not yet diagnosed** and needs either a local
+ingestion run or a CI artifact, since the mart holds only eligible rows. They still sit in the
+deck on stale 08-20 rows, so the app shows 924.
+
+**IN FLIGHT: `fix/read-prompt-currency-and-growth`, NOT yet committed.** Fixes the two prose
+defects the run exposed, and was widened with the owner's approval to cover the card copy too.
+- **Invented currencies, 246 of 921 reads (27%).** 60 S&P 500 cards described US companies in
+  pounds and pence, 67 Nikkei cards described Japanese ones in dollars and cents, some hedging
+  across both ("2.8p or 2.8c ... for every pound or dollar it sells", CBRE). **Root cause:**
+  `currency` was passed only to `_format_metric_value`, and operating and financial cards carry
+  no `currency`-formatted metric at all, so on 918 of 921 cards the currency never entered the
+  prompt and the model supplied one. Fixed by naming it in the user message, normalised through
+  a new `_display_currency` (GBp, which 89 FTSE cards carry, is pence and now renders as the
+  pound the card face already shows).
+- **Positive growth blamed for the verdict, 83 cards.** The verdict downgrades only on an actual
+  decline, so the prose was inventing a reason the badge does not contain.
+- Also: the same "each sales dollar" framing was live in the **card face** copy
+  (`metric_catalogue.csv` across six metrics, plus a hardcoded string in `card_copy.py`), so the
+  prompt fix alone would have left every non-US reader looking at it.
+- `INPUT_HASH_VERSION` 5a.4 (from 5a.3), so ~921 reads regenerate again on the next run.
+  **The bump is a §6 cost decision and the owner APPROVED it** (~921 Haiku calls, the same
+  volume as the 2026-08-26 run). Without it the corrected prompt would ship and every stored
+  read would keep its defective prose, since the hash never covered the prompt text. Note the
+  card-face copy needs no run at all; only the AI paragraph depends on this.
+
+**Known limitation recorded, not fixed:** the mart's `currency` is the DISPLAY/trading currency
+(`coalesce(info_currency, dim_stock.currency)`). The real reporting currency is `stmt_currency`,
+which stops at `fct_fundamentals_snapshot` and is not in the mart, so a company that files in one
+currency and trades in another gets a read denominated in the trading one. Fixing it needs a mart
+column, an export column and a migration.
 
 **MERGED — MR !43 (`feat/verdict-reads-growth` → `gitlab/main` @ `f950b3e9`): the health verdict
 now reads revenue growth, one way only.** **Step 2 of 3 done.** Step 3 (sector-calibrated
@@ -218,7 +250,7 @@ and a ratio destroys magnitude: 18 months at $2M a month and 18 months at $50M a
 different companies. (The "a reader can check the arithmetic" argument does NOT hold, since the
 card shows net cash rather than raw cash. Do not repeat it.)
 
-**`INPUT_HASH_VERSION` is `5a.3`, so ~910 reads regenerate on the next run.** The verdict alone
+**`INPUT_HASH_VERSION` was `5a.3` at step 2 and is `5a.4` on the branch above, so ~921 reads regenerate on the next run.** The verdict alone
 would have rewritten only the 32 changed cards, but the prompt changed too and the hash does not
 cover the prompt.
 
@@ -307,7 +339,7 @@ while looking at the live card. Six review rounds, three reviewers.
 **Live now:** the two labelled blocks, the badge wording, and the metric gloss being a step
 larger/lighter/looser than the bullet graph's own axis labels (recorded in
 `docs/ui/card_metric_cell.md`). **Not live until the next pipeline run:** the prompt rules.
-`INPUT_HASH_VERSION` was `5a.2` here and is `5a.3` since step 2, so stored reads are offered for regeneration on the next run —
+`INPUT_HASH_VERSION` was `5a.2` here, `5a.3` since step 2, and `5a.4` on the currency branch, so stored reads are offered for regeneration on the next run:
 until then cards show the NEW badge wording above OLD prose ending on "sturdy", em dashes
 included. **The next run is the checkpoint: read a few cards and judge whether the no-dashes
 and don't-sound-like-a-model rules actually worked.** That is the only way to know — there is

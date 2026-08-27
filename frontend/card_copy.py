@@ -227,8 +227,8 @@ def metric_analogy(metric: str, value: float | None, card: dict | None = None) -
         )
     if metric == "ebit_margin_pct" and card and card.get("ebit_margin_basis") == "annual_latest":
         return (
-            "For each dollar of annual sales, this is the slice kept as operating "
-            "profit before interest and taxes: one fiscal year, not four quarters."
+            "Out of everything the company sold that year, this is the slice kept as "
+            "operating profit before interest and taxes: one fiscal year, not four quarters."
         )
     return METRIC_ANALOGY[metric]
 
