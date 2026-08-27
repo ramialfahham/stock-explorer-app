@@ -65,7 +65,7 @@ def main() -> int:
     try:
         codes = _registry_active_codes()
     except Exception as e:
-        print(f"sync_dbt_vars: failed to read registry — {e}", file=sys.stderr)
+        print(f"sync_dbt_vars: failed to read registry: {e}", file=sys.stderr)
         return 1
 
     if not codes:
@@ -77,7 +77,7 @@ def main() -> int:
 
     changed = _update_dbt_project(codes)
     if changed:
-        print(f"sync_dbt_vars: updated active_market_codes → {codes}")
+        print(f"sync_dbt_vars: updated active_market_codes -> {codes}")
     else:
         print(f"sync_dbt_vars: already in sync ({len(codes)} markets: {codes})")
     return 0

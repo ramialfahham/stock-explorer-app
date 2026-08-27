@@ -87,8 +87,11 @@ python scripts/check_registry_var_sync.py
 | `jp_nikkei225` | ^N225 | Active (manual seed) |
 | `au_asx200` | ^AXJO | Active |
 | `de_dax` | ^GDAXI | Active |
+| `fr_cac40` | ^FCHI | Active |
 
-**Planned (inactive until coverage audit):** `fr_cac40`, `nl_aex`, `ch_smi`, `es_ibex35`.
+**Planned (inactive until coverage audit):** `nl_aex`, `ch_smi`, `es_ibex35`, plus Finland,
+Sweden, Denmark, Norway (OBX), Canada (TSX 60) and Italy (FTSE MIB), which are agreed but not
+yet in the registry.
 
 ---
 

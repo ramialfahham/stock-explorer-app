@@ -6,6 +6,70 @@ history through 2026-08-18 is archived in [`docs/handover_2026-08-18.md`](../doc
 capped at 32,000 bytes; see Context/open items). When a slice merges, collapse its Status entry to
 one line here and let the archive keep the detail._
 
+## Market coverage
+
+**Six markets are active as of 2026-08-27**, France (CAC 40) having been onboarded on
+`feat/market-fr-cac40`. **Nine more are agreed and queued**: Netherlands, Switzerland, Spain,
+Finland, Sweden, Denmark, Norway (OBX), Canada (TSX 60) and Italy (FTSE MIB). Three of those
+already have registry entries (`nl_aex`, `ch_smi`, `es_ibex35`) and need only the rest of the
+checklist; the other six need new entries.
+Where a passage below says "all 5 markets", it is recording a measurement taken before France
+and is accurate as history.
+
+**Read `docs/data_contract.md`'s market activation checklist before onboarding any of them.**
+It exists, it is now correct, and France was done without reading it: the result was a missing
+`public.markets` row that would have failed the next production export for every market on a
+foreign key, with CI green throughout. The checklist gained four steps it was missing and lost one escape hatch that never existed
+in this codebase. **That growth binds the nine queued onboardings and is worth the owner
+knowing about**: removing the non-existent fallback was a defect fix, but extending a
+procedure that governs work not yet approved is closer to a §6 call than a repair.
+
+**OPEN, and it needs the next pipeline run to close: France's coverage audit is only half
+done.** The activation checklist requires the audit on sample AND full run. The sample gives
+18/20 (90%) estimated card-eligible, which extrapolates to roughly 36 cards, comfortably over
+the warn threshold of 20. The full-run half cannot be done from a dev machine. **Falling short of 20
+will not fail the run**, which is why this is written here rather than left to the task
+contract: France is absent from `scripts/eligibility_baseline.json`, so
+`check_eligibility_baseline.py` gives it a floor of 5 rather than 20, and
+`check_pipeline_completeness.py` only WARNS below 20. Both DO fail hard below 5, which aborts
+the job before the export and stops the refresh for all six markets, not just France.
+
+**Reading the result is easy, because the job log prints it.**
+`check_eligibility_baseline.py` ends a healthy run with `check_eligibility_baseline: OK`, the
+total, and one line per active market, exactly as the 2026-08-26 run printed `au_asx200: 180`
+and `de_dax: 39`. Look for `fr_cac40: <N>` there. The mart holds only eligible rows, so that
+number IS the card-eligible count the threshold uses. A `WARN: fr_cac40: card-eligible count
+N < 20` line appears too if it falls short. If it did not clear 20, that is a real finding about
+CAC 40 coverage, not a threshold to lower.
+
+**Then run `python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db
+--write-baseline`.** Until that happens the aggregate drop gate is slack: `total_baseline_eligible`
+is 843 from five markets while the check now sums six, so France's roughly 36 cards raise the
+current total without raising the floors. Per-market gates for the existing five are unaffected,
+so a single-market regression still trips its own floor; only a drop spread across several could
+hide in the gap.
+
+**A gap in the checklist worth closing before the next nine.** Step 4 says to verify each
+ticker returns a populated `sector`, but no tooling reports that:
+`scripts/audit_yfinance_coverage.py` prints metric-presence flags and a raw `info_keys` count,
+never the sector. It has to be checked by hand, and the failure is silent with a specific
+financial shape: the classifier keys the `financial` branch on the exact string
+`'Financial Services'`, so a bank returning a null sector becomes `operating`, is then gated on
+EBITDA and net debt that banks do not report, and drops out of the deck with no error and no
+warning while the market total still clears 20. France was checked by hand and only `ML.PA` came
+back thin. Adding a sector column to the audit output would make step 4 mechanical for the
+remaining nine.
+
+**Currency handling for the queue is PROPOSED, not settled, and the owner can overturn it.**
+`CAD -> C$` following the `AUD -> A$` convention already in `_CURRENCY_SYMBOLS`; `CHF`, `SEK`,
+`DKK` and `NOK` as ISO codes, because "kr" means three different currencies across the Nordics
+and CHF has no symbol in general use. Recorded with the tension visible: §6 reserves
+user-visible formats to the owner, and the owner also said plainly not to raise micro decisions
+and, when the first answer took the zero-work option, "do it the right and professional way,
+not the most convenient way". Nothing user-visible ships until those markets land, so the
+branch that lands them should put this in front of the owner rather than treat it as agreed.
+Extend `_CURRENCY_WORDS` in `tests/tooling/test_assessment_rules.py` at the same time.
+
 ## Current task
 
 **Reshaping the dashboard into a beginner financial-literacy tool** — sector-aware metrics + AI "reads"
@@ -15,7 +79,7 @@ compute, the Router mechanism, and both the deterministic health-verdict generat
 prose read are complete and merged, code-wise. **They ARE now live for real users, at full scale**
 — the app is deployed on Render (https://stock-explorer-app.onrender.com/) against a newly-created
 Supabase project (the old one is permanently inaccessible — see the Infra section for the full
-account-recovery story), serving **921 real eligible cards** across all 5 markets as of the
+account-recovery story), serving **921 real eligible cards** across 5 markets as of the
 2026-08-26 run, which the app shows as 924 (three stale ASX rows persist; see the card-count
 note in the Supabase section below), confirmed
 rendering end-to-end this session (fresh page load, no errors, benchmark words + health verdicts

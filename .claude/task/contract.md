@@ -1,157 +1,190 @@
 # Task contract
 
-objective: Stop the app naming a currency that is not the company's, and stop the prose
-  blaming the health verdict on positive revenue growth. The 2026-08-26 pipeline run made
-  both visible for the first time: 246 of 921 generated reads (27%) used a currency word
-  belonging to another market, and 83 described positive-but-slow growth as the weakness
-  holding the badge back. Prompt and card copy only. No verdict rule change, no threshold
-  change, no new metric. Sector-calibrated thresholds are step 3 and are NOT in this branch.
+objective: Onboard France (CAC 40) as the sixth active market, end to end, following the
+  market activation checklist in `docs/data_contract.md`. First of ten agreed additions, done
+  by hand so the procedure is proven before the remaining nine. Adds a guard test covering the
+  onboarding invariants, and corrects the checklist itself, which contained an escape hatch
+  that does not exist in this codebase.
 
 scope_paths:
-  - scripts/assessment_rules.py
-  - scripts/generate_assessments.py
+  - docs/market_registry.yml
+  - docs/constituent_sources.yml
   - docs/data_contract.md
-  - dbt_analytics/seeds/metric_catalogue.csv
-  - frontend/card_copy.py
-  - frontend/metrics.json
-  - docs/ux_principles_finanz_lern_apps.md
+  - docs/operations_guide.md
+  - dbt_analytics/dbt_project.yml
+  - storage/seeds/fr_cac40/constituents.csv
+  - supabase/migrations/014_fr_cac40_market.sql
+  - scripts/sync_dbt_vars.py
+  - scripts/refresh_constituents.py
+  - scripts/eligibility_baseline.ci.json
+  - frontend/markets.py
+  - frontend/live_quote.py
+  - tests/ingestion/test_market_onboarding.py
   - tests/tooling/test_assessment_rules.py
-  - tests/frontend/test_card_copy.py
+  - tests/README.md
+  - docs/supabase_setup.md
+  - docs/development_workflow.md
+  - docs/project_context.md
+  - .gitignore
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 impact_map:
-  - Every one of the ~921 live cards regenerates its prose read on the next pipeline run
-    (`INPUT_HASH_VERSION` 5a.3 -> 5a.4), so ~921 Haiku calls and a full rewrite of the
-    user-facing paragraph on every card in every market.
-  - The card FACE changes immediately on merge, with no pipeline run needed: `gloss`,
-    `analogy`, `learn` and `label` are bound by `frontend/card_copy.py` and read from
-    `frontend/metrics.json`, which is generated from the seed. Affects every card in all five
-    markets, not only the non-US ones, because these strings are shared. `interpretation` is
-    also edited and also exported, but no frontend module binds it today, so that column
-    ships to the client unrendered.
-  - `mart_stock_cards` and every dbt model are untouched. `dbt build` is 108/108 on a
-    `--full-refresh` seed reload.
-  - No Supabase migration: no column added or renamed.
+  - A 40-ticker seed, of which 39 companies are new to the pipeline. The fortieth, `AIR.PA`
+    (Airbus), is already ingested under `de_dax`: it is a genuine constituent of both indices,
+    so both seeds are right, but the deck will show it twice when browsing all markets and it
+    costs one duplicate Haiku call per run. Filed as issue #7 for the UI phase, and detected
+    from now on by a collision guard.
+  - Coverage audit estimates 90% of a 20-ticker sample are card-eligible, so expect roughly 36
+    cards and a deck of about 957 at the next run. Ingestion grows by 40 tickers; the read cost
+    grows by roughly 36 Haiku calls per run.
+  - **No existing card, verdict or row moves.** One thing does change before any run, though:
+    `scripts/check_eligibility_baseline.py` sums its total across ACTIVE markets, so France's
+    roughly 36 cards will be added to a total whose floors are still derived from the five-market
+    `eligibility_baseline.json` (843). That slackens the aggregate drop gate until the baseline
+    is rewritten after the next healthy run, making a real drop in the existing five markets
+    marginally easier to hide in the interim.
+  - `public.markets` gains one row via migration 014. No schema change: no table, column or
+    type is added, altered or dropped.
+  - The card face gains "CAC 40" as a filter option via `frontend/markets.py`, which is live at
+    merge rather than at the next run, since it renders from a static map.
 
 decisions_reserved:
-  - **All replacement strings are §6 owner-signed content and need sign-off before commit.**
-    `READ_SYSTEM_PROMPT`, `READ_METRIC_BRIEF` and the `metric_catalogue.csv` copy are what
-    the reader sees. The owner approved fixing the two defects and approved widening the
-    branch to the card copy; the exact wording is proposed here, not decided by the agent.
-  - **`INPUT_HASH_VERSION` 5a.3 -> 5a.4: OWNER-APPROVED.** API volume is a §6 cost decision
-    and was escalated rather than assumed. The owner approved the bump, on the ground that
-    without it the corrected prompt ships and every stored read keeps its current defective
-    prose: the hash covers the metric inputs, the verdict and the version, never the prompt
-    text, so nothing would mark the old prose stale. Cost is ~921 Haiku calls on the next run,
-    the same volume as the 2026-08-26 run. Note the card-face copy in this branch needs no
-    run at all; it is the AI paragraph alone that depends on this bump.
-  - **The per-unit idiom is KEPT, not banned.** An earlier draft of this branch forbade
-    explaining a margin as an amount per unit sold. The owner rejected that: "actually, this
-    is easy to understand for beginners." Correct, and it reframed the defect. The idiom is
-    good teaching; naming the WRONG currency is the bug. So the rule now permits the idiom
-    and anchors it to a stated currency. Do not re-ban it.
-  - **The prompt names the DISPLAY currency, and says so.** The mart's `currency` is
-    `coalesce(info_currency, dim_stock.currency)`, documented as a display code. The true
-    reporting currency is `stmt_currency`, which exists in `fct_fundamentals_snapshot` and is
-    NOT carried into the mart, so this branch cannot state it. Two labels were tried and both
-    were false: "Reports in" asserts an accounting fact the pipeline does not have, and
-    "Currency shown on this card" is false on operating and financial cards, which render no
-    money at all (only the three `currency_compact` metrics do, all `pre_revenue`). The line
-    now reads "Currency this company trades in", which is what `info_currency` actually is.
-    **Known limitation, not fixed here:** a
-    company that files in one currency and trades in another gets a read denominated in the
-    trading currency. Correcting that needs `stmt_currency` plumbed to the mart, an export
-    column and a migration. Owner's call whether that is worth doing.
-  - **`GBp` is pence, and is normalised to GBP.** yfinance reports LSE tickers in pence; 89
-    of 92 FTSE cards carry `GBp`. Every other consumer upper-cases before formatting, so the
-    card face already shows a pound sign. Passing the raw code would name the model a unit
-    that appears nowhere on the card.
-  - **Growth: the prose must not supply a reason the badge does not contain, and must not
-    deny that a flat top line is a weakness.** The verdict downgrades only on an actual
-    year-over-year decline (`GROWTH_DECLINE_THRESHOLD_PCT = 0.0`), so blaming the badge on
-    positive growth invents a reason and re-establishes the two-sided axis the design
-    forbids. An earlier draft over-corrected to "growth that is positive is never a weakness,
-    however small", which is false: +0.2% is a real-terms decline in every market this app
-    covers, and teaching a beginner otherwise is the mirror image of the defect. The rule now
-    bars only the verdict attribution and explicitly allows describing a flat top line
-    accurately. Do NOT fix this by making growth a two-sided axis in the rules.
-  - **`currency` is now hashed, which the module docstring's invariant did not allow for.**
-    It is a prompt input the read quotes, so a corrected currency must regenerate the read.
-    Hashed through `_display_currency` so a GBp/GBP case change, invisible on the card, does
-    not churn ~90 FTSE reads for nothing. Docstring updated to name the exception rather than
-    left asserting something false.
-  - **Em dashes left in place, owner's call.** `frontend/card_copy.py` and
-    `docs/ux_principles_finanz_lern_apps.md` are touched by this branch and carry 13 and 15
-    pre-existing em dashes respectively. Two of them, `card_copy.py:261` and `:341`, are the
-    user-visible "no value" placeholder glyph on the card face, so changing them alters
-    rendered UI and is §6 product content, not a cleanup. The rest are code comments. This
-    branch introduces none. It sweeps `assessment_rules.py`, whose prompt text it
-    substantially rewrote, and removes one each from `docs/data_contract.md` and
-    `.claude/active_work.md` as a side effect of rewriting those passages. It does NOT sweep
-    the two files above. Doing so is a separate decision.
-  - **`revenue_growth_yoy_pct`'s `learn` copy is left alone, deliberately.** MR !43 recorded
-    it as an OPEN owner question: it says "One quarter can be noisy, so look for a pattern
-    over time" and renders on cards the growth gate downgrades, so a reader sees a badge that
-    moved on one quarter beside text saying one quarter is noisy. This branch now owns that
-    file, but the question is about the VERDICT's use of growth, not about currency, and
-    answering it here would decide an escalation that belongs to its own thread. Still open;
-    also recorded in `.claude/active_work.md`.
-  - Not in scope, flagged not fixed: 25 of the 921 reads use an ASCII hyphen as sentence
-    punctuation. The existing rule forbids em and en dashes by name and permits hyphens in
-    compounds, so this is within the letter of the rule. Whether to tighten it is the owner's
-    call.
-  - Not in scope: the card shows sector-relative benchmark words (`card_copy.py` compares to
-    `sector_median_*`) while the verdict uses global absolute bars, so a Utilities card can
-    read "lower than most in its sector" under a red badge. Pre-existing and belongs to step 3.
-  - **Three places state the input-hash payload and all three had to move together.** The
-    module docstring, `docs/data_contract.md` and `scripts/generate_assessments.py`'s column
-    comment (which asserted `currency` "is NOT hashed/scored"). Fixing one and leaving the
-    others would ship a false invariant in the authoritative doc, so both files were added to
-    `scope_paths` rather than flagged and left.
+  - **Owner approved ten new markets, 2026-08-27:** France, Netherlands, Switzerland, Spain,
+    Finland, Sweden, Denmark, Norway (OBX chosen over the broader OSEBX), Canada (TSX 60) and
+    Italy (FTSE MIB). This branch is France only. The owner also set the phase order: ingestion
+    first, then the verdict threshold foundation, then UI and UX.
+  - **Currency rendering for the markets still to come, decided under an explicit owner
+    instruction not to raise micro decisions.** Recorded with the tension visible rather than
+    hidden: §6 reserves user-visible formats to the owner, and the owner also said plainly
+    "don't involve me with any micro decisions" and, when the first answer took the
+    zero-work option, "do it the right and professional way, not the most convenient way".
+    Nothing user-visible ships in THIS branch, so nothing is pre-empted here; the branch that
+    lands those markets should treat this as a proposal the owner can overturn, not as settled. `CAD` will map to `C$`, following
+    the convention `_CURRENCY_SYMBOLS` already sets with `AUD -> A$`. `CHF` stays as its ISO
+    code, which is the actual Swiss convention rather than a fallback. `SEK`, `DKK` and `NOK`
+    stay as ISO codes because all three use "kr", which is unambiguous only inside one country
+    and this app will span fifteen markets once the queue lands. Lands with those markets, not here; France is EUR and
+    already handled.
+  - Not in scope: the nine remaining markets, the onboarding skill to be written from this
+    branch, and the display-layer fix for dual-index companies (issue #7).
+
+amendments:
+  - 2026-08-27, scope widened by fourteen paths during review. Seven are required by the market
+    activation checklist rather than being new work: `docs/data_contract.md` (the checklist itself was
+    wrong, see below), `docs/operations_guide.md` (the market table step),
+    `supabase/migrations/014_fr_cac40_market.sql` (the Supabase row step, and the reason the export would
+    otherwise have failed), `frontend/markets.py` and `frontend/live_quote.py` (the frontend-map step),
+    `scripts/eligibility_baseline.ci.json` (a deterministic fixture count) and
+    `scripts/sync_dbt_vars.py` (a two-character encoding fix). Authority: the owner approved
+    onboarding France end to end, and each of those seven is required to make that true rather
+    than apparently true.
+    The remaining seven are NOT checklist work and are widened on separate grounds.
+    `tests/tooling/test_assessment_rules.py`: its currency deny-list comment names activating a
+    dormant market as the event that should trigger an update, and this branch is that event,
+    so following the repo's own written instruction. `.gitignore`: `storage/audit/` was
+    untracked and left every `git status` dirty, which obscures exactly the kind of unstaged
+    file this review cycle depends on seeing. Written by
+    `scripts/audit_mart_vs_yfinance.py` (`--output-dir` default), not by the coverage script.
+    Three more were added in later rounds, recorded here rather than folded into the count.
+    `tests/README.md`: its taxonomy assigns `tests/ingestion/` to yfinance extraction only, and
+    this branch puts onboarding wiring there, so the row is now wrong unless widened. Raised
+    three times by review before being addressed, which is why it is fixed rather than deferred
+    a fourth time. `scripts/refresh_constituents.py`: a two-character fix for the identical
+    encoding crash already being fixed in `sync_dbt_vars.py`, on a script this branch's own
+    checklist promotes to step 2. `docs/supabase_setup.md`: its migration ledger ended at 011 and this branch
+    adds 014, so the ledger would ship incomplete. **Only the 014 row was added.** An earlier
+    draft also backfilled 012 and 013, which are omissions from previous branches and not this
+    task's work; that was scope creep. The table rows were removed. A short note stands in
+    their place recording that the 012/013 gap predates this branch, so the jump from 011 to 014
+    does not read as an error: a deliberate choice, not an incomplete revert.
+  - 2026-08-27, `docs/development_workflow.md` and `docs/project_context.md` were widened into
+    scope late, on doc-sync grounds. Both carried a rival, shorter account of adding a market
+    which this branch's corrections made false: `development_workflow.md` said to start with
+    `ingest_active: false` (six scripts read that flag and do nothing when it is unset), and it
+    said to "update Supabase `markets` row" inline rather than in a numbered migration, which is
+    the exact defect that would have failed the next production export. A corrected checklist
+    shipping beside an uncorrected rival is worse than either alone. The rival steps were
+    replaced with a pointer rather than restated, per this repo's single-source rule.
+  - 2026-08-27, this branch edits the checklist in `docs/data_contract.md`, which is the rule it
+    is measured against. Two edits corrected it: the Supabase row step offered "or rely on
+    export upsert", a
+    path that does not exist here, and four steps were missing. **One edit was wrong and has
+    been reverted:** the coverage audit's "on sample + full run" was narrowed to sample-only, which made the
+    rule match what had been done rather than what it required. Restored, with the full-run half
+    explicitly recorded as NOT yet satisfied.
+  - 2026-08-27, NOT a contract change and NOT owner-authorised, recorded here because the
+    template has no other field for it: **`ML.PA` (Michelin) stays in the seed, on agent
+    judgement.** It resolves and returns EUR, but Yahoo has only a
+    stub record: `sector`, `industry` and a real `marketCap` are all absent. A null sector flows
+    through as null, the company type classifier falls back to `operating`, and the card simply
+    gets no sector benchmark. If its statements are stubbed too it fails eligibility and drops
+    out on its own, which is the designed behaviour. Silently excluding a real index
+    constituent to make a count look clean would be the worse error. Recorded here rather than
+    under `decisions_reserved`, because it is an implementation judgement with a defensible
+    default, not an owner decision left unanswered.
 
 done_when:
-  - No `READ_METRIC_BRIEF` gloss for a non-money metric names a currency word or symbol.
-  - `metric_catalogue.csv` carries no currency word or symbol in any user-visible field
-    (`interpretation`, `gloss`, `analogy`, `learn`, `label`, `applicability`), enforced by
-    `test_catalogue_user_visible_copy_names_no_currency` rather than by grep. The repo-wide
-    sweep for "sales dollar" / "each dollar" / "revenue dollar" is clean apart from four
-    deliberate sites: this contract, `.claude/active_work.md` and
-    `tests/tooling/test_assessment_rules.py`, which quote the defect in order to describe or
-    detect it, and `docs/handover_2026-08-18.md`, which is archived history.
-  - `frontend/metrics.json` regenerated from the seed by
-    `scripts/export_metric_definitions_json.py`, so the card face matches the catalogue.
-  - `build_read_messages` names the card's currency for EVERY company type, normalised
-    through `_display_currency`, and omits the line entirely when it is absent.
-  - `READ_SYSTEM_PROMPT` scopes the per-unit idiom to margins, states that returns and growth
-    have different denominators, and tells the model what to do when no currency is given.
-  - `READ_SYSTEM_PROMPT` bars blaming the verdict on positive growth while still allowing an
-    accurate description of a flat top line.
-  - The growth gloss still contains "counts against the verdict" and "does not count for it",
-    pinned against the BUILT message.
-  - `currency` is in the hashed payload; `INPUT_HASH_VERSION` bumped.
-  - No NEW em dash or en dash is introduced by this diff. A full sweep of the two touched
-    files that still carry pre-existing ones is NOT claimed: see decisions_reserved.
-  - 17 new test functions (32 -> 49); 15 of the 51 collected items fail against the pre-fix
-    `scripts/assessment_rules.py` and `metric_catalogue.csv`. The rest are regression guards
-    that pass both ways, by design. Measure these, never estimate them: this clause was wrong
-    twice, in both directions, because it was written from memory between edits.
-  - Every EDITABLE statement of the input-hash payload agrees with the code: the module
-    docstring, `docs/data_contract.md` and `scripts/generate_assessments.py`'s column comment.
-    `supabase/migrations/010_card_assessments.sql` states it too and is deliberately NOT
-    updated: it is already applied, the runner tracks by filename with no checksum, so an edit
-    could never reach the database and would only make the repo describe a comment that
-    differs from the live one. Applied migrations are immutable.
-  - The UX PR gate in `docs/working_agreement.md` is satisfied for the card-copy change: the
-    app was run and read at 375px (stricter than the gate's 480px), no horizontal overflow,
-    and every reworded string was verified through `frontend/card_copy.py`'s real render path
-    rather than trusting the seed. No layout, interaction or tab behaviour changed, so items 1,
-    2 and 4 do not apply; item 3's one-sentence job statement goes in the MR description.
-  - No catalogue copy for a `financial`-only metric uses the word "sale".
-  - `frontend/card_copy.py`'s hardcoded analogy overrides are guarded too. They bypass the
-    catalogue entirely, so the seed guard cannot see them: that is a second home for the same
-    defect and it needs its own check (`tests/frontend/test_card_copy.py`, which fails against
-    the pre-fix `card_copy.py`).
-  - pytest green, `dbt build` green on a `--full-refresh` seed reload, the five CI gate
-    scripts green, and the owner has signed off on the exact strings.
+  - Every step of the activation checklist in `docs/data_contract.md` is done EXCEPT the
+    full-run half of the coverage audit and its threshold confirmation, both of which need a real
+    pipeline run and are recorded as open in `.claude/active_work.md`. The checklist's step
+    ordering was also corrected: an earlier draft of this branch claimed most steps run BEFORE
+    `ingest_active: true` is set, which is false for the six that read the flag
+    (`refresh_constituents.py`, `sync_dbt_vars.py`, `audit_yfinance_coverage.py`,
+    `seed_ci_raw_fixtures.py`, the guard tests and the CI baseline) and contradicted what this
+    branch actually did. The checklist itself is corrected: the Supabase row step
+    offered "or rely on export upsert", which does not exist in this codebase, and the steps for
+    four steps were missing entirely: a ticker-resolution check, fixture reseeding, the
+    collision guard and the CI baseline. The frontend maps were added to the existing
+    documentation step rather than as a new one.
+  - `fr_cac40` is `ingest_active: true`, has a source config, a 40-ticker seed, an entry in
+    `dbt_project.yml` written by `scripts/sync_dbt_vars.py`, a `public.markets` row in
+    migration 014, a display name in `frontend/markets.py`, and an entry in
+    `frontend/live_quote.py`. That last one is inert for France, since every CAC 40 seed ticker
+    carries a dot and `yfinance_symbol` returns early on those. It is added because the map's
+    own comment says to keep it in sync, and because it will NOT be inert for a market whose
+    source table gives bare tickers, likely for TSX 60 and FTSE MIB.
+  - `scripts/eligibility_baseline.ci.json` reflects six markets (42 = 6 x 7 fixtures). The
+    production `eligibility_baseline.json` is deliberately NOT touched: it is rewritten after a
+    verified healthy run, and a market absent from it defaults to `min_eligible` 5.
+  - Coverage audit SAMPLE run and recorded: `--market fr_cac40 --sample-size 20` gives 18/20
+    (90%) estimated card-eligible, against a warn threshold of 20
+    (`WARN_ELIGIBLE_THRESHOLD`, `scripts/check_pipeline_completeness.py`). **The full-run half
+    of the coverage audit is NOT satisfied and cannot be from here**: it is the eligible count the first
+    real pipeline run produces. 90% of 40 extrapolates to roughly 36, comfortably clear, but
+    that is an estimate and the step stays open until a run confirms it. `net_debt (info)` reads 0/20,
+    which a `de_dax` control run also shows, so it is universal rather than French.
+  - `tests/ingestion/test_market_onboarding.py` pins all five onboarding joins, including the
+    `public.markets` row, and detects cross-market symbol collisions against a justified
+    allowlist keyed on the market PAIR, not the symbol alone. Each assertion verified to fail
+    on its own mutation, including the five false passes review found: a commented-out
+    migration, a ticker duplicated inside one seed, an allowlisted symbol planted in a third
+    market the allowlist never justified, a collision differing only in case, and two different
+    seed rows resolving to one symbol (`AC` beside `AC.PA`). It also pins the two frontend maps
+    from the checklist's frontend-map step and that each migration's `index_name`, `exchange_suffix` and `source`
+    agree with the registry, since nothing reads those columns today and a typo would surface
+    only much later.
+  - `tests/README.md`'s `tests/ingestion/` row covers the onboarding wiring this branch puts
+    there, and `docs/supabase_setup.md`'s migration ledger carries 014.
+  - `tests/tooling/test_assessment_rules.py`'s currency deny-list comment named five active
+    markets and listed France among the dormant, and its own text instructs updating it when a
+    dormant market is activated. That instruction fired here and is now followed.
+  - Three local working artifacts are gitignored, all previously untracked and all noise in
+    `git status`, which matters because this review cycle depends on reading that output
+    accurately: `storage/audit/` (written by `scripts/audit_mart_vs_yfinance.py --output-dir`),
+    `.claude/launch.json` (a local dev-server config) and `.claude/task/review_input.patch` (the
+    staged diff handed to reviewers, regenerated every round). None was ever committed, so
+    nothing leaves the repo's tracked state.
+  - `scripts/sync_dbt_vars.py` no longer crashes on a Windows console. Two characters, not one:
+    a U+2192 on the changed-file path and a U+2014 on the registry-read error path, both
+    uncodeable in cp1252. The changed-file path was verified by running it under
+    `PYTHONIOENCODING=cp1252`; the error path was not exercised, only made ASCII.
+    `scripts/refresh_constituents.py` carried two of the same, at `:51` (exception handler) and
+    `:61`. The second is the dangerous one: it prints on the SUCCESS path, and fires on every
+    unfiltered run because `jp_nikkei225` is `ingest_active: true` with `refresh_enabled: false`.
+    A Windows operator running step 2 of this branch's own checklist would have crashed on a
+    normal refresh, not just on a failure.
+  - pytest green, `dbt build` green on `--full-refresh` after `scripts/seed_ci_raw_fixtures.py`,
+    the five CI gate scripts green.
+  - No em dash or en dash introduced.

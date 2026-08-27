@@ -25,6 +25,7 @@ vars:
   active_market_codes:
     - au_asx200
     - de_dax
+    - fr_cac40
     - jp_nikkei225
     - uk_ftse100
     - us_sp500

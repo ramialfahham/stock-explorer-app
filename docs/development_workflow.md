@@ -83,13 +83,15 @@ After CI/CD variables are configured on GitLab:
 
 ## Adding a market
 
-1. Edit [`market_registry.yml`](market_registry.yml) — start with `ingest_active: false`
-2. Add [`constituent_sources.yml`](constituent_sources.yml) entry
-3. `python scripts/sync_dbt_vars.py`
-4. Refresh seed: `python scripts/refresh_constituents.py --market <code>`
-5. Run coverage audit on sample tickers (the operating-type eligibility metrics via yfinance)
-6. Flip `ingest_active: true`, sync vars, update Supabase `markets` row
-7. Document in [`operations_guide.md`](operations_guide.md)
+See the **market activation checklist** in
+[`data_contract.md`](data_contract.md#market-activation-checklist). It is the only copy.
+
+A shorter list used to live here and had drifted into contradicting it: it said to start with
+`ingest_active: false` (several steps read that flag and silently do nothing when it is unset),
+it inverted two steps, and it said to "update Supabase `markets` row" inline rather than in a
+numbered migration. That last one is not cosmetic. Nothing in the codebase upserts
+`public.markets`, three tables foreign-key to it, and a missing row aborts the export for every
+market on the next scheduled run with CI green throughout. France hit exactly that.
 
 ---
 
@@ -113,6 +115,7 @@ python scripts/check_supabase_connection.py
 | Ingestion | Raw parquet matches `data_contract.md` grain; no derived metrics in Python |
 | dbt model | Layer folder correct, model + column descriptions (§2), model-level tests (§3), `check_dbt_tests.py`, `dbt build` + `check_dbt_documentation.py` pass |
 | Export | Upsert to Supabase documented; RLS unchanged for anon read |
+| New market | Every step of the activation checklist done, including the `public.markets` migration. "Vars synced, seed exists, CI green" is NOT sufficient: that describes a market whose next production export fails on a foreign key |
 | Docs | `north_star` / `data_contract` updated if behavior or schema changed |
 
 ---

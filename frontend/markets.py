@@ -17,6 +17,7 @@ MARKET_DISPLAY_NAMES: dict[str, str] = {
     "jp_nikkei225": "Nikkei 225",
     "au_asx200": "ASX 200",
     "de_dax": "DAX",
+    "fr_cac40": "CAC 40",
 }
 
 

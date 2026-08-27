@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
             count = refresh_market(config)
             print(f"{config.market_code}: refreshed {count} tickers from {config.provider}")
         except Exception as exc:
-            print(f"{config.market_code}: failed — {exc}", file=sys.stderr)
+            print(f"{config.market_code}: failed: {exc}", file=sys.stderr)
             exit_code = 1
 
     skipped = [
@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     for code in skipped:
         if not args.markets or code in args.markets:
-            print(f"{code}: skipped (manual seed — update CSV or import_constituents.py)")
+            print(f"{code}: skipped (manual seed: update CSV or import_constituents.py)")
 
     return exit_code
 

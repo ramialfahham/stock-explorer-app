@@ -33,7 +33,8 @@ dbt, and export on a schedule.
 Never hardcode `us_sp500` or any other market identifier in business logic.
 
 Single source of truth: [`market_registry.yml`](market_registry.yml).
-Adding a market = one registry entry. dbt var `active_market_codes` must stay in sync
+Adding a market starts with one registry entry and is not finished by it: follow the market
+activation checklist in `data_contract.md`. dbt var `active_market_codes` must stay in sync
 (`python scripts/sync_dbt_vars.py`; CI enforces via `scripts/check_registry_var_sync.py`).
 
 ---

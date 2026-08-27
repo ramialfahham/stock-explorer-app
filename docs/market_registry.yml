@@ -1,7 +1,10 @@
 # Stock Swipe — Market Registry
 # ==============================
 # Single source of truth for which stock markets the app ingests and serves.
-# Adding a market = one entry in `markets`. Do not hardcode markets elsewhere.
+# Do not hardcode markets elsewhere. An entry here is the FIRST step of adding a market, not
+# the whole of it: see the market activation checklist in docs/data_contract.md. A registry
+# entry alone gives you a market that ingests nothing and whose next production export fails
+# on a foreign key.
 #
 # Consumed by: ingestion (universe resolution), dbt (partition keys), CI (active set).
 # After edits, run: python scripts/sync_dbt_vars.py
@@ -71,12 +74,14 @@ markets:
     source: yfinance
     ingest_active: true
 
-  # European markets — activate after per-market yfinance coverage audit (see data_contract.md)
+  # European markets. Each one activates only after its own coverage audit and the full
+  # activation checklist in data_contract.md, which includes a Supabase markets row: without
+  # that row the export fails on a foreign key for every market, and no CI job catches it.
   - market_code: fr_cac40
     index_name: ^FCHI
     exchange_suffix: .PA
     source: yfinance
-    ingest_active: false
+    ingest_active: true
 
   - market_code: nl_aex
     index_name: ^AEX
