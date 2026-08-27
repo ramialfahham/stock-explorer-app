@@ -14,6 +14,10 @@
       "baseline_eligible": 7,
       "min_eligible": 5
     },
+    "fr_cac40": {
+      "baseline_eligible": 7,
+      "min_eligible": 5
+    },
     "jp_nikkei225": {
       "baseline_eligible": 7,
       "min_eligible": 5
@@ -27,5 +31,5 @@
       "min_eligible": 5
     }
   },
-  "total_baseline_eligible": 35
+  "total_baseline_eligible": 42
 }

@@ -39,3 +39,15 @@ markets:
     table_index: 4
     ticker_column: Ticker
     name_column: Company
+
+  fr_cac40:
+    provider: wikipedia
+    url: https://en.wikipedia.org/wiki/CAC_40
+    table_index: 4
+    ticker_column: Ticker
+    name_column: Company
+    notes: >
+      The Ticker column already carries its exchange suffix (AC.PA), and
+      to_yfinance_ticker passes any ticker containing a dot through unchanged, so the
+      registry's .PA suffix is not applied twice. That also keeps ArcelorMittal correct:
+      it sits in the CAC 40 but lists in Amsterdam, and the table gives it as MT.AS.

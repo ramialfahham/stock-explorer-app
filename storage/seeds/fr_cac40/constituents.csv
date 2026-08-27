@@ -1,0 +1,41 @@
+market_code,ticker,company_name,refreshed_at,source
+fr_cac40,AC.PA,Accor,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,AI.PA,Air Liquide,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,AIR.PA,Airbus,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,MT.AS,ArcelorMittal,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,CS.PA,Axa,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,BNP.PA,BNP Paribas,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,EN.PA,Bouygues,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,BVI.PA,Bureau Veritas,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,CAP.PA,Capgemini,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,CA.PA,Carrefour,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,ACA.PA,Crédit Agricole,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,BN.PA,Danone,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,DSY.PA,Dassault Systèmes,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,EDEN.PA,Edenred,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,ENGI.PA,Engie,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,EL.PA,EssilorLuxottica,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,ERF.PA,Eurofins Scientific,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,RMS.PA,Hermès,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,KER.PA,Kering,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,OR.PA,L'Oréal,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,LR.PA,Legrand,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,MC.PA,LVMH,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,ML.PA,Michelin,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,ORA.PA,Orange,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,RI.PA,Pernod Ricard,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,PUB.PA,Publicis,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,RNO.PA,Renault,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,SAF.PA,Safran,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,SGO.PA,Saint-Gobain,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,SAN.PA,Sanofi,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,SU.PA,Schneider Electric,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,GLE.PA,Société Générale,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,STLAP.PA,Stellantis,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,STMPA.PA,STMicroelectronics,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,TEP.PA,Teleperformance,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,HO.PA,Thales,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,TTE.PA,TotalEnergies,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,URW.PA,Unibail-Rodamco-Westfield,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,VIE.PA,Veolia,2026-08-27T11:15:03.991115+00:00,wikipedia
+fr_cac40,DG.PA,Vinci,2026-08-27T11:15:03.991115+00:00,wikipedia

@@ -426,14 +426,58 @@ recompute every run; the prose read regenerates only when the hash changes or `a
 
 ## Market activation checklist
 
-Before setting `ingest_active: true` for a new market:
+`ingest_active: true` is set in step 1, not held back to the end, because several later steps
+READ it and would otherwise do nothing: `refresh_constituents.py` skips a market that is not
+active and exits 1, `sync_dbt_vars.py` filters on it and would write the old market list,
+`audit_yfinance_coverage.py` and `seed_ci_raw_fixtures.py` both do the same, the guard tests
+parametrise on it and would pass vacuously for the new market, and the CI baseline would be
+written for a market set that does not yet exist.
 
-1. Add row to `market_registry.yml` and `constituent_sources.yml`
-2. Run `python scripts/sync_dbt_vars.py`
-3. Refresh or import constituent seed
-4. Run **coverage audit** (the operating-type eligibility metrics, the majority case for any market's constituents, on sample + full run)
-5. Confirm eligible count ≥ warn threshold
-6. Add Supabase `markets` row (or rely on export upsert)
-7. Update [`operations_guide.md`](operations_guide.md) market table
+The audit in steps 5 and 6 is the real gate, and it straddles the first pipeline run: the
+sample half runs now, the full-run half can only be confirmed afterwards. A market is not proven
+until both halves are done. Record the open half in `.claude/active_work.md`, not in a task
+contract, which the next task overwrites.
+
+1. Add row to `market_registry.yml` and `constituent_sources.yml`, with `ingest_active: true`
+2. Refresh or import constituent seed (`scripts/refresh_constituents.py --market <code>`)
+3. Run `python scripts/sync_dbt_vars.py`, which reads `ingest_active` and writes
+   `dbt_project.yml`
+4. Verify the seed's tickers resolve AND return a populated `sector`. Resolving alone is not
+   enough: one of France's 40 came back as a Yahoo stub with no sector, industry or market cap
+5. Run **coverage audit** over the operating-type eligibility metrics, the majority case for
+   any market's constituents, on **sample and full run**. The sample is
+   `scripts/audit_yfinance_coverage.py --market <code> --sample-size 20`, which prints a
+   percentage only. The full-run half is the eligible count the first real pipeline run
+   produces for that market, which the sample can only estimate: check it before treating the
+   market as proven, and do not treat a healthy sample as the whole step
+6. Confirm the market's card-eligible count clears the warn threshold
+   (`WARN_ELIGIBLE_THRESHOLD`, currently 20, in `scripts/check_pipeline_completeness.py`).
+   Estimated from the sample before the run, confirmed from the run itself afterwards
+7. **Add a Supabase `markets` row in a numbered migration.** There is NO upsert fallback:
+   `export_to_supabase.py` writes `mart_stock_cards` only, and three tables foreign-key to
+   `public.markets` (`mart_stock_cards`, `user_interactions`, `card_assessments`), so a
+   missing row aborts the export for every market on the next
+   production run. No CI job catches it. See `supabase/migrations/014_fr_cac40_market.sql`.
+   Put `market_code` FIRST in the VALUES tuple and give it the same `index_name`,
+   `exchange_suffix` and `source` as the registry: `tests/ingestion/test_market_onboarding.py`
+   checks both, and its migration scan is a text match rather than a SQL parser, so a different
+   column order fails closed.
+8. Update [`operations_guide.md`](operations_guide.md) market table AND
+   `frontend/markets.py` (`MARKET_DISPLAY_NAMES`, or the filter renders "Fr Cac40") and
+   `frontend/live_quote.py` (`_EXCHANGE_SUFFIX`, needed whenever the source table gives bare
+   tickers rather than suffixed ones)
+9. Run `python scripts/seed_ci_raw_fixtures.py` before any local `dbt build`: the staging
+   models read a per-market parquet path that does not exist until fixtures are written. CI
+   does this itself; a local run does not.
+10. Run `pytest tests/ingestion/test_market_onboarding.py`. It pins every join above and
+   detects a constituent that resolves to the same Yahoo symbol under two markets. That is
+   usually a seed copied wrong, but occasionally a real dual-index membership: Airbus sits in
+   both the DAX and the CAC 40, and ArcelorMittal is in the CAC 40 while listing in Amsterdam,
+   so it will collide when `nl_aex` activates. Decide which it is, and if the membership is
+   genuine add the symbol to `KNOWN_DUAL_INDEX_SYMBOLS` with the reason rather than editing a
+   seed. Note the deck then shows that company twice when browsing all markets (issue #7).
+11. Update `scripts/eligibility_baseline.ci.json` (a deterministic fixture count, 7 per active
+   market). The production `scripts/eligibility_baseline.json` is NOT edited by hand; it is
+   rewritten after a verified healthy run.
 
 European expansion order after DAX: document in registry; activate one market per audit cycle.

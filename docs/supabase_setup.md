@@ -65,6 +65,11 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `009_pre_revenue_card_metrics.sql` | Pre-revenue/survival-card metric columns (Sector Router 4c) |
 | `010_card_assessments.sql` | `card_assessments` table — health verdict + AI read (Slice 5) |
 | `011_grant_roles.sql` | Explicit role grants — needed when "automatically expose new tables" (step 1) is off |
+| `014_fr_cac40_market.sql` | France (CAC 40) row in `public.markets`. Required: three tables foreign-key to it and the export never inserts one |
+
+`012_sector_benchmark_min_max.sql` and `013_net_cash.sql` exist on disk but are missing from
+this table. That gap predates the France work and is left rather than backfilled here, so
+the omission is not mistaken for an error in the migration sequence.
 
 After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives company descriptions. Hard refresh or a new browser session reloads `all_cards` from Supabase.
 

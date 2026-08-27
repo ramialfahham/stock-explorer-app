@@ -426,12 +426,15 @@ def test_build_read_messages_unknown_type_falls_back_to_operating() -> None:
 # A deny-list, with the limits that implies. Currency is NOT declared per market anywhere:
 # docs/market_registry.yml has no currency field, and the value comes from yfinance
 # `info_currency` per ticker, so nothing in the repo can enumerate what may turn up. These
-# eight cover the currencies the nine registered markets actually return today (five active:
-# USD, GBp, JPY, EUR, AUD; four dormant: fr_cac40/nl_aex/es_ibex35 EUR, ch_smi CHF, which is
-# why "franc" is here ahead of need). EXTEND IT when a market is added, when a dormant one is
-# activated by flipping ingest_active, or when yfinance starts returning a currency these
-# words miss. There is no mechanical trigger for any of those, which is the weakness of a
-# deny-list and the reason to prefer catching this in review.
+# eight cover the currencies the nine registered markets actually return today (six active:
+# USD, GBp, JPY, EUR, AUD and, since France activated, EUR again; three dormant: nl_aex and
+# es_ibex35 EUR, ch_smi CHF, which is why "franc" is here ahead of need). Nine more markets are
+# still queued, three of which bring currencies this list does not hold: SEK, DKK and NOK.
+# (CAD needs nothing: "dollar" already covers it, the same way "franc" covers CHF.)
+# EXTEND IT when a market is added, when a dormant one is activated by flipping ingest_active,
+# or when yfinance starts returning a currency these words miss. There is no mechanical trigger
+# for any of those, which is the weakness of a deny-list and the reason to prefer catching this
+# in review.
 _CURRENCY_WORDS = (
     "dollar", "cent", "pound", "pence", "penny", "euro", "yen", "franc",
 )
@@ -599,7 +602,7 @@ def test_bank_only_metric_copy_never_says_sales() -> None:
 
 
 def test_system_prompt_names_no_specific_currency() -> None:
-    """The prompt is shared by all ~921 cards across five markets. A worked example naming a
+    """The prompt is shared by every card in every market. A worked example naming a
     real currency ("24 cents in every dollar") is the same pressure that produced the defect:
     it seeds one market's currency into every other market's read."""
     assert not _names_a_currency(rules.READ_SYSTEM_PROMPT)

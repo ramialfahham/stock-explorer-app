@@ -34,3 +34,8 @@ dev.duckdb
 Thumbs.db
 .idea/
 .vscode/
+storage/audit/
+
+# Local agent working artifacts, not part of the repo's committed state.
+.claude/launch.json
+.claude/task/review_input.patch
