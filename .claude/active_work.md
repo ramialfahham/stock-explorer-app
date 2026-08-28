@@ -12,33 +12,23 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !51 open: NL/CH/ES onboarding (this session, 2026-08-28)
+## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 
-`feat/markets-nl-ch-es` pushed and MR opened against `main`:
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/51. Two commits
-(`19a76ad1` the reviewed change, `3755c5b9` the review record, kept separate per the
-review-gate's hash mechanics — see `.claude/task/review.md` for why). **Not yet merged** —
-next session should check MR status before starting new work, since a rebase or CI failure
-could still need attention.
+`feat/markets-nl-ch-es` merged to `main` (`aa646439`). Netherlands, Switzerland and Spain are
+now active — nine markets total, six queued (Finland, Sweden, Denmark, Norway, Canada, Italy).
+Sixteen-round review, full account in `.claude/task/review.md`.
 
-Sixteen review rounds, five reviewers, all PASS on the final diff. Rounds 1-6 fixed real code
-defects (constituent-name cleaner, both collision guards, the within-market duplicate guard,
-the CI baseline guard). Rounds 7-16 found zero further code defects — every finding was
-contract/handover prose contradicting itself or a sibling file after a correction. Full
-account in `.claude/task/review.md`.
+**Two data defects found outside this branch's scope, filed as separate chips, not yet
+started:** eleven of 116 `jp_nikkei225` seed rows carry the wrong company name (audited against
+yfinance 2026-08-28, two visible to the duplicate-headline guard, nine not); `au_asx200`'s
+Block ticker (`XYX`, should be `XYZ`) has fetched no data since May.
 
-**Two data defects found outside this branch's scope, filed as separate tasks** (chips shown
-to the owner, not yet started):
-- Eleven of 116 `jp_nikkei225` seed rows carry the wrong company name (audited against
-  yfinance 2026-08-28). Two are visible to the widened duplicate-headline guard; nine are not.
-- `au_asx200`'s Block ticker (`XYX`, should be `XYZ`) has fetched no data since May.
-
-**All four owner decisions from this session are recorded in detail below** (Market coverage
-section) and in the merged contract. One-line summary: threshold deferred to phase 2; currency
-follows real-world practice (CHF as-is, CAD/SEK/DKK/NOK settled); seed-name corrections become
-a dbt model (seed → staging pass-through → correction in `2_base`), filed separately, does NOT
-cover the Block ticker; duplicate cards stay with the venue shown on each, filed to its own
-UX-gated branch.
+**Four owner decisions from 2026-08-28, detail in the Market coverage section below and in the
+merged contract:** the 20-card warn threshold is wrong, deferred to phase 2; currency follows
+real-world practice (CHF as-is, CAD/SEK/DKK/NOK settled for the queue); seed-name corrections
+become a dbt model (seed to staging pass-through to correction in `2_base`), filed separately,
+does NOT cover the Block ticker; duplicate cards stay with the venue shown on each, filed to
+its own UX-gated branch.
 
 ## Owner decisions, 2026-08-28
 
