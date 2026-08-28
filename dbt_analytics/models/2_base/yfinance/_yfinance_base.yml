@@ -6,6 +6,9 @@ models:
       **Source:** stg_yf__constituents across all active markets (union via macro).
       **Grain:** One row per (market_code, ticker) after deduplication.
       **What:** Latest ingest row per ticker; keys for dim_stock and ingest lineage.
+      `company_name` is left-joined against stg_manual__company_name_overrides and corrected
+      here when a row is listed there, so a wrong or legal-register seed name never reaches
+      dim_stock uncorrected.
     meta:
       owner: data
       domain: stock_cards
@@ -29,7 +32,8 @@ models:
           - not_null
       - name: company_name
         description: >
-          Company name from the winning constituent row by latest ingested_at.
+          Company name from the winning constituent row by latest ingested_at, left-joined
+          against stg_manual__company_name_overrides and replaced when a row is listed there.
       - name: refreshed_at
         description: >
           Seed refresh timestamp from the winning row.

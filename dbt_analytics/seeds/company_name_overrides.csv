@@ -1,0 +1,12 @@
+market_code,ticker,company_name,reason
+jp_nikkei225,3407,Asahi Kasei,"Seed named it Asahi Group Holdings (ticker 2502); wrong company"
+jp_nikkei225,6908,Iriso Electronics,"Seed named it Iris Ohyama (unlisted); wrong company"
+jp_nikkei225,6976,Taiyo Yuden,"Seed named it Canon Electronics (ticker 7739); wrong company"
+jp_nikkei225,8005,Scroll Corporation,"Seed named it Showa Shell Sekiyu (delisted 2019 into Idemitsu); wrong company"
+jp_nikkei225,8804,Tokyo Tatemono,"Seed named it City Development (a Singapore developer); wrong company"
+jp_nikkei225,8830,Sumitomo Realty & Development,"Seed named it SUMCO (ticker 3436); wrong company"
+jp_nikkei225,9005,Tokyu Corp,"Seed named it Keio Corp (ticker 9008); wrong company"
+jp_nikkei225,9008,Keio Corp,"Seed named it Keisei Electric Railway (ticker 9009); wrong company"
+jp_nikkei225,9009,Keisei Electric Railway,"Seed named it Keihan Holdings (ticker 9045, not a Nikkei 225 constituent); wrong company"
+jp_nikkei225,9101,Nippon Yusen,"Seed named it Mitsui O.S.K. Lines (ticker 9104); wrong company"
+jp_nikkei225,9412,SKY Perfect JSAT,"Seed named it Skylark Holdings (ticker 3197); wrong company"

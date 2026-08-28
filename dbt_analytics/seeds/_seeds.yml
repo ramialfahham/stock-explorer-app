@@ -1,6 +1,43 @@
 version: 2
 
 seeds:
+  - name: company_name_overrides
+    description: >
+      Manual corrections for a constituent's `company_name`, applied in
+      base_yf__constituents so a wrong or legal-register seed name never reaches a card
+      headline uncorrected. One row per (market_code, ticker) needing a fix; a ticker not
+      listed here is untouched. Does not edit storage/seeds/*/constituents.csv, by design
+      (2026-08-28 owner decision: corrections live in the model, not the raw seed).
+    config:
+      column_types:
+        market_code: varchar
+        ticker: varchar
+        company_name: varchar
+        reason: varchar
+    columns:
+      - name: market_code
+        description: "Registry partition key, matching the constituent row this corrects."
+        data_tests:
+          - not_null
+      - name: ticker
+        description: "Provider symbol as stored in the seed, matching the row this corrects."
+        data_tests:
+          - not_null
+      - name: company_name
+        description: "The corrected display name; wins over the seed's own company_name."
+        data_tests:
+          - not_null
+      - name: reason
+        description: "Why the override exists, for the next person reading this file."
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+
   - name: metric_catalogue
     description: >
       Single source of truth for every card metric — one row per (metric_id, entity). Captures the
