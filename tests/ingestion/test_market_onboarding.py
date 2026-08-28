@@ -878,3 +878,20 @@ def test_company_name_overrides_covers_the_audited_nikkei_defects() -> None:
     assert covered == audited_tickers, (
         f"expected exactly {sorted(audited_tickers)}, found {sorted(covered)}"
     )
+
+
+def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
+    """Pins the nineteen tickers the owner approved a trade-name override for on 2026-08-28,
+    so the override file can't silently lose a row on a future edit without a test noticing.
+
+    KNIN (Kuehne + Nagel) is deliberately absent: the seed already carries a trade name there.
+    """
+    approved_tickers = {
+        "NOVN", "ROP", "NESN", "ABBN", "UBSG", "CFR", "ZURN", "HOLN", "SREN",
+        "LONN", "SCMN", "GIVN", "ALC", "SIKA", "AMRZ", "SLHN", "GEBN", "PGHN", "LOGN",
+    }
+    rows = [r for r in _override_rows() if r["market_code"] == "ch_smi"]
+    covered = {r["ticker"] for r in rows}
+    assert covered == approved_tickers, (
+        f"expected exactly {sorted(approved_tickers)}, found {sorted(covered)}"
+    )

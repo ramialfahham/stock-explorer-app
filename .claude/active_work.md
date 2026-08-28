@@ -214,7 +214,7 @@ having as a guard, but it is no longer the proposal on the table.
 `company_name`, exposed 1:1 by `stg_manual__company_name_overrides` in staging, and left-joined
 plus coalesced onto the seed's own name in `base_yf__constituents` (2_base), so the correction
 reaches `dim_stock` without editing core or the raw seed. Same mechanism the SMI legal-name fix
-below would reuse: add rows to the same seed rather than building a second one.
+below reuses: rows added to the same seed rather than a second one built.
 The same file gives ticker 3407 the name "Asahi Group
 Holdings", which is ticker 2502. 3407 is Asahi Kasei. Both rows
 are in the seed, `dim_stock` prefers the seed name over yfinance's correct one, so the deck has
@@ -255,17 +255,19 @@ counters count card-eligible rows only.
 The contract records the two paths put to the owner. Nothing changes at merge; the new
 duplicates appear on the next run, and five of the eleven are already visible today.
 
-**OPEN and owner-facing: SMI card headlines are in a different register from every other
-market.** The Swiss source table's only name column gives legal names, so the seed carries
-"Novartis International AG", "Swiss Reinsurance Company Ltd" and "Holcim Limited" where the
-other eight markets carry "Adidas", "Philips", "Santander". Two of those are not just formal but
-wrong: the listed issuers are Novartis AG and Swiss Re AG. `dim_stock` prefers the seed name over
-yfinance's `info_long_name`, which has them right, so the coalesce actively discards the correct
-name. There is no config fix: the table has no short-name column, so anything durable is a new
-override mechanism, which is a §6 call. **ANSWERED 2026-08-28**: the mechanism is a dbt model
-with the mapping applied in it. **The mechanism now exists** (`company_name_overrides` seed,
-built for the Nikkei fix above, `fix/nikkei-company-names`): SMI just needs rows added to that
-same seed. The resulting name list still wants an owner's eye.
+**FIXED (`fix/smi-legal-name-register`): SMI card headlines were in a different register from
+every other market.** The Swiss source table's only name column gives legal names, so the seed
+carried "Novartis International AG", "Swiss Reinsurance Company Ltd" and "Holcim Limited" where
+the other eight markets carry "Adidas", "Philips", "Santander". Two of those were not just
+formal but wrong: the listed issuers are Novartis AG and Swiss Re AG. `dim_stock` prefers the
+seed name over yfinance's `info_long_name`, which has them right, so the coalesce actively
+discarded the correct name. There is no config fix: the table has no short-name column, so the
+durable fix was the override mechanism, which is a §6 call. **ANSWERED 2026-08-28**: the
+mechanism is a dbt model with the mapping applied in it, reusing `company_name_overrides` (the
+seed built for the Nikkei fix above). **Name list proposed against yfinance `longName`,
+presented to the owner as a full 20-row table, and approved verbatim ("go ahead with that
+list") on 2026-08-28.** Nineteen `ch_smi` rows added; `KNIN` excluded since its seed name is
+already a trade name.
 
 ## Current task
 

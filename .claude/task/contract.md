@@ -1,92 +1,71 @@
 # Task contract
 
-objective: Fix eleven wrong company names on live `jp_nikkei225` cards by building the
-  seed-to-staging-to-base name-override mechanism the owner decided on 2026-08-28, and
-  populating it with the eleven Nikkei corrections. Does not touch the raw seed CSVs, does not
-  cover the Block ticker, does not cover the SMI legal-name register (separate, larger, needs
-  its own trade-name research).
+objective: Fix the SMI legal-name register by adding nineteen `ch_smi` rows to the existing
+  `company_name_overrides` seed (built for the Nikkei fix), so `ch_smi` card headlines read as
+  trade names like every other market instead of legal-register forms. Owner-approved name list,
+  2026-08-28. Does not touch the raw seed CSV, does not touch the Block ticker or any other
+  market's names.
 
 scope_paths:
   - dbt_analytics/seeds/company_name_overrides.csv
-  - dbt_analytics/seeds/_seeds.yml
-  - dbt_analytics/models/1_staging/manual/stg_manual__company_name_overrides.sql
-  - dbt_analytics/models/1_staging/manual/_manual_staging.yml
-  - dbt_analytics/models/2_base/yfinance/base_yf__constituents.sql
-  - dbt_analytics/models/2_base/yfinance/_yfinance_base.yml
-  - dbt_analytics/models/2_base/yfinance/_yfinance_base_unit_tests.yml
-  - dbt_analytics/models/1_staging/yfinance/_yfinance_staging.yml
   - tests/ingestion/test_market_onboarding.py
+  - docs/constituent_sources.yml
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - The eleven corrected names below are read directly off yfinance `longName` for each
-    ticker, same source and method as the audit that found them. Not re-litigated here.
-  - **Whether to also build a name-vs-`info_long_name` audit guard is NOT decided here.** That
-    would have caught all eleven on its own; the two existing CI guards only caught two of them.
-    It is a second, separable mechanism (a check, not a correction), left for its own task so
-    this one stays reviewable. Flagged, not built.
-  - **The raw seed CSVs are NOT edited.** The owner's instruction was "corrected in a dbt
-    model, not by hand." `storage/seeds/jp_nikkei225/constituents.csv` keeps its wrong names
-    at the source; the correction lives entirely in the dbt layer. Consequence: the existing
-    `KNOWN_DUPLICATE_SEED_NAMES` allowlist in `tests/ingestion/test_market_onboarding.py`
-    (the `mitsuiosklines` / `asahigroupholdings` entries) is UNCHANGED by this task and stays
-    accurate: it describes the raw seed, which this task does not touch. An earlier filed-task
-    draft said those entries should be removed once the duplicates are "gone"; that was written
-    against a hand-edit design the owner has since ruled out, and is superseded by this.
+  - The nineteen trade names below were proposed by comparing the current seed against
+    yfinance `longName` for each ticker, then presented to the owner as a table and approved
+    verbatim ("go ahead with that list"). Not re-litigated here.
+  - `KNIN` (Kuehne + Nagel) is deliberately excluded: the seed already carries a trade name,
+    yfinance's longName is the more formal one ("Kuehne + Nagel International AG"), so no
+    override row is added for it.
+  - The raw seed CSV is not edited, same design as the Nikkei fix: `storage/seeds/ch_smi/
+    constituents.csv` keeps its legal names at the source; the correction lives entirely in the
+    dbt layer via the existing override mechanism.
+  - No new mechanism: this reuses `company_name_overrides.csv` / `stg_manual__company_name_
+    overrides` / `base_yf__constituents`'s override join exactly as built for the Nikkei fix.
+    No schema, model, or test-taxonomy change.
 
 done_when:
-  - `company_name_overrides.csv` has eleven rows, `(market_code, ticker)` -> corrected
-    `company_name`, for 3407, 6908, 6976, 8005, 8804, 8830, 9005, 9008, 9009, 9101, 9412 in
-    `jp_nikkei225`.
-  - A new staging model exposes the seed as a 1:1 source mapping (`docs/layering.md`'s staging
-    rule), grain-tested (`unique_combination_of_columns` on market_code+ticker, `not_null` on
-    all four columns).
-  - `base_yf__constituents` left-joins the override onto the deduped constituent relation and
-    coalesces `override.company_name` ahead of the seed's own `company_name`, so the corrected
-    name is what reaches `dim_stock`'s existing `coalesce(c.company_name, f.info_long_name)`
-    unchanged. `dim_stock.sql` itself is NOT edited: the fix lands upstream of it by
-    construction, which was one of the two open questions from the prior contract and is
-    resolved by this design rather than by editing core.
-  - `_yfinance_staging.yml`'s `company_name` column description ("may be overridden in core")
-    is corrected: the override happens in `2_base`, not `3_core`.
-  - **Split the way `tests/README.md` requires**, not the way the original filed-task draft
-    assumed: "the transformation layer is tested in dbt, not Python." So the SQL mechanism
-    (join + coalesce actually replacing the name) is a dbt `unit_tests:` pair in
-    `_yfinance_base_unit_tests.yml` against `base_yf__constituents`, mutation-proven (reverting
-    the coalesce to the seed's own name fails the override-wins test). The seed DATA's
-    consistency with the raw constituent file is a plain-file check in `tests/ingestion/`
-    instead of a dbt test, because CI's `dbt build` runs against a synthetic fixture database
-    that gives every market the same made-up tickers, so a dbt-side relationships test would
-    report all eleven real overrides as "dead" and fail in CI regardless of correctness. Three
-    tests, all mutation-proven: no duplicate `(market_code, ticker)`; every override ticker
-    exists in `storage/seeds/jp_nikkei225/constituents.csv`; the file covers exactly the eleven
-    audited tickers.
+  - `company_name_overrides.csv` gains exactly nineteen new `ch_smi` rows: NOVN, ROP, NESN,
+    ABBN, UBSG, CFR, ZURN, HOLN, SREN, LONN, SCMN, GIVN, ALC, SIKA, AMRZ, SLHN, GEBN, PGHN, LOGN.
+    KNIN is not added. Each row's `company_name` is the owner-approved trade name; each row's
+    `reason` states whether the seed's legal name was also factually wrong (NOVN, SREN) or just
+    a more formal register of the same issuer (the other seventeen).
+  - A new test mirrors `test_company_name_overrides_covers_the_audited_nikkei_defects` for this
+    market: pins the exact nineteen `ch_smi` tickers covered, so a future edit can't silently
+    drop or add a row without a test noticing.
+  - The existing market-agnostic tests (`test_company_name_overrides_target_real_constituents`,
+    `test_company_name_overrides_have_no_duplicate_keys`) need no changes; they already loop
+    over every market's rows and will cover the new `ch_smi` rows automatically. Confirmed
+    they pass with the new rows present, not just assumed.
+  - `docs/constituent_sources.yml`'s `ch_smi` note ("the seed name wins over yfinance in
+    dim_stock, so SMI card headlines read differently from every other market's. Open, see the
+    contract.") is updated to say this is fixed via the override, not left as an open pointer to
+    a contract that no longer describes an open problem.
+  - No change to `dbt_analytics/seeds/_seeds.yml`, `_manual_staging.yml`, `_yfinance_base.yml`,
+    or `base_yf__constituents.sql`: the mechanism already generalizes across markets, so a
+    second market's rows need no schema or SQL change. Confirmed by reading each file, not
+    assumed from the Nikkei design intent.
   - `dbt build --project-dir dbt_analytics --profiles-dir . --full-refresh` green (against the
-    CI fixture DB; the eleven real-ticker rows are inert there and that is expected, see above).
+    CI fixture DB; the nineteen real-ticker rows are inert there, same limitation as Nikkei).
   - `pytest` green, no other test touched or weakened.
   - `check_layer_contract.py`, `check_dbt_tests.py`, `check_dbt_documentation.py`,
     `check_dbt_sql_structure.py`, `check_registry_var_sync.py` all green.
   - No em dash or en dash on any added line.
 
 impact_map:
-  - `base_yf__constituents` gains a left join and a coalesce; its grain (`market_code, ticker`)
-    is unchanged, row count is unchanged (the join is on the override's own unique key, so it
-    can only replace a value, never fan out a row).
-  - `dim_stock` is unaffected in code; its output changes for exactly eleven `jp_nikkei225`
-    rows once real data flows through (not observable against CI fixtures).
-  - Ran `dbt ls --select base_yf__constituents+ --resource-type model` before implementing:
-    `dim_stock`, then `int_stock__card_metrics`, `int_stock__sector_benchmarks`,
-    `mart_stock_cards`, `mart_stock_eligibility_gaps`. `dim_stock` is the only direct consumer
-    of `company_name`; the rest read sector/currency/metrics from `dim_stock`'s output and
-    never touch the name itself, so no other model's logic is affected.
-  - Card headlines for 3407, 6908, 6976, 8005, 8804, 8830, 9005, 9008, 9009, 9101, 9412 change
-    on the next production run that rebuilds `dim_stock`. No already-shipped number (verdict,
-    metric, benchmark) changes: this touches only a display string.
+  - `base_yf__constituents` gains nineteen more matched override rows on its existing left
+    join; no schema, join, or coalesce change. Grain and row count unaffected, same as Nikkei
+    (join key is the override's own unique key).
+  - Re-ran `dbt ls --select base_yf__constituents+ --resource-type model`: `dim_stock`, then
+    `int_stock__card_metrics`, `int_stock__sector_benchmarks`, `mart_stock_cards`,
+    `mart_stock_eligibility_gaps`: identical chain to the Nikkei fix, since this is the same
+    model gaining more override data, not new logic.
+  - Card headlines for the nineteen listed `ch_smi` tickers change on the next production run
+    that rebuilds `dim_stock`. No already-shipped number (verdict, metric, benchmark) changes:
+    this touches only a display string.
 
-amendments:
-  - 2026-08-28: superseded the "remove the allowlist entries" instruction in the originally
-    filed task (task_86486bc2), which assumed a hand-edited raw seed. The owner's actual
-    decision (dbt-model correction, not by hand) makes that instruction wrong; corrected here
-    under decisions_reserved.
+amendments: (none)
