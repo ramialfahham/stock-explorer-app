@@ -311,7 +311,10 @@ _VALUE_FORMATTERS = {
     "ratio_2": lambda value: f"{value:.2f}",
 }
 
-# Registry-driven markets use these currencies; fall back to the code for anything else.
+# Mirrors scripts/assessment_rules.py so the read names the currency the card face shows. Not
+# every registry-driven market is here: CHF has no entry and falls back to the bare code, which
+# the owner settled on 2026-08-28 as correct, the rule being to use each currency's real-world
+# form. Keep this map identical to the one in scripts/assessment_rules.py; a test pins it.
 _CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
 
 

@@ -1,0 +1,36 @@
+market_code,ticker,company_name,refreshed_at,source
+es_ibex35,ACS.MC,ACS,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ACX.MC,Acerinox,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,AMS.MC,Amadeus IT Group,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ANA.MC,Acciona,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ANE.MC,Acciona Energía,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,BBVA.MC,BBVA,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,BKT.MC,Bankinter,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,CABK.MC,CaixaBank,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,CLNX.MC,Cellnex Telecom,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,COL.MC,Inmobiliaria Colonial,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,AENA.MC,AENA,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ELE.MC,Endesa,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ENG.MC,Enagás,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,FDR.MC,Fluidra,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,FER.MC,Ferrovial,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,GRF.MC,Grifols,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,IAG.MC,International Airlines Group,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,IBE.MC,Iberdrola,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,IDR.MC,Indra,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ITX.MC,Inditex,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,LOG.MC,Logista,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,MAP.MC,Mapfre,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,MRL.MC,Merlin Properties,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,MTS.MC,ArcelorMittal,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,NTGY.MC,Naturgy,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,PUIG.MC,Puig,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,RED.MC,Redeia Corporación,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,REP.MC,Repsol,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,ROVI.MC,Laboratorios Rovi,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,SAB.MC,Banco Sabadell,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,SAN.MC,Santander,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,SCYR.MC,Sacyr,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,SLR.MC,Solaria,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,TEF.MC,Telefónica,2026-08-27T16:43:35.455401+00:00,wikipedia
+es_ibex35,UNI.MC,Unicaja,2026-08-27T16:43:35.455401+00:00,wikipedia

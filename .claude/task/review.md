@@ -1,130 +1,146 @@
 # Review
 
-diff_sha256: dc7ed82de9f557dc58d62eaea118242515db346cf3bdcfeff48fa9323aeb8c20
+diff_sha256: 5280941bdc7ae13732395cd187810ad87c46b0268ddc3745967656a612746574
 
-Three rounds. Reviewers: scope-auditor (required by `always`) and cto-reviewer (run
-voluntarily). No other reviewer is required: the staged set is one skill file, the contract, the
-handover and one doc, and `.claude/review_routing.json` has no pattern matching any of them
-beyond `always`.
+Sixteen review rounds. Reviewers: scope-auditor (required, `always`), analytics-engineer-reviewer
+(`*.sql`, `*.csv`, `*dbt_project.yml`), data-engineer-reviewer (`ingestion/*`, `supabase/*`),
+cto-reviewer (`scripts/*`, `tests/*`, `frontend/*`), equity-analyst-reviewer
+(`docs/data_contract.md`).
 
 **Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
 this session, so each ran as a general-purpose agent instructed to read its own role file
-verbatim first. Cold blinded input, read-only, index frozen before dispatch each round.
+verbatim first. Cold blinded input, read-only, index frozen before each dispatch.
 
-**Final verdicts:** scope-auditor PASS (round 3), cto-reviewer PASS (round 3).
+**Final verdicts (round 16, the commit gate):** scope-auditor PASS, analytics-engineer-reviewer
+PASS, data-engineer-reviewer PASS, cto-reviewer PASS, equity-analyst-reviewer PASS.
 
 ## What this is
 
-`.claude/skills/onboard-market/SKILL.md`, so that an agent asked to add a market finds the
-activation checklist instead of improvising one. Phase 1 item 1b.
+Batch 2 of 3 in the market-onboarding queue: Netherlands (AEX), Switzerland (SMI), Spain
+(IBEX 35). All eleven activation-checklist steps done for all three markets. 80 seed rows, 74
+distinct new companies, deck grows by roughly 65 cards once the branch runs.
 
-## The judgement that shaped it, and how it was wrong at first
+## The shape of the sixteen rounds
 
-France was onboarded by hand specifically to learn the procedure well enough to write a skill.
-What that branch actually found is that the procedure was **already written down** in
-`docs/data_contract.md` and simply not read. So the failure mode was discovery, not content, and
-the skill's job is to make an agent find the checklist and understand what they are signing up
-for, not to restate it.
+Rounds 1 through 6 fixed real code and data defects: the constituent-name cleaner
+(`_clean_company_name`), the two collision guards (`KNOWN_DUAL_INDEX_SYMBOLS`,
+`KNOWN_CROSS_MARKET_COMPANIES`), the within-market duplicate-headline guard
+(`KNOWN_DUPLICATE_SEED_NAMES`), the CI eligibility-baseline guard, and the currency-mirror test.
+Each of these is mutation-proven: the round-by-round record in the branch's commit history and
+this file's predecessor drafts show the exact failing counts for each guard when weakened.
 
-**The first draft did not honour that.** It restated four checklist steps in prose while
-asserting on line 11 that it did not, and the one number it restated was wrong: it attributed
-the WARN-below-20 threshold to `check_eligibility_baseline.py` when it lives in
-`check_pipeline_completeness.py`. **The predicted drift arrived at birth, inside the paragraph
-that duplicated the step.** Both reviewers found it independently.
+Rounds 7 through 16 found **zero further code defects**. Every finding from round 7 onward was
+prose: the contract and the session handover contradicting each other, contradicting themselves,
+or drifting out of sync with a guard that had itself just been corrected. The recurring failure
+was fixing a claim in the file a reviewer named and leaving the identical claim standing in its
+sibling (contract vs. handover vs. a code comment vs. a test docstring). Four separate rounds (7,
+8, 12, 14) were single-class sweeps of exactly this problem after a reviewer caught one instance
+and a second reviewer caught the same class surviving elsewhere. This is the intended purpose of
+routing docs through the same review cycle as code: none of these sixteen rounds would have been
+needed if the prose had been left as terse cross-references instead of restated facts, and that
+is the lesson carried into `.claude/active_work.md` for the next batch.
 
-The file went from 900 words to 428. What survives is only what no document carries.
+## The two defects this branch found outside its own scope
 
-## The acceptance test was the root cause
+Both are filed as separate tasks, not fixed here, because both edit already-shipped card content
+under section 6.
 
-The contract's criterion was "restates NO checklist step. Verified: zero numbered steps in the
-file." Zero numbered steps was true. The file restated four steps anyway.
+- **Eleven of 116 `jp_nikkei225` seed rows carry the wrong company name**, found by widening the
+  duplicate-headline guard past exact-string matching and then auditing the full seed against
+  yfinance. Two are visible to the widened guard (their true owner is also a row in the seed);
+  nine are not. `9101` "Mitsui O.S.K. Lines" is actually Nippon Yusen (NYK Line); the real Mitsui
+  O.S.K. Lines is `9104`, one row down.
+- **`au_asx200` ticker `XYX` for Block, Inc. is a one-keystroke error** (`XYZ` is correct); that
+  row has fetched no data since the 2026-05-23 import, and nothing in the pipeline detects a
+  constituent that resolves to zero fundamentals rows.
 
-**A formatting count cannot detect duplication.** scope-auditor put it exactly: "no numbered
-steps is not the same test as no second copy." The criterion is now a comparison that can
-actually fail: for each mechanic the file mentions, does `docs/data_contract.md` already carry
-it? If yes, cut it and point. Applied mechanically, that test removed the sector check, the
-collision guidance, the acceptance gate, the two-halves rule, and step 7's mechanism.
+## Owner decisions recorded 2026-08-28
 
-## The fix that recreated the defect it fixed
+Four escalations, all answered, three creating separate work rather than changing this branch:
 
-`docs/development_workflow.md` planned a rival skill under a different name, covering the same
-checklist. Left alone it would have told the next agent to build a second overlapping copy, so
-it was updated to point at this one.
-
-**The update named both traps in prose.** That made the skill's own "in no document" claim false
-on merge, and created a fresh second copy in the same edit that removed one. cto-reviewer caught
-it. The doc now points without naming.
-
-## Other findings worth keeping
-
-- **The description broke the skill's own rule.** It listed OMXS 30 for Sweden among three
-  owner-chosen indices, presenting as settled an index the owner has not picked, inside a file
-  whose rule is to present options and recommend rather than choose silently. Replaced with OBX.
-- **A decision right was misfiled.** "Dropping a constituent" sat under "the owner's call" and
-  was then decided in the next clause, contradicting the France contract's classification of the
-  identical `ML.PA` question. It is an implementation judgement with a defensible default: carry
-  it and let eligibility drop it.
-- **An unrun result was reported as an outcome**, twice. First an extrapolated post-France deck
-  size; then, after that was cut, a five-market runtime measurement phrased as if it were
-  France's. France has not run.
-- Smaller: the step count summed to ten against a seven-step checklist; the Haiku cost was
-  overstated as "every refresh, permanently"; "nothing in the codebase inserts into it" was
-  false, since migration 014 does.
-
-## Escalated, not self-authorised
-
-**`.claude/review_routing.json` has no `.claude/skills/*` pattern.** A skill instructs every
-future agent on a task class, the same authority class as `.claude/agents/*` and
-`.claude/settings.json`, both of which route to cto-reviewer. From this commit on, a file with
-that reach can be added or changed with only scope-auditor required. cto-reviewer was run
-voluntarily here and confirmed the gap is load-bearing rather than cosmetic, and supplied the
-one-line fix (`".claude/skills/*": ["cto-reviewer"]`) for the owner to apply or decline. Editing
-the routing file is a governance change and is the owner's under section 6, so it was flagged
-rather than taken.
+1. The 20-card warn threshold is wrong (compares an absolute count against 20-member indices).
+   Deferred to phase 2 rather than changed here, per the working agreement's rule against
+   weakening a gate on the branch it fails.
+2. Currency rendering follows real-world practice: CHF stands as-is; CAD becomes `C$`; SEK, DKK,
+   NOK stay ISO codes. No code change on this branch (both `_CURRENCY_SYMBOLS` copies verified
+   unchanged, no CHF key added).
+3. Seed name corrections move into a dbt model: a seed exposed via a staging pass-through, with
+   the correction applied in `2_base` alongside `base_yf__constituents`. Explicitly does NOT cover
+   the Block ticker, which is upstream of dbt entirely (`ingestion/yfinance/ingest.py:309-314`
+   reads the CSV ticker column before dbt runs). Filed separately with the design questions this
+   branch surfaced: `check_layer_contract.py` requires staging SQL under `1_staging/<source>/`,
+   `_yfinance_staging.yml:32` will need its "overridden in core" line corrected, and the missing
+   seed-versus-fundamentals detector belongs in the same contract.
+4. Duplicate cards (13 companies, six pre-existing) stay; every card will show its listing venue.
+   Deferred to its own UX-gated branch; does not by itself correct the two deck-wide counters that
+   say "companies" while counting listings.
 
 ## Verification
 
-- pytest 287, unchanged: the diff is markdown only and touches no code, data, schema, hook, CI
-  file, dependency or setting.
-- Both surviving traps verified genuinely undocumented, twice each and independently: `403` in
-  `docs/` is only ever the Supabase Management API, and `table_index` appears only as bare config
-  values with no explanation anywhere.
-- Every reference the skill makes resolves: `_CURRENCY_SYMBOLS` at both cited paths and holding
-  none of CAD/CHF/SEK/DKK/NOK; the currency proposal recorded as overturnable; the 2 hour CI
-  timeout; the seven-step pre-France checklist confirmed against `691610b0^`.
-- Zero em or en dashes on any added line.
-
-## Left standing deliberately
-
-The skill points at `.claude/active_work.md` for the currency proposal, which is a rolling
-handover that gets rewritten. Both reviewers noted the pointer will rot and neither asked for a
-change: the repo's own convention sends open items there rather than to a contract, and the
-proposal is spent once the queued markets land.
+- pytest 391 passed. `dbt build --full-refresh` 108/108. Five credential-free CI gates green
+  (`check_layer_contract`, `check_registry_var_sync`, `check_dbt_tests`, `check_dbt_documentation`,
+  `check_dbt_sql_structure`). `check_eligibility_baseline` OK at 63 = 9 markets x 7 fixture rows.
+- No em dash or en dash on any added line across the full patch (scanned programmatically every
+  round, confirmed again at the frozen commit-gate diff).
+- Guard mutation proofs (reproduced independently by multiple reviewers across rounds): the
+  duplicate-headline guard's widened key fails on reverting to exact matching; the marker-class
+  guard fails 16/21 cases when neutered; the currency-mirror test fails when either
+  `_CURRENCY_SYMBOLS` copy drifts; the CI baseline guard fails on a stale per-market count.
+- No seed was hand-corrected in anticipation of decision 3; no card-face change landed despite
+  decision 4 being approved; no gate threshold was touched despite decision 1.
 
 ## scope-auditor
 
-Rounds 1 to 3. FAIL, FAIL, PASS.
+Sixteen rounds, FAIL through round 15, PASS at the commit-gate round (16). Blocking findings
+across the cycle: truncated bullets from in-place edits (rounds 5, 12), a `scope_paths` list that
+drifted out of sync with the actual file set (round 6), duplicate/contradictory issue-count
+arithmetic (round 9), and the recurring stale-cross-reference class described above (rounds 7, 8,
+14, 15). At the commit gate: confirmed no superseded phrasing survives in any form, confirmed
+`_CURRENCY_SYMBOLS` and the SMI seed are genuinely untouched, confirmed `scope_paths` covers all
+26 changed files, and flagged (non-blocking) that `.claude/active_work.md` is now ~95KB against
+its own documented 32,000-byte injection cap.
 
-Round 1 found the drifted threshold, the step count that summed to ten, and the rival skill plan
-in `docs/development_workflow.md`. Its finding 8 was the one that mattered most and was not even
-blocking: the acceptance test was a formalism that could not detect the property it named. Round
-2 found the trim incomplete by that new test, and caught the description presenting an
-owner-unchosen index as settled. Round 3 verified each mechanic against the checklist one final
-time and confirmed the two traps genuinely absent from `docs/`.
+VERDICT: PASS
+
+## analytics-engineer-reviewer
+
+PASS at rounds 11 through 16 after FAILs earlier in the cycle (stale currency-count arithmetic,
+an incorrect "5 currencies" claim, sector-benchmark grouping questions). At the commit gate:
+re-verified `int_stock__sector_benchmarks.sql` line-for-line against the Utilities/Industrials
+narrative, re-ran the full pytest suite (391 passed) and all five CI gates rather than trusting
+the prior round's run, and confirmed every forward-looking citation for the follow-up seed/base
+contract resolves against live code.
+
+VERDICT: PASS
+
+## data-engineer-reviewer
+
+PASS from round 9 onward, having FAILed rounds 1 through 8 on the constituent-cleaner mutation
+gaps, the collision-guard blind spots, and the Block-ticker root cause. At the commit gate:
+traced the sharpened Block mechanism (`ingest.py:213` writing the original ticker into the
+fundamentals parquet, breaking `dim_stock`'s join key) line-by-line against source, confirmed
+`docs/layering.md` never mentions seeds by grep, and confirmed no seed or ingestion file changed
+since the prior review.
 
 VERDICT: PASS
 
 ## cto-reviewer
 
-Rounds 1 to 3. FAIL, FAIL, PASS. Not required by routing; run because a skill instructs every
-future agent on a task class.
+PASS from round 11 onward after FAILing rounds 1 through 10 on guard mutation gaps and prose
+drift. At the commit gate: confirmed the diff hash matches the staged tree, re-ran the full suite
+(391 passed, exact collection count), confirmed both `_CURRENCY_SYMBOLS` copies are byte-identical
+to before this branch, confirmed no seed was hand-corrected, and spot-checked ten file:line
+citations against source (nine exact, one off-by-one on an untouched file, non-blocking).
 
-Verified every factual assertion in the file against source each round, and reported the hit
-rate honestly rather than only the misses. Round 1 caught the threshold misattribution
-independently and located the correct owner (`check_pipeline_completeness.py:18`), and noted the
-description lacked an exclusion clause in a repo where "market" is heavily overloaded. Round 2
-caught the `development_workflow.md` update recreating the duplication it removed. Round 3
-caught the five-market runtime being read as France's. It also confirmed the routing gap is
-load-bearing and supplied the one-line fix for the owner rather than applying it.
+VERDICT: PASS
+
+## equity-analyst-reviewer
+
+PASS from round 9 onward after FAILing earlier rounds on the currency-in-read-prompt scoping and
+the Utilities/Industrials sector-count arithmetic. At the commit gate: recomputed the Utilities
+7-without/8-with-Acciona-SA count directly from the `es_ibex35` seed rather than trusting the
+prose, confirmed the "would unlock, not will" modal against the eligibility gate in
+`int_stock__sector_benchmarks.sql`, and confirmed the CHF-in-read-prose finding stays escalated in
+both the contract and the handover rather than silently resolved in code.
 
 VERDICT: PASS

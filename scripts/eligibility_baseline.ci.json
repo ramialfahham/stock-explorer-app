@@ -10,7 +10,15 @@
       "baseline_eligible": 7,
       "min_eligible": 5
     },
+    "ch_smi": {
+      "baseline_eligible": 7,
+      "min_eligible": 5
+    },
     "de_dax": {
+      "baseline_eligible": 7,
+      "min_eligible": 5
+    },
+    "es_ibex35": {
       "baseline_eligible": 7,
       "min_eligible": 5
     },
@@ -19,6 +27,10 @@
       "min_eligible": 5
     },
     "jp_nikkei225": {
+      "baseline_eligible": 7,
+      "min_eligible": 5
+    },
+    "nl_aex": {
       "baseline_eligible": 7,
       "min_eligible": 5
     },
@@ -31,5 +43,5 @@
       "min_eligible": 5
     }
   },
-  "total_baseline_eligible": 42
+  "total_baseline_eligible": 63
 }

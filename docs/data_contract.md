@@ -201,7 +201,7 @@ Supabase**. Always non-null — evaluated in order, first match wins:
 2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`, **or** when it's positive
    but under 0.1% of `info_market_cap` (revenue negligible relative to valuation — e.g. a
    development-stage miner/biotech the strict `<= 0` test alone misses; a ratio, not an absolute
-   currency floor, since this app spans 5 currencies with no FX normalization in the pipeline).
+   currency floor, since this app spans 6 currencies with no FX normalization in the pipeline).
    Real example: Deep Yellow (ASX: DYL) — $15,949 revenue against a $1.7B market cap (~0.001%).
 3. `operating` — else (the default). A **null** `stmt_total_revenue`, or a positive-but-negligible
    `stmt_total_revenue` with no `info_market_cap` to compare it against, is treated as a data gap
@@ -472,12 +472,27 @@ contract, which the next task overwrites.
 10. Run `pytest tests/ingestion/test_market_onboarding.py`. It pins every join above and
    detects a constituent that resolves to the same Yahoo symbol under two markets. That is
    usually a seed copied wrong, but occasionally a real dual-index membership: Airbus sits in
-   both the DAX and the CAC 40, and ArcelorMittal is in the CAC 40 while listing in Amsterdam,
-   so it will collide when `nl_aex` activates. Decide which it is, and if the membership is
-   genuine add the symbol to `KNOWN_DUAL_INDEX_SYMBOLS` with the reason rather than editing a
-   seed. Note the deck then shows that company twice when browsing all markets (issue #7).
+   both the DAX and the CAC 40, and ArcelorMittal is in the CAC 40 while listing in Amsterdam.
+   Decide which it is, and if the membership is genuine add the symbol to
+   `KNOWN_DUAL_INDEX_SYMBOLS` with the reason rather than editing a seed. Note the deck then
+   shows that company once per market it belongs to (issue #7).
+   **There are TWO collision guards and they take different allowlists.** The symbol one above is
+   keyed on the resolved Yahoo symbol, so it only sees a company whose two indices track the same
+   listing. A company listed on two venues resolves to two symbols and is caught instead by
+   `test_no_unrecorded_company_appears_under_two_markets`, which is keyed on the company NAME and
+   takes `KNOWN_CROSS_MARKET_COMPANIES`. ArcelorMittal needs both: `MT.AS` twice is a symbol
+   collision, `MTS.MC` is a name collision. Adding to the wrong list leaves the test failing.
+   The name guard keys on a punctuation-insensitive form, so it DOES catch a company spelled two
+   ways ("News Corp (Class B)" against "News Corp Class B"), and allowlist keys must be written
+   in that normalised form (lower case, ASCII letters and digits only, since the key deletes
+   accented letters rather than folding them, so `Telefónica` keys to `telefnica` with the
+   letter gone, not `telefonica`) or the
+   stale-entry test rejects them. What it still cannot see is a pair differing by more than
+   punctuation, and the whole
+   same-market case, where one company ships two share classes inside one index.
 11. Update `scripts/eligibility_baseline.ci.json` (a deterministic fixture count, 7 per active
    market). The production `scripts/eligibility_baseline.json` is NOT edited by hand; it is
    rewritten after a verified healthy run.
 
-European expansion order after DAX: document in registry; activate one market per audit cycle.
+European expansion order: document in the registry, and run the coverage audit once per market.
+Whether a branch carries one market or several is the owner's call; the per-market audit is not.

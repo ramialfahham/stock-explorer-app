@@ -87,16 +87,16 @@ markets:
     index_name: ^AEX
     exchange_suffix: .AS
     source: yfinance
-    ingest_active: false
+    ingest_active: true
 
   - market_code: ch_smi
     index_name: ^SSMI
     exchange_suffix: .SW
     source: yfinance
-    ingest_active: false
+    ingest_active: true
 
   - market_code: es_ibex35
     index_name: ^IBEX
     exchange_suffix: .MC
     source: yfinance
-    ingest_active: false
+    ingest_active: true

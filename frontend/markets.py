@@ -18,6 +18,9 @@ MARKET_DISPLAY_NAMES: dict[str, str] = {
     "au_asx200": "ASX 200",
     "de_dax": "DAX",
     "fr_cac40": "CAC 40",
+    "nl_aex": "AEX",
+    "ch_smi": "SMI",
+    "es_ibex35": "IBEX 35",
 }
 
 
@@ -53,11 +56,22 @@ def discover_pool_summary(counts: dict[str, int]) -> str:
     return f"{total} card-ready companies"
 
 
+def markets_in_deck_order(counts: dict[str, int]) -> list[str]:
+    """Hero market first, then alphabetical by code.
+
+    One definition because two lines in the same "About the data" panel render this order: the
+    coverage line and the per-market breakdown under it. They were separate copies of the sort
+    key in two modules, which meant they agreed only by coincidence and would drift apart in the
+    same panel the moment one changed.
+    """
+    return sorted(counts, key=lambda code: (code != HERO_MARKET_CODE, code))
+
+
 def eligible_breakdown_lines(counts: dict[str, int]) -> list[str]:
-    lines: list[str] = []
-    for code in sorted(counts.keys(), key=lambda c: (c != HERO_MARKET_CODE, c)):
-        lines.append(f"{market_display_name(code)}: {counts[code]}")
-    return lines
+    return [
+        f"{market_display_name(code)}: {counts[code]}"
+        for code in markets_in_deck_order(counts)
+    ]
 
 
 def latest_snapshot_label(cards: list[dict[str, Any]]) -> str | None:

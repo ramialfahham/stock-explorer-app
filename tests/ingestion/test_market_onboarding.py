@@ -18,6 +18,7 @@ which is right, but it does hide other results behind it.
 from __future__ import annotations
 
 import csv
+import json
 import re
 from pathlib import Path
 
@@ -43,7 +44,270 @@ KNOWN_DUAL_INDEX_SYMBOLS: dict[str, tuple[frozenset[str], str]] = {
         "primary Paris line. The seeds are correct; the deck shows it twice when browsing all "
         "markets, which is a display concern rather than a data one (issue #7).",
     ),
+    "MT.AS": (
+        frozenset({"fr_cac40", "nl_aex"}),
+        "ArcelorMittal is a constituent of both the CAC 40 and the AEX, and both index pages "
+        "give its Amsterdam line rather than a Paris one, so the two seeds agree by fact and "
+        "not by copying. The deck shows ArcelorMittal THREE times, not two: the IBEX 35 seed "
+        "carries its Madrid line as MTS.MC. This guard is keyed on the resolved Yahoo "
+        "symbol, so a third listing under a different symbol is invisible to it. Issue #7 "
+        "covers the display fix.",
+    ),
 }
+
+
+# Wider than the writer strips, in all THREE halves, on purpose: see the guard's docstring.
+# An earlier version listed the same eleven code points the writer strips, which made the
+# whitespace half able only to confirm the writer's own assumptions. `[^\S ]` is every
+# character Python treats as whitespace except the ordinary space, so it covers the Zs block
+# the writer does not touch (U+2000 to U+200A, U+205F, U+3000, U+1680) as well as tabs and
+# newlines; the second alternative adds the zero-width format characters, which are not
+# whitespace to `re`.
+_SUSPECT_TRAILING_BRACKET = re.compile(r"\[[^\]]{1,20}\]\s*$")
+# Non-bracket footnote markers. Wikipedia uses these alongside bracketed ones, and the
+# writer handles neither. Widening the GUARD costs nothing, because it only ever fails and
+# asks a human; widening the WRITER on a guess is the over-stripping failure it avoids.
+# Deliberately not `[^\w\s]$`: a real name can end in a full stop ("Amazon.com, Inc.").
+#
+# The superscript digits are split across two blocks and the first version of this class got it
+# wrong: `\u2070-\u209f` holds superscript zero and four upwards, while ONE, TWO and THREE are
+# U+00B9, U+00B2 and U+00B3 in Latin-1 Supplement. Footnotes number from 1, so the three most
+# likely markers were exactly the three it missed. Nothing caught that, because nothing
+# exercised the regex; `test_seed_guard_catches_non_bracket_markers` does now.
+_SUSPECT_TRAILING_MARKER = re.compile(
+    r"[*\u2020\u2021\u00a7\u2016\u00b6\u00b9\u00b2\u00b3\u2070-\u209f\u203b\u2042\u204e]\s*$"
+)
+_SUSPECT_SPACE = re.compile(r"[^\S ]|[​-‍⁠﻿᠎]")
+
+
+# Two rows in one seed whose `company_name` is identical. The deck renders both as separate
+# cards with the same headline, and nothing downstream distinguishes them. Each entry needs a
+# reason, and "known defect" is a reason to fix it, not to accept it.
+# Keyed on the PUNCTUATION-INSENSITIVE name, because two headlines that differ only by full
+# stops are indistinguishable to a reader and the exact-match version of this guard missed a live
+# wrong-company card for that reason. The count is part of the value on purpose: keyed on the
+# name alone, an entry would also silence a THIRD row acquiring that name later, which is a new
+# defect wearing an old excuse.
+KNOWN_DUPLICATE_SEED_NAMES: dict[str, dict[str, tuple[int, str]]] = {
+    "jp_nikkei225": {
+        "mitsuiosklines": (
+            2,
+            "DEFECT, pre-existing since the 2026-05-23 import, NOT introduced by market "
+            "onboarding, and worse than the Asahi one below. Ticker 9104 is Mitsui O.S.K. "
+            "Lines; ticker 9101 is Nippon Yusen (NYK Line) and carries Mitsui's name. So a live "
+            "card shows NYK Line's financials under a competitor's name, Nippon Yusen appears "
+            "nowhere in the deck, and the two headlines differ only by full stops. Found only "
+            "when this guard was widened past exact matching. Recorded in "
+            ".claude/active_work.md and filed for its own branch, since fixing it edits a "
+            "shipped card headline."
+        ),
+        "asahigroupholdings": (
+            2,
+            "DEFECT, pre-existing since the 2026-05-23 import, NOT introduced by market "
+            "onboarding. Ticker 2502 is Asahi Group Holdings; ticker 3407 is Asahi Kasei and "
+            "carries the wrong name. Whether both rows cleared eligibility in the last run is "
+            "not checkable from the repo, so the live effect is either two cards sharing a "
+            "headline or one card naming Asahi Kasei as Asahi Group Holdings. Pinned here so it "
+            "cannot spread silently, and "
+            "recorded in .claude/active_work.md so the record outlives this task's contract. "
+            "Fixing it edits a shipped card headline, a section 6 call, so it belongs on its "
+            "own branch."
+        ),
+    },
+}
+
+
+def _headline_key(name: str) -> str:
+    """Two names that render as the same headline to a reader.
+
+    Every character outside `[a-z0-9]` is dropped, so that is punctuation, whitespace AND
+    accented or non-Latin letters, which is more aggressive than "punctuation" suggests. Enough
+    to see "Mitsui O.S.K. Lines" against "Mitsui OSK Lines", and deliberately not enough to merge
+    "News Corp (Class A)" with "(Class B)" or "Alphabet Inc. (Class A)" with "(Class C)", which
+    are genuinely different securities a reader can tell apart.
+
+    The accent deletion is a theoretical false-merge risk ("L'Oreal" and a hypothetical "Loral"
+    in one seed) and inert today: an NFKD accent-folding variant finds exactly the same
+    collisions across all nine seeds. Both guards using this key fail loudly and ask a human, so
+    the failure direction is safe either way.
+
+    Two guards share this key, which does not make it under-pinned once the live defects are
+    fixed: both allowlists are themselves keyed in normalised form, so narrowing the key breaks
+    their lookups regardless of what the seeds happen to contain.
+    """
+    return re.sub(r"[^a-z0-9]+", "", name.casefold())
+
+
+# The same COMPANY under two markets, resolving to two different Yahoo symbols. This is the
+# class `KNOWN_DUAL_INDEX_SYMBOLS` structurally cannot see: it keys on the resolved symbol, so
+# Shell as `SHEL.L` and `SHELL.AS` looks like two companies to it. The deck shows one card per
+# row either way, so the reader meets the same company twice.
+#
+# Matching uses `_headline_key`, the same punctuation-insensitive key as the within-market
+# guard, and NOT a legal-form-stripping fuzzy matcher. A fuzzy one merges "APA Corporation" (US
+# oil and gas) with "APA Group" (Australian gas pipelines), and "Merck" in de_dax (Merck KGaA)
+# with "Merck & Co." in us_sp500, which have been unrelated since a 1917 expropriation. Those
+# are the merges worth refusing: a missed duplicate is a display flaw, a merged pair asserts two
+# companies are one.
+#
+# Dropping punctuation costs none of that and closes a real gap. An earlier exact-match version
+# could not see "News Corp (Class B)" against "News Corp Class B", one company spelled two ways,
+# so it was counted in the contract's issue #7 figures while being unrecordable here.
+#
+# THE LIST BELOW IS STILL A FLOOR, NOT A TOTAL, for two reasons that remain. A company whose two
+# seeds differ by more than punctuation (an abbreviation, a suffix one source carries and the
+# other does not) stays invisible. And the whole SAME-MARKET class is out of scope by
+# construction: Alphabet, Fox and News Corp each ship two share classes inside `us_sp500`, which
+# is a different guard's territory and a different decision.
+KNOWN_CROSS_MARKET_COMPANIES: dict[str, tuple[frozenset[str], str]] = {
+    "airbus": (
+        frozenset({"de_dax", "fr_cac40"}),
+        "Both indices track the same Paris line, so this one IS symbol-visible and is also in "
+        "KNOWN_DUAL_INDEX_SYMBOLS. Listed here so the two allowlists do not disagree.",
+    ),
+    "arcelormittal": (
+        frozenset({"fr_cac40", "nl_aex", "es_ibex35"}),
+        "Three cards. The CAC 40 and AEX both give the Amsterdam line (MT.AS, symbol-visible); "
+        "the IBEX 35 gives the Madrid line (MTS.MC), which is not.",
+    ),
+    "shellplc": (
+        frozenset({"uk_ftse100", "nl_aex"}),
+        "Single share class since the 2022 unification, listed in London and Amsterdam. "
+        "SHEL.L and SHELL.AS are two venues for one company. Added by the NL onboarding.",
+    ),
+    "unilever": (
+        frozenset({"uk_ftse100", "nl_aex"}),
+        "Single share class since the 2020 unification. ULVR.L and UNA.AS are one company. "
+        "Added by the NL onboarding.",
+    ),
+    "relx": (
+        frozenset({"uk_ftse100", "nl_aex"}),
+        "Single share class since the 2018 unification. REL.L and REN.AS are one company. "
+        "Added by the NL onboarding.",
+    ),
+    "internationalairlinesgroup": (
+        frozenset({"uk_ftse100", "es_ibex35"}),
+        "Spanish-incorporated, primary listing London, secondary Madrid. uk_ftse100 carries the "
+        "bare ticker IAG (resolving to IAG.L) and es_ibex35 carries IAG.MC, so the resolved "
+        "symbols differ and the symbol-keyed guard is blind to the pair. Added by the ES "
+        "onboarding.",
+    ),
+    "amcor": (
+        frozenset({"us_sp500", "au_asx200"}),
+        "PRE-EXISTING, not added here. Dual-listed; AMCR and AMC.AX are one company.",
+    ),
+    "newmont": (
+        frozenset({"us_sp500", "au_asx200"}),
+        "PRE-EXISTING. Dual-listed since the Newcrest acquisition; NEM and NEM.AX are one.",
+    ),
+    "resmed": (
+        frozenset({"us_sp500", "au_asx200"}),
+        "PRE-EXISTING. Dual-listed; RMD and RMD.AX are one company.",
+    ),
+    "blockinc": (
+        frozenset({"us_sp500", "au_asx200"}),
+        "PRE-EXISTING in the SEEDS, and NOT on the deck, because the au_asx200 ticker is wrong. "
+        "The seed says XYX; XYX.AX and SQ2.AX both 404 on Yahoo while XYZ.AX resolves to Block, "
+        "Inc. in AUD. So XYX is a one-keystroke transcription error and that row has silently "
+        "ingested nothing since the 2026-05-23 import: a coverage defect, not a display one. "
+        "Recorded here because the seed rows collide either way, NOT counted as a live duplicate "
+        "in the contract, and filed for its own branch since fixing it adds a card.",
+    ),
+    "newscorpclassb": (
+        frozenset({"us_sp500", "au_asx200"}),
+        "PRE-EXISTING. us_sp500 spells it 'News Corp (Class B)' and au_asx200 spells it "
+        "'News Corp Class B': one company, two venues, and invisible to an exact-match version "
+        "of this guard, which is why the key drops punctuation. Note News Corp ALSO ships two "
+        "share classes inside us_sp500, so it carries three cards in total.",
+    ),
+    "riotinto": (
+        frozenset({"uk_ftse100", "au_asx200"}),
+        "PRE-EXISTING. A dual-listed company structure: Rio Tinto plc and Rio Tinto Limited are "
+        "separate legal entities sharing one economic interest, so unlike the others this pair "
+        "is arguably two valid rows. A reader still meets Rio Tinto twice.",
+    ),
+}
+
+
+def _normalised_company_names() -> dict[str, set[str]]:
+    """Headline key -> the active markets whose seed carries a company rendering to it.
+
+    Uses `_headline_key`, so two seeds spelling one company differently only in punctuation are
+    seen as the same company. See the comment on `KNOWN_CROSS_MARKET_COMPANIES` for why nothing
+    beyond punctuation is stripped.
+    """
+    by_name: dict[str, set[str]] = {}
+    for market in _active():
+        code = market["market_code"]
+        if not _seed_path(code).exists():
+            continue
+        for row in _seed_rows(code):
+            by_name.setdefault(_headline_key(row["company_name"]), set()).add(code)
+    return by_name
+
+
+def test_no_unrecorded_company_appears_under_two_markets() -> None:
+    """A company in two indices ships two cards, and the symbol guard cannot see most of them.
+
+    `test_no_symbol_appears_under_two_markets` keys on the resolved Yahoo symbol, which catches
+    only the case where both indices track the same listing (Airbus). A company listed on two
+    venues resolves to two symbols and slips through: Shell, Unilever, RELX and IAG all did,
+    unnoticed for six review rounds, while the contract escalated ArcelorMittal alone to the
+    owner as if it were the only instance. News Corp then slipped through an exact-match version
+    of THIS guard, which is why it keys on `_headline_key`.
+
+    This does not fail the build for a real dual listing. It fails for an UNRECORDED one, so a
+    NEW duplicate cannot arrive unnoticed. It does not enumerate every existing one: see the
+    comment on the allowlist for the spelled-two-ways case it structurally cannot hold.
+    """
+    offenders = []
+    for name, markets in _normalised_company_names().items():
+        if len(markets) < 2:
+            continue
+        recorded = KNOWN_CROSS_MARKET_COMPANIES.get(name)
+        if recorded is None:
+            offenders.append(f"{name!r} in {sorted(markets)}")
+        elif recorded[0] != markets:
+            offenders.append(
+                f"{name!r} recorded for {sorted(recorded[0])}, found {sorted(markets)}"
+            )
+    assert not offenders, (
+        "company appears under more than one market without a recorded reason: "
+        + "; ".join(offenders)
+    )
+
+
+def test_cross_market_company_allowlist_has_no_stale_entries() -> None:
+    """An entry for a company that is no longer in two markets is a stale excuse. Delete it."""
+    found = _normalised_company_names()
+    stale = [
+        f"{name!r} is now only in {sorted(found.get(name, set()))}"
+        for name in KNOWN_CROSS_MARKET_COMPANIES
+        if len(found.get(name, set())) < 2
+    ]
+    assert not stale, "; ".join(stale)
+
+
+def test_symbol_and_company_allowlists_agree() -> None:
+    """Every market PAIR in the symbol allowlist must also appear in the company allowlist.
+
+    Scoped deliberately, because an earlier docstring here claimed more than the code checks:
+    this compares market-pair sets, so a new symbol entry landing on a pair another company
+    already covers passes without a company entry of its own. Company IDENTITY is pinned
+    separately by `test_known_dual_index_symbols_are_all_still_collisions`, which fails if an
+    allowlisted symbol stops colliding, so the gap is covered rather than open.
+    """
+    by_symbol_markets = {
+        markets for markets, _reason in KNOWN_DUAL_INDEX_SYMBOLS.values()
+    }
+    by_name_markets = {
+        markets for markets, _reason in KNOWN_CROSS_MARKET_COMPANIES.values()
+    }
+    missing = [
+        sorted(m) for m in by_symbol_markets
+        if not any(m <= n for n in by_name_markets)
+    ]
+    assert not missing, f"symbol allowlist has market pairs the company allowlist lacks: {missing}"
 
 
 def _registry() -> list[dict]:
@@ -69,6 +333,59 @@ def _seed_path(market_code: str) -> Path:
 def _seed_rows(market_code: str) -> list[dict]:
     with _seed_path(market_code).open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+@pytest.mark.parametrize("market_code", _active_codes())
+def test_seed_company_names_are_unique_within_a_market(market_code: str) -> None:
+    """Two constituents with one headline are indistinguishable on the deck.
+
+    This is the failure mode over-stripping produces, so the guard exists whether or not the
+    cleaner ever causes it: `write_constituents` de-duplicates on ticker, never on name, so a
+    source table that repeats a name and a cleaner that collapses two names look identical from
+    here. It also catches the plain case of a mis-transcribed name, which is what it finds twice
+    in the Nikkei seed.
+
+    Matching is punctuation-insensitive, and that is load-bearing rather than tidy: the exact
+    version of this guard passed the `9101` row, whose headline differs from `9104`'s only by
+    full stops while carrying a different company's financials. It is still not a proof of
+    uniqueness. Two rows naming genuinely different companies, one of them wrongly, look correct
+    from here as long as the strings differ, which is exactly how the Asahi row survives.
+    """
+    if not _seed_path(market_code).exists():
+        pytest.skip("covered by test_active_market_has_a_constituent_seed")
+    allowed = KNOWN_DUPLICATE_SEED_NAMES.get(market_code, {})
+    tickers_by_name: dict[str, list[str]] = {}
+    for row in _seed_rows(market_code):
+        tickers_by_name.setdefault(_headline_key(row["company_name"]), []).append(row["ticker"])
+    offenders = []
+    for name, tickers in tickers_by_name.items():
+        if len(tickers) < 2:
+            continue
+        permitted = allowed.get(name, (1, ""))[0]
+        if len(tickers) > permitted:
+            offenders.append(f"{name!r}: {', '.join(tickers)}")
+    assert not offenders, (
+        f"{market_code} seed gives two companies the same card headline: {'; '.join(offenders)}"
+    )
+
+
+def test_known_duplicate_seed_names_have_not_been_fixed_behind_the_allowlist() -> None:
+    """An allowlist entry for a defect that no longer exists is a stale excuse. Delete it."""
+    stale = []
+    for market_code, names in KNOWN_DUPLICATE_SEED_NAMES.items():
+        if not _seed_path(market_code).exists():
+            continue
+        counts: dict[str, int] = {}
+        for row in _seed_rows(market_code):
+            key = _headline_key(row["company_name"])
+            counts[key] = counts.get(key, 0) + 1
+        for name, (permitted, _reason) in names.items():
+            if counts.get(name, 0) < permitted:
+                stale.append(
+                    f"{market_code}: {name!r} appears {counts.get(name, 0)} times, "
+                    f"allowlisted for {permitted}"
+                )
+    assert not stale, "; ".join(stale)
 
 
 def _strip_sql_comments(sql: str) -> str:
@@ -148,6 +465,19 @@ def test_at_least_one_market_is_active() -> None:
     # Load-bearing. pytest turns an empty parametrize set into a SKIP, so without this an
     # emptied registry would read as green-with-skips rather than as a failure.
     assert _active_codes()
+
+
+def test_market_display_names_hold_no_market_that_is_not_active() -> None:
+    """The converse of the per-market display-name check, and it guards a user-facing claim.
+
+    The overflow menu's "About the data" panel derives its coverage line from the cards actually
+    in the deck, not from this map, so a name added early cannot overstate coverage there. It
+    would still mislabel the market filter. Kept one-line cheap because the failure is silent.
+    """
+    from markets import MARKET_DISPLAY_NAMES
+
+    extra = set(MARKET_DISPLAY_NAMES) - set(_active_codes())
+    assert not extra, f"display names for markets that are not ingest_active: {sorted(extra)}"
 
 
 @pytest.mark.parametrize("market_code", _active_codes())
@@ -322,7 +652,7 @@ def test_supabase_markets_row_matches_the_registry(market_code: str) -> None:
 
     `public.markets` carries index_name, exchange_suffix and source alongside the code. No
     application path reads them today, so a typo there would surface only when something
-    eventually does. Nine more onboardings will each hand-write one of these rows.
+    eventually does. Each remaining onboarding hand-writes one of these rows.
     """
     registry = {m["market_code"]: m for m in _registry()}[market_code]
     values = _markets_insert_values().get(market_code)
@@ -340,3 +670,145 @@ def test_supabase_markets_row_matches_the_registry(market_code: str) -> None:
     assert source == registry["source"], (
         f"{market_code}: migration says source {source!r}, registry says {registry['source']!r}"
     )
+
+
+@pytest.mark.parametrize("market_code", _active_codes())
+def test_seed_company_names_carry_no_scrape_artifacts(market_code: str) -> None:
+    """`company_name` is card copy, not an internal field.
+
+    `dim_stock` prefers the seed name over yfinance's `info_long_name`, and the card renders it
+    as the headline, so a Wikipedia interlanguage marker reaches the reader. `Laboratorios Rovi
+    [es]` shipped that way from the IBEX 35 table, preceded by a non-breaking space, and nothing
+    caught it: CI never reads real seeds, because the fixture seeder synthesises its own names.
+    `ingestion.constituents.seeds` strips these at write time now; this pins the outcome for a
+    hand-edited or imported seed too.
+    The patterns below are deliberately WIDER than the ones `_clean_company_name` strips, in all
+    three halves: brackets, non-bracket markers, and whitespace. A guard built from the
+    writer's own regex can only confirm the writer's assumptions,
+    so it would pass on exactly the artifact classes the writer overlooks. This one fails on any
+    short trailing bracket, including the uppercase tokens the writer leaves alone on purpose,
+    and on any whitespace character other than an ordinary space. It can therefore fire on a
+    legitimate name: a real `[Holding]` suffix, or a Nordic share class written `[B]`. That is the
+    intended direction. A false alarm is a human decision; a missed artifact is a wrong card
+    headline, and a silently over-stripped name is two cards that read the same.
+    """
+    if not _seed_path(market_code).exists():
+        pytest.skip("covered by test_active_market_has_a_constituent_seed")
+    offenders = []
+    for row in _seed_rows(market_code):
+        name = row["company_name"]
+        if (
+            _SUSPECT_TRAILING_BRACKET.search(name)
+            or _SUSPECT_TRAILING_MARKER.search(name)
+            or _SUSPECT_SPACE.search(name)
+        ):
+            offenders.append(f"{row['ticker']}: {name!r}")
+        elif not name.strip() or name.strip().lower() == "nan":
+            offenders.append(f"{row['ticker']}: empty or null name")
+    assert not offenders, (
+        f"{market_code} seed carries scrape artifacts in company_name: {'; '.join(offenders)}"
+    )
+
+
+def test_ci_baseline_covers_every_active_market() -> None:
+    """`scripts/eligibility_baseline.ci.json` is maintained by hand at checklist step 11.
+
+    Forgetting it fails OPEN on the aggregate side: the per-market floor of 5 still binds, but
+    the total stops matching and the drop gate loses the new market's contribution. The fixture
+    seeder writes a fixed 7 rows per active market, so both the membership and the arithmetic
+    are checkable from here.
+    """
+    baseline = json.loads((REPO / "scripts" / "eligibility_baseline.ci.json").read_text("utf-8"))
+    markets = baseline["markets"]
+    active = set(_active_codes())
+    assert set(markets) == active, (
+        f"ci baseline markets {sorted(set(markets) ^ active)} differ from the active registry"
+    )
+    total = sum(m["baseline_eligible"] for m in markets.values())
+    assert baseline["total_baseline_eligible"] == total, (
+        f"total_baseline_eligible {baseline['total_baseline_eligible']} != sum of markets {total}"
+    )
+    # The fixture seeder writes a fixed 7 rows per active market, so every entry must be 7. A
+    # hand-typed lower number keeps the total self-consistent while quietly shrinking that
+    # market's share of the aggregate drop check.
+    wrong = {
+        code: m["baseline_eligible"]
+        for code, m in markets.items()
+        if m["baseline_eligible"] != 7
+    }
+    assert not wrong, f"ci fixtures produce 7 eligible per market; baseline says {wrong}"
+
+
+def test_the_seed_guard_stays_wider_than_the_writer() -> None:
+    """The guard's whole value is catching what `_clean_company_name` deliberately skips.
+
+    An earlier version of `_SUSPECT_SPACE` listed exactly the eleven code points the writer
+    strips, which made this half of the guard a restatement of the writer's own assumptions: it
+    could only ever confirm them. Nothing pinned the relationship, so a future edit could narrow
+    it back silently. This asserts the containment directly rather than trusting a comment.
+    """
+    from ingestion.constituents.seeds import _INVISIBLE, _ODD_SPACE
+
+    writer_strips = set(_INVISIBLE) | set(_ODD_SPACE)
+    missed = [hex(cp) for cp in sorted(writer_strips) if not _SUSPECT_SPACE.search(chr(cp))]
+    assert not missed, f"guard no longer catches what the writer strips: {missed}"
+    wider = [
+        cp for cp in range(0x3100)
+        if _SUSPECT_SPACE.search(chr(cp)) and cp not in writer_strips
+    ]
+    assert len(wider) >= 20, (
+        f"guard has narrowed to {len(wider)} code points beyond the writer's set; it is supposed "
+        "to be materially wider so it can fail on classes the writer does not handle"
+    )
+
+
+# (marker, should_the_guard_fire). The superscripts are the point: an earlier version of the
+# class held only U+2070 and up, so the three commonest footnote markers passed silently.
+_MARKER_CASES = [
+    ("Acme Corp*", True),
+    ("Acme Corp\u2020", True),
+    ("Acme Corp\u2021", True),
+    ("Acme Corp\u00a7", True),
+    ("Acme Corp\u00b6", True),
+    ("Acme Corp\u00b9", True),
+    ("Acme Corp\u00b2", True),
+    ("Acme Corp\u00b3", True),
+    ("Acme Corp\u2074", True),
+    ("Acme Corp\u2070", True),
+    ("Acme Corp\u203b", True),
+    ("Acme Corp‖", True),
+    ("Acme Corp⁂", True),
+    ("Acme Corp⁎", True),
+    ("Acme Corp₁", True),
+    ("Acme Corp* ", True),
+    # Must NOT fire. A trailing full stop is ordinary, which is why the class is an explicit
+    # list rather than "any trailing punctuation".
+    ("Amazon.com, Inc.", False),
+    ("Yum! Brands", False),
+    ("Acme Corp", False),
+    ("Acme*Corp", False),
+    ("L'Oreal", False),
+]
+
+
+@pytest.mark.parametrize("name,should_fire", _MARKER_CASES)
+def test_seed_guard_catches_non_bracket_markers(name: str, should_fire: bool) -> None:
+    """Pins `_SUSPECT_TRAILING_MARKER`, which nothing exercised when it was added.
+
+    Two reviewers proved that independently: deleting the regex, or replacing it with one that
+    never matches, left the whole suite green. A guard no test can distinguish from its own
+    absence is not a guard, and this file already learned that once with `_SUSPECT_SPACE`.
+    """
+    assert bool(_SUSPECT_TRAILING_MARKER.search(name)) is should_fire
+
+
+def test_seed_guard_bracket_half_catches_more_than_the_writer_strips() -> None:
+    """The bracket half must stay wide enough to catch what `_clean_company_name` skips.
+
+    The writer strips only short LOWERCASE markers, deliberately, so uppercase share classes and
+    legal forms survive it. This asserts the guard still notices those, which is the whole basis
+    for the writer being allowed to be conservative. Narrowing the guard's bound to `{1,3}` would
+    otherwise pass every other test in the repo.
+    """
+    for name in ("Acme [Holding]", "Novo Nordisk [B]", "Equinor [ASA]", "Acme [note 1]"):
+        assert _SUSPECT_TRAILING_BRACKET.search(name), f"guard no longer notices {name!r}"

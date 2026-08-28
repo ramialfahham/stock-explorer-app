@@ -426,10 +426,9 @@ def test_build_read_messages_unknown_type_falls_back_to_operating() -> None:
 # A deny-list, with the limits that implies. Currency is NOT declared per market anywhere:
 # docs/market_registry.yml has no currency field, and the value comes from yfinance
 # `info_currency` per ticker, so nothing in the repo can enumerate what may turn up. These
-# eight cover the currencies the nine registered markets actually return today (six active:
-# USD, GBp, JPY, EUR, AUD and, since France activated, EUR again; three dormant: nl_aex and
-# es_ibex35 EUR, ch_smi CHF, which is why "franc" is here ahead of need). Nine more markets are
-# still queued, three of which bring currencies this list does not hold: SEK, DKK and NOK.
+# eight cover the currencies the nine active markets return today: USD, GBp, JPY, EUR, AUD and
+# CHF, the last arriving with Switzerland, which is what "franc" is here for. Six more markets
+# are queued, three of which bring currencies this list does not hold: SEK, DKK and NOK.
 # (CAD needs nothing: "dollar" already covers it, the same way "franc" covers CHF.)
 # EXTEND IT when a market is added, when a dormant one is activated by flipping ingest_active,
 # or when yfinance starts returning a currency these words miss. There is no mechanical trigger
@@ -468,7 +467,7 @@ def test_names_a_currency_helper_is_not_fooled_by_percent() -> None:
 
 def test_metric_glosses_name_no_currency() -> None:
     """A gloss naming a currency hands the model one for a number that has none, and it
-    then applies it to companies reporting in four other currencies."""
+    then applies it to companies reporting in five other currencies."""
     for metric, brief in rules.READ_METRIC_BRIEF.items():
         if brief["fmt"] == "currency":
             continue  # money amounts SHOULD carry their currency
@@ -630,3 +629,22 @@ def test_prompt_pointer_names_a_line_the_message_actually_contains() -> None:
     label = "Currency this company trades in"
     assert label in user
     assert label.lower() in rules.READ_SYSTEM_PROMPT.lower()
+
+
+def test_currency_symbol_maps_are_mirrors() -> None:
+    """The two `_CURRENCY_SYMBOLS` copies must stay identical, and nothing pinned them.
+
+    `scripts/assessment_rules.py` names the currency in the read prompt; `frontend/card_copy.py`
+    renders it on the card face. Both files' comments say one mirrors the other, which is what
+    stops the read describing a unit the card never shows. Editing one alone is worse than
+    editing neither: add a franc symbol to `card_copy` only and the face shows it while every
+    stored read still says CHF, with no `input_hash` movement to regenerate them, so the two
+    disagree permanently. The handover's instructions for the queued CAD/SEK/DKK/NOK renderings
+    depend on this holding.
+    """
+    from card_copy import _CURRENCY_SYMBOLS as face
+
+    assert rules._CURRENCY_SYMBOLS == face, (
+        "scripts/assessment_rules.py and frontend/card_copy.py disagree on currency symbols: "
+        f"{rules._CURRENCY_SYMBOLS} vs {face}"
+    )
