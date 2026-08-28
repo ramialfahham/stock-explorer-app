@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: stg_manual__company_name_overrides
+    description: >
+      **Source:** `company_name_overrides` seed.
+      **Grain:** One row per (market_code, ticker).
+      **What:** 1:1 typed pass-through of the manual name-correction seed; no business logic.
+      Applied in `base_yf__constituents`, which is where a wrong or legal-register seed name
+      is actually replaced.
+    meta:
+      owner: data
+      domain: stock_cards
+      criticality: low
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
+    columns:
+      - name: market_code
+        description: >
+          Registry partition key for the index universe (e.g. jp_nikkei225). FK to markets.
+        data_tests:
+          - not_null
+      - name: ticker
+        description: >
+          Provider symbol as stored in the seed being corrected.
+        data_tests:
+          - not_null
+      - name: company_name
+        description: >
+          The corrected display name.
+        data_tests:
+          - not_null
+      - name: reason
+        description: >
+          Why the override exists, kept for the next reader; not consumed downstream.
+        data_tests:
+          - not_null

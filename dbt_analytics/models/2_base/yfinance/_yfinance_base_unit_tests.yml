@@ -1,0 +1,88 @@
+unit_tests:
+  - name: base_yf__constituents_override_wins_over_seed_name
+    description: >
+      Proves the join + coalesce actually replaces a wrong seed name, not just that the model
+      compiles. Uses ticker 9101, the real defect this test guards against: the seed named it
+      "Mitsui O.S.K. Lines", it is really Nippon Yusen.
+    model: base_yf__constituents
+    given:
+      - input: ref('stg_yf__constituents')
+        rows:
+          - {
+              market_code: jp_nikkei225,
+              ticker: "9101",
+              company_name: "Mitsui O.S.K. Lines",
+              refreshed_at: "2026-05-23T00:00:00",
+              source: import,
+              ingested_at: "2026-05-23T00:00:00",
+            }
+          - {
+              market_code: jp_nikkei225,
+              ticker: "9104",
+              company_name: "Mitsui OSK Lines",
+              refreshed_at: "2026-05-23T00:00:00",
+              source: import,
+              ingested_at: "2026-05-23T00:00:00",
+            }
+      - input: ref('stg_manual__company_name_overrides')
+        rows:
+          - {
+              market_code: jp_nikkei225,
+              ticker: "9101",
+              company_name: "Nippon Yusen",
+              reason: "test fixture",
+            }
+    expect:
+      rows:
+        - {
+            market_code: jp_nikkei225,
+            ticker: "9101",
+            company_name: "Nippon Yusen",
+          }
+        - {
+            market_code: jp_nikkei225,
+            ticker: "9104",
+            company_name: "Mitsui OSK Lines",
+          }
+
+  - name: base_yf__constituents_no_override_row_leaves_seed_name_untouched
+    description: >
+      A ticker with no matching (market_code, ticker) pair in the override seed keeps
+      whatever stg_yf__constituents gave it. Two failure modes this guards: a join condition
+      broad enough to match unrelated rows, and a join that matches on ticker alone across
+      markets. Nikkei tickers are bare numeric strings, so a same-ticker collision with
+      another market is a real risk, not a hypothetical one: the second given row below
+      shares ticker 9101 with the override fixture but belongs to a different market, and
+      must not be overridden.
+    model: base_yf__constituents
+    given:
+      - input: ref('stg_yf__constituents')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: AAPL,
+              company_name: "Apple Inc.",
+              refreshed_at: "2026-05-23T00:00:00",
+              source: wikipedia,
+              ingested_at: "2026-05-23T00:00:00",
+            }
+          - {
+              market_code: us_sp500,
+              ticker: "9101",
+              company_name: "Nine One Zero One Corp",
+              refreshed_at: "2026-05-23T00:00:00",
+              source: wikipedia,
+              ingested_at: "2026-05-23T00:00:00",
+            }
+      - input: ref('stg_manual__company_name_overrides')
+        rows:
+          - {
+              market_code: jp_nikkei225,
+              ticker: "9101",
+              company_name: "Nippon Yusen",
+              reason: "test fixture",
+            }
+    expect:
+      rows:
+        - { market_code: us_sp500, ticker: AAPL, company_name: "Apple Inc." }
+        - { market_code: us_sp500, ticker: "9101", company_name: "Nine One Zero One Corp" }

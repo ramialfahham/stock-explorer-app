@@ -29,7 +29,8 @@ models:
           - not_null
       - name: company_name
         description: >
-          Display name from constituent seed or ingest join; may be overridden in core.
+          Display name from constituent seed or ingest join; may be replaced in
+          base_yf__constituents by a row in stg_manual__company_name_overrides.
       - name: refreshed_at
         description: >
           ISO timestamp when the seed row was last refreshed by refresh_constituents.

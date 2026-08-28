@@ -812,3 +812,69 @@ def test_seed_guard_bracket_half_catches_more_than_the_writer_strips() -> None:
     """
     for name in ("Acme [Holding]", "Novo Nordisk [B]", "Equinor [ASA]", "Acme [note 1]"):
         assert _SUSPECT_TRAILING_BRACKET.search(name), f"guard no longer notices {name!r}"
+
+
+COMPANY_NAME_OVERRIDES = REPO / "dbt_analytics" / "seeds" / "company_name_overrides.csv"
+
+
+def _override_rows() -> list[dict]:
+    with COMPANY_NAME_OVERRIDES.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def test_company_name_overrides_target_real_constituents() -> None:
+    """Every override row must correct a ticker that actually exists in the seed it targets.
+
+    This is a plain-file check, not a dbt one, on purpose: CI's `dbt build` runs against a
+    synthetic fixture database that seeds every market with the same handful of made-up
+    tickers, so a dbt-side test comparing the override against `stg_yf__constituents` would
+    report all real tickers as "dead" and fail in CI regardless of whether the override is
+    correct. Reading both CSVs directly from disk sidesteps that entirely.
+
+    The failure this catches: a source table renumbers a ticker after the override was
+    written, and the override silently corrects nothing while looking like it does.
+    """
+    offenders = []
+    for row in _override_rows():
+        market_code = row["market_code"]
+        if not _seed_path(market_code).exists():
+            offenders.append(f"{market_code}/{row['ticker']}: no such market seed")
+            continue
+        real_tickers = {r["ticker"] for r in _seed_rows(market_code)}
+        if row["ticker"] not in real_tickers:
+            offenders.append(
+                f"{market_code}/{row['ticker']}: not in the current seed (renumbered or removed?)"
+            )
+    assert not offenders, "; ".join(offenders)
+
+
+def test_company_name_overrides_have_no_duplicate_keys() -> None:
+    """Two rows for the same (market_code, ticker) is ambiguous: which one does dbt apply?
+
+    The override join in `base_yf__constituents` is a plain left join, not deduped, so a
+    duplicate override key would fan out that ticker's row instead of erroring, so this has
+    to be caught here rather than relying on dbt to notice.
+    """
+    seen: dict[tuple[str, str], str] = {}
+    dupes = []
+    for row in _override_rows():
+        key = (row["market_code"], row["ticker"])
+        if key in seen:
+            dupes.append(f"{key[0]}/{key[1]} appears more than once")
+        seen[key] = row["company_name"]
+    assert not dupes, "; ".join(dupes)
+
+
+def test_company_name_overrides_covers_the_audited_nikkei_defects() -> None:
+    """Pins the eleven tickers the 2026-08-28 yfinance audit found wrong, so the override
+    file can't silently lose a row on a future edit without a test noticing.
+    """
+    audited_tickers = {
+        "3407", "6908", "6976", "8005", "8804",
+        "8830", "9005", "9008", "9009", "9101", "9412",
+    }
+    rows = [r for r in _override_rows() if r["market_code"] == "jp_nikkei225"]
+    covered = {r["ticker"] for r in rows}
+    assert covered == audited_tickers, (
+        f"expected exactly {sorted(audited_tickers)}, found {sorted(covered)}"
+    )
