@@ -18,10 +18,11 @@ in this session; flagging so it isn't lost.
 now active — nine markets total, six queued (Finland, Sweden, Denmark, Norway, Canada, Italy).
 Sixteen-round review, full account in `.claude/task/review.md`.
 
-**Two data defects found outside this branch's scope, filed as separate chips, not yet
-started:** eleven of 116 `jp_nikkei225` seed rows carry the wrong company name (audited against
-yfinance 2026-08-28, two visible to the duplicate-headline guard, nine not); `au_asx200`'s
-Block ticker (`XYX`, should be `XYZ`) has fetched no data since May.
+**Two data defects found outside this branch's scope, filed as separate chips.** Eleven of 116
+`jp_nikkei225` seed rows carried the wrong company name (audited against yfinance 2026-08-28,
+two visible to the duplicate-headline guard, nine not): **FIXED, `fix/nikkei-company-names`,
+MR !53 open, awaiting merge**, detail below. `au_asx200`'s Block ticker (`XYX`, should be `XYZ`)
+has fetched no data since May, not yet started.
 
 **Four owner decisions from 2026-08-28, detail in the Market coverage section below and in the
 merged contract:** the 20-card warn threshold is wrong, deferred to phase 2; currency follows
@@ -186,8 +187,9 @@ those reads regenerate. `INPUT_HASH_VERSION` is the lever for a GLOBAL refresh: 
 re-run Haiku across every card in all nine markets to change 19.
 Extend `_CURRENCY_WORDS` in `tests/tooling/test_assessment_rules.py` when any of these lands.
 
-**OPEN and live right now, found by this branch but NOT caused by it: two Nikkei cards share a
-headline, or one card names the wrong company. A full audit found ELEVEN.**
+**FIXED (`fix/nikkei-company-names`, MR !53 open, awaiting merge): two Nikkei cards shared a
+headline, or one card named the wrong company. A full audit found ELEVEN, now corrected via a
+dbt override, not a raw-seed edit.**
 `storage/seeds/jp_nikkei225/constituents.csv` gives ticker 9101 the name "Mitsui O.S.K. Lines".
 9101 is Nippon Yusen (NYK Line); 9104 is Mitsui O.S.K. Lines. So a live card shows NYK Line's
 financials under a competitor's name, Nippon Yusen is absent from the deck, and the two headlines
@@ -207,6 +209,12 @@ true owner is not also a row in the same seed looks correct. The durable fix is 
 seed name against yfinance's `info_long_name`. **The owner chose a different mechanism on
 2026-08-28**: corrections move into a dbt model. A name-versus-yfinance check may still be worth
 having as a guard, but it is no longer the proposal on the table.
+**Built, on `fix/nikkei-company-names`:** a new seed
+`dbt_analytics/seeds/company_name_overrides.csv` maps `(market_code, ticker)` to a corrected
+`company_name`, exposed 1:1 by `stg_manual__company_name_overrides` in staging, and left-joined
+plus coalesced onto the seed's own name in `base_yf__constituents` (2_base), so the correction
+reaches `dim_stock` without editing core or the raw seed. Same mechanism the SMI legal-name fix
+below would reuse: add rows to the same seed rather than building a second one.
 The same file gives ticker 3407 the name "Asahi Group
 Holdings", which is ticker 2502. 3407 is Asahi Kasei. Both rows
 are in the seed, `dim_stock` prefers the seed name over yfinance's correct one, so the deck has
@@ -255,7 +263,9 @@ wrong: the listed issuers are Novartis AG and Swiss Re AG. `dim_stock` prefers t
 yfinance's `info_long_name`, which has them right, so the coalesce actively discards the correct
 name. There is no config fix: the table has no short-name column, so anything durable is a new
 override mechanism, which is a §6 call. **ANSWERED 2026-08-28**: the mechanism is a dbt model
-with the mapping applied in it. The resulting name list still wants an owner's eye.
+with the mapping applied in it. **The mechanism now exists** (`company_name_overrides` seed,
+built for the Nikkei fix above, `fix/nikkei-company-names`): SMI just needs rows added to that
+same seed. The resulting name list still wants an owner's eye.
 
 ## Current task
 
