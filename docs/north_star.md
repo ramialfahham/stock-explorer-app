@@ -204,10 +204,11 @@ UX PRs that change these areas must cite the relevant spec in the PR body.
 
 ## Markets
 
-Markets are **registry-driven** (`docs/market_registry.yml`). v1 includes US, UK, JP, AU, and
-**DAX (Germany)**. Additional European indices are added **one at a time** after a **yfinance
-coverage audit** confirms the operating-type eligibility metrics (the majority case for any
-market's constituents) are obtainable for a meaningful share of them.
+Markets are **registry-driven** (`docs/market_registry.yml`), which is the list to read rather
+than any count written into prose. Every market is added only after a **yfinance coverage audit**
+confirms the operating-type eligibility metrics (the majority case for any market's constituents)
+are obtainable for a meaningful share of its constituents. The audit is per market; whether
+markets are branched one at a time or in batches is the owner's call and has been both.
 
 Do not activate a market in the app until eligibility counts meet [`data_contract.md`](data_contract.md)
 thresholds.

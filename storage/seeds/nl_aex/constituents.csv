@@ -1,0 +1,26 @@
+market_code,ticker,company_name,refreshed_at,source
+nl_aex,ABN.AS,ABN AMRO,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,ADYEN.AS,Adyen,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,AGN.AS,Aegon,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,AD.AS,Ahold Delhaize,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,AKZA.AS,AkzoNobel,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,MT.AS,ArcelorMittal,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,ASM.AS,ASM International,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,ASML.AS,ASML Holding,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,ASRNL.AS,ASR Nederland,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,BESI.AS,BE Semiconductors,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,DSFIR.AS,DSM Firmenich AG,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,EXO.AS,Exor,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,HEIA.AS,Heineken,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,IMCD.AS,IMCD,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,INGA.AS,ING Group,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,KPN.AS,KPN,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,NN.AS,NN Group,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,PHIA.AS,Philips,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,PRX.AS,Prosus,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,RAND.AS,Randstad,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,REN.AS,RELX,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,SHELL.AS,Shell plc,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,UMG.AS,Universal Music Group,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,UNA.AS,Unilever,2026-08-27T16:17:42.999509+00:00,wikipedia
+nl_aex,WKL.AS,Wolters Kluwer,2026-08-27T16:17:42.999509+00:00,wikipedia

@@ -66,6 +66,7 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `010_card_assessments.sql` | `card_assessments` table — health verdict + AI read (Slice 5) |
 | `011_grant_roles.sql` | Explicit role grants — needed when "automatically expose new tables" (step 1) is off |
 | `014_fr_cac40_market.sql` | France (CAC 40) row in `public.markets`. Required: three tables foreign-key to it and the export never inserts one |
+| `015_nl_ch_es_markets.sql` | Netherlands (AEX), Switzerland (SMI), Spain (IBEX 35) rows in `public.markets`. Same requirement as 014 |
 
 `012_sector_benchmark_min_max.sql` and `013_net_cash.sql` exist on disk but are missing from
 this table. That gap predates the France work and is left rather than backfilled here, so

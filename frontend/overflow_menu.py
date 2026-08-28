@@ -17,10 +17,10 @@ from markets import (
     eligible_breakdown_lines,
     latest_snapshot_label,
     market_display_name,
+    markets_in_deck_order,
 )
 
 MENU_DATA_SOURCE = "Sourced from Yahoo Finance via our pipeline, refreshed every two weeks."
-MENU_MARKETS_LINE = "Markets: US, UK, Japan, Australia, Germany"
 MENU_METRICS_LINE = "Fundamentals per company, no substitutes"
 
 _DISCOVER_TIP = (
@@ -29,6 +29,26 @@ _DISCOVER_TIP = (
 )
 _SAVED_TIP = "Open a company to practice numbers or load recent headlines."
 _SEARCH_TIP = "Only companies with a complete set of fundamentals appear here."
+
+
+def markets_line(counts: dict[str, int]) -> str:
+    """Which markets this panel claims to cover, derived from the cards in the deck.
+
+    Not from the registry and not from `MARKET_DISPLAY_NAMES`. A market is onboarded on one
+    branch and first exports cards on the next production run, so those two answers disagree for
+    as long as a run is pending, and this is the panel whose whole job is data trust. Written out
+    as a literal it went stale in the other direction: it still said "US, UK, Japan, Australia,
+    Germany" while nine markets were registered.
+
+    Deriving from `counts` also keeps this line and the per-market breakdown rendered below it
+    consistent: same dict, and the same `markets_in_deck_order`, so they cannot disagree on which
+    markets or in what order. Empty when there are no cards, which is what the breakdown and the
+    pool summary already do in that state: saying nothing beats claiming coverage that cannot be
+    substantiated.
+    """
+    if not counts:
+        return ""
+    return "Markets: " + ", ".join(market_display_name(c) for c in markets_in_deck_order(counts))
 
 
 def _esc(value: object) -> str:
@@ -91,7 +111,9 @@ def _render_about_data(*, cards: list[dict[str, Any]], counts: dict[str, int]) -
         else:
             st.markdown("Fundamentals refresh every two weeks.")
         st.markdown(MENU_METRICS_LINE)
-        st.markdown(MENU_MARKETS_LINE)
+        markets = markets_line(counts)
+        if markets:
+            st.markdown(markets)
         st.markdown(MENU_DATA_SOURCE)
         if counts:
             pool_summary = discover_pool_summary(counts)

@@ -5,13 +5,47 @@ from __future__ import annotations
 from datetime import date
 
 from explore_filters import ALL_MARKETS, ALL_SECTORS  # noqa: E402
-from markets import latest_snapshot_label  # noqa: E402
+from markets import eligible_breakdown_lines, latest_snapshot_label  # noqa: E402
 from overflow_menu import (  # noqa: E402
     MENU_METRICS_LINE,
     discover_scope_line,
+    markets_line,
     quick_tip_line,
     right_now_line,
 )
+
+
+def test_markets_line_names_only_markets_that_have_cards() -> None:
+    """The coverage line is derived, and this is the property that makes deriving worth it.
+
+    A market is onboarded on one branch and first exports cards on the next production run. A
+    line built from the registry or from `MARKET_DISPLAY_NAMES` claims coverage in that gap; this
+    one cannot, because it only ever names keys of the counts dict.
+    """
+    line = markets_line({"us_sp500": 400, "de_dax": 39})
+    assert line == "Markets: S&P 500, DAX"
+    assert "AEX" not in line and "SMI" not in line
+
+
+def test_markets_line_puts_the_hero_market_first() -> None:
+    assert markets_line({"de_dax": 39, "us_sp500": 400}).startswith("Markets: S&P 500")
+
+
+def test_markets_line_is_empty_without_cards() -> None:
+    """Before the first sync `eligible_counts` is {}. Saying nothing beats claiming coverage."""
+    assert markets_line({}) == ""
+
+
+def test_markets_line_and_the_breakdown_cannot_disagree() -> None:
+    """Both lines render in the same expander, so a drifted order is visible to one user.
+
+    They shared a copied sort key in two modules until `markets_in_deck_order` was extracted.
+    This pins the property rather than the extraction, so it still holds if either is rewritten.
+    """
+    counts = {"jp_nikkei225": 60, "us_sp500": 400, "au_asx200": 180, "de_dax": 39}
+    from_line = markets_line(counts).removeprefix("Markets: ").split(", ")
+    from_breakdown = [entry.rsplit(": ", 1)[0] for entry in eligible_breakdown_lines(counts)]
+    assert from_line == from_breakdown
 
 
 def test_discover_scope_all_markets_sectors() -> None:

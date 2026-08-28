@@ -1,0 +1,21 @@
+market_code,ticker,company_name,refreshed_at,source
+ch_smi,NOVN,Novartis International AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,ROP,Roche Holding AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,NESN,Nestlé SA,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,ABBN,ABB Ltd,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,UBSG,UBS Group AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,CFR,Compagnie Financière Richemont SA,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,ZURN,Zurich Insurance Group AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,HOLN,Holcim Limited,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,SREN,Swiss Reinsurance Company Ltd,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,LONN,Lonza Group AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,SCMN,Swisscom AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,GIVN,Givaudan SA,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,ALC,Alcon Inc,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,SIKA,Sika AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,AMRZ,Amrize AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,SLHN,Swiss Life Holding AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,KNIN,Kuehne + Nagel,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,GEBN,Geberit AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,PGHN,Partners Group Holding AG,2026-08-27T16:17:46.550134+00:00,wikipedia
+ch_smi,LOGN,Logitech International SA,2026-08-27T16:17:46.550134+00:00,wikipedia

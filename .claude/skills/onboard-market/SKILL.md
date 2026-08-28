@@ -31,8 +31,11 @@ record the row count so a later mismatch is visible.
 
 A market is permanent load, not a one-off change: 20 to 60 more tickers ingested on every run,
 plus one Claude Haiku call per eligible card whenever that card's inputs change. For scale, the
-last five-market run took 73 minutes at 921 cards against a 2 hour CI timeout. France adds 40
-tickers to that and has not run yet.
+last five-market run took 73 minutes at 921 cards against a 2 hour CI timeout. Four markets
+have been activated since and none has run: France, Netherlands, Switzerland and Spain add 120
+tickers to that, projecting roughly 101 more cards. Both halves of this go stale: read the run
+history in `.claude/active_work.md` for what has actually run, and `docs/market_registry.yml`
+for what is active. This sentence is a starting figure, not a current one.
 
 ## What is the owner's call
 

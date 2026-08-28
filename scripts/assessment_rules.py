@@ -393,7 +393,11 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
 
 # Currency symbols for the money-amount metrics; mirrors frontend/card_copy.py so the
 # read names the SAME currency the card face shows. Unknown code -> the code itself
-# (never a fake symbol). The app spans US/UK/JP/AU/DE markets, so "$" is not a safe default.
+# (never a fake symbol). The app spans nine markets across six currencies, so "$" is not a safe
+# default. The owner's rule (2026-08-28) is to use whatever form that currency takes in real
+# practice. CHF has no entry and renders as "CHF", which IS the practical form, so it stays.
+# When those markets land: CAD gets "C$", following AUD; SEK, DKK and NOK stay bare ISO codes,
+# because "kr" names three different currencies and this app shows markets side by side.
 _CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
 
 

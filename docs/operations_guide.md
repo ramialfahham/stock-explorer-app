@@ -88,10 +88,12 @@ python scripts/check_registry_var_sync.py
 | `au_asx200` | ^AXJO | Active |
 | `de_dax` | ^GDAXI | Active |
 | `fr_cac40` | ^FCHI | Active |
+| `nl_aex` | ^AEX | Active |
+| `ch_smi` | ^SSMI | Active |
+| `es_ibex35` | ^IBEX | Active |
 
-**Planned (inactive until coverage audit):** `nl_aex`, `ch_smi`, `es_ibex35`, plus Finland,
-Sweden, Denmark, Norway (OBX), Canada (TSX 60) and Italy (FTSE MIB), which are agreed but not
-yet in the registry.
+**Planned (inactive until coverage audit):** Finland, Sweden (OMXS 30), Denmark, Norway (OBX),
+Canada (TSX 60) and Italy (FTSE MIB), all agreed but not yet in the registry.
 
 ---
 

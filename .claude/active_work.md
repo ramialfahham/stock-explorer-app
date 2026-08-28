@@ -6,15 +6,63 @@ history through 2026-08-18 is archived in [`docs/handover_2026-08-18.md`](../doc
 capped at 32,000 bytes; see Context/open items). When a slice merges, collapse its Status entry to
 one line here and let the archive keep the detail._
 
+## Owner decisions, 2026-08-28
+
+Four escalations from the NL/CH/ES branch are answered. None changes that branch's code; three
+create new work.
+
+1. **The 20-card warn threshold is wrong.** It measures an absolute card count against an
+   index that has only 20 members, so Switzerland clears it only if every one of its 20
+   constituents is card-eligible. Make it proportional to constituent
+   count, in phase 2. Not on the onboarding branch: changing a gate that fails your own work is
+   the France mistake.
+2. **Currency rendering follows real-world practice.** "CHF" stands as-is. The queue is settled
+   too: `CAD -> C$`, and SEK/DKK/NOK as ISO codes, since "kr" names three currencies and this app
+   shows markets side by side.
+3. **Constituent seeds become a dbt model, with name mapping and corrections applied in it**, as
+   in the football-data project. That fixes the NAME defects: the SMI legal names and the eleven
+   wrong Nikkei names, since `company_name` is only consumed downstream via `dim_stock`'s
+   coalesce. It does NOT fix Block's wrong ticker, and folding that in would leave the defect
+   open: `ingestion/yfinance/ingest.py:309-312` reads the CSV and uses its `ticker` column as the
+   yfinance fetch list, before dbt runs, and staging reads only the parquet ingestion writes. A
+   ticker correction must reach the fetch list. Which is the first thing the new contract has to
+   settle: does the dbt model replace the CSV as ingestion's input, or sit downstream of it?
+   **Layer settled 2026-08-28, and it does not conflict with `docs/layering.md`.** The mapping
+   is a dbt SEED. A staging model exposes it as a direct source mapping, which is what staging is
+   for. The correction itself, joining the override onto the constituent relation, happens in
+   `2_base`, which is where entity resolution and alignment belong and where
+   `base_yf__constituents` already picks a winning row. A first reading of this had the
+   correction happening in staging, which the layering contract would have forbidden; that was a
+   misreading, not a rule to reinterpret. New mechanism, own contract.
+4. **Duplicate cards stay, and every card shows its exchange.** One card per listing is accepted
+   as reality; the card face gains the listing venue so a reader meeting Shell twice sees why.
+   User-facing, so it goes through the UX PR gate on its own branch.
+
 ## Market coverage
 
-**Six markets are active as of 2026-08-27**, France (CAC 40) having been onboarded on
-`feat/market-fr-cac40`. **Nine more are agreed and queued**: Netherlands, Switzerland, Spain,
-Finland, Sweden, Denmark, Norway (OBX), Canada (TSX 60) and Italy (FTSE MIB). Three of those
-already have registry entries (`nl_aex`, `ch_smi`, `es_ibex35`) and need only the rest of the
-checklist; the other six need new entries.
+**Nine markets are active as of 2026-08-27**: the original five plus France (CAC 40),
+Netherlands (AEX), Switzerland (SMI) and Spain (IBEX 35). **Six more are agreed and queued**,
+all needing new registry entries: Finland, Sweden (OMXS 30), Denmark, Norway (OBX), Canada
+(TSX 60) and Italy (FTSE MIB). The owner chose to batch these by group rather than one branch
+per market, each market still getting its own coverage audit.
 Where a passage below says "all 5 markets", it is recording a measurement taken before France
-and is accurate as history.
+and is accurate as history. Present-tense statements about how a gate behaves have been swept
+to nine.
+
+**Switzerland warns unless its coverage is perfect, and this does not self-correct.** The SMI
+has 20 constituents and `check_pipeline_completeness.py` warns below `WARN_ELIGIBLE_THRESHOLD`
+of 20 on a strict `<`, so only all 20 eligible clears it; the sample projects 19. An earlier
+note claimed the post-run baseline rewrite would give it a per-market floor and retire the warn.
+**That was wrong**: `check_eligibility_baseline.py` writes `min_eligible: 5` as a hardcoded
+literal on every `--write-baseline` and only ever populates `baseline_eligible`, and the 20 is a
+module constant in a different script that nothing in the baseline file can influence. A WARN
+does not fail the job, so the consequence is a warning line on any run with imperfect coverage,
+not breakage. Of the four queued indices actually chosen, only OBX (25) sits close to the same
+place; OMXS 30 is 30, FTSE MIB is 40 and TSX 60 is 60, and Finland's and Denmark's indices have
+not been picked. Whether to live with that or make the threshold proportional to each market's
+constituent count
+was the owner's call. **ANSWERED 2026-08-28: the threshold is wrong and becomes proportional in
+phase 2.** See the decisions section at the top of this file.
 
 **Read `docs/data_contract.md`'s market activation checklist before onboarding any of them.**
 The `onboard-market` skill routes you there and carries the two traps no document holds (Wikipedia
@@ -23,36 +71,61 @@ silently wrong), but the checklist is the procedure.
 It exists, it is now correct, and France was done without reading it: the result was a missing
 `public.markets` row that would have failed the next production export for every market on a
 foreign key, with CI green throughout. The checklist gained four steps it was missing and lost one escape hatch that never existed
-in this codebase. **That growth binds the nine queued onboardings and is worth the owner
+in this codebase. **That growth binds the six queued onboardings and is worth the owner
 knowing about**: removing the non-existent fallback was a defect fix, but extending a
 procedure that governs work not yet approved is closer to a §6 call than a repair.
 
-**OPEN, and it needs the next pipeline run to close: France's coverage audit is only half
-done.** The activation checklist requires the audit on sample AND full run. The sample gives
-18/20 (90%) estimated card-eligible, which extrapolates to roughly 36 cards, comfortably over
-the warn threshold of 20. The full-run half cannot be done from a dev machine. **Falling short of 20
-will not fail the run**, which is why this is written here rather than left to the task
-contract: France is absent from `scripts/eligibility_baseline.json`, so
-`check_eligibility_baseline.py` gives it a floor of 5 rather than 20, and
-`check_pipeline_completeness.py` only WARNS below 20. Both DO fail hard below 5, which aborts
-the job before the export and stops the refresh for all six markets, not just France.
+**OPEN, and it needs the next pipeline run to close: the coverage audit is half done for all
+four markets added since that run.** The activation checklist requires the audit on sample AND
+full run, and the full-run half cannot be done from a dev machine. Sample estimates: France
+90%, Netherlands 80%, Switzerland 95%, Spain 75% card-eligible, projecting roughly 36, 20, 19
+and 26 cards.
 
 **Reading the result is easy, because the job log prints it.**
 `check_eligibility_baseline.py` ends a healthy run with `check_eligibility_baseline: OK`, the
 total, and one line per active market, exactly as the 2026-08-26 run printed `au_asx200: 180`
-and `de_dax: 39`. Look for `fr_cac40: <N>` there. The mart holds only eligible rows, so that
-number IS the card-eligible count the threshold uses. A `WARN: fr_cac40: card-eligible count
-N < 20` line appears too if it falls short. If it did not clear 20, that is a real finding about
-CAC 40 coverage, not a threshold to lower.
+and `de_dax: 39`. Look for `fr_cac40`, `nl_aex`, `ch_smi` and `es_ibex35` there. The mart holds
+only eligible rows, so that number IS the card-eligible count the threshold uses. A
+`WARN: <market>: card-eligible count N < 20` line appears too if one falls short. **Falling
+short of 20 will not fail the run.** None of the four is in `scripts/eligibility_baseline.json`,
+so `check_eligibility_baseline.py` gives each a floor of 5 rather than 20, and
+`check_pipeline_completeness.py` only WARNS below 20. Both DO fail hard below 5, which aborts
+the job before the export and stops the refresh for all nine markets, not just the new one. If a
+market does not clear 20, that is a real finding about its coverage, not a threshold to lower.
 
 **Then run `python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db
 --write-baseline`.** Until that happens the aggregate drop gate is slack: `total_baseline_eligible`
-is 843 from five markets while the check now sums six, so France's roughly 36 cards raise the
-current total without raising the floors. Per-market gates for the existing five are unaffected,
-so a single-market regression still trips its own floor; only a drop spread across several could
-hide in the gap.
+is 843 from five markets while the check now sums nine, so the roughly 101 cards the four new
+markets project raise the current total without raising any floor. Per-market gates for the
+original five are unaffected, so a single-market regression still trips its own floor; only a
+drop spread across several could hide in the gap. The gap is wider than it was at France, and
+grows with each batch, so this is the highest-value thing to do after the next run.
 
-**A gap in the checklist worth closing before the next nine.** Step 4 says to verify each
+**One gap closed and one still open, neither a live defect today.**
+`_clean_company_name` keys on BRACKETS, so a non-bracket footnote marker (`*`, a dagger, a
+superscript digit) passes the WRITER untouched. The seed GUARD now catches that class, which is
+the right split: the guard only ever fails loudly and asks a human, while widening the writer on
+a guess about tables nobody has fetched is the over-stripping failure this design fought. So an
+artifact of that kind fails CI on the Nordic batch rather than reaching a card headline. All
+nine committed seeds were scanned and none carries one today.
+Still open: the seeds now hold 1079 tickers against the 959 of the 73-minute, 921-card run, and
+the CI timeout is 2 hours. Headroom narrows with every batch and nobody is tracking it.
+
+**A second checklist gap, same class as the step 4 one below.** Step 10 now explains the two
+collision guards and their allowlists, but this branch added five guards that can fail on
+onboarding data to `tests/ingestion/test_market_onboarding.py`, plus meta-tests pinning them,
+and the checklist documents one. The one that will
+bite the Nordic batch is `test_seed_company_names_carry_no_scrape_artifacts`: its bracket half
+fires on any short trailing bracket, and four of the six queued markets use A and B share
+classes. Whether it fires at all depends on the source tables bracketing them: the OMXS 30 table
+writes "Atlas Copco A" plainly, so this is a risk rather than a certainty. An onboarder will
+meet a red
+test saying "scrape artifacts" on correct names. The tempting fix, widening
+`_clean_company_name` to eat uppercase brackets, is the exact over-stripping failure this branch
+spent several rounds arguing against; the right answer is a human decision recorded somewhere,
+and which allowlist that should be is a section 6 call rather than something to invent here.
+
+**A gap in the checklist worth closing before the next six.** Step 4 says to verify each
 ticker returns a populated `sector`, but no tooling reports that:
 `scripts/audit_yfinance_coverage.py` prints metric-presence flags and a raw `info_keys` count,
 never the sector. It has to be checked by hand, and the failure is silent with a specific
@@ -61,17 +134,104 @@ financial shape: the classifier keys the `financial` branch on the exact string
 EBITDA and net debt that banks do not report, and drops out of the deck with no error and no
 warning while the market total still clears 20. France was checked by hand and only `ML.PA` came
 back thin. Adding a sector column to the audit output would make step 4 mechanical for the
-remaining nine.
+remaining six.
 
-**Currency handling for the queue is PROPOSED, not settled, and the owner can overturn it.**
-`CAD -> C$` following the `AUD -> A$` convention already in `_CURRENCY_SYMBOLS`; `CHF`, `SEK`,
-`DKK` and `NOK` as ISO codes, because "kr" means three different currencies across the Nordics
-and CHF has no symbol in general use. Recorded with the tension visible: §6 reserves
-user-visible formats to the owner, and the owner also said plainly not to raise micro decisions
-and, when the first answer took the zero-work option, "do it the right and professional way,
-not the most convenient way". Nothing user-visible ships until those markets land, so the
-branch that lands them should put this in front of the owner rather than treat it as agreed.
-Extend `_CURRENCY_WORDS` in `tests/tooling/test_assessment_rules.py` at the same time.
+**Currency handling for the queue is SETTLED (2026-08-28): use each currency's real-world form.**
+That confirms the proposal below rather than overturning it.
+`CAD -> C$` following the `AUD -> A$` convention already in `_CURRENCY_SYMBOLS`; `SEK`, `DKK`
+and `NOK` as ISO codes, because "kr" means three different currencies across the Nordics.
+Recorded with the tension visible: §6 reserves user-visible formats to the owner, and the owner
+also said plainly not to raise micro decisions and, when the first answer took the zero-work
+option, "do it the right and professional way, not the most convenient way".
+**CHF is out of that proposal because activating Switzerland commits it, not because it
+shipped.** Nothing has shipped: the branch is not merged and no Swiss card or read exists yet.
+Switzerland activated with no `_CURRENCY_SYMBOLS` entry, and `_display_currency` returns the bare
+code for an unmapped currency, so on the next run roughly 19 Swiss reads will be generated from a
+prompt carrying `Currency this company trades in: CHF`, and any read phrasing a margin per unit
+of currency will print it. That is the documented fallback rather than an accident, and the franc
+has no symbol in general use. It was put to the owner and settled on 2026-08-28: "CHF" is the
+form real practice uses, so it stays.
+**If the owner wants it different, change BOTH copies of `_CURRENCY_SYMBOLS`
+(`scripts/assessment_rules.py` and `frontend/card_copy.py`) and do NOT bump
+`INPUT_HASH_VERSION`.** Changing one copy alone is worse than changing neither: edit only
+`card_copy.py` and the card face shows a symbol every stored read still calls CHF, with no hash
+movement to regenerate them, so the split is permanent. `test_currency_symbol_maps_are_mirrors`
+now fails if they drift. `compute_input_hash` already folds `_display_currency(currency)` in, for
+exactly this case, so the hash moves only for the cards whose currency string changed and only
+those reads regenerate. `INPUT_HASH_VERSION` is the lever for a GLOBAL refresh: bumping it would
+re-run Haiku across every card in all nine markets to change 19.
+Extend `_CURRENCY_WORDS` in `tests/tooling/test_assessment_rules.py` when any of these lands.
+
+**OPEN and live right now, found by this branch but NOT caused by it: two Nikkei cards share a
+headline, or one card names the wrong company. A full audit found ELEVEN.**
+`storage/seeds/jp_nikkei225/constituents.csv` gives ticker 9101 the name "Mitsui O.S.K. Lines".
+9101 is Nippon Yusen (NYK Line); 9104 is Mitsui O.S.K. Lines. So a live card shows NYK Line's
+financials under a competitor's name, Nippon Yusen is absent from the deck, and the two headlines
+differ only by full stops, which is why the guard missed it until it was widened past exact
+matching.
+**Auditing every row against yfinance on 2026-08-28 found eleven wrong company names in 116
+rows**, which is a rate over SEED ROWS: how many of the eleven cleared eligibility and became
+cards is not checkable from here, the same limit this file states twice elsewhere. The tickers:
+3407, 6908, 6976, 8005,
+8804, 8830, 9005, 9008, 9009, 9101 and 9412. The full table is in the filed task. The
+cause is NOT a column shift, though an earlier draft here said so: 9007 Odakyu sits correct
+between the wrong 9005 and 9008, which no column slide produces, and the starter import file has
+identical row order. Do not attempt a fix by sliding the name column; it would corrupt 9007 and
+still leave 9005 wrong. `jp_nikkei225` is the only seed with `source: import`. **Only two of
+the eleven are visible to any guard here**: a wrong name whose
+true owner is not also a row in the same seed looks correct. The durable fix is checking each
+seed name against yfinance's `info_long_name`. **The owner chose a different mechanism on
+2026-08-28**: corrections move into a dbt model. A name-versus-yfinance check may still be worth
+having as a guard, but it is no longer the proposal on the table.
+The same file gives ticker 3407 the name "Asahi Group
+Holdings", which is ticker 2502. 3407 is Asahi Kasei. Both rows
+are in the seed, `dim_stock` prefers the seed name over yfinance's correct one, so the deck has
+carried this since the 2026-05-23 import. It is pinned, not accepted: `KNOWN_DUPLICATE_SEED_NAMES`
+in `tests/ingestion/test_market_onboarding.py` records it with the reason, and a second test
+fails once the duplicate is gone, so the allowlist cannot outlive the defect. Fixing it edits an
+already-shipped card headline, which is a §6 call, so it was left for its own branch rather than
+folded into a market onboarding.
+
+**OPEN and owner-facing: issue #7 (duplicate cards for one company) is eleven companies, not
+one.** The deck renders one card per seed row, so a company in two indices is met twice. Six
+predate this batch (Amcor, Newmont, ResMed, Rio Tinto, News Corp, Airbus) and five arrive with
+it (Shell, Unilever, RELX, IAG, and ArcelorMittal going from one card to three). Eleven is a
+floor: `KNOWN_CROSS_MARKET_COMPANIES` in `tests/ingestion/test_market_onboarding.py` keys on a
+punctuation-insensitive form, so it does hold News Corp despite the two seeds spelling it
+differently, but it cannot see a pair differing by more than punctuation, and the same-market
+share-class case is out of scope by construction.
+**A second class makes it thirteen distinct companies and neither path fixes it.** `us_sp500`
+carries Alphabet, Fox and News Corp twice each as two share classes in ONE market, which both
+guards miss by design and which "name the venue" cannot resolve because there is one venue. News
+Corp is in both lists, so the union is thirteen companies carrying 28 cards, not fourteen. Those
+three are the only duplicates that move a PEER-SET number TODAY: all six rows sit in what Yahoo
+labels
+`us_sp500` Communication Services (expected, not verified here, since sector labels come from
+yfinance), so that sector's peer count and medians double count three issuers, and that belongs
+with the phase-2 threshold work. Spain may add one on the next run: Spanish Utilities counts 7
+without Acciona SA and 8 with it, so if Yahoo files it there alongside Acciona Energia, which it
+consolidates, that peer set crosses the gate holding 8 rows for 7 independent issuers. Genuine
+index membership rather than a defect, and phase-2 work, which is why this says today.
+"{sector} (N companies)" on the card face renders that same peer
+count, so it overstates by up to 3 in one sector and cross-market duplicates cannot move it.
+The benchmark CTE applies the same `is_card_eligible` filter, so that is a ceiling like the two
+below.
+The cross-market ones move the two DECK-WIDE counters instead: "N companies worldwide" and
+"N card-ready companies" both say companies and count card rows, so both classes inflate them,
+by 8 today (5 cross-market, 3 share class) and 15 after the run (12 and 3). Ceilings, since those
+counters count card-eligible rows only.
+The contract records the two paths put to the owner. Nothing changes at merge; the new
+duplicates appear on the next run, and five of the eleven are already visible today.
+
+**OPEN and owner-facing: SMI card headlines are in a different register from every other
+market.** The Swiss source table's only name column gives legal names, so the seed carries
+"Novartis International AG", "Swiss Reinsurance Company Ltd" and "Holcim Limited" where the
+other eight markets carry "Adidas", "Philips", "Santander". Two of those are not just formal but
+wrong: the listed issuers are Novartis AG and Swiss Re AG. `dim_stock` prefers the seed name over
+yfinance's `info_long_name`, which has them right, so the coalesce actively discards the correct
+name. There is no config fix: the table has no short-name column, so anything durable is a new
+override mechanism, which is a §6 call. **ANSWERED 2026-08-28**: the mechanism is a dbt model
+with the mapping applied in it. The resulting name list still wants an owner's eye.
 
 ## Current task
 

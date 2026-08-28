@@ -10,6 +10,9 @@ _EXCHANGE_SUFFIX: dict[str, str] = {
     "au_asx200": ".AX",
     "de_dax": ".DE",
     "fr_cac40": ".PA",
+    "nl_aex": ".AS",
+    "ch_smi": ".SW",
+    "es_ibex35": ".MC",
 }
 
 
