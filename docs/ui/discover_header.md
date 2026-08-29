@@ -1,7 +1,7 @@
 # Discover header — UI spec
 
 **Scope:** Top chrome shared across Discover, Saved, and Search (`_discovery_page` in `frontend/app.py`).  
-**Authority:** [`north_star.md`](../north_star.md) (explore model v2.3).
+**Authority:** [`north_star.md`](../north_star.md) (explore model v2.4).
 
 ---
 
@@ -53,9 +53,8 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 | Product name & tagline | Company name, ticker |
 | Tab navigation | Sector headline + peer count |
 | Active filter summary | Metric values and gloss |
-| Scope stats line (`N left`) | Walk position (`3 of 47` in walk UI) |
+| Scope stats line (`N left`) | Card meta line: the card's own listing venue, then walk position (`FTSE 100 · 3 of 47`), one combined line, not two |
 | | Eligible pool breakdown (⋯ → About the data) |
-| | Market name on card meta (card shows market when needed) |
 
 ---
 
