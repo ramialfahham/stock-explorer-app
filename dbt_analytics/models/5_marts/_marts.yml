@@ -144,7 +144,7 @@ models:
           Whether the company_type's required metrics are present (operating on a four-metric set;
           financial on statement_roe_pct + net_margin_pct; pre_revenue on net_cash). forward_pe left
           both sets along with the metric itself, which widens eligibility.
-          Drives discovery queue inclusion.
+          Drives Discover pool inclusion.
         data_tests:
           - not_null
       - name: company_type

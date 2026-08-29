@@ -169,19 +169,6 @@ def walk_progress_line(*, position: int, total: int) -> str:
     return f"{position} of {total}"
 
 
-def card_venue_line(*, position: int, total: int, market_code: str | None) -> str:
-    """A Discover card's own meta line: its listing venue, then queue position.
-
-    Unlike `walk_meta_line` below, `market_code` here is the CARD's own market, not the
-    filter's. A company listed on more than one market in scope (Shell, Rio Tinto, Block Inc)
-    otherwise ships two cards with an identical meta line, the only thing distinguishing them
-    being a queue number a reader has no reason to track.
-    """
-    if total <= 0:
-        return ""
-    return f"{market_display_name(market_code)} · {position} of {total}"
-
-
 def walk_meta_line(
     *,
     position: int,

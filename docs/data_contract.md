@@ -243,7 +243,7 @@ metric it does not display, and all three price-carrying metrics were removed fr
 catalogue (see below). The practical effect is that **more companies qualify**: eligibility
 no longer requires a forward P/E, nor a market cap for a pre-revenue company.
 
-Missing any required metric → excluded from discovery queue.
+Missing any required metric → excluded from the discover pool.
 
 **`missing_metrics`** (DuckDB-only, on `int_stock__card_metrics` and `mart_stock_eligibility_gaps`):
 VARCHAR list of the `company_type`'s required metric column names that are null for that snapshot.

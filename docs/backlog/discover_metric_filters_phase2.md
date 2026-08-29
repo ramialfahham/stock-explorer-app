@@ -19,7 +19,7 @@ Phase 1 (UX recovery v2.5) shipped market + sector only in the Filters popover. 
 ## Acceptance criteria
 
 - Filters popover includes metric range controls without cluttering the card face
-- Filtering applies to Discover walk pool (client-side on loaded cards)
+- Filtering applies to Discover's filtered pool (client-side on loaded cards)
 - Update `docs/ui/discover_header.md` wireframe
 - Tests for extended `filter_pool` metric predicates
 

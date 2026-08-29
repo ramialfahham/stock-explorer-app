@@ -24,8 +24,8 @@ MENU_DATA_SOURCE = "Sourced from Yahoo Finance via our pipeline, refreshed every
 MENU_METRICS_LINE = "Fundamentals per company, no substitutes"
 
 _DISCOVER_TIP = (
-    "Save keeps a company on this device. Not now skips for later — "
-    "you can still find it in Search."
+    "Save keeps a company on this device to revisit later. Not now just means moving on "
+    "for now; the list doesn't change."
 )
 _SAVED_TIP = "Open a company to practice numbers or load recent headlines."
 _SEARCH_TIP = "Only companies with a complete set of fundamentals appear here."
@@ -136,7 +136,6 @@ def render_overflow_menu(
     saved_count: int,
     cards: list[dict[str, Any]],
     eligible_counts: dict[str, int],
-    on_start_over: Callable[[], None],
     on_clear_saved: Callable[[], None],
 ) -> None:
     """Render popover body: context, actions, and optional data expander."""
@@ -153,9 +152,6 @@ def render_overflow_menu(
         request_landing()
         st.rerun()
     st.markdown('<div class="ss-menu-actions-divider"></div>', unsafe_allow_html=True)
-    if st.button("Start over", key="menu_start_over", use_container_width=True):
-        on_start_over()
-        st.rerun()
     if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
         clear_interactions()
         on_clear_saved()

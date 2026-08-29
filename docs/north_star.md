@@ -13,7 +13,7 @@ An **explore-and-learn** stock app for **finance-curious beginners** — people 
 prior knowledge who want to **understand companies**, not execute trades.
 
 Each **Company Snapshot** is an analyst-grade overview at low barrier: fundamental metrics for
-that company's type, plain language, optional depth. **Discover** is scoped exploration (filter + walk, or **Search** for lookup);
+that company's type, plain language, optional depth. **Discover** is scoped exploration (filter + browse, or **Search** for lookup);
 **Saved** is the return habit — your learning list on this device.
 
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
@@ -119,16 +119,16 @@ one; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s 480px smoke checkl
 
 ---
 
-## Discover: explore model (v2.4)
+## Discover: explore model (v2.5)
 
 | Rule | Behavior |
 |------|----------|
 | Default scope | **All markets · All sectors** — not the full mixed worldwide queue |
 | Filters | Market (registry markets or All), optional sector; client-side on exported mart |
-| Walk | **Next company** advances within the filtered queue; the card meta line shows the card's own listing venue, then scope-aware position (e.g. `FTSE 100 · 3 of 47`): a company listed on more than one market in scope (Shell, Rio Tinto, Block Inc, ...) otherwise ships two cards a reader cannot tell apart; sector context stays on the card's own sector header, unchanged |
-| Browse list | **Removed** — Discover is filter + walk only; use **Search** for intentional lookup |
+| Browse | Filtering shows a scrollable list of every match: company name, ticker, sector, health verdict, and one type-aware lead metric per row. Tapping a row opens the full Company Snapshot (same layout Saved's focus view already uses), with a **Back to list** link |
+| List row | Verdict plus Operating margin (operating), Return on equity (financial), or Cash runway (pre_revenue): each is a core, verdict-deciding axis for that company type, not a metric chosen for the row alone |
 | Cards per session | **No limit** |
-| Ordering (walk) | Round-robin across markets in scope, unseen first, sector-balanced; queue **starts at US S&P 500** when that market is in scope (`HERO_MARKET_CODE`) |
+| Ordering (list) | Alphabetical by company name: stable and re-findable, unlike a session-stateful walk order that could move a row for reasons unrelated to anything the reader just did |
 | Universe | **Card-eligible tickers only** (per company type's eligibility gate) |
 | Auth | **None in v1** — Save/Not now persist in browser localStorage on device |
 
@@ -144,7 +144,8 @@ one; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s 480px smoke checkl
 
 **Meaning:** “Not for me **right now**” — not “bad stock,” not permanent rejection.
 
-- **Deprioritize** in scoped walk; ticker can resurface after many other cards.
+- Recorded as an interaction, with no visible effect on the list; the reader simply moves on
+  to whatever they choose next.
 - Always reachable via **Search**.
 
 Neither action deletes pipeline data.
@@ -225,7 +226,6 @@ thresholds.
 - Dating-app interaction patterns or gamified streaks as core UX
 - Auth / cross-device sync
 - **News on Discover cards**
-- Discover **browse list** expander (removed — walk + Search only)
 - On-card **live quote** button (removed — Yahoo Finance footer link only)
 - **Metric range filters** in Filters popover until mobile-friendly design (#109)
 
