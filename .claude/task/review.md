@@ -1,75 +1,51 @@
 # Review
 
-diff_sha256: 1a619fd57ac917c6470dd4b1c3bfeb898905f9bc05ca51c5c9be20182cfcb236
+diff_sha256: a7f4aa4fc5f2d60c5cd8099023bba941ecc696564edc517c9ba29c3b2224b451
 
-Two review rounds. Required reviewers per routing (`.claude/review_routing.json`):
-scope-auditor (always), cto-reviewer (`frontend/*`, `tests/*`). analytics-engineer-reviewer,
-data-engineer-reviewer, and equity-analyst-reviewer are not routed to this diff's file set.
+Two review rounds. Required reviewer per routing (`.claude/review_routing.json`): scope-auditor
+(always). No other pattern in the routing matches this file set (a new `docs/backlog/*.md` file
+plus `.claude/active_work.md` and `.claude/task/contract.md`), so no other reviewer is required.
 
 **Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
-this session, so each ran as a general-purpose agent instructed to read its own role file
-verbatim first. Cold, blinded, read-only input; the staged index was frozen to a patch file and
-sha256 before every dispatch and never moved while reviewers were running.
+this session, so scope-auditor ran as a general-purpose agent instructed to read its own role
+file verbatim first. Cold, blinded, read-only input; the staged index was frozen to a patch file
+and sha256 before every dispatch and never moved while the reviewer was running.
 
-**Final verdicts (round 2, the commit gate):** scope-auditor PASS, cto-reviewer PASS.
+**Final verdict (round 2, the commit gate):** scope-auditor PASS.
 
 ## What this is
 
-Shows each Discover card's own listing venue on its meta line ("{market} · {position} of
-{total}", e.g. "FTSE 100 · 3 of 47"), so a reader meeting the same company twice across markets
-(Shell, Rio Tinto, Block Inc, and nine others) can tell the two cards apart. Owner-approved via a
-reviewed mockup (Option B: market leads, queue position follows). A new pure function
-`card_venue_line()` in `frontend/explore_filters.py` replaces `walk_progress_line()` at the one
-call site in `frontend/app.py`'s `_render_discover_tab`; Saved and Search were already correct
-via an existing fallback and needed no change. `docs/north_star.md`'s Discover explore-model spec
-is corrected (v2.3 -> v2.4): it previously documented the opposite rule.
-
-Went through the project's UX PR gate (`docs/working_agreement.md`): north_star check, component
-specs, and a live 480px browser smoke test (no horizontal scroll; company, sector, health
-verdict, and first metric value all visible without scrolling; the market/position line correctly
-varies per card when advancing the real queue, confirmed live against the running app, not
-assumed from the CSS).
+Scopes the name-vs-yfinance audit-guard mechanism as its own backlog item, per the owner's
+request. This was flagged three times during this session's Nikkei, SMI, and Block ticker fixes
+but never built, each time correctly deferred as a separable, owner-decided mechanism rather than
+folded into the data fix at hand. Adds `docs/backlog/name_vs_yfinance_audit_guard.md`, matching
+the shape of the one existing backlog doc, and links `.claude/active_work.md`'s existing mention
+of the idea to it instead of leaving it as bare prose with no pointer. Documentation only: no
+code, no CI, no new dependency.
 
 ## Round-by-round findings and fixes
 
-**Round 1**: cto-reviewer passed clean, confirming `card_venue_line`'s fallback delegates
-correctly to `market_display_name` with no duplicated logic, `walk_progress_line` isn't
-orphaned elsewhere, and the new tests are genuine (exact-string assertions that would catch a
-swapped market/position order). scope-auditor failed on a real doc-sync gap outside the
-original scope_paths: `docs/ui/discover_header.md` cited the retired "explore model v2.3" and
-its "Belongs in header vs elsewhere" table still listed "walk position" and "market name on
-card meta" as two separate facts, when the shipped code now unifies them into one line. Fixed:
-the file added to scope_paths, its Authority line bumped to v2.4, and the table row reworded to
-describe the single combined line.
+**Round 1**: passed, with one non-blocking accuracy note: the doc's "Scope" open question
+compared `docs/constituent_sources.yml`'s `provider:` field against the raw seed CSV's own
+per-row `source` column as if they were opposites of the same axis, when they are two different
+fields. Fixed: reworded to compare `provider:` consistently on both sides (`jp_nikkei225` is
+`provider: manual`, verified against the actual file).
 
-**Round 2**: both required reviewers passed clean on a fresh, cold, independent pass.
-cto-reviewer confirmed the doc's rendered-format example byte-matches what `card_venue_line`
-actually produces, and diffed the frozen round-1/round-2 patches directly to confirm nothing
-else drifted. scope-auditor ran its own broader doc-sync sweep across every file in `docs/` for
-any other stale reference to the old rule, finding two other `v2.3` citations elsewhere in the
-docs tree, correctly assessed as out of scope (one a dated point-in-time snapshot, the other
-adjacent to an unrelated fact this task didn't touch). No further findings.
+**Round 2**: passed clean, with the fix independently re-verified against the real
+`docs/constituent_sources.yml`, and a byte-diff of the two frozen patches confirming nothing else
+changed between rounds.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- The round-1 doc-sync gap is genuinely fixed, re-verified by reading the files directly: the
-  Authority line matches `north_star.md`'s new heading, and the table no longer splits one fact
-  into two rows.
-- A broader sweep of every file under `docs/` for the old format or the old "not repeated on
-  the card meta line" rule found nothing else needing a fix.
-- `decisions_reserved` held in the actual code: Saved/Search call sites are untouched and still
-  fall through to the existing market-only display; the new line is shown unconditionally, not
-  gated on filter scope.
-- No em/en dash on any added line, including the heading and table-row edits required by the
-  version bump and rewording themselves.
-
-## cto-reviewer
-VERDICT: PASS
-risks_checked:
-- `card_venue_line`'s fallback path delegates to `market_display_name` with no duplicated logic,
-  so a missing or unknown market_code can't diverge between the two functions.
-- The doc's claimed rendered-format example was checked against the actual function output, not
-  just read as plausible prose.
-- Diffed the frozen round-1 and round-2 patches directly to confirm only the flagged doc-sync
-  fix changed and the previously-reviewed code/test surface is byte-identical.
+- The cited numbers (2 of 11 Nikkei defects caught by the existing collision guard, 9 missed;
+  nineteen SMI names) were cross-checked against the actual test file and prior session prose,
+  not invented or rounded.
+- `docs/north_star.md`'s "Phase 2 backlog" table was correctly left untouched: it is
+  product-engagement backlog, a different category from this data-quality/CI item, confirmed by
+  reading the table's own rows rather than assumed.
+- No decision was silently made inside the "draft acceptance criteria" or "open questions"
+  sections: every open question (live-fetch vs. cached, fuzzy tolerance, scope, failure mode,
+  new-mechanism sign-off) is left genuinely unanswered, deferred to the owner.
+- No em/en dash on any added line, across both rounds.
+- No code, CI, or dependency file touched anywhere in the diff: scoping prose only.
