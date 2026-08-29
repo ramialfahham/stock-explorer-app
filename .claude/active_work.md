@@ -76,7 +76,9 @@ create new work.
    misreading, not a rule to reinterpret. New mechanism, own contract.
 4. **Duplicate cards stay, and every card shows its exchange.** One card per listing is accepted
    as reality; the card face gains the listing venue so a reader meeting Shell twice sees why.
-   User-facing, so it goes through the UX PR gate on its own branch.
+   User-facing, so it goes through the UX PR gate on its own branch. **Done,
+   `feat/card-shows-listing-venue`, 2026-08-29**: format chosen from a reviewed mockup (market
+   leads, queue position follows), executed exactly as decided.
 
 ## Market coverage
 
@@ -239,11 +241,18 @@ fails once the duplicate is gone, so the allowlist cannot outlive the defect. Fi
 already-shipped card headline, which is a §6 call, so it was left for its own branch rather than
 folded into a market onboarding.
 
-**OPEN and owner-facing: issue #7 (duplicate cards for one company) is eleven companies, not
-one.** The deck renders one card per seed row, so a company in two indices is met twice. Six
-predate this batch (Amcor, Newmont, ResMed, Rio Tinto, News Corp, Airbus) and five arrive with
-it (Shell, Unilever, RELX, IAG, and ArcelorMittal going from one card to three). Eleven is a
-floor: `KNOWN_CROSS_MARKET_COMPANIES` in `tests/ingestion/test_market_onboarding.py` keys on a
+**Issue #7 (duplicate cards for one company) is twelve companies, not one** (was eleven; Block
+Inc joined once its `au_asx200` ticker was fixed, `fix/asx200-block-ticker`). **The "which venue
+is this card" symptom is FIXED (`feat/card-shows-listing-venue`)**: every Discover card's meta
+line now shows its own market before the queue position (`FTSE 100 · 3 of 47`), so a reader
+meeting one of these twelve twice can tell the two cards apart. Owner decision 2026-08-28
+("duplicate cards stay, and every card shows its exchange") is fully executed as of that
+branch. **Still open, and this fix does not touch it:** the peer-set and deck-wide counter
+inflation below, which is a counting/eligibility-math problem, not a display one. The deck
+renders one card per seed row, so a company in two indices is met twice. Six predate the NL/CH/
+ES batch (Amcor, Newmont, ResMed, Rio Tinto, News Corp, Airbus), five arrived with it (Shell,
+Unilever, RELX, IAG, and ArcelorMittal going from one card to three), and Block Inc is the
+twelfth. `KNOWN_CROSS_MARKET_COMPANIES` in `tests/ingestion/test_market_onboarding.py` keys on a
 punctuation-insensitive form, so it does hold News Corp despite the two seeds spelling it
 differently, but it cannot see a pair differing by more than punctuation, and the same-market
 share-class case is out of scope by construction.
