@@ -78,8 +78,9 @@ markets:
       tables, so frontend/live_quote.py's _EXCHANGE_SUFFIX is load-bearing here and inert there.
       The table carries a Rank column, so the company name is under Name rather than Company.
       That column also gives LEGAL names ("Novartis International AG") where every other source
-      gives trade names ("Adidas", "Philips"), and the seed name wins over yfinance in dim_stock,
-      so SMI card headlines read differently from every other market's. Open, see the contract.
+      gives trade names ("Adidas", "Philips"), and the seed name wins over yfinance in dim_stock.
+      Fixed 2026-08-28: nineteen ch_smi rows in dbt_analytics/seeds/company_name_overrides.csv
+      correct this to trade names; the raw seed here is untouched by design.
       Switzerland TRADES in CHF, which has no _CURRENCY_SYMBOLS entry, so _display_currency
       returns the bare ISO code. Trades, not reports: audited 2026-08-28 against yfinance
       `financialCurrency`, NINE of the twenty file in something else. USD for Novartis, ABB, UBS,
