@@ -1,0 +1,2 @@
+market_code,ticker,corrected_ticker,reason
+au_asx200,XYX,XYZ,"Wikipedia's S&P/ASX 200 table lists Block, Inc. under XYX; XYX.AX and SQ2.AX both 404 on Yahoo, XYZ.AX resolves to Block, Inc. in AUD. Wrong on the source page itself, not a scrape bug, so a future refresh would reintroduce it without this override."

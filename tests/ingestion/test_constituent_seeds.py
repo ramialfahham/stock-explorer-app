@@ -12,7 +12,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from ingestion.constituents.seeds import _clean_company_name
+from ingestion.constituents import seeds
+from ingestion.constituents.seeds import _apply_ticker_overrides, _clean_company_name
 
 # Names that must survive untouched. The bracketed entries are the load-bearing ones: they are
 # what stops the pattern being widened to `\[[^\]]*\]$`, which would truncate them while leaving
@@ -90,3 +91,79 @@ def test_clean_company_name_does_not_invent_a_name_for_a_null() -> None:
     """
     for null in (None, float("nan"), pd.NA):
         assert pd.isna(_clean_company_name(pd.Series([null])).iloc[0])
+
+
+_TICKER_OVERRIDES = pd.DataFrame(
+    {
+        "market_code": ["au_asx200"],
+        "ticker": ["XYX"],
+        "corrected_ticker": ["XYZ"],
+        "reason": ["test fixture"],
+    }
+)
+
+
+def test_apply_ticker_overrides_replaces_a_matching_pair() -> None:
+    out = _apply_ticker_overrides(
+        "au_asx200", pd.Series(["XYX", "WTC"]), _TICKER_OVERRIDES
+    )
+    assert list(out) == ["XYZ", "WTC"]
+
+
+def test_apply_ticker_overrides_ignores_the_same_ticker_in_another_market() -> None:
+    """The override is keyed on (market_code, ticker) together, not ticker alone.
+
+    The failure this guards: a join or lookup that matches on ticker only would rewrite an
+    unrelated market's identically-spelled ticker, the same collision risk the base-layer
+    company-name join guards against.
+    """
+    out = _apply_ticker_overrides("us_sp500", pd.Series(["XYX"]), _TICKER_OVERRIDES)
+    assert list(out) == ["XYX"]
+
+
+def test_apply_ticker_overrides_is_a_noop_with_no_matching_rows() -> None:
+    empty = pd.DataFrame(columns=["market_code", "ticker", "corrected_ticker", "reason"])
+    out = _apply_ticker_overrides("au_asx200", pd.Series(["WTC", "XRO"]), empty)
+    assert list(out) == ["WTC", "XRO"]
+
+
+def test_apply_ticker_overrides_is_vectorised_over_the_series() -> None:
+    out = _apply_ticker_overrides(
+        "au_asx200", pd.Series(["WTC", "XYX", "XRO"]), _TICKER_OVERRIDES
+    )
+    assert list(out) == ["WTC", "XYZ", "XRO"]
+
+
+def test_load_ticker_overrides_is_a_noop_for_a_missing_file(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(seeds, "TICKER_OVERRIDES_PATH", tmp_path / "does_not_exist.csv")
+    out = seeds._load_ticker_overrides()
+    assert list(out.columns) == list(seeds.TICKER_OVERRIDE_COLUMNS)
+    assert len(out) == 0
+
+
+def test_load_ticker_overrides_is_a_noop_for_a_zero_byte_file(tmp_path, monkeypatch) -> None:
+    """A file that exists but has no header at all must not crash every market's load.
+
+    `pandas.read_csv` raises `EmptyDataError` on a genuinely empty file, and that error would
+    otherwise propagate out of `load_constituents()` unconditionally, before the market filter
+    even runs, breaking every market rather than just one with no override.
+    """
+    path = tmp_path / "empty.csv"
+    path.write_text("", encoding="utf-8")
+    monkeypatch.setattr(seeds, "TICKER_OVERRIDES_PATH", path)
+    out = seeds._load_ticker_overrides()
+    assert list(out.columns) == list(seeds.TICKER_OVERRIDE_COLUMNS)
+    assert len(out) == 0
+
+
+def test_load_ticker_overrides_raises_a_clear_error_for_the_wrong_columns(
+    tmp_path, monkeypatch
+) -> None:
+    """A renamed or typo'd column must fail loudly at load time, not as a bare KeyError deep
+    inside `_apply_ticker_overrides` for whichever market happens to run first.
+    """
+    path = tmp_path / "wrong_columns.csv"
+    path.write_text("market,ticker,corrected,why\nau_asx200,XYX,XYZ,test\n", encoding="utf-8")
+    monkeypatch.setattr(seeds, "TICKER_OVERRIDES_PATH", path)
+    with pytest.raises(ValueError, match="missing columns"):
+        seeds._load_ticker_overrides()
