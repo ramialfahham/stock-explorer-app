@@ -21,13 +21,13 @@ from discovery_queue import build_queue
 from explore_filters import (
     ALL_MARKETS,
     ALL_SECTORS,
+    card_venue_line,
     cards_lack_business_summary,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
     market_filter_options,
     sectors_for_market,
-    walk_progress_line,
 )
 from landing import render_landing
 from markets import HERO_MARKET_CODE, eligible_counts_by_market, latest_snapshot_label
@@ -353,7 +353,9 @@ def _render_discover_tab(client) -> bool:
         return False
 
     card = queue[idx]
-    scope_meta = walk_progress_line(position=idx + 1, total=len(queue))
+    scope_meta = card_venue_line(
+        position=idx + 1, total=len(queue), market_code=card.get("market_code")
+    )
 
     render_stock_card(
         card,

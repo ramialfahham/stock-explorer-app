@@ -119,13 +119,13 @@ one; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s 480px smoke checkl
 
 ---
 
-## Discover — explore model (v2.3)
+## Discover: explore model (v2.4)
 
 | Rule | Behavior |
 |------|----------|
 | Default scope | **All markets · All sectors** — not the full mixed worldwide queue |
 | Filters | Market (registry markets or All), optional sector; client-side on exported mart |
-| Walk | **Next company** advances within the filtered queue; position copy is scope-aware (e.g. `3 of 47`) — market/sector live in filters and card sector header, not repeated on the card meta line |
+| Walk | **Next company** advances within the filtered queue; the card meta line shows the card's own listing venue, then scope-aware position (e.g. `FTSE 100 · 3 of 47`): a company listed on more than one market in scope (Shell, Rio Tinto, Block Inc, ...) otherwise ships two cards a reader cannot tell apart; sector context stays on the card's own sector header, unchanged |
 | Browse list | **Removed** — Discover is filter + walk only; use **Search** for intentional lookup |
 | Cards per session | **No limit** |
 | Ordering (walk) | Round-robin across markets in scope, unseen first, sector-balanced; queue **starts at US S&P 500** when that market is in scope (`HERO_MARKET_CODE`) |
