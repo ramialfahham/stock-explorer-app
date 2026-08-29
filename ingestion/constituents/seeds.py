@@ -8,9 +8,42 @@ from pathlib import Path
 
 import pandas as pd
 
-from ingestion.paths import seed_path
+from ingestion.paths import TICKER_OVERRIDES_PATH, seed_path
 
 SEED_COLUMNS = ("market_code", "ticker", "company_name", "refreshed_at", "source")
+TICKER_OVERRIDE_COLUMNS = ("market_code", "ticker", "corrected_ticker", "reason")
+
+
+def _load_ticker_overrides() -> pd.DataFrame:
+    if not TICKER_OVERRIDES_PATH.exists():
+        return pd.DataFrame(columns=list(TICKER_OVERRIDE_COLUMNS))
+
+    try:
+        frame = pd.read_csv(TICKER_OVERRIDES_PATH, dtype=str)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame(columns=list(TICKER_OVERRIDE_COLUMNS))
+
+    missing = [col for col in TICKER_OVERRIDE_COLUMNS if col not in frame.columns]
+    if missing:
+        raise ValueError(f"{TICKER_OVERRIDES_PATH} missing columns: {missing}")
+    return frame
+
+
+def _apply_ticker_overrides(
+    market_code: str, tickers: pd.Series, overrides: pd.DataFrame
+) -> pd.Series:
+    """Correct a ticker the source table has wrong, before it reaches any fetch or write.
+
+    Unlike `_clean_company_name`, this cannot wait for dbt: `load_constituents` feeds the
+    yfinance fetch list directly, before dbt ever runs, so a wrong ticker here means zero data
+    for that row rather than a display defect. See `ticker_overrides.csv` for the mapping and
+    why each row exists; a market or ticker with no row here is returned unchanged.
+    """
+    market_overrides = overrides[overrides["market_code"] == market_code]
+    if market_overrides.empty:
+        return tickers
+    mapping = dict(zip(market_overrides["ticker"], market_overrides["corrected_ticker"]))
+    return tickers.map(lambda t: mapping.get(t, t))
 
 
 def load_constituents(market_code: str) -> pd.DataFrame:
@@ -26,7 +59,11 @@ def load_constituents(market_code: str) -> pd.DataFrame:
     if missing:
         raise ValueError(f"{path} missing columns: {missing}")
 
-    return frame[list(SEED_COLUMNS)].copy()
+    frame = frame[list(SEED_COLUMNS)].copy()
+    frame["ticker"] = _apply_ticker_overrides(
+        market_code, frame["ticker"], _load_ticker_overrides()
+    )
+    return frame
 
 
 # A trailing Wikipedia marker: an interlanguage link (`[es]`), a numeric or lowercase-lettered

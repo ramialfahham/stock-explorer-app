@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ingestion.constituents.seeds import load_constituents
 from ingestion.yfinance.symbols import to_yfinance_ticker
 
 REPO = Path(__file__).resolve().parents[2]
@@ -206,12 +207,12 @@ KNOWN_CROSS_MARKET_COMPANIES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "blockinc": (
         frozenset({"us_sp500", "au_asx200"}),
-        "PRE-EXISTING in the SEEDS, and NOT on the deck, because the au_asx200 ticker is wrong. "
-        "The seed says XYX; XYX.AX and SQ2.AX both 404 on Yahoo while XYZ.AX resolves to Block, "
-        "Inc. in AUD. So XYX is a one-keystroke transcription error and that row has silently "
-        "ingested nothing since the 2026-05-23 import: a coverage defect, not a display one. "
-        "Recorded here because the seed rows collide either way, NOT counted as a live duplicate "
-        "in the contract, and filed for its own branch since fixing it adds a card.",
+        "PRE-EXISTING in the seeds. The raw au_asx200 seed still says XYX (that is what "
+        "Wikipedia's own S&P/ASX 200 table lists; not a scrape bug), so "
+        "ingestion/constituents/ticker_overrides.csv corrects it to XYZ before any fetch, "
+        "fixed 2026-08-29. Once real ingestion next runs for au_asx200, this becomes a genuine "
+        "cross-market duplicate like Amcor, Newmont, ResMed and Rio Tinto elsewhere in this "
+        "allowlist, not counted as one in the contract before that.",
     ),
     "newscorpclassb": (
         frozenset({"us_sp500", "au_asx200"}),
@@ -895,3 +896,68 @@ def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
     assert covered == approved_tickers, (
         f"expected exactly {sorted(approved_tickers)}, found {sorted(covered)}"
     )
+
+
+TICKER_OVERRIDES = REPO / "ingestion" / "constituents" / "ticker_overrides.csv"
+
+
+def _ticker_override_rows() -> list[dict]:
+    with TICKER_OVERRIDES.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def test_ticker_overrides_target_real_constituents() -> None:
+    """Every override row must correct a ticker that actually exists in the seed it targets.
+
+    Same rationale as `test_company_name_overrides_target_real_constituents`: the failure this
+    catches is a source table renumbering or removing a ticker after the override was written,
+    leaving the override correcting nothing while looking like it does.
+    """
+    offenders = []
+    for row in _ticker_override_rows():
+        market_code = row["market_code"]
+        if not _seed_path(market_code).exists():
+            offenders.append(f"{market_code}/{row['ticker']}: no such market seed")
+            continue
+        real_tickers = {r["ticker"] for r in _seed_rows(market_code)}
+        if row["ticker"] not in real_tickers:
+            offenders.append(
+                f"{market_code}/{row['ticker']}: not in the current seed (renumbered or removed?)"
+            )
+    assert not offenders, "; ".join(offenders)
+
+
+def test_ticker_overrides_have_no_duplicate_keys() -> None:
+    """Two rows for the same (market_code, ticker) is ambiguous: which correction applies?
+
+    `_apply_ticker_overrides` builds a plain dict from `zip(ticker, corrected_ticker)`, so a
+    duplicate key would silently let the last row win instead of erroring.
+    """
+    seen: dict[tuple[str, str], str] = {}
+    dupes = []
+    for row in _ticker_override_rows():
+        key = (row["market_code"], row["ticker"])
+        if key in seen:
+            dupes.append(f"{key[0]}/{key[1]} appears more than once")
+        seen[key] = row["corrected_ticker"]
+    assert not dupes, "; ".join(dupes)
+
+
+def test_ticker_overrides_covers_the_known_au_asx200_defect() -> None:
+    """Pins the one ticker correction approved on 2026-08-29, so it can't silently disappear."""
+    rows = [r for r in _ticker_override_rows() if r["market_code"] == "au_asx200"]
+    assert [r["ticker"] for r in rows] == ["XYX"]
+    assert rows[0]["corrected_ticker"] == "XYZ"
+
+
+def test_load_constituents_applies_the_au_asx200_ticker_override() -> None:
+    """End-to-end proof against the real files on disk, not a synthetic fixture.
+
+    The raw seed still says XYX (matching Wikipedia's own table); this proves the override
+    mechanism actually fires today and the yfinance fetch list would carry the correct ticker,
+    not just that `ticker_overrides.csv` has the right row in isolation.
+    """
+    constituents = load_constituents("au_asx200")
+    block_rows = constituents[constituents["company_name"].str.contains("Block", na=False)]
+    assert len(block_rows) == 1, f"expected exactly one Block row, found {len(block_rows)}"
+    assert block_rows.iloc[0]["ticker"] == "XYZ"

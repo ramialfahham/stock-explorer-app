@@ -1,71 +1,100 @@
 # Task contract
 
-objective: Fix the SMI legal-name register by adding nineteen `ch_smi` rows to the existing
-  `company_name_overrides` seed (built for the Nikkei fix), so `ch_smi` card headlines read as
-  trade names like every other market instead of legal-register forms. Owner-approved name list,
-  2026-08-28. Does not touch the raw seed CSV, does not touch the Block ticker or any other
-  market's names.
+objective: Fix `au_asx200`'s Block ticker (`XYX`, has fetched no data since May) by building an
+  ingestion-time ticker-override mechanism, mirroring the seed-override design built for the
+  Nikkei and SMI name fixes but applied before the yfinance fetch instead of downstream in dbt,
+  because a wrong ticker breaks the fetch itself rather than just the display. Owner-authorized
+  2026-08-29 ("proceed with 1-5") after presenting the finding and the design choice.
 
 scope_paths:
-  - dbt_analytics/seeds/company_name_overrides.csv
+  - ingestion/paths.py
+  - ingestion/constituents/seeds.py
+  - ingestion/constituents/ticker_overrides.csv
+  - tests/ingestion/test_constituent_seeds.py
   - tests/ingestion/test_market_onboarding.py
-  - docs/constituent_sources.yml
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - The nineteen trade names below were proposed by comparing the current seed against
-    yfinance `longName` for each ticker, then presented to the owner as a table and approved
-    verbatim ("go ahead with that list"). Not re-litigated here.
-  - `KNIN` (Kuehne + Nagel) is deliberately excluded: the seed already carries a trade name,
-    yfinance's longName is the more formal one ("Kuehne + Nagel International AG"), so no
-    override row is added for it.
-  - The raw seed CSV is not edited, same design as the Nikkei fix: `storage/seeds/ch_smi/
-    constituents.csv` keeps its legal names at the source; the correction lives entirely in the
-    dbt layer via the existing override mechanism.
-  - No new mechanism: this reuses `company_name_overrides.csv` / `stg_manual__company_name_
-    overrides` / `base_yf__constituents`'s override join exactly as built for the Nikkei fix.
-    No schema, model, or test-taxonomy change.
+  - **Root cause, found during Explore, not assumed from the prior handover.** The earlier
+    handover called this a "one-keystroke transcription error," implying a scraper bug. Fetched
+    the live `S&P/ASX 200` Wikipedia table with the repo's own `_fetch_wikipedia_table` and
+    confirmed it currently lists Block, Inc.'s code as `XYX` too. The error is on Wikipedia's own
+    page, not in our scrape or parse. Confirmed against yfinance: `XYX.AX` 404s, `SQ2.AX` (an
+    earlier ticker floated in the seed's own comment trail) also 404s, `XYZ.AX` resolves to
+    Block, Inc. in AUD.
+  - **Why this can't be a dbt-layer override like the name fixes.** `ingestion/yfinance/
+    ingest.py:312` builds the yfinance fetch list from `load_constituents()`'s output before dbt
+    ever runs; a correction applied in staging or base would arrive too late to fix what already
+    fetched nothing. The correction has to intercept `load_constituents()` itself.
+  - **Why the raw seed CSV (`storage/seeds/au_asx200/constituents.csv`) is NOT hand-edited to
+    XYZ.** `scripts/refresh_constituents.py` is a standalone, manually-invoked script (not wired
+    into CI or `scripts/run_ingestion.py`), so it will not silently overwrite a hand-edit today.
+    But the next time anyone runs it for `au_asx200`, it re-scrapes Wikipedia and would put `XYX`
+    right back, since that is what the source page still says. A hand-edit would look fixed and
+    then quietly regress. The override sits between the raw seed and everything that consumes
+    it, the same relationship the Nikkei/SMI seed override has to `storage/seeds/*/
+    constituents.csv`, so a future refresh can put `XYX` back in the raw file and the override
+    still corrects it before any fetch or write happens.
+  - **Scope of the new mechanism.** One market-agnostic CSV (`market_code, ticker,
+    corrected_ticker, reason`) and one interception point in `load_constituents()`, which is the
+    single function all four current callers (`ingest.py`, and the three `scripts/probe_*.py` /
+    `audit_yfinance_coverage.py` diagnostic scripts) already go through. No change to any of
+    those callers. Not building a name-and-ticker unified override file: the two correct
+    different things at different layers (pre-fetch vs. post-fetch) and a shared file would
+    imply a shared consumer that does not exist.
 
 done_when:
-  - `company_name_overrides.csv` gains exactly nineteen new `ch_smi` rows: NOVN, ROP, NESN,
-    ABBN, UBSG, CFR, ZURN, HOLN, SREN, LONN, SCMN, GIVN, ALC, SIKA, AMRZ, SLHN, GEBN, PGHN, LOGN.
-    KNIN is not added. Each row's `company_name` is the owner-approved trade name; each row's
-    `reason` states whether the seed's legal name was also factually wrong (NOVN, SREN) or just
-    a more formal register of the same issuer (the other seventeen).
-  - A new test mirrors `test_company_name_overrides_covers_the_audited_nikkei_defects` for this
-    market: pins the exact nineteen `ch_smi` tickers covered, so a future edit can't silently
-    drop or add a row without a test noticing.
-  - The existing market-agnostic tests (`test_company_name_overrides_target_real_constituents`,
-    `test_company_name_overrides_have_no_duplicate_keys`) need no changes; they already loop
-    over every market's rows and will cover the new `ch_smi` rows automatically. Confirmed
-    they pass with the new rows present, not just assumed.
-  - `docs/constituent_sources.yml`'s `ch_smi` note ("the seed name wins over yfinance in
-    dim_stock, so SMI card headlines read differently from every other market's. Open, see the
-    contract.") is updated to say this is fixed via the override, not left as an open pointer to
-    a contract that no longer describes an open problem.
-  - No change to `dbt_analytics/seeds/_seeds.yml`, `_manual_staging.yml`, `_yfinance_base.yml`,
-    or `base_yf__constituents.sql`: the mechanism already generalizes across markets, so a
-    second market's rows need no schema or SQL change. Confirmed by reading each file, not
-    assumed from the Nikkei design intent.
-  - `dbt build --project-dir dbt_analytics --profiles-dir . --full-refresh` green (against the
-    CI fixture DB; the nineteen real-ticker rows are inert there, same limitation as Nikkei).
+  - `ingestion/constituents/ticker_overrides.csv` exists with one row: `au_asx200, XYX, XYZ`,
+    reason recording that Wikipedia's own table has it wrong and citing the yfinance check.
+  - `ingestion/paths.py` gains `TICKER_OVERRIDES_PATH`, matching the existing `SEEDS_DIR` /
+    `RAW_DIR` constant style.
+  - `ingestion/constituents/seeds.py`'s `load_constituents()` applies the override to the
+    `ticker` column before returning, via a pure `_apply_ticker_overrides(market_code, tickers,
+    overrides)` function (testable with a synthetic frame, no disk I/O) plus a thin
+    `_load_ticker_overrides()` reader, mirroring `_clean_company_name`'s pure-function shape in
+    the same file. A missing or genuinely empty (zero-byte) override file is a no-op, not an
+    error, so every other market and every future ticker are unaffected until a row is added for
+    them; a file with the wrong columns raises a clear `ValueError` at load time (mirroring
+    `load_constituents()`'s own missing-columns check) rather than a bare `KeyError` surfacing
+    from inside `_apply_ticker_overrides` for whichever market happens to load first. Fixed in
+    round 1 review after cto-reviewer reproduced both crash modes empirically.
+  - `tests/ingestion/test_constituent_seeds.py` gains unit tests for `_apply_ticker_overrides`
+    against synthetic data: a matching (market, ticker) pair is replaced; a different market or
+    a different ticker is left untouched; an empty overrides frame is a no-op; vectorises over a
+    multi-row series. Mirrors the file's existing `_clean_company_name` test shape. Also gains
+    tests for `_load_ticker_overrides()` itself (monkeypatching `TICKER_OVERRIDES_PATH` to a
+    `tmp_path` file): a missing file and a zero-byte file are both no-ops; a file with the wrong
+    columns raises `ValueError`.
+  - `tests/ingestion/test_market_onboarding.py` gains: a test that every override's ticker
+    exists in that market's real raw seed (mirrors `test_company_name_overrides_target_real_
+    constituents`); a test with no duplicate `(market_code, ticker)` keys in the override file;
+    a test pinning the exact `au_asx200` row; and an end-to-end test that calls the real
+    `load_constituents("au_asx200")` against the real seed and override files on disk and
+    asserts the Block row's ticker comes back `XYZ`, not `XYX`, proving the mechanism actually
+    fires today, not just that the override file has the right row.
+  - The `blockinc` entry in `KNOWN_CROSS_MARKET_COMPANIES` is reworded: it no longer says Block
+    is "NOT on the deck," since the next real ingestion run will fetch it correctly and it
+    becomes a genuine cross-market duplicate like Amcor, Newmont, ResMed and Rio Tinto in the
+    same list.
   - `pytest` green, no other test touched or weakened.
   - `check_layer_contract.py`, `check_dbt_tests.py`, `check_dbt_documentation.py`,
-    `check_dbt_sql_structure.py`, `check_registry_var_sync.py` all green.
+    `check_dbt_sql_structure.py`, `check_registry_var_sync.py` all green (none of these touch
+    ingestion, so this is confirming no accidental regression, not exercising new coverage).
   - No em dash or en dash on any added line.
 
 impact_map:
-  - `base_yf__constituents` gains nineteen more matched override rows on its existing left
-    join; no schema, join, or coalesce change. Grain and row count unaffected, same as Nikkei
-    (join key is the override's own unique key).
-  - Re-ran `dbt ls --select base_yf__constituents+ --resource-type model`: `dim_stock`, then
-    `int_stock__card_metrics`, `int_stock__sector_benchmarks`, `mart_stock_cards`,
-    `mart_stock_eligibility_gaps`: identical chain to the Nikkei fix, since this is the same
-    model gaining more override data, not new logic.
-  - Card headlines for the nineteen listed `ch_smi` tickers change on the next production run
-    that rebuilds `dim_stock`. No already-shipped number (verdict, metric, benchmark) changes:
-    this touches only a display string.
+  - `ingestion/constituents/seeds.py`'s `load_constituents()` changes what it returns for any
+    market with a row in `ticker_overrides.csv`: today, only `au_asx200`. Every one of its four
+    callers sees the corrected ticker: `ingest.py`'s fetch list and its `yf_constituents.parquet`
+    snapshot write, and the diagnostic scripts. No dbt model changes: the fix lands entirely
+    before dbt runs, so `stg_yf__constituents` and everything downstream of it see the corrected
+    ticker as if it had always been right, with no join or coalesce needed on that side.
+  - Card-visible effect: on the next real ingestion run for `au_asx200`, Block, Inc. starts
+    fetching real data and becomes eligible for a card, where today it silently ingests nothing.
+    Not observable against CI's synthetic fixture tickers.
+  - No already-shipped number changes for any other market or ticker; the override is keyed to
+    one specific wrong ticker and is a no-op everywhere else.
 
 amendments: (none)

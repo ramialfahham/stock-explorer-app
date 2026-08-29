@@ -20,9 +20,24 @@ Sixteen-round review, full account in `.claude/task/review.md`.
 
 **Two data defects found outside this branch's scope, filed as separate chips.** Eleven of 116
 `jp_nikkei225` seed rows carried the wrong company name (audited against yfinance 2026-08-28,
-two visible to the duplicate-headline guard, nine not): **FIXED, `fix/nikkei-company-names`,
-MR !53 open, awaiting merge**, detail below. `au_asx200`'s Block ticker (`XYX`, should be `XYZ`)
-has fetched no data since May, not yet started.
+two visible to the duplicate-headline guard, nine not): **FIXED and MERGED, MR !53**, detail
+below. `au_asx200`'s Block ticker (`XYX`, should be `XYZ`) had fetched no data since May:
+**FIXED, `fix/asx200-block-ticker`, 2026-08-29.**
+
+**The Block ticker fix, and why it isn't a raw-seed edit.** Confirmed root cause by fetching
+the live `S&P/ASX 200` Wikipedia table with the repo's own fetcher: it still lists Block, Inc.
+under `XYX` today. Not a scrape bug, Wikipedia's own page has it wrong. `XYX.AX` and `SQ2.AX`
+both 404 on Yahoo; `XYZ.AX` resolves to Block, Inc. in AUD. `scripts/refresh_constituents.py`
+is a standalone manual script, not wired into CI or the regular ingestion run, so a raw-seed
+hand-edit would not get overwritten today, but the next manual refresh for `au_asx200` would
+re-scrape Wikipedia and put `XYX` right back. Built an ingestion-time override instead
+(`ingestion/constituents/ticker_overrides.csv`, applied inside `load_constituents()` before the
+yfinance fetch list is built), mirroring the seed-override design used for the name fixes but
+intercepting before the fetch rather than after it in dbt, since a wrong ticker here means zero
+data, not a display defect. Once real ingestion next runs for `au_asx200`, Block starts
+fetching real data and the `blockinc` entry in `KNOWN_CROSS_MARKET_COMPANIES`
+(`tests/ingestion/test_market_onboarding.py`) becomes a genuine cross-market duplicate like
+Amcor, Newmont, ResMed and Rio Tinto.
 
 **Four owner decisions from 2026-08-28, detail in the Market coverage section below and in the
 merged contract:** the 20-card warn threshold is wrong, deferred to phase 2; currency follows

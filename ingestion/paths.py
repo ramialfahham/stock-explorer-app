@@ -9,6 +9,7 @@ REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
 CONSTITUENT_SOURCES_PATH = REPO_ROOT / "docs" / "constituent_sources.yml"
 SEEDS_DIR = REPO_ROOT / "storage" / "seeds"
 RAW_DIR = REPO_ROOT / "storage" / "raw"
+TICKER_OVERRIDES_PATH = REPO_ROOT / "ingestion" / "constituents" / "ticker_overrides.csv"
 
 
 def seed_path(market_code: str) -> Path:
