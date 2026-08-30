@@ -69,7 +69,9 @@ directly contradicted this task's own contract; fixed by restoring it to open.
 
 **Discover's first-time default scope: decided 2026-08-30, no change.** Scoped as its own item
 ([`docs/backlog/discover_first_time_default.md`](../docs/backlog/discover_first_time_default.md)),
-then resolved the same day, in conversation, not a separate PR. The premise behind scoping it as
+then resolved the same day, in conversation, not a mockup. Recorded via MR !63 (two-round
+review, doc-only), open at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/63,
+`docs/decide-discover-first-time-default`, awaiting merge. The premise behind scoping it as
 a problem was wrong: it treated "new to reading financial statements" (this app's actual
 audience) as if it meant "new to using a web app." A filterable, searchable list isn't
 intimidating to that audience; reducing it would have solved a problem this app doesn't have.
