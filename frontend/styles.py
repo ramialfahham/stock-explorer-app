@@ -90,9 +90,15 @@ section[data-testid="stSidebar"] {
 .ss-brand-tagline {
     font-size: 0.74rem;
     color: var(--ss-muted);
-    margin: 0.28rem 0 0.45rem;
+    margin: 0.28rem 0 0.1rem;
     line-height: 1.35;
     max-width: none;
+}
+.ss-brand-disclaimer {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0 0 0.45rem;
+    line-height: 1.35;
 }
 .ss-header-stats {
     font-size: var(--ss-caption-size);
@@ -795,51 +801,6 @@ section[data-testid="stSidebar"] {
 .ss-row-rich .ss-row-metric-label {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
-}
-
-/* Landing (first visit) */
-.ss-landing {
-    padding: 1.5rem 0 1rem;
-}
-/* All three scoped under .ss-landing, their always-present wrapper (render_landing()) --
-   see the .ss-metric .ss-metric-gloss comment below for why. */
-.ss-landing .ss-landing-eyebrow {
-    font-size: var(--ss-caption-size);
-    font-weight: 600;
-    color: var(--ss-accent);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin: 0 0 0.5rem;
-}
-.ss-landing-title {
-    font-family: "Fraunces", Georgia, "Times New Roman", serif;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--ss-text);
-    letter-spacing: -0.03em;
-    margin: 0 0 0.55rem;
-    line-height: 1.15;
-}
-.ss-landing .ss-landing-tagline {
-    font-size: 0.95rem;
-    color: var(--ss-muted);
-    line-height: 1.45;
-    margin: 0 0 1.1rem;
-}
-.ss-landing-points {
-    font-size: 0.85rem;
-    color: var(--ss-muted);
-    line-height: 1.5;
-    margin: 0 0 1rem;
-    padding-left: 1.1rem;
-}
-.ss-landing-points li {
-    margin-bottom: 0.45rem;
-}
-.ss-landing .ss-landing-disclaimer {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-    margin: 0 0 1.25rem;
 }
 
 /* Overflow menu panel */

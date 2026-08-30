@@ -33,7 +33,6 @@ from explore_filters import (
     market_filter_options,
     sectors_for_market,
 )
-from landing import render_landing
 from markets import eligible_counts_by_market, latest_snapshot_label
 from nav_pages import NAV_PAGES, normalize_nav_page
 from overflow_menu import render_overflow_menu
@@ -161,16 +160,18 @@ def _clear_saved_session() -> None:
     st.session_state["saved_focus_key"] = None
 
 
-def _render_brand_header() -> None:
-    st.markdown(
-        f"""
-        <div class="ss-brand-header">
-            <div class="ss-brand">{PRODUCT_NAME}</div>
-            <div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+def brand_header_html() -> str:
+    return (
+        '<div class="ss-brand-header">'
+        f'<div class="ss-brand">{html.escape(PRODUCT_NAME)}</div>'
+        f'<div class="ss-brand-tagline">{html.escape(PRODUCT_TAGLINE)}</div>'
+        '<div class="ss-brand-disclaimer">Not investment advice.</div>'
+        "</div>"
     )
+
+
+def _render_brand_header() -> None:
+    st.markdown(brand_header_html(), unsafe_allow_html=True)
 
 
 def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:
@@ -483,11 +484,10 @@ def main() -> None:
         return
 
     ensure_interactions_loaded()
-    if render_landing():
-        return
 
     client = get_anon_client()
     _discovery_page(client)
 
 
-main()
+if __name__ == "__main__":
+    main()

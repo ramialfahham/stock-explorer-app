@@ -9,7 +9,7 @@ from typing import Any
 
 import streamlit as st
 
-from browser_storage import clear_interactions, request_landing
+from browser_storage import clear_interactions
 from card_copy import format_snapshot_date
 from explore_filters import ALL_MARKETS, ALL_SECTORS, cards_lack_business_summary
 from markets import (
@@ -143,14 +143,6 @@ def render_overflow_menu(
         menu_context_html(active_tab=active_tab, saved_count=saved_count),
         unsafe_allow_html=True,
     )
-    if st.button(
-        "How Stock Explorer works",
-        key="menu_how_it_works",
-        type="primary",
-        use_container_width=True,
-    ):
-        request_landing()
-        st.rerun()
     st.markdown('<div class="ss-menu-actions-divider"></div>', unsafe_allow_html=True)
     if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
         clear_interactions()

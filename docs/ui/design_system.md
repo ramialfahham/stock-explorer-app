@@ -65,8 +65,8 @@ not a row.
 - **Base radius + color** (global, Slice 6a + 6b): every `st.button` gets `var(--ss-radius-control)`
   by default (`[data-testid="stButton"] button`), and every `button[kind="primary"]`/
   `button[kind="secondary"]` gets the same accent-gold / bordered-surface skin app-wide — one
-  rule each, no per-surface scoping. Landing's "Start exploring", Overflow's buttons, and the
-  Discover action bar all render identically as a result.
+  rule each, no per-surface scoping. Overflow's button and the Discover action bar render
+  identically as a result.
 - **Icon-button variant:** a marker div (`.ss-icon-btn-marker`) rendered immediately before
   the trigger, e.g. `st.popover("⋯")`. Styled via `:has()` rather than DOM position
   (`:last-child`) — position-based selectors silently jump to the wrong element if the row
@@ -129,8 +129,8 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 
 - [ ] Saved row and Search row render with identical corner radius and padding
 - [ ] Overflow trigger's icon-button radius matches other control-tier elements
-- [ ] Landing's "Start exploring" and Overflow's three buttons render with the same
-      accent/surface skin as the Discover action bar
+- [ ] Overflow's "Clear saved" button renders with the same accent/surface skin as the
+      Discover action bar
 - [ ] Filters trigger and the ⋯ trigger render with the same surface/border chrome
 - [ ] Both `st.expander` instances (Overflow "About the data", the card's one "Understand
       these numbers" learn panel) render bordered/filled, not default Streamlit grey
