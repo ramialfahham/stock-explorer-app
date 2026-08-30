@@ -1,16 +1,21 @@
 # Task contract
 
-objective: Record the owner's decision on Discover's first-time default scope, reached in
-  conversation (not a mockup or exploration cycle): no change. The premise behind scoping this
-  as a problem conflated two different kinds of "beginner" (new to reading financial fundamentals
-  versus new to using a web app); this app's audience is the former, and a filterable, searchable
-  list isn't intimidating to that audience. The full unfiltered list stays on first load, for
-  every visitor, every time. This closes `docs/backlog/discover_first_time_default.md` with a
-  decision rather than leaving it open, and corrects `docs/backlog/landing_onboarding_rework.md`'s
-  cross-reference to match.
+objective: Record the owner's decision on "getting to the cards where learning content is
+  located", the last unresolved part of the owner's original landing/onboarding complaint,
+  reached by directly inspecting the real, live focus card rather than theorizing about it: no
+  change needed. One tap from the Discover list, a reader already sees a plain-English
+  AI-written verdict paragraph and six lensed metrics, each with a plain-language gloss line
+  (a sector comparison too, but only for the metrics the catalogue marks benchmarkable, ~4 of
+  13; the rest correctly say "No sector comparison for this metric" rather than fake one). One
+  further tap reaches, immediately, a median-comparison recap, a short analogy per metric, and
+  an interactive playground; each metric's fuller written explanation needs its own additional
+  "Read more" tap, by design. The path to real, plain-language content is one to two taps and
+  the destination is substantial; the original worry that content was hard to reach doesn't
+  hold up against what's actually built. This closes `docs/backlog/landing_onboarding_rework.md`'s
+  last open question, so that doc is now fully resolved: all three parts of the owner's original
+  complaint (the one-card mechanism, the landing screen, and getting to the cards) are closed.
 
 scope_paths:
-  - docs/backlog/discover_first_time_default.md
   - docs/backlog/landing_onboarding_rework.md
   - .claude/active_work.md
   - .claude/task/contract.md
@@ -18,26 +23,28 @@ scope_paths:
 
 decisions_reserved: (none; this task records a decision the owner already made, it does not make
   one)
-  - **Found by round-1 scope-auditor review: an earlier draft violated the line above.** Marking
-    the "does this conflict with, or complement, the still-separately-open 'getting to the
-    cards' question" open question as moot went further than mootness and asserted the two
-    questions were "unrelated," a substantive judgment the owner's actual reasoning never made
-    and this task was never asked to make. It also directly contradicted unchanged prose earlier
-    in the same file describing the two as "may or may not be related." Fixed: reworded to state
-    only that this decision made no change to compare the two questions against, without
-    characterizing whether they relate.
+  - **Found by round-1 scope-auditor review: the recorded evidence overclaimed what the live
+    app actually showed.** The first draft said all six metrics on the card got a plain-language
+    gloss AND a sector comparison, and that one tap into "Understand these numbers" reached
+    fuller per-metric explanations, not just analogies. Both were checked against source rather
+    than accepted: `dbt_analytics/seeds/metric_catalogue.csv`'s `benchmarkable` column shows only
+    4 of 13 metrics ever get a sector comparison, so a six-metric card always has at least two
+    reading "No sector comparison for this metric" instead (`frontend/card_ui.py`, documented
+    behavior per `docs/ui/card_metric_cell.md`); and `frontend/card_ui.py`'s
+    `_metric_learn_block_html` gates each metric's fuller explanation behind its own additional
+    "Read more" toggle, one more tap per metric, matching `docs/north_star.md`'s Deep-tier
+    description exactly. The interactive playground (`frontend/metric_school.py`) genuinely is
+    reachable with the one tap, unconditional, not gated by any "Read more." Fixed: reworded to
+    the precise mechanics, which still support the same overall conclusion (no change needed).
 
 done_when:
-  - `docs/backlog/discover_first_time_default.md`'s Status line and a new "Decision" section
-    record the resolution and the reasoning (the beginner-conflation premise was wrong), all
-    four candidate directions are marked with which one was chosen and why the others weren't,
-    and every previously-open question is marked resolved or moot, not left reading as open.
-  - `docs/backlog/landing_onboarding_rework.md`'s "First-time Discover scope" bullet moves from
-    "Still open, not touched by this decision" to a "Resolved separately" note pointing at the
-    dated outcome, since it's no longer accurate to describe it as still open.
-  - `.claude/active_work.md` records the decision and its reasoning where a fresh session would
-    see it, flagged so the same beginner-conflation mistake isn't repeated on a future "simplify
-    the first visit" idea.
+  - `docs/backlog/landing_onboarding_rework.md`'s "getting to the cards" bullet moves from
+    "Still open, not touched by this decision" to "Resolved separately," with the concrete
+    evidence from the live app (not assumed from the code) that grounds the resolution.
+  - `docs/backlog/landing_onboarding_rework.md`'s Status line reflects that the doc is now fully
+    resolved: all three parts of the owner's original complaint are closed, not just some.
+  - `.claude/active_work.md` records the decision and its evidence where a fresh session would
+    see it.
   - No code, test, CI, or dependency file touched: documentation only, since the decision is "no
     change."
   - No em dash or en dash on any added line.

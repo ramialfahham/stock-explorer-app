@@ -1,9 +1,9 @@
 # Review
 
-diff_sha256: 29056a408b1231bab5f8dcaa33fa3953e5258fd996e56674c92ba197f59e14ee
+diff_sha256: 007334d53ef4816b09e43b1500974af715224845e728151e472d36c024e228da
 
 Two review rounds. Required reviewer per routing (`.claude/review_routing.json`): scope-auditor
-(always). No other pattern in the routing matches this file set (two `docs/backlog/*.md` files
+(always). No other pattern in the routing matches this file set (one `docs/backlog/*.md` file
 plus `.claude/active_work.md` and `.claude/task/contract.md`), so no other reviewer is required.
 
 **Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
@@ -15,56 +15,66 @@ and sha256 before every dispatch and never moved while the reviewer was running.
 
 ## What this is
 
-Records the owner's decision on Discover's first-time default scope, reached directly in
-conversation rather than via a mockup or exploration cycle: no change. The premise behind
-scoping this as a problem (`docs/backlog/discover_first_time_default.md`, from an earlier
-same-day task) conflated two different kinds of "beginner": new to reading financial
-fundamentals (this app's actual audience) versus new to using a web app (not the audience). A
-filterable, searchable list isn't intimidating to the former. The full unfiltered list stays for
-every visitor, every time; Discover's existing market/sector filters and the existing Search tab
-already cover the "filter or search directly by company name" mechanism the decision leans on.
-Closes `docs/backlog/discover_first_time_default.md` with a decision, corrects
-`docs/backlog/landing_onboarding_rework.md`'s cross-reference to match, and records the reasoning
-in `.claude/active_work.md` so a future session doesn't repeat the same beginner-conflation
-mistake. Documentation only: no code, no CI, no new dependency.
+Records the owner's decision on "getting to the cards where learning content is located," the
+last unresolved part of the owner's original landing/onboarding complaint: no change needed.
+Unlike this session's other recent decision-recording tasks, the evidence here comes from
+directly inspecting a real, live focus card in the running app, not a mockup or a code-only
+read. One tap from the Discover list, a reader already sees a plain-English AI-written verdict
+paragraph and six lensed metrics, each with a plain-language gloss line; a sector comparison
+shows too where one genuinely exists (only the metrics the catalogue marks benchmarkable, ~4 of
+13). One further tap ("Understand these numbers") immediately reaches a median-comparison recap,
+a short analogy per metric, and an interactive playground; only each metric's fuller written
+explanation needs its own additional "Read more" tap. Closes
+`docs/backlog/landing_onboarding_rework.md`'s last open question, so that doc is now fully
+resolved: all three parts of the owner's original complaint (the one-card mechanism, the landing
+screen, and getting to the cards) are closed. Documentation only: no code, no CI, no new
+dependency.
 
 ## Round-by-round findings and fixes
 
-**Round 1**: failed on a real, subtle overreach, given particular scrutiny since this task's own
-contract explicitly disclaimed making any new decision. Resolving one of the doc's own
-previously-open questions ("does this conflict with, or complement, the still-separately-open
-'getting to the cards' question") went beyond procedural mootness and asserted the two questions
-were "unrelated," a substantive judgment the owner's actual reasoning never made. It also
-directly contradicted unchanged prose earlier in the same file describing the two questions as
-"may or may not be related," leaving the document self-contradictory on a still-genuinely-open
-product question owned by a different backlog doc. Fixed: reworded to state only that this
-decision made no change to compare the two questions against, explicitly declining to
-characterize whether they relate.
+**Round 1**: failed on two factual overclaims in the recorded evidence, given particular
+scrutiny since this is exactly the kind of claim that's easy to accept without checking, and
+this session has caught two prior overreaches in adjacent decision-recording docs. The first
+draft claimed all six metrics shown on the sample card got both a plain-language gloss and a
+sector comparison; in fact only metrics the catalogue marks `benchmarkable` (4 of 13) ever get
+one, so a six-metric card always has at least two reading "No sector comparison for this metric"
+instead, by design. The first draft also claimed the single tap into "Understand these numbers"
+reached "fuller explanations" for each metric; in fact only the short analogy is immediately
+visible there, while each metric's fuller written explanation sits behind its own additional
+"Read more" toggle, one more tap per metric. Fixed: reworded to the precise mechanics, checked
+against `dbt_analytics/seeds/metric_catalogue.csv`'s `benchmarkable` column and
+`frontend/card_ui.py`'s actual rendering logic, which still support the same overall conclusion.
 
-**Round 2**: the fix verified clean, plus a full re-check that everything round 1 already passed
-(the other three resolved open questions, all four candidate-direction resolutions, the optional
-"name search on Discover" idea consistently described as not decided anywhere it appears, and
-`landing_onboarding_rework.md`'s "getting to the cards" bullet remaining byte-identical and still
-open) hadn't been disturbed. Confirmed clean.
+**Round 2**: every corrected claim independently re-verified against source, line by line
+(`frontend/card_ui.py`'s `_metric_cell_html`, `_metric_learn_block_html`, `render_learn_panel`,
+and `frontend/metric_school.py`'s `render_metric_playgrounds`), confirming the fix holds exactly
+with no remaining overstatement, no understatement, and no repeat of the round-1 error pattern
+(the interactive playground was specifically re-checked to confirm it renders unconditionally
+and isn't incorrectly lumped in with the "Read more"-gated content). Confirmed clean.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- The specific round-1 defect (the "getting to the cards" bullet asserting the two open
-  questions were "unrelated") is fixed: the bullet now states only procedural mootness and
-  explicitly disclaims deciding the relationship; the "may or may not be related" line elsewhere
-  in the same file is confirmed present, unchanged, and no longer contradicted.
-- `docs/backlog/landing_onboarding_rework.md`'s "getting to the cards" bullet carries zero
-  added/removed lines anywhere in the patch: confirmed untouched, still genuinely open, not
-  silently resolved by this branch.
-- The other three open-question resolutions and all four candidate-direction resolutions are
-  faithful records of the actual decision's reasoning, nothing invented.
-- The optional "name search on Discover" idea is consistently framed as not decided/not
-  committed to everywhere it appears (the backlog doc and the handover).
-- No em/en dash on any added line, scanned programmatically (twice, independently) across the
-  full patch.
-- Scope: exactly the four files in the contract's `scope_paths` were touched; no code, test, CI,
-  or dependency file in the diff.
+- Whether the round-1 overclaims were genuinely fixed rather than reworded around: re-derived
+  the "~4 of 13 benchmarkable" count directly from `dbt_analytics/seeds/metric_catalogue.csv`
+  (exact, not approximate), and re-traced `frontend/card_ui.py`'s fallback path
+  (`_metric_range_unavailable_html`) and per-metric "Read more" gating
+  (`_metric_learn_block_html`) line by line against the corrected text.
+- Whether the fix introduced a new instance of the same error category: specifically re-checked
+  that the interactive playground (`frontend/metric_school.py`'s `render_metric_playgrounds`,
+  confirmed to render unconditionally, its own code comment says so) is correctly kept with the
+  "immediate, one tap" tier and not incorrectly grouped with the "Read more"-gated fuller
+  explanations.
+- Whether "no change needed" still holds given the corrected, more modest facts: the two tiers
+  that actually answer "what does this mean" (the gloss line and the short analogy) are both
+  honestly reachable in one and two taps respectively; only the deepest tier needs one more tap
+  per metric, which is documented, deliberate progressive disclosure, not a defect.
+- Whether documenting the round-1 finding itself introduced a new owner-reserved decision: it
+  corrects factual claims against source, it doesn't make new product/UX content, a new
+  mechanism, or a permanent naming choice.
+- Scope: exactly the three files in the contract's `scope_paths` were touched; no code, test,
+  CI, or dependency file in the diff.
+- No em/en dash on any added line, scanned programmatically across the full patch both rounds.
 - Both hash checks passed each round: the frozen patch's sha256 and a fresh
-  `git diff --staged --no-renames --no-abbrev | sha256sum` on the branch were identical both
-  times, confirming the staged index never moved during review.
+  `git diff --staged --no-renames --no-abbrev | sha256sum` on the branch were identical every
+  time, confirming the staged index never moved during review.

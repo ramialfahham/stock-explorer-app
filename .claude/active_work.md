@@ -60,18 +60,28 @@ scope-auditor. **If a future review flags an owner-reserved product/UX call bein
 without explicit sign-off, take it seriously even if a different required reviewer already
 passed the same diff clean**, see below.
 
-**Still genuinely open, not answered by this decision:** whether the list-row-to-focus-card path
-actually delivers on "getting to the cards where learning content is located" well enough.
-Killing the landing screen removes one candidate cause (a bullet list promising depth that's
-three taps away); it doesn't establish the remaining path is good enough on its own. A round-2
-cto-reviewer catch: an earlier draft of the backlog doc resolved this question anyway, which
-directly contradicted this task's own contract; fixed by restoring it to open.
+**"Getting to the cards where learning content is located": decided 2026-08-30, no change
+needed.** Checked the real, live focus card rather than theorizing about it: one tap from the
+list, a reader already sees a plain-English AI-written verdict paragraph and six lensed metrics,
+each with a plain-language gloss line (a sector comparison too, but only for the ~4 of 13
+catalogued metrics marked benchmarkable; the rest correctly say "No sector comparison for this
+metric" rather than fake one). One further tap ("Understand these numbers") reaches, immediately,
+a median-comparison recap, a short analogy per metric, and an interactive playground; each
+metric's fuller written explanation needs its own additional "Read more" tap, by design. **A
+round-1 scope-auditor catch: an earlier draft of this claimed every metric got a sector
+comparison and that fuller explanations were one tap away**, both wrong, checked against
+`dbt_analytics/seeds/metric_catalogue.csv`'s `benchmarkable` column and `frontend/card_ui.py`'s
+actual rendering; fixed to the precise mechanics above, which still support the same conclusion.
+Recorded in
+[`docs/backlog/landing_onboarding_rework.md`](../docs/backlog/landing_onboarding_rework.md),
+which is now fully resolved, all three parts of the owner's original complaint closed. Two-round
+review, doc-only; MR !64 open, `docs/decide-getting-to-the-cards`, awaiting merge. Next concrete
+action: once merged, sync local `main` and delete the branch. Nothing else queued after this.
 
-**Discover's first-time default scope: decided 2026-08-30, no change.** Scoped as its own item
+**Discover's first-time default scope: decided 2026-08-30, no change.** MR !63 merged. Scoped as
+its own item
 ([`docs/backlog/discover_first_time_default.md`](../docs/backlog/discover_first_time_default.md)),
-then resolved the same day, in conversation, not a mockup. Recorded via MR !63 (two-round
-review, doc-only), open at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/63,
-`docs/decide-discover-first-time-default`, awaiting merge. The premise behind scoping it as
+then resolved the same day, in conversation, not a mockup. The premise behind scoping it as
 a problem was wrong: it treated "new to reading financial statements" (this app's actual
 audience) as if it meant "new to using a web app." A filterable, searchable list isn't
 intimidating to that audience; reducing it would have solved a problem this app doesn't have.
