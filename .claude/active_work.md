@@ -27,9 +27,11 @@ tie-breaking supporting axis there, not one of the three core axes that decide r
 **The broader landing/onboarding rethink** the owner also flagged in the same request (this
 branch only fixed "filters with no visible effect") is done too, see the entry above this one.
 
-## MR pending, 2026-08-30: landing screen deleted entirely
+## MR !61 OPEN, 2026-08-30: landing screen deleted entirely
 
-Status: **implemented, awaiting review/push/MR.** Branch `feat/kill-landing-screen`. Owner
+Status: **implemented, three-round review complete, MR open awaiting merge.** Branch
+`feat/kill-landing-screen`, MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/61.
+Next concrete action: once merged, sync local `main` and delete the branch. Owner
 reviewed a live mockup and rejected coach-marks/hints on standard controls as condescending,
 then chose to delete the first-run landing screen outright rather than shrink or split it: no
 gate, no replacement, straight into Discover on first launch. The brand/tagline it would have
@@ -49,6 +51,16 @@ since Streamlit sets `__name__ == "__main__"` for the script it runs.
 **Known pre-existing gap, not fixed here, flagged as its own chip:** `frontend/browser_storage.py`
 had zero test coverage before this task, not just the onboarding parts, likely because it wraps
 a Streamlit component (`local_storage_manager`) that's awkward to test without a live session.
+
+**Three-round review, two real findings, full account in that branch's `.claude/task/review.md`
+history.** Round 1: an orchestrator mistake, not a design defect. A batched `git add` with one
+already-`git rm`'d path silently aborted the whole command, staging almost nothing; committing
+it as-is would have shipped `frontend/app.py` still importing the just-deleted `landing` module,
+crashing the app at import time in both the dev config and the real deployed entrypoint
+(`streamlit_app.py`). Round 2: a genuine product-scope overreach caught by cto-reviewer, not
+scope-auditor. **If a future review flags an owner-reserved product/UX call being answered
+without explicit sign-off, take it seriously even if a different required reviewer already
+passed the same diff clean**, see below.
 
 **Still genuinely open, not answered by this decision:** whether the list-row-to-focus-card path
 actually delivers on "getting to the cards where learning content is located" well enough.
