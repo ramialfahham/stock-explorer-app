@@ -71,13 +71,15 @@ Resolved by the decision above:
 - ~~New mechanism~~: moot, since this was a deletion, not an addition. No new mechanism was
   introduced.
 
+Resolved separately, not by this decision:
+
+- **First-time Discover scope.** Scoped as its own item 2026-08-30:
+  [`docs/backlog/discover_first_time_default.md`](discover_first_time_default.md). Decided the
+  same day: no change. The full unfiltered list stays for every visitor, every time; see that
+  doc for why.
+
 Still open, not touched by this decision:
 
-- **First-time Discover scope.** A first-time visitor still lands on the full unfiltered
-  ~924-company list, alphabetically. Whether that default should change (a smaller suggested
-  starting point) is a separate, already-locked north_star rule; changing it needs its own
-  owner sign-off and was deliberately not bundled into this decision. Scoped as its own item
-  2026-08-30: [`docs/backlog/discover_first_time_default.md`](discover_first_time_default.md).
 - **What "getting to the cards where learning content is located" should become, concretely.**
   Genuinely not answered by this decision, despite the temptation to read it as implied. Killing
   the landing screen removes one candidate *cause* (a bullet list promising depth that's three

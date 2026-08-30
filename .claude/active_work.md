@@ -67,16 +67,19 @@ three taps away); it doesn't establish the remaining path is good enough on its 
 cto-reviewer catch: an earlier draft of the backlog doc resolved this question anyway, which
 directly contradicted this task's own contract; fixed by restoring it to open.
 
-**Also still open: Discover's first-time default scope**, scoped as its own item 2026-08-30:
-[`docs/backlog/discover_first_time_default.md`](../docs/backlog/discover_first_time_default.md).
-A first-time visitor still lands on the full unfiltered ~924-company list, alphabetically; that
-default is locked in `north_star.md` and changing it needs its own owner sign-off. Worth reading
-before deciding: `feat/kill-landing-screen` deleted `onboarding_dismissed`, the one piece of
-state that used to distinguish "has this visitor been here before," so any "first-time only"
-version of this needs a signal that doesn't currently exist anywhere in the codebase, spelled
-out as one of that doc's open questions. Doc-only, one-round scope-auditor review; MR !62 open,
-`docs/scope-discover-first-time-default`, awaiting merge. Next concrete action: once merged, get
-the owner's call on the open questions there before writing a task contract for the actual change.
+**Discover's first-time default scope: decided 2026-08-30, no change.** Scoped as its own item
+([`docs/backlog/discover_first_time_default.md`](../docs/backlog/discover_first_time_default.md)),
+then resolved the same day, in conversation, not a mockup. Recorded via MR !63 (two-round
+review, doc-only), open at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/63,
+`docs/decide-discover-first-time-default`, awaiting merge. The premise behind scoping it as
+a problem was wrong: it treated "new to reading financial statements" (this app's actual
+audience) as if it meant "new to using a web app." A filterable, searchable list isn't
+intimidating to that audience; reducing it would have solved a problem this app doesn't have.
+The full unfiltered list stays for every visitor, every time. **If a future session considers
+building any kind of "simplified first visit" for this app, check this reasoning first**: the
+same "beginner" conflation is an easy mistake to repeat. One separate, optional idea surfaced in
+that conversation and not committed to: name search directly on Discover (it currently only
+exists as its own Search tab).
 
 ## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 

@@ -1,13 +1,13 @@
 # Task contract
 
-objective: Scope Discover's first-time default scope as its own backlog item, per the owner's
-  request. This question was flagged in `docs/backlog/landing_onboarding_rework.md`'s "Still
-  open" list as deliberately not answered by `feat/kill-landing-screen`'s decision to delete the
-  landing screen. This task lays out the current mechanism and the open product questions,
-  matching the shape used for the two earlier scoping tasks this session (the name-vs-yfinance
-  audit guard, and the landing/onboarding rework itself). It does not choose a direction: that is
-  a §6-reserved product decision (it touches a locked `north_star.md` rule), not something this
-  task decides on the owner's behalf.
+objective: Record the owner's decision on Discover's first-time default scope, reached in
+  conversation (not a mockup or exploration cycle): no change. The premise behind scoping this
+  as a problem conflated two different kinds of "beginner" (new to reading financial fundamentals
+  versus new to using a web app); this app's audience is the former, and a filterable, searchable
+  list isn't intimidating to that audience. The full unfiltered list stays on first load, for
+  every visitor, every time. This closes `docs/backlog/discover_first_time_default.md` with a
+  decision rather than leaving it open, and corrects `docs/backlog/landing_onboarding_rework.md`'s
+  cross-reference to match.
 
 scope_paths:
   - docs/backlog/discover_first_time_default.md
@@ -16,37 +16,34 @@ scope_paths:
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved:
-  - Everything in `docs/backlog/discover_first_time_default.md`'s "Open questions" section:
-    whether "first-time" is worth building for at all versus changing the default for every
-    session, what would count as "first-time" if it is, what the smaller starting point would
-    actually be, whether this relates to the still-separately-open "getting to the cards"
-    question, and whether any option beyond changing `default_market_filter()`'s return value
-    for everyone counts as a new mechanism needing sign-off. None of these are answered by this
-    task; they are the owner's call before a build contract can be written.
-  - Which, if any, of the four candidate directions sketched in the doc is worth pursuing, or
-    whether none of them are. Presented as discussion starters, not a recommendation ranked or
-    defaulted to.
+decisions_reserved: (none; this task records a decision the owner already made, it does not make
+  one)
+  - **Found by round-1 scope-auditor review: an earlier draft violated the line above.** Marking
+    the "does this conflict with, or complement, the still-separately-open 'getting to the
+    cards' question" open question as moot went further than mootness and asserted the two
+    questions were "unrelated," a substantive judgment the owner's actual reasoning never made
+    and this task was never asked to make. It also directly contradicted unchanged prose earlier
+    in the same file describing the two as "may or may not be related." Fixed: reworded to state
+    only that this decision made no change to compare the two questions against, without
+    characterizing whether they relate.
 
 done_when:
-  - `docs/backlog/discover_first_time_default.md` exists, documents the current default-scope
-    mechanism as it actually reads in the code (not assumed), including the specific, verified
-    fact that `feat/kill-landing-screen` deleted the only piece of state that ever distinguished
-    a returning visitor from a first-time one (`onboarding_dismissed`), even though that flag was
-    never wired to the Discover default itself. Lists open questions and candidate directions
-    without resolving any of them.
-  - `docs/backlog/landing_onboarding_rework.md`'s "First-time Discover scope" bullet is corrected
-    to point at the new doc instead of describing it as unlinked prose.
-  - `.claude/active_work.md`'s handover reflects the new scoping doc and its key finding (the
-    now-missing first-time signal), and separately corrects a leftover status header from the
-    prior task (`feat/kill-landing-screen`'s entry still said "MR !61 OPEN" after the MR had
-    already been merged and cleaned up).
-  - No code, test, CI, or dependency file touched: documentation and scoping only.
+  - `docs/backlog/discover_first_time_default.md`'s Status line and a new "Decision" section
+    record the resolution and the reasoning (the beginner-conflation premise was wrong), all
+    four candidate directions are marked with which one was chosen and why the others weren't,
+    and every previously-open question is marked resolved or moot, not left reading as open.
+  - `docs/backlog/landing_onboarding_rework.md`'s "First-time Discover scope" bullet moves from
+    "Still open, not touched by this decision" to a "Resolved separately" note pointing at the
+    dated outcome, since it's no longer accurate to describe it as still open.
+  - `.claude/active_work.md` records the decision and its reasoning where a fresh session would
+    see it, flagged so the same beginner-conflation mistake isn't repeated on a future "simplify
+    the first visit" idea.
+  - No code, test, CI, or dependency file touched: documentation only, since the decision is "no
+    change."
   - No em dash or en dash on any added line.
 
 impact_map:
-  - Documentation only. No frontend, dbt, ingestion, or CI behavior changes.
-  - Sets up (but does not start) a future task that will need a task contract of its own once
-    the owner answers the open questions above.
+  - Documentation only. No frontend, dbt, ingestion, or CI behavior changes; nothing in the app
+    itself changes as a result of this decision.
 
 amendments: (none)
