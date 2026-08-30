@@ -26,7 +26,10 @@ tie-breaking supporting axis there, not one of the three core axes that decide r
 
 **Not done, deliberately out of scope: the broader landing/onboarding rethink** the owner also
 flagged in the same request. This branch only fixed "filters with no visible effect"; first-
-impression/onboarding content itself is still open and should be scoped as its own task.
+impression/onboarding content itself is still open. Scoped 2026-08-30 as
+[`docs/backlog/landing_onboarding_rework.md`](../docs/backlog/landing_onboarding_rework.md):
+current state laid out, open product questions listed, no direction chosen yet. Next concrete
+action: get the owner's call on the open questions there before writing a task contract.
 
 ## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 
