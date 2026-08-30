@@ -74,7 +74,9 @@ default is locked in `north_star.md` and changing it needs its own owner sign-of
 before deciding: `feat/kill-landing-screen` deleted `onboarding_dismissed`, the one piece of
 state that used to distinguish "has this visitor been here before," so any "first-time only"
 version of this needs a signal that doesn't currently exist anywhere in the codebase, spelled
-out as one of that doc's open questions.
+out as one of that doc's open questions. Doc-only, one-round scope-auditor review; MR !62 open,
+`docs/scope-discover-first-time-default`, awaiting merge. Next concrete action: once merged, get
+the owner's call on the open questions there before writing a task contract for the actual change.
 
 ## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 
