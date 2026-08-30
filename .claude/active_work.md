@@ -24,14 +24,50 @@ figure anywhere else, check `assessment_rules.py`'s own verdict function for tha
 first**: round 5 caught Return on equity wrongly used as operating's lead metric (only a weak,
 tie-breaking supporting axis there, not one of the three core axes that decide red/green).
 
-**Not done, deliberately out of scope: the broader landing/onboarding rethink** the owner also
-flagged in the same request. This branch only fixed "filters with no visible effect"; first-
-impression/onboarding content itself is still open. Scoped 2026-08-30 as
-[`docs/backlog/landing_onboarding_rework.md`](../docs/backlog/landing_onboarding_rework.md):
-current state laid out, open product questions listed, no direction chosen yet. Doc-only,
-one-round scope-auditor review; MR !60 open, `docs/scope-landing-onboarding-rework`, awaiting
-merge. Next concrete action: once merged, get the owner's call on the open questions there
-before writing a task contract for the actual rework.
+**The broader landing/onboarding rethink** the owner also flagged in the same request (this
+branch only fixed "filters with no visible effect") is done too, see the entry above this one.
+
+## MR !61 OPEN, 2026-08-30: landing screen deleted entirely
+
+Status: **implemented, three-round review complete, MR open awaiting merge.** Branch
+`feat/kill-landing-screen`, MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/61.
+Next concrete action: once merged, sync local `main` and delete the branch. Owner
+reviewed a live mockup and rejected coach-marks/hints on standard controls as condescending,
+then chose to delete the first-run landing screen outright rather than shrink or split it: no
+gate, no replacement, straight into Discover on first launch. The brand/tagline it would have
+shown are already permanent in the header; "Not investment advice" became a permanent caption
+there instead of a one-time screen. Full decision trail and the three candidate directions that
+were NOT chosen: [`docs/backlog/landing_onboarding_rework.md`](../docs/backlog/landing_onboarding_rework.md).
+
+Deleted `frontend/landing.py` and six now-dead functions in `frontend/browser_storage.py`
+(`onboarding_ready`, `is_onboarding_dismissed`, `dismiss_onboarding`, `request_landing`,
+`_load_onboarding_from_manager`, plus the now-unused `_parse_bool`), the overflow menu's "How
+Stock Explorer works" button, and the `.ss-landing*` CSS block. **`frontend/app.py`'s `main()`
+call is now guarded (`if __name__ == "__main__":`)**, needed so the new `brand_header_html()`
+pure function could be imported and unit-tested without executing the whole app on import;
+verified live (via the dev server) that Streamlit still runs the app correctly with this guard,
+since Streamlit sets `__name__ == "__main__"` for the script it runs.
+
+**Known pre-existing gap, not fixed here, flagged as its own chip:** `frontend/browser_storage.py`
+had zero test coverage before this task, not just the onboarding parts, likely because it wraps
+a Streamlit component (`local_storage_manager`) that's awkward to test without a live session.
+
+**Three-round review, two real findings, full account in that branch's `.claude/task/review.md`
+history.** Round 1: an orchestrator mistake, not a design defect. A batched `git add` with one
+already-`git rm`'d path silently aborted the whole command, staging almost nothing; committing
+it as-is would have shipped `frontend/app.py` still importing the just-deleted `landing` module,
+crashing the app at import time in both the dev config and the real deployed entrypoint
+(`streamlit_app.py`). Round 2: a genuine product-scope overreach caught by cto-reviewer, not
+scope-auditor. **If a future review flags an owner-reserved product/UX call being answered
+without explicit sign-off, take it seriously even if a different required reviewer already
+passed the same diff clean**, see below.
+
+**Still genuinely open, not answered by this decision:** whether the list-row-to-focus-card path
+actually delivers on "getting to the cards where learning content is located" well enough.
+Killing the landing screen removes one candidate cause (a bullet list promising depth that's
+three taps away); it doesn't establish the remaining path is good enough on its own. A round-2
+cto-reviewer catch: an earlier draft of the backlog doc resolved this question anyway, which
+directly contradicted this task's own contract; fixed by restoring it to open.
 
 ## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 
@@ -961,6 +997,14 @@ see the `feat/metric-range-mark` entry at the top of this section, now built.
   leave `is_onboarding_dismissed()` UNPATCHED (it just reads session state, which the real "Start
   exploring" button click sets correctly on its own) — patching it to a hardcoded `False` blocks the
   landing page from ever dismissing.
+  **UPDATED 2026-08-30, both gotchas above are now stale if rebuilding this pattern:** (a) is no
+  longer true: `app.py`'s `main()` call is now guarded (`if __name__ == "__main__":`), so a bare
+  `import app` no longer triggers it; a future mock entrypoint needs an explicit `app.main()` call
+  every time, not the conditional-on-`sys.modules` dance described above. (b)'s landing-page
+  patching instructions are obsolete outright: `render_landing()`, `onboarding_ready()`,
+  `is_onboarding_dismissed()`, and `_ONBOARDING_LOADED_FLAG` were all deleted in
+  `feat/kill-landing-screen` (the landing screen itself is gone, straight into Discover on first
+  launch); nothing left to seed or unpatch for it.
 - **Global hook bug found and fixed while landing 6b (separate track, affects every project on this
   machine, not just this repo):** `~/.claude/hooks/branch_discipline.py` and `commit_review_gate.py`
   (both wired via `.claude/settings.json`/the user-level `~/.claude/settings.json` per the agent-setup-

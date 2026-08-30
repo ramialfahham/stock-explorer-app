@@ -11,12 +11,13 @@
 ┌─────────────────────────────────────────────┐
 │ Stock Explorer                              │  1. Brand
 │ Understand companies through five…          │  2. Tagline (`PRODUCT_TAGLINE`)
+│ Not investment advice.                      │  3. Disclosure (permanent caption)
 ├─────────────────────────────────────────────┤
-│ [ Discover | Saved | Search ]          [⋯] │  3. Nav (+ overflow)
+│ [ Discover | Saved | Search ]          [⋯] │  4. Nav (+ overflow)
 ├─────────────────────────────────────────────┤
-│ [ Filters ▾ ]          All markets · All sectors │  4. Filters (Discover only)
+│ [ Filters ▾ ]          All markets · All sectors │  5. Filters (Discover only)
 ├─────────────────────────────────────────────┤
-│ 47 match your filters · 3 saved             │  5. Stats (context line)
+│ 47 match your filters · 3 saved             │  6. Stats (context line)
 ├─────────────────────────────────────────────┤
 │ … tab body (card, list, or search) …        │
 └─────────────────────────────────────────────┘
@@ -26,9 +27,10 @@
 |---|--------|--------|-------|
 | 1 | Brand | `_render_brand_header()` | Product name only — no market name |
 | 2 | Tagline | `_render_brand_header()` | One line under brand |
-| 3 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
-| 4 | Filters | `_render_explore_filters()` | **Discover tab only** — one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()` |
-| 5 | Stats | `_render_scope_stats()` | Discover: `{remaining} match your filters · {saved} saved`; Saved/Search: `{saved} saved` only |
+| 3 | Disclosure | `_render_brand_header()` | "Not investment advice." A permanent caption, not a one-time screen. Replaced the old first-run landing gate (removed) so the disclosure stays reachable every visit instead of appearing once and never again |
+| 4 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
+| 5 | Filters | `_render_explore_filters()` | **Discover tab only**: one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()` |
+| 6 | Stats | `_render_scope_stats()` | Discover: `{remaining} match your filters · {saved} saved`; Saved/Search: `{saved} saved` only |
 
 Sticky **Save** / **Not now** actions render **below** the card body on Discover — not in the header.
 
@@ -54,7 +56,7 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 | Tab navigation | Sector headline + peer count |
 | Active filter summary | Metric values and gloss |
 | Scope stats line (`N match your filters`) | List row content: health verdict + one type-aware lead metric per company (see [`discover_list.md`](discover_list.md)) |
-| | Focus card meta line: just the card's own listing venue (e.g. `FTSE 100`), same fallback Saved and Search already use, no position, since there is no walk to be positioned in |
+| "Not investment advice" disclosure (permanent, every visit) | Focus card meta line: just the card's own listing venue (e.g. `FTSE 100`), same fallback Saved and Search already use, no position, since there is no walk to be positioned in |
 | | Eligible pool breakdown (⋯ → About the data) |
 
 ---
@@ -90,7 +92,7 @@ Popover content order:
 
 ## 480px smoke
 
-- [ ] Brand + tagline + nav visible without scrolling
+- [ ] Brand + tagline + disclosure + nav visible without scrolling
 - [ ] **⋯** menu inline with Discover / Saved / Search (not on its own row)
 - [ ] Discover: Filters row + stats + top of card (or list) fit without horizontal scroll
 - [ ] Save / Not now reachable when a card is shown

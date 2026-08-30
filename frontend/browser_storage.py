@@ -10,13 +10,11 @@ import streamlit as st
 from streamlit_extras.local_storage_manager import local_storage_manager
 
 STORAGE_ITEM_KEY = "interactions"
-ONBOARDING_KEY = "onboarding_dismissed"
 _MANAGER_KEY = "stock_swipe_interactions"
 _MANAGER_INSTANCE_KEY = "_local_storage_manager_instance"
 _MANAGER_RUN_KEY = "_local_storage_manager_run_id"
 _STORE_KEY = f"{_MANAGER_KEY}__local_storage_state"
 _LOADED_FLAG = "_interactions_storage_loaded"
-_ONBOARDING_LOADED_FLAG = "_onboarding_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
 _BOOT_RERUN_FLAG = "_storage_boot_rerun_done"
 
@@ -87,24 +85,6 @@ def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _parse_bool(raw: Any) -> bool:
-    if raw is True:
-        return True
-    if isinstance(raw, str):
-        return raw.lower() in {"true", "1", "yes"}
-    if isinstance(raw, (int, float)):
-        return bool(raw)
-    return False
-
-
-def _load_onboarding_from_manager(manager) -> None:
-    if st.session_state.get(_ONBOARDING_LOADED_FLAG):
-        return
-    stored = manager.get(ONBOARDING_KEY, False)
-    st.session_state["onboarding_dismissed"] = _parse_bool(stored)
-    st.session_state[_ONBOARDING_LOADED_FLAG] = True
-
-
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
     """Load interactions from browser localStorage into session state."""
     if "interactions" not in st.session_state:
@@ -113,8 +93,6 @@ def ensure_interactions_loaded() -> list[dict[str, Any]]:
     manager = _mount_manager()
 
     if st.session_state.get(_LOADED_FLAG):
-        if not st.session_state.get(_ONBOARDING_LOADED_FLAG) and manager.ready():
-            _load_onboarding_from_manager(manager)
         return list(st.session_state.get("interactions", []))
 
     if not manager.ready():
@@ -128,7 +106,6 @@ def ensure_interactions_loaded() -> list[dict[str, Any]]:
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
     st.session_state[_BOOT_RERUN_FLAG] = False
-    _load_onboarding_from_manager(manager)
     if interactions:
         st.session_state[_SYNC_PENDING_FLAG] = True
     return interactions
@@ -161,22 +138,3 @@ def clear_interactions() -> None:
     st.session_state[_LOADED_FLAG] = True
     _queue_interactions_write([])
     st.rerun()
-
-
-def onboarding_ready() -> bool:
-    return bool(st.session_state.get(_ONBOARDING_LOADED_FLAG))
-
-
-def is_onboarding_dismissed() -> bool:
-    return bool(st.session_state.get("onboarding_dismissed", False))
-
-
-def dismiss_onboarding() -> None:
-    st.session_state["onboarding_dismissed"] = True
-    st.session_state[_ONBOARDING_LOADED_FLAG] = True
-    _queue_storage_write(ONBOARDING_KEY, True)
-
-
-def request_landing() -> None:
-    """Show the landing page again without clearing saved interactions."""
-    st.session_state["show_landing"] = True

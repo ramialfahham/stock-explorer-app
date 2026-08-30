@@ -1,21 +1,23 @@
 # Landing page and onboarding rework
 
-**Status:** Backlog. Flagged by the owner during the Discover filter-list-focus work
-(2026-08-29): "the whole first impression and onboarding... currently it is just not good."
-The one-card-mechanism half of that complaint is fixed (`feat/discover-filter-list-focus`,
-MR !58, merged 2026-08-30). This doc scopes the remaining half: the landing screen and
-onboarding flow themselves. Scoped as its own item 2026-08-30.
+**Status:** Decided and implemented 2026-08-30, `feat/kill-landing-screen`. Flagged by the owner
+during the Discover filter-list-focus work (2026-08-29): "the whole first impression and
+onboarding... currently it is just not good." The one-card-mechanism half of that complaint is
+fixed (`feat/discover-filter-list-focus`, MR !58, merged 2026-08-30). This doc originally scoped
+the remaining half as open questions (2026-08-30); most were resolved the same day after
+reviewing a live mockup, see "Decision" below. The remaining open questions are still genuinely
+open and unaffected by this decision.
 
 ## Summary
 
-The app's first-run experience, what a new visitor sees before they've done anything, and how
-they're helped toward their first useful action, needs a rework. What that rework should
-actually be is not decided here: this doc lays out the current state and the open product
-questions that block writing a task contract with a locked scope.
+The app's first-run experience, what a new visitor sees before they've done anything, needed a
+rework: the owner decided to delete the landing screen entirely (see "Decision" below). The
+"Context" section below describes the state that motivated that decision, as it existed when
+this doc was first scoped, not the current implementation.
 
 ## Context
 
-**What exists today**, read directly from the code, not assumed:
+**What existed before this decision**, read directly from the code at the time, not assumed:
 
 - `frontend/landing.py`'s `render_landing()` is a full-screen, blocking gate shown once on a
   visitor's first session (localStorage flag `onboarding_dismissed`), or replayed on demand from
@@ -44,58 +46,70 @@ is located." The one-card/filters-with-no-visible-effect part is fixed. "Landing
 things the current single screen does not clearly separate, and this doc treats them as
 possibly-separate problems rather than assuming they share one fix.
 
-## Open questions (owner decisions, not answered here)
+## Decision (2026-08-30)
 
-- **What "landing" and "onboarding" each mean here**, since today one screen conflates them. A
-  landing page (what the app *is*, for someone deciding whether to use it) and onboarding
-  (helping a first active user succeed at their first task) are different jobs with different
-  content and different failure modes. Should this rework keep them as one screen, or split
-  them, e.g. a brief "what this is" moment versus progressive, inline hints inside Discover
-  itself?
-- **Blocking gate vs. progressive disclosure.** Keep a single blocking "Start exploring" screen
-  (today's shape, already copy-correct for the shipped list), or move toward contextual guidance
-  (e.g. a first-visit hint on the Filters popover, or a nudge that a row opens a full snapshot),
-  dismissible per element rather than as one gate? The latter follows this app's own "Active
-  user paradox" principle more closely but is a materially bigger structural change than the
-  former.
-- **First-time Discover scope.** A first-time visitor lands on the full unfiltered ~924-company
-  list today. Is "everything, alphabetically" still the right first thing to show (north_star's
-  existing, locked "All markets · All sectors" default), or does a first-time visitor need a
-  smaller suggested starting point to avoid an intimidating wall of names? Changing the default
-  scope itself would need its own owner sign-off separate from this doc, since it's a locked
-  north_star rule.
+After reviewing a live mockup comparing the current gate against candidate replacements, the
+owner rejected coach-marks/hints as condescending for standard controls ("users don't need
+hints to use filters. and they need no hints to tap on an entry") and then went further than any
+of the three candidates below: **delete the landing screen outright, add nothing in its place.**
+First launch goes straight into Discover. The brand and tagline it would have shown are already
+permanent in the header; the one thing on it that wasn't shown anywhere else, "Not investment
+advice," became a permanent caption in the header instead. No hints, no coach marks, no curated
+first-time list. Implemented in `feat/kill-landing-screen`.
+
+## Open questions
+
+Resolved by the decision above:
+
+- ~~What "landing" and "onboarding" each mean here~~: resolved as neither needs a separate
+  screen. The one durable job a landing screen would do (brand, tagline, trust disclosure) is
+  already covered by the always-visible header; no onboarding flow was added to replace it.
+- ~~Blocking gate vs. progressive disclosure~~: resolved as neither. Standard controls
+  (filters, list rows) don't get hints; nothing was added to Discover.
+- ~~Replay path~~: resolved as a direct consequence. The overflow menu's "How Stock Explorer
+  works" button is removed, since there is nothing left to replay.
+- ~~New mechanism~~: moot, since this was a deletion, not an addition. No new mechanism was
+  introduced.
+
+Still open, not touched by this decision:
+
+- **First-time Discover scope.** A first-time visitor still lands on the full unfiltered
+  ~924-company list, alphabetically. Whether that default should change (a smaller suggested
+  starting point) is a separate, already-locked north_star rule; changing it needs its own
+  owner sign-off and was deliberately not bundled into this decision.
 - **What "getting to the cards where learning content is located" should become, concretely.**
-  Is the concern that a first-time visitor doesn't realize a company row opens a full analytical
-  snapshot with metric definitions, benchmarks, and playgrounds (an awareness/copy problem,
-  fixable in the landing screen or an inline nudge), or that too many taps separate landing from
-  that content (a navigation/information-architecture problem)? These have different fixes.
-- **Replay path.** "How Stock Explorer works" in the overflow menu replays the exact same
-  first-run screen today. If the first-run shape changes, does the replay stay a fixed reference
-  screen, or does it need to change too?
-- **New mechanism.** Per the working agreement, anything beyond a copy/layout change to the
-  existing screen and flow (a persistent progress tracker, a multi-step wizard, a coach-mark/
-  tooltip library, an analytics/funnel hook) is a new mechanism and needs explicit owner
-  sign-off before being added, not something to introduce unilaterally once this item is picked
-  up.
+  Genuinely not answered by this decision, despite the temptation to read it as implied. Killing
+  the landing screen removes one candidate *cause* (a bullet list promising depth that's three
+  taps away) but doesn't establish that the remaining path (list row -> focus card) actually
+  delivers on that promise well enough. That's a real, separate product question, still open,
+  and answering it here would have been reinterpreting one decision (delete the screen) to also
+  cover a second one (the row-to-card path is good enough) it was never asked to cover.
 
-## Candidate directions (not decisions, for owner discussion)
+## Candidate directions considered (historical, superseded by the decision above)
+
+These were sketched as discussion starters before the decision. The actual outcome went further
+than all three: no screen at all, not even a shrunk or split one.
 
 1. **Minimal:** keep the single blocking landing screen; revise only its copy and visual weight.
    Smallest change; does not address the "static wall of text" tension with the app's own stated
-   principle.
+   principle. Not chosen.
 2. **Split:** a brief landing/hero moment answering "what is this," separate from progressive,
-   inline onboarding hints that appear the first time a visitor reaches Discover (e.g. pointing
-   at Filters, or a one-time nudge that a row opens a full snapshot).
+   inline onboarding hints that appear the first time a visitor reaches Discover. Not chosen:
+   the owner rejected hints on standard controls as unnecessary once actually mocked up.
 3. **Structural:** replace the blocking gate with a first-run state built into Discover itself
-   (e.g. a small spotlighted set of companies instead of the full list on the very first visit),
-   with no separate screen at all.
+   (e.g. a small spotlighted set of companies instead of the full list on the very first visit).
+   Not chosen: the first-time Discover scope stayed the locked default, untouched, separate
+   from this decision.
 
 ## Related
 
-- `frontend/landing.py`, `frontend/browser_storage.py` (`onboarding_ready`,
-  `is_onboarding_dismissed`, `dismiss_onboarding`, `request_landing`)
-- `frontend/overflow_menu.py`'s "How Stock Explorer works" replay button
+- `frontend/landing.py` (deleted), `frontend/browser_storage.py`'s onboarding-state functions
+  (`onboarding_ready`, `is_onboarding_dismissed`, `dismiss_onboarding`, `request_landing`, all
+  removed)
+- `frontend/overflow_menu.py`'s "How Stock Explorer works" button (removed, nothing left to
+  replay)
 - `docs/ux_principles_finanz_lern_apps.md`: "Active user paradox" and "Progressive disclosure"
 - `docs/ui/discover_header.md`, `docs/north_star.md`'s "Audience and tone" section
 - `feat/discover-filter-list-focus` (MR !58, merged 2026-08-30): fixed the structural half of
-  the owner's original complaint (filters with no visible effect); this doc scopes the rest.
+  the owner's original complaint (filters with no visible effect); `feat/kill-landing-screen`
+  fixed the rest.
