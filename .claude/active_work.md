@@ -12,6 +12,22 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR !58 MERGED, 2026-08-30: Discover reworked to filter -> list -> focus
+
+Retired the one-card-at-a-time walk for a scrollable, alphabetically-ordered list of every
+filtered match; each row shows a health verdict plus one type-aware lead metric (Operating
+margin / Return on equity / Cash runway by company type, each a core, verdict-deciding axis for
+that type's own rule in `scripts/assessment_rules.py`, not a metric picked for the row alone);
+tapping a row opens the existing focus card. Six-round review, full account in that branch's
+`.claude/task/review.md` history. **If a future card metric gets used as a UI "lead" or headline
+figure anywhere else, check `assessment_rules.py`'s own verdict function for that company type
+first**: round 5 caught Return on equity wrongly used as operating's lead metric (only a weak,
+tie-breaking supporting axis there, not one of the three core axes that decide red/green).
+
+**Not done, deliberately out of scope: the broader landing/onboarding rethink** the owner also
+flagged in the same request. This branch only fixed "filters with no visible effect"; first-
+impression/onboarding content itself is still open and should be scoped as its own task.
+
 ## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 
 `feat/markets-nl-ch-es` merged to `main` (`aa646439`). Netherlands, Switzerland and Spain are
