@@ -1,7 +1,7 @@
 # Discover header — UI spec
 
 **Scope:** Top chrome shared across Discover, Saved, and Search (`_discovery_page` in `frontend/app.py`).  
-**Authority:** [`north_star.md`](../north_star.md) (explore model v2.4).
+**Authority:** [`north_star.md`](../north_star.md) (explore model v2.5).
 
 ---
 
@@ -16,7 +16,7 @@
 ├─────────────────────────────────────────────┤
 │ [ Filters ▾ ]          All markets · All sectors │  4. Filters (Discover only)
 ├─────────────────────────────────────────────┤
-│ 47 left · 3 saved                           │  5. Stats (context line)
+│ 47 match your filters · 3 saved             │  5. Stats (context line)
 ├─────────────────────────────────────────────┤
 │ … tab body (card, list, or search) …        │
 └─────────────────────────────────────────────┘
@@ -28,7 +28,7 @@
 | 2 | Tagline | `_render_brand_header()` | One line under brand |
 | 3 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
 | 4 | Filters | `_render_explore_filters()` | **Discover tab only** — one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()` |
-| 5 | Stats | `_render_scope_stats()` | Discover: `{remaining} left · {saved} saved`; Saved/Search: `{saved} saved` only |
+| 5 | Stats | `_render_scope_stats()` | Discover: `{remaining} match your filters · {saved} saved`; Saved/Search: `{saved} saved` only |
 
 Sticky **Save** / **Not now** actions render **below** the card body on Discover — not in the header.
 
@@ -38,7 +38,7 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 
 **Closed state:** `Filters` button + right-aligned summary (`All markets · All sectors` or scoped labels).
 
-**Open state:** Market selectbox, then Sector selectbox (sector list respects current market). Changes reset walk queue via `_on_filter_change`.
+**Open state:** Market selectbox, then Sector selectbox (sector list respects current market). Changes return to the list (clearing any open focus card) via `_on_filter_change`.
 
 **Removed:** “Surprise me worldwide” checkbox — use **All markets** in the popover instead.
 
@@ -53,7 +53,8 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 | Product name & tagline | Company name, ticker |
 | Tab navigation | Sector headline + peer count |
 | Active filter summary | Metric values and gloss |
-| Scope stats line (`N left`) | Card meta line: the card's own listing venue, then walk position (`FTSE 100 · 3 of 47`), one combined line, not two |
+| Scope stats line (`N match your filters`) | List row content: health verdict + one type-aware lead metric per company (see [`discover_list.md`](discover_list.md)) |
+| | Focus card meta line: just the card's own listing venue (e.g. `FTSE 100`), same fallback Saved and Search already use, no position, since there is no walk to be positioned in |
 | | Eligible pool breakdown (⋯ → About the data) |
 
 ---
@@ -73,7 +74,7 @@ Popover content order:
 
 1. **Right now** — tab-aware one-liner (`right_now_line`)
 2. **Tip** — Discover / Saved / Search hint
-3. Actions (start over, clear saved, etc.)
+3. Actions (clear saved)
 4. **About the data** expander: refresh cadence (every two weeks), fundamentals-per-company gate, market breakdown; caption when `business_summary` export is missing
 
 ---
@@ -83,7 +84,7 @@ Popover content order:
 - Two full-width filter dropdowns on the card face (use popover).
 - Moving filters below the card or into the overflow menu (filters must stay discoverable on Discover).
 - Duplicating “Exploring: UK · Technology” in both filters and a second banner under stats.
-- Global queue counters divorced from scope (e.g. `1/834` with no filter context).
+- Global counters divorced from scope (e.g. `1/834` with no filter context).
 
 ---
 
@@ -98,5 +99,6 @@ Popover content order:
 
 ## Related
 
+- [`discover_list.md`](discover_list.md)
 - [`saved_list.md`](saved_list.md)
 - [`card_metric_cell.md`](card_metric_cell.md)

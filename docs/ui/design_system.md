@@ -51,9 +51,12 @@ visible button label; Streamlit centers button text, so visible copy always come
 HTML). Implementation: `frontend/row_ui.py` — `build_row_html()` (pure) + `render_row_list()`
 (Streamlit-calling), mirroring `card_ui.py`'s own pure/render split.
 
-**Who uses this today:** Saved-list rows, Search results (both via `row_ui.render_row_list`).
-**Who doesn't:** Discover and the Saved/Search focus view — those render the full card, not a
-row.
+**Who uses this today:** Saved-list rows and Search results, via the plain row
+(`row_ui.render_row_list`); Discover's list, via the richer variant that adds a health
+verdict and one lead metric (`row_ui.render_rich_row_list`, see
+[`discover_list.md`](discover_list.md)).
+**Who doesn't:** every focus view (Discover, Saved, Search): those render the full card,
+not a row.
 
 ---
 
@@ -134,7 +137,7 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 - [ ] Metric-label chips and the verdict badge render with the same control-tier radius
       as buttons/popover triggers
 - [ ] The card footer's "Yahoo Finance" link renders with the same secondary-button skin
-      as "Next company" beside it
+      as "Not now" on the sticky actions below it
 - [ ] No new bare `border-radius:`/`padding:` literal introduced in touched sections of
       `styles.py` — every value traces to a token in the table above
 

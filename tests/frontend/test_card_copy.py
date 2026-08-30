@@ -17,6 +17,7 @@ from card_copy import (  # noqa: E402
     business_summary_preview,
     format_metric_value,
     freshness_line,
+    lead_metric_for_row,
     metric_analogy,
     metric_direction,
     metric_gloss,
@@ -276,6 +277,36 @@ def test_metrics_for_card_pre_revenue_omits_operating_and_financial_metrics() ->
         "roa_pct", "statement_roe_pct",
     ):
         assert metric not in pre
+
+
+# Discover list row's lead metric (Variant B). Operating margin for operating (its core,
+# verdict-deciding axis), Return on equity for financial (its own core axis), cash runway
+# for pre_revenue -- each is a CORE input to that type's own verdict rule in
+# scripts/assessment_rules.py, not just any input of any weight. An earlier version used
+# Return on equity for operating too, but that metric is only a tie-breaking supporting axis
+# for _verdict_operating, not one of the three axes that actually decide red/green -- caught
+# by equity-analyst-reviewer round 5, corrected before merge.
+def test_lead_metric_for_row_operating_is_operating_margin() -> None:
+    assert lead_metric_for_row(_full_card("operating")) == ("Operating margin (TTM)", "1.0%")
+
+
+def test_lead_metric_for_row_financial_is_return_on_equity() -> None:
+    assert lead_metric_for_row(_full_card("financial")) == ("Return on equity", "1.0%")
+
+
+def test_lead_metric_for_row_pre_revenue_is_cash_runway() -> None:
+    assert lead_metric_for_row(_full_card("pre_revenue")) == ("Cash runway", "1.0")
+
+
+def test_lead_metric_for_row_defaults_to_operating_when_type_missing() -> None:
+    assert lead_metric_for_row(_full_card(None)) == ("Operating margin (TTM)", "1.0%")
+
+
+def test_lead_metric_for_row_is_none_when_the_value_is_missing() -> None:
+    """A row degrades to verdict-only, never a blank or invented number."""
+    card = _full_card("operating")
+    card["ebit_margin_pct"] = None
+    assert lead_metric_for_row(card) is None
 
 
 def test_currency_compact_format() -> None:

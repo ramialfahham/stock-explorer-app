@@ -7,7 +7,8 @@ from typing import Any
 
 from card_copy import format_snapshot_date
 
-# v1 hero market — intentional starting experience for discovery queue.
+# v1 hero market: the market called out by name in "About the data" summaries and listed
+# first in its per-market breakdown (markets_in_deck_order below).
 HERO_MARKET_CODE = "us_sp500"
 
 # Active ingest markets only; order matches registry ingest_active set.
@@ -49,10 +50,7 @@ def discover_pool_summary(counts: dict[str, int]) -> str:
     hero_count = counts.get(HERO_MARKET_CODE, 0)
     hero_label = market_display_name(HERO_MARKET_CODE)
     if hero_count:
-        return (
-            f"{total} card-ready · {hero_label} ({hero_count}) first, "
-            f"then rotating worldwide"
-        )
+        return f"{total} card-ready · {hero_count} in {hero_label}"
     return f"{total} card-ready companies"
 
 

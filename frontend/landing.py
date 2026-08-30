@@ -22,8 +22,8 @@ def render_landing() -> bool:
   <p class="ss-landing-tagline">{LANDING_TAGLINE}</p>
   <ul class="ss-landing-points">
     <li>Each company snapshot shows key financial fundamentals with short context lines</li>
-    <li>Filter by market and sector, then walk one company at a time — or use Search to jump to a ticker</li>
-    <li>Save builds your learning list on this device — Not now skips for later</li>
+    <li>Filter by market and sector, then browse the list and tap a company to learn more</li>
+    <li>Save builds your learning list on this device; Not now just moves on</li>
     <li>No account — your list stays on this device</li>
   </ul>
   <p class="ss-landing-disclaimer">Not investment advice.</p>

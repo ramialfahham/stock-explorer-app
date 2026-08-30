@@ -6,7 +6,6 @@ from explore_filters import (  # noqa: E402
     ALL_MARKETS,
     ALL_SECTORS,
     attach_assessments,
-    card_venue_line,
     cards_lack_business_summary,
     default_market_filter,
     filter_pool,
@@ -14,7 +13,6 @@ from explore_filters import (  # noqa: E402
     market_filter_options,
     walk_progress_line,
 )
-from markets import market_display_name
 
 
 def _card(ticker: str, sector: str, market: str = "us_sp500") -> dict:
@@ -49,38 +47,6 @@ def test_walk_progress_line() -> None:
     assert walk_progress_line(position=1, total=464) == "1 of 464"
     assert walk_progress_line(position=3, total=47) == "3 of 47"
     assert walk_progress_line(position=1, total=0) == ""
-
-
-def test_card_venue_line() -> None:
-    """Market leads, position follows: the approved-mockup format (Option B)."""
-    assert (
-        card_venue_line(position=3, total=47, market_code="uk_ftse100")
-        == "FTSE 100 · 3 of 47"
-    )
-    assert (
-        card_venue_line(position=31, total=47, market_code="nl_aex")
-        == "AEX · 31 of 47"
-    )
-
-
-def test_card_venue_line_is_empty_with_no_queue() -> None:
-    assert card_venue_line(position=1, total=0, market_code="us_sp500") == ""
-
-
-def test_card_venue_line_degrades_for_an_unknown_market() -> None:
-    """A missing or unrecognized market_code must not crash the card render; it falls back
-    to whatever `market_display_name` itself resolves to, rather than raising.
-
-    Derives the expected prefix from `market_display_name` directly instead of hardcoding its
-    return value, so this test exercises the composition, not `markets.py`'s own fallback
-    choice, which is that module's concern to test.
-    """
-    assert card_venue_line(position=1, total=5, market_code=None) == (
-        f"{market_display_name(None)} · 1 of 5"
-    )
-    assert card_venue_line(position=1, total=5, market_code="not_a_market") == (
-        "Not A Market · 1 of 5"
-    )
 
 
 def test_filter_pool_respects_sector() -> None:

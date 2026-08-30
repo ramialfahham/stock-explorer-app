@@ -225,7 +225,8 @@ the eleven are visible to any guard here**: a wrong name whose
 true owner is not also a row in the same seed looks correct. The durable fix is checking each
 seed name against yfinance's `info_long_name`. **The owner chose a different mechanism on
 2026-08-28**: corrections move into a dbt model. A name-versus-yfinance check may still be worth
-having as a guard, but it is no longer the proposal on the table.
+having as a guard, but it is no longer the proposal on the table. **Scoped as its own backlog
+item 2026-08-29**: [`docs/backlog/name_vs_yfinance_audit_guard.md`](../docs/backlog/name_vs_yfinance_audit_guard.md).
 **Built, on `fix/nikkei-company-names`:** a new seed
 `dbt_analytics/seeds/company_name_overrides.csv` maps `(market_code, ticker)` to a corrected
 `company_name`, exposed 1:1 by `stg_manual__company_name_overrides` in staging, and left-joined

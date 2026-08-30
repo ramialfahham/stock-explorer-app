@@ -223,7 +223,7 @@ models:
           financial: statement_roe_pct + net_margin_pct; pre_revenue: net_cash). forward_pe was
           dropped from the operating and financial sets because a card must not be
           gated on a metric it no longer displays, which widens eligibility. False excludes the
-          ticker from the discovery queue.
+          ticker from the discover pool.
       - name: missing_metrics
         description: >
           VARCHAR list of card metric column names that are null for this snapshot.

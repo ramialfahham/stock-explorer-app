@@ -762,6 +762,41 @@ section[data-testid="stSidebar"] {
     margin: 0.08rem 0 0;
 }
 
+/* Rich row variant (Discover list): verdict + one type-aware lead metric alongside the
+   plain title/subtitle. Keeps the base .ss-row class above so it inherits every tap-target
+   and hover rule unchanged; only the internal layout differs. */
+.ss-row.ss-row-rich {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--ss-space-2);
+}
+.ss-row-rich .ss-row-side {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+.ss-row-rich .ss-row-verdict {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+.ss-row-rich .ss-row-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+.ss-row-rich .ss-row-metric-value {
+    font-size: var(--ss-row-title);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ss-text);
+}
+.ss-row-rich .ss-row-metric-label {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+}
+
 /* Landing (first visit) */
 .ss-landing {
     padding: 1.5rem 0 1rem;

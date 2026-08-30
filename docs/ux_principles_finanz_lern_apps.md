@@ -93,10 +93,10 @@ Per north_star and this doc:
 
 ## Discover default scope (doc alignment)
 
-- **Filter default:** All markets · All sectors (north_star v2.3)
-- **Walk ordering:** round-robin across markets in scope; queue starts at US S&P 500 when in scope (`HERO_MARKET_CODE`)
-- **No browse list** on Discover — walk within filters or use Search for lookup
-- **Removed:** “Surprise me worldwide” checkbox — use **All markets** in Filters popover
+- **Filter default:** All markets · All sectors (north_star v2.5)
+- **List ordering:** alphabetical by company name
+- **Browse list on Discover:** filtering shows a scrollable list of every match; tap a row to open the full snapshot, with a Back to list link
+- **Removed:** “Surprise me worldwide” checkbox, use **All markets** in Filters popover
 
 ---
 

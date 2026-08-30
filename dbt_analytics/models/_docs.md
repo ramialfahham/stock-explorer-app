@@ -17,7 +17,7 @@ required set is per company type (the Sector/Lifecycle Router):
 catalogue. A card must not be gated on a metric it does not display. Both changes WIDEN
 eligibility: no forward P/E is required, and a pre-revenue company no longer needs a market cap.
 
-Missing any required metric excludes the ticker from the Streamlit discovery queue.
+Missing any required metric excludes the ticker from the Streamlit discover pool.
 See `docs/data_contract.md` for the canonical per-type definition.
 
 {% enddocs %}

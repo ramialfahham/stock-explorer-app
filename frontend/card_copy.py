@@ -46,6 +46,39 @@ _LENS_RANK = {lens: rank for rank, lens in enumerate(_LENS_ORDER)}
 _PERSPECTIVE_BY_METRIC = {m["metric_id"]: m["perspective"] for m in _METRICS}
 
 
+_LEAD_METRIC_BY_TYPE = {
+    "operating": "ebit_margin_pct",
+    "financial": "statement_roe_pct",
+    "pre_revenue": "cash_runway_months",
+}
+
+
+def lead_metric_for_row(card: dict) -> tuple[str, str] | None:
+    """The one metric a Discover list row leads with, alongside the health verdict.
+
+    Operating margin for operating companies, Return on equity for financial (banks), cash
+    runway for pre-revenue: each is a CORE, verdict-deciding input to that company type's
+    own verdict rule in scripts/assessment_rules.py, not just any input of any weight.
+    `statement_roe_pct` was the first choice for both operating and financial, but for
+    `_verdict_operating` it is only a supporting axis that "can break a tie but never rescue
+    a red flag" (that function's own comment); the axes that actually decide red/green for
+    an operating card are net_debt_to_ebitda, ebit_margin_pct, and fcf_margin_pct. Pairing
+    the verdict badge with a metric that only weakly relates to it, on the majority company
+    type, would visually imply more than the verdict rule actually uses. `ebit_margin_pct`
+    is the one of those three axes with importance_tier 1 in the metric catalogue, already
+    the headline profitability figure for an operating card. Returns None, not
+    format_metric_value()'s em-dash placeholder, when the value is missing, so the row
+    degrades to verdict-only rather than showing a blank or invented number.
+    """
+    company_type = card.get("company_type") or DEFAULT_COMPANY_TYPE
+    metric_id = _LEAD_METRIC_BY_TYPE.get(company_type)
+    if metric_id is None or card.get(metric_id) is None:
+        return None
+    label = metric_label(metric_id, card)
+    value = format_metric_value(metric_id, card.get(metric_id), card.get("currency"))
+    return label, value
+
+
 def metric_perspective_label(metric: str) -> str:
     """Group-header text for this metric's lens (catalogue `perspective`, title-cased) —
     the same lens metrics_for_card() already sorts by, just made visible on the card
