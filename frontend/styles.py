@@ -20,6 +20,9 @@ def inject_global_css() -> None:
     --ss-accent: #c9a962;
     --ss-border: #27272a;
     --ss-track: #38383d;
+    --ss-verdict-green: #3fb950;
+    --ss-verdict-yellow: #f0b429;
+    --ss-verdict-red: #ef5350;
     --ss-value: 1.5rem;
     --ss-title: 1rem;
     --ss-label: 0.75rem;
@@ -784,8 +787,20 @@ section[data-testid="stSidebar"] {
     flex-shrink: 0;
 }
 .ss-row-rich .ss-row-verdict {
-    font-size: 0.95rem;
-    line-height: 1;
+    display: inline-block;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.ss-row-rich .ss-row-verdict--green {
+    background: var(--ss-verdict-green);
+}
+.ss-row-rich .ss-row-verdict--yellow {
+    background: var(--ss-verdict-yellow);
+}
+.ss-row-rich .ss-row-verdict--red {
+    background: var(--ss-verdict-red);
 }
 .ss-row-rich .ss-row-metric {
     display: flex;

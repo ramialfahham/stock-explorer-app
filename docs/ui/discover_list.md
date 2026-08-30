@@ -50,11 +50,11 @@ a placeholder, when the value is missing).
 │ 6 match your filters · 0 saved              │  ← stats line (header, not this spec)
 ├─────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────┐ │
-│ │ Diageo                        🟢  31.4% │ │  ← whole row tappable
+│ │ Diageo                        ●   31.4% │ │  ← whole row tappable
 │ │ DGE · Consumer Defensive  Operating m...│ │
 │ └─────────────────────────────────────────┘ │
 │ ┌─────────────────────────────────────────┐ │
-│ │ Unilever                      🟢  28.9% │ │
+│ │ Unilever                      ●   28.9% │ │
 │ │ ULVR · Consumer Defensive Operating m...│ │
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
@@ -63,9 +63,14 @@ a placeholder, when the value is missing).
 **Left (`.ss-row-main`):** title is the company display name (`.ss-row-title`), subtitle is
 `{ticker} · {sector}` via `saved_row_subtitle()` (`.ss-row-sub`), the same function Saved and
 Search already use, so the two-line identity reads identically everywhere in the app.
-**Right (`.ss-row-side`):** verdict emoji (`.ss-row-verdict`), then the lead metric's value and
-label stacked (`.ss-row-metric-value` / `.ss-row-metric-label`). Either half of the right side
-can be absent independently; the row degrades gracefully, never to a blank box.
+**Right (`.ss-row-side`):** verdict dot (`.ss-row-verdict`, a plain CSS-drawn circle colored by
+a `.ss-row-verdict--{green,yellow,red}` modifier class, not a color emoji character: an emoji
+glyph's internal vertical metrics vary by platform/font, which misaligned the dot row to row
+even though every row's own layout was pixel-identical), then the lead metric's value and label
+stacked (`.ss-row-metric-value` / `.ss-row-metric-label`). Either half of the right side can be
+absent independently; the row degrades gracefully, never to a blank box. The dot's only
+accessible name is its `aria-label` (`"Healthy"`/`"Mixed"`/`"Fragile"`, from
+`VERDICT_BADGE_LABEL`), not the color alone.
 
 ---
 
