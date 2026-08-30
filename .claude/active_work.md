@@ -74,7 +74,9 @@ comparison and that fuller explanations were one tap away**, both wrong, checked
 actual rendering; fixed to the precise mechanics above, which still support the same conclusion.
 Recorded in
 [`docs/backlog/landing_onboarding_rework.md`](../docs/backlog/landing_onboarding_rework.md),
-which is now fully resolved, all three parts of the owner's original complaint closed.
+which is now fully resolved, all three parts of the owner's original complaint closed. Two-round
+review, doc-only; MR !64 open, `docs/decide-getting-to-the-cards`, awaiting merge. Next concrete
+action: once merged, sync local `main` and delete the branch. Nothing else queued after this.
 
 **Discover's first-time default scope: decided 2026-08-30, no change.** MR !63 merged. Scoped as
 its own item
