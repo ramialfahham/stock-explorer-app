@@ -27,12 +27,10 @@ tie-breaking supporting axis there, not one of the three core axes that decide r
 **The broader landing/onboarding rethink** the owner also flagged in the same request (this
 branch only fixed "filters with no visible effect") is done too, see the entry above this one.
 
-## MR !61 OPEN, 2026-08-30: landing screen deleted entirely
+## MR !61 MERGED, 2026-08-30: landing screen deleted entirely
 
-Status: **implemented, three-round review complete, MR open awaiting merge.** Branch
-`feat/kill-landing-screen`, MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/61.
-Next concrete action: once merged, sync local `main` and delete the branch. Owner
-reviewed a live mockup and rejected coach-marks/hints on standard controls as condescending,
+`feat/kill-landing-screen` merged to `main`. Owner reviewed a live mockup and rejected
+coach-marks/hints on standard controls as condescending,
 then chose to delete the first-run landing screen outright rather than shrink or split it: no
 gate, no replacement, straight into Discover on first launch. The brand/tagline it would have
 shown are already permanent in the header; "Not investment advice" became a permanent caption
@@ -68,6 +66,15 @@ Killing the landing screen removes one candidate cause (a bullet list promising 
 three taps away); it doesn't establish the remaining path is good enough on its own. A round-2
 cto-reviewer catch: an earlier draft of the backlog doc resolved this question anyway, which
 directly contradicted this task's own contract; fixed by restoring it to open.
+
+**Also still open: Discover's first-time default scope**, scoped as its own item 2026-08-30:
+[`docs/backlog/discover_first_time_default.md`](../docs/backlog/discover_first_time_default.md).
+A first-time visitor still lands on the full unfiltered ~924-company list, alphabetically; that
+default is locked in `north_star.md` and changing it needs its own owner sign-off. Worth reading
+before deciding: `feat/kill-landing-screen` deleted `onboarding_dismissed`, the one piece of
+state that used to distinguish "has this visitor been here before," so any "first-time only"
+version of this needs a signal that doesn't currently exist anywhere in the codebase, spelled
+out as one of that doc's open questions.
 
 ## MR !51 MERGED, 2026-08-28: NL/CH/ES onboarded
 
