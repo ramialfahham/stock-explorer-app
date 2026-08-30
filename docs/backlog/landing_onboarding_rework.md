@@ -1,12 +1,11 @@
 # Landing page and onboarding rework
 
-**Status:** Decided and implemented 2026-08-30, `feat/kill-landing-screen`. Flagged by the owner
-during the Discover filter-list-focus work (2026-08-29): "the whole first impression and
-onboarding... currently it is just not good." The one-card-mechanism half of that complaint is
-fixed (`feat/discover-filter-list-focus`, MR !58, merged 2026-08-30). This doc originally scoped
-the remaining half as open questions (2026-08-30); most were resolved the same day after
-reviewing a live mockup, see "Decision" below. The remaining open questions are still genuinely
-open and unaffected by this decision.
+**Status:** Fully resolved, 2026-08-30. Flagged by the owner during the Discover
+filter-list-focus work (2026-08-29): "the whole first impression and onboarding... currently it
+is just not good." That complaint had three parts, all now closed: the one-card mechanism
+(`feat/discover-filter-list-focus`, MR !58, merged 2026-08-30), the landing screen itself
+(`feat/kill-landing-screen`, this doc's "Decision" below), and "getting to the cards where
+learning content is located" (this doc's "Open questions" section, resolved separately).
 
 ## Summary
 
@@ -77,16 +76,24 @@ Resolved separately, not by this decision:
   [`docs/backlog/discover_first_time_default.md`](discover_first_time_default.md). Decided the
   same day: no change. The full unfiltered list stays for every visitor, every time; see that
   doc for why.
-
-Still open, not touched by this decision:
-
 - **What "getting to the cards where learning content is located" should become, concretely.**
-  Genuinely not answered by this decision, despite the temptation to read it as implied. Killing
-  the landing screen removes one candidate *cause* (a bullet list promising depth that's three
-  taps away) but doesn't establish that the remaining path (list row -> focus card) actually
-  delivers on that promise well enough. That's a real, separate product question, still open,
-  and answering it here would have been reinterpreting one decision (delete the screen) to also
-  cover a second one (the row-to-card path is good enough) it was never asked to cover.
+  Decided 2026-08-30, no change needed: checked the real, live focus card (Abbott Laboratories,
+  via the running app, not assumed from the code) rather than theorizing about it. One tap from
+  the list, a reader already sees a plain-English AI-written verdict paragraph and six lensed
+  metrics, each with a plain-language gloss line, no second tap needed. A sector min/median/max
+  comparison shows too, but only where one genuinely exists: only 4 of the catalogue's 13
+  metrics are marked benchmarkable, so a card showing six metrics will always have at least a
+  couple that read "No sector comparison for this metric" instead, by design
+  (`docs/ui/card_metric_cell.md`), not a bug. One further tap ("Understand these numbers")
+  reaches, immediately, with no extra tap: a median-comparison recap, a short plain-language
+  analogy per metric, and an interactive playground (its own tabs, renders unconditionally,
+  `frontend/metric_school.py`). Only each metric's *fuller* written explanation sits behind its
+  own further "Read more" toggle, one more tap per metric, which is deliberate progressive
+  disclosure (`docs/north_star.md`'s Deep tier), not something to collapse into fewer taps. The
+  gloss line and the short analogy, the two tiers that actually answer "what does this mean" for
+  a beginner, are one and two taps away respectively, in plain language, for every metric. The
+  original worry assumed the
+  destination was thin or hard to reach; it isn't, so there's nothing here to build.
 
 ## Candidate directions considered (historical, superseded by the decision above)
 
