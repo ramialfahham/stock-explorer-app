@@ -12,9 +12,11 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR pending, 2026-08-30: Discover row verdict is a CSS dot, not emoji
+## MR !65 OPEN, 2026-08-30: Discover row verdict is a CSS dot, not emoji
 
-Status: **implemented, reviewed, awaiting push/MR.** Branch `feat/discover-row-verdict-dot`.
+Status: **implemented, reviewed, MR open awaiting merge.** Branch `feat/discover-row-verdict-dot`,
+MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/65. Next concrete
+action: once merged, sync local `main` and delete the branch.
 Owner reported the list's health-verdict indicator looked "scattered." Measured directly in the
 running app: every row's own flexbox layout was already pixel-identical (offset exactly 0.0
 across every sampled row); the misalignment was the native emoji's (🟢/🟡/🔴) own internal
