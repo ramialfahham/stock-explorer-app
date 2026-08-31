@@ -33,6 +33,8 @@ One review round, both required reviewers passed clean; full account in that bra
 ## Discover list performance: scoped 2026-08-31, not yet decided
 
 [`docs/backlog/discover_list_performance.md`](../docs/backlog/discover_list_performance.md).
+Doc-only, two-round scope-auditor review; MR !66 open,
+`docs/scope-discover-list-performance`, awaiting merge.
 Found 2026-08-30 while investigating a report that tapping a list row visibly hangs before the
 card opens. Confirmed by direct measurement: with the full 923-row list showing, a click takes
 ~2.4s before Streamlit even starts processing it, because the page mounts 931 individual
