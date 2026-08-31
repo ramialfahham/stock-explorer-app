@@ -384,6 +384,16 @@ section[data-testid="stSidebar"] {
     text-align: right;
 }
 
+/* Same !important reasoning as .ss-filter-summary above: rendered directly inside a bare
+   st.columns() column, no wrapping ancestor class. */
+.ss-discover-page-label {
+    font-size: var(--ss-caption-size) !important;
+    color: var(--ss-muted);
+    margin: 0;
+    line-height: 1.35;
+    text-align: center;
+}
+
 .ss-benchmark-unavailable {
     margin: 0;
     line-height: 1.4;
@@ -662,8 +672,21 @@ section[data-testid="stSidebar"] {
     margin: 0 0 0.65rem;
 }
 /* Row primitive (Slice 6a) — shared by Saved list and Search results.
-   See docs/ui/design_system.md. Left-aligned HTML row + invisible full-row tap target. */
-:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) {
+   See docs/ui/design_system.md. Left-aligned HTML row + invisible full-row tap target.
+
+   Every rule below that targets "the stVerticalBlock that has a row in it" uses
+   `:has(> [data-testid="stElementContainer"] .ss-row)`, a DIRECT child stElementContainer,
+   not the bare `:has(.ss-row)` it might look like it should be: `:has()` matches at ANY
+   descendant depth, not just the nearest one, so a bare `.ss-row` condition also matches the
+   single big stVerticalBlock that wraps the *entire* list (every row is nested inside it, so
+   it too "has a .ss-row somewhere below it"). Confirmed live (2026-08-31, adding Discover's
+   pagination controls): a later, unrelated st.button() rendered after the row loop, inside
+   that same big wrapper, silently inherited the row-button rules below meant only for each
+   row's own tap target -- position: absolute; inset: 0 resolved against the big wrapper
+   instead of its own small one, stretching the button to the full list's height (~2780px).
+   The direct-child form only matches each row's own small per-row stVerticalBlock (exactly one
+   stElementContainer, containing exactly one .ss-row), never the big one two levels up. */
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row) {
     position: relative;
     margin: 0 0 0.45rem;
 }
@@ -678,7 +701,7 @@ section[data-testid="stSidebar"] {
 :has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row):hover .ss-row {
     border-color: var(--ss-accent);
 }
-:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stMarkdown"] {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row) [data-testid="stMarkdown"] {
     margin: 0;
 }
 /* Streamlit itself sets `position: relative` on every stElementContainer, including the one
@@ -692,17 +715,17 @@ section[data-testid="stSidebar"] {
    first row (nothing above it to catch the click) did nothing at all. Neutralizing this one
    wrapper's position lets the button's `inset: 0` skip past it and reach the correctly-sized
    stVerticalBlock instead. */
-:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stElementContainer"]:has(> [data-testid="stButton"]) {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row) [data-testid="stElementContainer"]:has(> [data-testid="stButton"]) {
     position: static !important;
 }
-:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stButton"] {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row) [data-testid="stButton"] {
     position: absolute;
     inset: 0;
     z-index: 1;
     margin: 0;
     min-height: 3.1rem;
 }
-:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stButton"] > button {
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ss-row) [data-testid="stButton"] > button {
     width: 100% !important;
     height: 100% !important;
     min-height: 3.1rem !important;

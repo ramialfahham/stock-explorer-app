@@ -1,16 +1,23 @@
 # Discover list performance
 
-**Status:** Backlog. Found 2026-08-30 while investigating a separate report ("it literally
+**Status:** Shipped. Found 2026-08-30 while investigating a separate report ("it literally
 takes minutes to open a card by clicking on an entry in the list... too slow or buggy"), then
 flagged in `.claude/active_work.md` as a real, reproducible architectural problem not yet
-scoped. Scoped as its own item 2026-08-31.
+scoped. Scoped as its own item 2026-08-31. Owner reported the slowness again the same day
+("Usability is zero"), was shown this doc's candidate directions, and decided: pagination, 30
+rows per page. Shipped `perf/paginate-discover-list`, `DISCOVER_PAGE_SIZE = 30` in
+`frontend/app.py` -- see `docs/ui/discover_list.md`'s "Pagination" row for the shipped shape.
+This doc's own open questions below are answered by that decision where they overlap; left
+in place as the record of what was considered, not rewritten as if the decision had always
+been obvious.
 
 ## Summary
 
-Opening a Discover card by tapping a list row is measurably slow. This doc separates what's
-been confirmed by direct measurement from what's still a well-reasoned but unconfirmed
-hypothesis, and lays out the product/engineering questions that block writing a build contract.
-It does not choose a fix.
+Opening a Discover card by tapping a list row was measurably slow. This doc separates what was
+confirmed by direct measurement from what was still a well-reasoned but unconfirmed hypothesis,
+and laid out the product/engineering questions that blocked writing a build contract. It did not
+choose a fix -- pagination was decided afterward, once the owner had these findings in front of
+them.
 
 ## Context
 
@@ -69,9 +76,11 @@ another.
 ## Open questions (owner decisions, not answered here)
 
 - **Is a smaller live-widget count per render (pagination or equivalent) the direction, and if
-  so what shape?** Candidate directions below aren't ranked; picking one, or none, is a real
-  product/UX decision (page size and pagination UI are user-facing, composition/ordering
-  concerns under this repo's working agreement §6), not something to default silently.
+  so what shape?** **Answered 2026-08-31:** pagination, `DISCOVER_PAGE_SIZE = 30`. The specific
+  control shape (Previous/Next labels, "Page N of M" text, hidden entirely rather than disabled
+  on a single-page pool) was built first and then separately confirmed with the owner ("Good to
+  ship as-is?" -- "Ship as-is."), not defaulted silently -- see `.claude/task/contract.md`'s
+  `decisions_reserved` for the full record.
 - **Does the `st.rerun()`-inside-the-loop hypothesis need its own engineering spike before any
   fix is chosen, or can a widget-count fix (e.g. pagination) be built without first confirming
   it?** A widget-count reduction would independently shrink *both* symptoms (less to render

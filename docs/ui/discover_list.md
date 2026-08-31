@@ -50,7 +50,7 @@ the value is missing).
 
 ```
 ┌─────────────────────────────────────────────┐
-│ 6 match your filters · 0 saved              │  ← stats line (header, not this spec)
+│ 924 match your filters · 0 saved             │  ← stats line (header, not this spec)
 ├─────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────┐ │
 │ │ Diageo                            31.4% │ │  ← whole row tappable
@@ -60,6 +60,10 @@ the value is missing).
 │ │ Unilever                          28.9% │ │
 │ │ ULVR · Consumer Defensive Operating m...│ │
 │ └─────────────────────────────────────────┘ │
+│         ... (up to DISCOVER_PAGE_SIZE) ...   │
+│                                               │
+│    [ Previous ]   Page 1 of 31   [ Next ]    │  ← hidden entirely on a
+│                                               │     pool that fits one page
 └─────────────────────────────────────────────┘
 ```
 
@@ -69,6 +73,9 @@ Search already use, so the two-line identity reads identically everywhere in the
 **Right (`.ss-row-side`):** the lead metric's value and label stacked (`.ss-row-metric-value` /
 `.ss-row-metric-label`). Absent entirely when the card has no value for its type's lead metric;
 the row degrades gracefully, never to a blank box.
+**Footer (pagination):** Previous/Next either side of a "Page N of M" label
+(`.ss-discover-page-label`), below the last row on the page. Disabled at the first/last page;
+hidden entirely, not just disabled, when the whole filtered pool already fits on one page.
 
 ---
 
@@ -78,6 +85,7 @@ the row degrades gracefully, never to a blank box.
 |------|--------|
 | Row structure | Same tap mechanics as the plain row (`st.container` plus an invisible overlay `st.button`), different HTML via `build_rich_row_html`, see `design_system.md`'s row primitive |
 | Ordering | Alphabetical by company name, not the retired walk's round-robin/skip order: a list should be stable and re-findable |
+| Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Added 2026-08-31: mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measured at ~2.4s before Streamlit even registered a click; see `docs/backlog/discover_list_performance.md`. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
 | Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and Search already use, unchanged |
 | Sticky actions | Save / Not now render on the **focus card only** (matching where they already lived), not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` already rejects |
 | Empty state | One `st.info`, no fake rows |
@@ -109,6 +117,8 @@ the row degrades gracefully, never to a blank box.
 - [ ] Whole row tappable, no tiny separate control
 - [ ] Filters row + stats + top of the list fit without horizontal scroll
 - [ ] Save / Not now reachable when a card is focused
+- [ ] Previous/Next reachable without horizontal scroll, disabled state visibly distinct from
+      enabled
 
 ---
 

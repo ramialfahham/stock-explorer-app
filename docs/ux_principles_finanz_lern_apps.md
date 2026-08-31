@@ -95,7 +95,7 @@ Per north_star and this doc:
 
 - **Filter default:** All markets · All sectors (north_star v2.5)
 - **List ordering:** alphabetical by company name
-- **Browse list on Discover:** filtering shows a scrollable list of every match; tap a row to open the full snapshot, with a Back to list link
+- **Browse list on Discover:** filtering shows a paginated list of every match (30 rows at a time, Previous/Next below); tap a row to open the full snapshot, with a Back to list link
 - **Removed:** “Surprise me worldwide” checkbox, use **All markets** in Filters popover
 
 ---

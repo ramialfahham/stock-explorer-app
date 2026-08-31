@@ -45,6 +45,7 @@ load_dotenv()
 
 EXPLORE_DEFAULTS_VERSION = 5
 CARDS_CACHE_VERSION = 3
+DISCOVER_PAGE_SIZE = 30
 
 st.set_page_config(
     page_title=PRODUCT_NAME,
@@ -122,6 +123,24 @@ def _discover_pool(client) -> list[dict]:
     pool = filter_pool(cards, interactions, market_code=market, sector=sector)
     pool.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
     return pool
+
+
+def _discover_page_count(pool_size: int) -> int:
+    """At least 1, even for an empty pool, so a caller never divides by zero."""
+    return max(1, -(-pool_size // DISCOVER_PAGE_SIZE))
+
+
+def _discover_page_slice(pool: list[dict], page: int) -> tuple[list[dict], int]:
+    """The pool's rows for one page, plus the page index actually used.
+
+    `page` is clamped to the pool's current bounds rather than trusted as-is: the pool can
+    shrink after a page index was chosen (a filter change, a save/skip, a shorter market), and
+    an unclamped index would slice past the end into an empty page instead of showing something.
+    """
+    total_pages = _discover_page_count(len(pool))
+    page = max(0, min(page, total_pages - 1))
+    start = page * DISCOVER_PAGE_SIZE
+    return pool[start : start + DISCOVER_PAGE_SIZE], page
 
 
 def _saved_count(interactions: list[dict]) -> int:
@@ -240,6 +259,7 @@ def _render_sticky_actions(card: dict) -> None:
 
 def _on_filter_change() -> None:
     st.session_state["discover_focus_key"] = None
+    st.session_state["discover_page"] = 0
 
 
 def _render_explore_filters(client) -> None:
@@ -284,6 +304,35 @@ def _select_discover_row(card: dict) -> None:
     st.session_state["discover_focus_key"] = _saved_row_key(card)
 
 
+def _render_discover_pagination(page: int, total_pages: int) -> None:
+    """Previous/Next below the list. Hidden entirely, not just disabled, when the whole
+    filtered pool already fits on one page -- a filtered scope small enough for that shouldn't
+    show dead controls."""
+    if total_pages <= 1:
+        return
+    prev_col, label_col, next_col = st.columns([2, 3, 2], vertical_alignment="center")
+    with prev_col:
+        if st.button(
+            "Previous", disabled=page == 0, use_container_width=True, key="discover_page_prev"
+        ):
+            st.session_state["discover_page"] = page - 1
+            st.rerun()
+    with label_col:
+        st.markdown(
+            f'<p class="ss-discover-page-label">Page {page + 1} of {total_pages}</p>',
+            unsafe_allow_html=True,
+        )
+    with next_col:
+        if st.button(
+            "Next",
+            disabled=page >= total_pages - 1,
+            use_container_width=True,
+            key="discover_page_next",
+        ):
+            st.session_state["discover_page"] = page + 1
+            st.rerun()
+
+
 def _render_discover_tab(client) -> dict | None:
     """Filtered list, or the focused card. Filters run in _discovery_page.
 
@@ -299,8 +348,10 @@ def _render_discover_tab(client) -> dict | None:
     focus_key = st.session_state.get("discover_focus_key")
 
     if not focus_key:
+        page_items, page = _discover_page_slice(pool, st.session_state.get("discover_page", 0))
+        st.session_state["discover_page"] = page
         row_ui.render_rich_row_list(
-            pool,
+            page_items,
             key_prefix="discover_row",
             row_key_fn=_saved_row_key,
             title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
@@ -308,6 +359,7 @@ def _render_discover_tab(client) -> dict | None:
             metric_fn=lead_metric_for_row,
             on_select=_select_discover_row,
         )
+        _render_discover_pagination(page, _discover_page_count(len(pool)))
         return None
 
     market_code, ticker = focus_key.split("::", 1)
