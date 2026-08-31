@@ -12,11 +12,13 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Discover click latency, 2026-08-31: review in progress, not yet committed
+## MR !71 OPEN, 2026-08-31: Discover click latency (Supabase anon-client caching)
 
-Status: **implemented, review in progress as this entry is written -- see that branch's
-`.claude/task/review.md` once committed for the full account.** Branch
-`perf/cache-supabase-anon-client`, not yet pushed.
+Status: **implemented, reviewed (2 rounds; one Claude Code crash mid-review, recovered by
+re-dispatching against the same frozen diff -- see that branch's `.claude/task/review.md` for
+the full account), MR open awaiting merge.** Branch `perf/cache-supabase-anon-client`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/71. Next concrete action:
+once merged, sync local `main` and delete the branch.
 Owner reported the app "substantially faster" after MR !70's pagination fix (see the entry below
 this one) but still delayed 1-2s per click. Diagnosed with server-side timing instrumentation
 (temporary, not shipped -- the earlier browser-side JS-timer approach this session used for
