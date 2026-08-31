@@ -12,6 +12,51 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR pending, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
+
+Status: **implemented, reviewed, awaiting push/MR.** Branch `fix/discover-row-tap-target`.
+Owner reported clicking a list row often opened the row above it, some row areas did nothing,
+and the first row in any list was completely unclickable. Diagnosed by direct DOM measurement,
+not guesswork: every row's invisible tap-target button was rendering entirely *below* its own
+visible row, because Streamlit sets `position: relative` on the button's own immediate wrapper
+(`stElementContainer`), which is nearer than the intended `stVerticalBlock` anchor and so wins
+as the containing block; that wrapper collapses to zero height (its only child is absolutely
+positioned) and the button renders at `min-height` right after the row's markdown, overlapping
+the next row. **Pre-existing bug, confirmed via `git log` to predate this session's own changes**
+(including the verdict-dot fix) **and shared by Discover, Saved, and Search alike** (same row
+primitive). Fixed with one CSS rule; verified live via real pixel hit-testing
+(`document.elementFromPoint`), not just programmatic clicks. Two-round review; full account in
+that branch's `.claude/task/review.md`.
+
+**Owner also reported, in the same message, several other things checked and resolved in
+conversation, not yet all recorded as their own backlog items:**
+- **Dots still misaligned:** re-measured live, pixel-perfect (offset ~0.00px on every sampled
+  row). Could not reproduce; possible the owner was looking at the deployed app before Render
+  redeployed the earlier verdict-dot fix. Unresolved whether this is still a live complaint;
+  ask before assuming it's fine.
+- **"Hardcoded/random" list, missing new markets, only ~900 companies instead of 1,200+:**
+  checked directly against live Supabase, not the code alone. The list itself is 100%
+  data-driven (queried Supabase myself: 924 deduplicated eligible companies across exactly 5
+  markets, matching the app's own count exactly). The 4 newer markets (France, Netherlands,
+  Switzerland, Spain) are onboarded but have zero exported data yet: last successful pipeline
+  run predates their onboarding, and the pipeline is biweekly (checked the actual GitLab
+  schedule: next run 2026-09-01). Not a bug, a timing gap that should resolve itself. **A real,
+  separate, smaller bug found along the way:** the market filter dropdown's options come from a
+  hardcoded `MARKET_DISPLAY_NAMES` dict in `frontend/markets.py`, not from live data, so it
+  currently offers those 4 markets even though they have no companies yet. Not yet fixed or
+  scoped as its own task.
+- **Filters/stats stay visible on the focus card:** confirmed in code
+  (`frontend/app.py:_discovery_page`, `_render_explore_filters` runs unconditionally whenever
+  the active tab is Discover, with no check for whether a card is focused). Real, confirmed
+  UX inconsistency; not yet fixed or scoped.
+
+**Owner also asked for a full user-flow simulation across the whole app** (Discover, Saved,
+Search) to find further inconsistencies, beyond the specific points already checked above. Not
+done yet, deliberately deferred until the click-target fix (the most severe, most clearly
+diagnosed issue) shipped first. Next concrete action: once this MR merges, either continue
+fixing the remaining confirmed items above (filters-on-focus-card, hardcoded filter dropdown)
+or do the broader flow simulation the owner asked for, depending on what they want next.
+
 ## MR !65 OPEN, 2026-08-30: Discover row verdict is a CSS dot, not emoji
 
 Status: **implemented, reviewed, MR open awaiting merge.** Branch `feat/discover-row-verdict-dot`,
