@@ -12,14 +12,59 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !68 OPEN, 2026-08-31: Discover row verdict dot removed entirely
+## Discover list paginated, 2026-08-31: review in progress, not yet committed
 
-Status: **implemented, reviewed (8 rounds; each round caught one more stale cross-reference or
-handover-accuracy issue a prior sweep missed, including in this file itself -- see that branch's
-`.claude/task/review.md` for the full account), MR open awaiting merge.** Branch
-`fix/discover-row-remove-verdict-dots`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/68. Next concrete action:
-once merged, sync local `main` and delete the branch.
+Status: **implemented, review in progress as this entry is written -- see that branch's
+`.claude/task/review.md` once committed for the full account.** Branch
+`perf/paginate-discover-list`, not yet pushed.
+Owner reported the app as unusably slow: "Clicking on an element in the list and nothing
+happens... Usability is zero." This is the exact, already-scoped, already-measured problem in
+`docs/backlog/discover_list_performance.md` (full ~923-row pool mounting ~931 `st.button`
+widgets and ~20,600 DOM nodes unconditionally). Owner was shown that doc's candidate directions
+directly and asked to choose. **Owner decisions recorded here** (both given via a direct
+multiple-choice question, not defaulted):
+- **Approach: "Pagination (Recommended)"**, over "Load more" append or an `st.dataframe`
+  rebuild.
+- **Page size: "30 (Recommended)"**, over 50 or 100.
+`DISCOVER_PAGE_SIZE = 30` in `frontend/app.py`; the pool is sliced after the existing filter/sort
+step, before it reaches `row_ui.render_rich_row_list` -- no change to the row primitive's
+tap-target mechanics, pool computation, filtering, or sort order. Previous/Next render below the
+list, disabled at the first/last page, hidden entirely (not just disabled) on a pool that already
+fits one page. Live-verified: 40 buttons / 942 DOM nodes mounted (down from ~931 / ~20,600),
+correct company opens on click at the first/middle/last row of a page, Next/Previous move
+correctly between pages. **Could not obtain a reliable click-to-response timing number**: this
+session's browser-automation environment throttles JS timers on the (always-reported-hidden)
+preview tab, producing a misleading ~7-8s reading on a page too small to structurally be that
+slow; the DOM-count evidence stands as the verification of record, a human timing check on the
+shipped app is the way to close this out.
+
+**A second owner decision recorded here, from a round-1 scope-auditor escalation on this same
+branch:** whether the specific pagination control shape (Previous/Next labels, "Page N of M"
+text, hide-entirely-vs-disable on a single-page pool) needed its own sign-off, separately from
+the abstract pagination/page-size decision above --
+`docs/backlog/discover_list_performance.md`'s own Open Questions section says this class of call
+is not the builder's to default. Owner was shown the built shape and asked "Good to ship
+as-is?"; answered **"Ship as-is."** No change made as a result. Recorded in both this file and
+`.claude/task/contract.md`'s `decisions_reserved`, since the answer previously existed only in
+chat, which a cold reviewer or a future session has no way to check -- that gap is exactly what
+round 2 of this branch's review failed on, correctly.
+
+**Also found and fixed live, not anticipated at Confirm time:** the row-tap-target CSS from MR
+!67 scoped itself via a bare `div[data-testid="stVerticalBlock"]:has(.ss-row)`, which matches at
+any descendant depth, not just the nearest -- so it also matched the single big stVerticalBlock
+wrapping the *entire* list, not only each row's own small container. The new pagination buttons,
+the first other `st.button()` ever rendered inside that same big wrapper, silently inherited the
+row-only `position: absolute; inset: 0` and stretched to the full list's height (~2780px).
+Fixed by tightening five selectors in `frontend/styles.py` to a direct-child
+`:has(> [data-testid="stElementContainer"] .ss-row)` form, matching a pattern already used
+correctly elsewhere in the same file. Two new regression-guard tests added to
+`tests/frontend/test_styles.py`, both verified to fail against the broken form before being kept.
+
+## MR !68 MERGED, 2026-08-31: Discover row verdict dot removed entirely
+
+Reviewed 8 rounds; each round caught one more stale cross-reference or handover-accuracy issue a
+prior sweep missed, including in this file itself -- see that branch's `.claude/task/review.md`
+history for the full account.
 Owner saw the CSS-dot fix (MR !65) live and said "Dots misaligned, just remove them" -- a final,
 decisive instruction, not a request to debug alignment further. `build_rich_row_html` no longer
 takes a `verdict` parameter; the list row now renders title/subtitle/lead-metric only. The
@@ -48,8 +93,8 @@ renders, tap-target from MR !67's fix still resolves correctly at both row edges
   margin 23.7%) hit exactly that pattern, which is why it read Mixed; no verdict threshold
   varies by sector or company size, only by the three-way company-type split. Filed as
   [`docs/backlog/gemini_verdict_feedback.md`](../docs/backlog/gemini_verdict_feedback.md),
-  MR !69 (branch `docs/file-gemini-verdict-feedback`,
-  https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/69), open awaiting merge.
+  MR !69 MERGED (branch `docs/file-gemini-verdict-feedback`,
+  https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/69).
   Not actioned -- the doc's own Open questions are the owner's call.
 
 ## MR !67 MERGED, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
@@ -60,12 +105,19 @@ outranked the intended `stVerticalBlock` anchor), breaking click-to-open across 
 and Search alike. Pre-existing bug, not introduced by this session. Fixed with one CSS rule;
 verified live via real pixel hit-testing (`document.elementFromPoint`). Two-round review, full
 account in that branch's `.claude/task/review.md` history.
+**Scoping gap found later, 2026-08-31, see the pagination entry near the top of this file:**
+this rule's own selector scoped itself via a bare `:has(.ss-row)`, which matches at any
+descendant depth, not just each row's own container -- so it also matched the single big
+stVerticalBlock wrapping the entire list, and a later, unrelated `st.button()` (Discover's
+pagination controls) sharing that same big wrapper silently inherited it. Tightened to a
+direct-child form in `frontend/styles.py`; this entry's own fix still stands, only the
+scoping precision changed.
 
 **Owner also reported, in the same message, several other things checked and resolved in
 conversation, not yet all recorded as their own backlog items:**
 - **Dots still misaligned:** resolved decisively, not by further alignment debugging. Owner's
   next message on seeing the list again: "Dots misaligned, just remove them" -- see the dot
-  removal entry below, which removed the verdict dot from the list row entirely.
+  removal entry above, which removed the verdict dot from the list row entirely.
 - **"Hardcoded/random" list, missing new markets, only ~900 companies instead of 1,200+:**
   checked directly against live Supabase, not the code alone. The list itself is 100%
   data-driven (queried Supabase myself: 924 deduplicated eligible companies across exactly 5
@@ -97,10 +149,10 @@ emoji's (🟢/🟡/🔴) own internal vertical glyph metrics vary by platform/fo
 (every row's own flexbox layout was already pixel-identical). Fixed by rendering a plain
 CSS-drawn circle instead. **Superseded 2026-08-31:** the dot still read as misaligned to the
 owner after this fix shipped, and rather than debug further the owner instructed removing it
-entirely -- see the dot-removal entry below. This entry stays for the record of what was tried
+entirely -- see the dot-removal entry above. This entry stays for the record of what was tried
 and why it wasn't the final fix.
 
-## Discover list performance: scoped 2026-08-31, not yet decided
+## Discover list performance: scoped 2026-08-31, decided and shipped same day
 
 [`docs/backlog/discover_list_performance.md`](../docs/backlog/discover_list_performance.md).
 Doc-only, two-round scope-auditor review; MR !66 merged (`docs/scope-discover-list-performance`).
@@ -121,29 +173,33 @@ a per-company explanation, and means the two symptoms may share one root cause (
 rows unconditionally), not two separate problems. Not yet confirmed with a controlled test; the
 scoping doc flags it as the first thing a profiling pass should check.
 
-**Next concrete action:** get the owner's call on the doc's open questions (pagination vs.
-alternatives, page size, whether the `st.rerun()` hypothesis needs its own spike first) before
-writing a build contract. Working, not-yet-approved recommendation: pagination, since it
-addresses the confirmed problem directly, requires no new dependency, and doesn't reopen the
-"first-time Discover default" decision above (that was about content curation for beginners;
-this is a technical widget-count fix, a different justification, but similar-looking outcome
-worth keeping distinct wherever this is explained).
+**Decided and shipped, 2026-08-31, same day:** owner reported the app as unusably slow, was shown
+this doc's own open questions and candidate directions directly, and chose pagination,
+`DISCOVER_PAGE_SIZE = 30` -- see the "Discover list paginated" entry near the top of this file
+for the full account. This did not reopen the "first-time Discover default" decision (see the
+MR !61 section below this one): that was about content curation for beginners; this is a
+technical widget-count fix, a different justification, kept distinct on purpose. The
+`st.rerun()`-inside-the-loop hypothesis above was not separately spiked or confirmed -- pagination
+caps the widget count per render regardless of where in the row loop a click lands, which
+independently shrinks the cost either way.
 
 ## MR !58 MERGED, 2026-08-30: Discover reworked to filter -> list -> focus
 
-Retired the one-card-at-a-time walk for a scrollable, alphabetically-ordered list of every
-filtered match; each row shows one type-aware lead metric (Operating margin / Return on equity
-/ Cash runway by company type, each a core, verdict-deciding axis for that type's own rule in
-`scripts/assessment_rules.py`, not a metric picked for the row alone; a health-verdict dot
-originally sat alongside it too, removed 2026-08-31, see the entry near the top of this file);
-tapping a row opens the existing focus card. Six-round review, full account in that branch's
+Retired the one-card-at-a-time walk for an alphabetically-ordered list of every filtered match
+(originally rendered scrollable and unpaginated; paginated 2026-08-31 once that proved too slow
+at ~923 rows, see the entry near the top of this file); each row shows one type-aware lead
+metric (Operating margin / Return on equity / Cash runway by company type, each a core,
+verdict-deciding axis for that type's own rule in `scripts/assessment_rules.py`, not a metric
+picked for the row alone; a health-verdict dot originally sat alongside it too, removed
+2026-08-31, see the entry near the top of this file); tapping a row opens the existing focus
+card. Six-round review, full account in that branch's
 `.claude/task/review.md` history. **If a future card metric gets used as a UI "lead" or headline
 figure anywhere else, check `assessment_rules.py`'s own verdict function for that company type
 first**: round 5 caught Return on equity wrongly used as operating's lead metric (only a weak,
 tie-breaking supporting axis there, not one of the three core axes that decide red/green).
 
 **The broader landing/onboarding rethink** the owner also flagged in the same request (this
-branch only fixed "filters with no visible effect") is done too, see the entry above this one.
+branch only fixed "filters with no visible effect") is done too, see the entry below this one.
 
 ## MR !61 MERGED, 2026-08-30: landing screen deleted entirely
 
@@ -193,8 +249,8 @@ actual rendering; fixed to the precise mechanics above, which still support the 
 Recorded in
 [`docs/backlog/landing_onboarding_rework.md`](../docs/backlog/landing_onboarding_rework.md),
 which is now fully resolved, all three parts of the owner's original complaint closed. Two-round
-review, doc-only; MR !64 open, `docs/decide-getting-to-the-cards`, awaiting merge. Next concrete
-action: once merged, sync local `main` and delete the branch. Nothing else queued after this.
+review, doc-only; MR !64 merged (`docs/decide-getting-to-the-cards`). Nothing else queued after
+this.
 
 **Discover's first-time default scope: decided 2026-08-30, no change.** MR !63 merged. Scoped as
 its own item
@@ -401,7 +457,7 @@ those reads regenerate. `INPUT_HASH_VERSION` is the lever for a GLOBAL refresh: 
 re-run Haiku across every card in all nine markets to change 19.
 Extend `_CURRENCY_WORDS` in `tests/tooling/test_assessment_rules.py` when any of these lands.
 
-**FIXED (`fix/nikkei-company-names`, MR !53 open, awaiting merge): two Nikkei cards shared a
+**FIXED (`fix/nikkei-company-names`, MR !53 merged): two Nikkei cards shared a
 headline, or one card named the wrong company. A full audit found ELEVEN, now corrected via a
 dbt override, not a raw-seed edit.**
 `storage/seeds/jp_nikkei225/constituents.csv` gives ticker 9101 the name "Mitsui O.S.K. Lines".

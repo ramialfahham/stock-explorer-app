@@ -117,7 +117,8 @@ def test_card_face_p_class_rules_are_scoped_not_bare():
 # its `min-height` starting wherever that zero-height box falls in normal flow: right after
 # the row's own markdown, not on top of it.
 TAP_TARGET_NEUTRALIZER_PATTERN = re.compile(
-    r':has\(\.ss-row-group\)\s+div\[data-testid="stVerticalBlock"\]:has\(\.ss-row\)\s+'
+    r':has\(\.ss-row-group\)\s+div\[data-testid="stVerticalBlock"\]:has\(>\s*'
+    r'\[data-testid="stElementContainer"\]\s+\.ss-row\)\s+'
     r'\[data-testid="stElementContainer"\]:has\(>\s*\[data-testid="stButton"\]\)\s*\{'
     r'[^}]*position:\s*static\s*!important'
 )
@@ -145,4 +146,46 @@ def test_row_tap_target_neutralizes_its_own_element_container_position():
         "and the button renders below its own row instead of on top of it -- the exact bug "
         "this test exists to catch, confirmed live via document.elementFromPoint hit-testing "
         "before the fix and after."
+    )
+
+
+# A FOURTH recurring bug class in this file, distinct from the three above, but caused by
+# the same row-primitive rule block: `:has()` matches at ANY descendant depth, not just the
+# nearest one, so a bare `:has(.ss-row)` on `div[data-testid="stVerticalBlock"]` matches not
+# only each row's own small per-row container, but also the single big stVerticalBlock that
+# wraps the *entire* list (every row is nested inside it, so it too "has a .ss-row somewhere
+# below it"). Confirmed live 2026-08-31 while adding Discover's pagination controls: a later,
+# unrelated st.button() rendered after the row loop, inside that same big wrapper, silently
+# inherited the row-tap-target's `position: absolute; inset: 0` -- meant only for each row's
+# own button -- and stretched to the full list's height (~2780px) instead of a normal button.
+BARE_HAS_ROW_PATTERN = re.compile(r'stVerticalBlock"\]:has\(\.ss-row\)')
+
+
+def test_no_row_rule_uses_the_bare_has_row_shape():
+    css = STYLES_FILE.read_text(encoding="utf-8")
+    matches = BARE_HAS_ROW_PATTERN.findall(css)
+    assert not matches, (
+        f"found {len(matches)} CSS rule(s) using the bare "
+        f'`div[data-testid="stVerticalBlock"]:has(.ss-row)` shape: {matches!r}. `:has()` '
+        f"matches at any descendant depth, so this also matches the single big stVerticalBlock "
+        f"wrapping the entire row list, not just each row's own small container -- any later "
+        f"st.button() sharing that same big wrapper (e.g. Discover's pagination controls) "
+        f'silently inherits these row-only rules. Use `:has(> [data-testid="stElementContainer"] '
+        f".ss-row)` instead (direct child), which only matches each row's own container."
+    )
+
+
+def test_the_direct_child_row_shape_is_actually_present():
+    """Vacuity guard for the test above, matching this file's own established pattern: if this
+    ever drops to zero, the negative assertion above would pass trivially because there's
+    nothing left to check, not because the bug is actually fixed everywhere."""
+    css = STYLES_FILE.read_text(encoding="utf-8")
+    pattern = re.compile(
+        r'stVerticalBlock"\]:has\(>\s*\[data-testid="stElementContainer"\]\s+\.ss-row\)'
+    )
+    matches = pattern.findall(css)
+    assert len(matches) >= 5, (
+        f"only {len(matches)} correctly-scoped direct-child row-container rule(s) found (want "
+        f">= 5) -- either a real fix regressed back to the bare `:has(.ss-row)` shape, or this "
+        f"pattern has drifted from what frontend/styles.py actually uses now."
     )

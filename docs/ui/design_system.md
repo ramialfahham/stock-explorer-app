@@ -121,6 +121,15 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
   ships silently dead.
 - A position-based selector (`:last-child`, `:first-child`) for anything that could be
   reordered — use an explicit marker.
+- A bare `:has(.ss-row)` to scope a row-only rule to "the stVerticalBlock containing a row" --
+  `:has()` matches at any descendant depth, so it also matches the single big stVerticalBlock
+  wrapping the *entire* list, not just each row's own small container. Confirmed live
+  (2026-08-31): Discover's pagination Previous/Next buttons, the first other `st.button()` ever
+  rendered inside that same big wrapper, silently inherited the row-tap-target's `position:
+  absolute; inset: 0` and stretched to the full list's height. Use
+  `:has(> [data-testid="stElementContainer"] .ss-row)` (direct child) instead, which only
+  matches each row's own container -- see `frontend/styles.py`'s row-primitive comment block and
+  `tests/frontend/test_styles.py`'s guard for the full account.
 
 ---
 

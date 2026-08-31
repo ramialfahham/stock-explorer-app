@@ -52,7 +52,7 @@ the app reads only the exported marts.
   proxies, because incomplete data erodes trust.
 - **Registry-driven markets** — the active market set lives in
   [`docs/market_registry.yml`](docs/market_registry.yml), not hard-coded.
-- **Filter, then browse**: a scrollable list of every match, each row showing one metric
+- **Filter, then browse**: a paginated list of every match, each row showing one metric
   that's a core, verdict-deciding axis for that company type's own verdict rule
   ([`card_copy.py`](frontend/card_copy.py)'s `lead_metric_for_row`), not an arbitrary pick.
 - **Automated scheduled refresh** — ingestion → dbt → export runs on schedule in GitLab
