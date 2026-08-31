@@ -23,9 +23,12 @@ when only one company matches. No auto-focus on tab load, matching Saved's own r
 
 Saved and Search rows are picking rows, title and subtitle only, deliberately no numbers
 (`saved_list.md`'s own anti-pattern: "list is for picking, not reading numbers"). Discover's
-filter narrows a large, unfamiliar pool (up to hundreds of companies), so the row carries two
-extra signals that help a reader decide which company to open first: the health verdict already
-computed for the card, and one glance metric.
+filter narrows a large, unfamiliar pool (up to hundreds of companies), so the row carries one
+extra signal that helps a reader decide which company to open first: one glance metric.
+
+A verdict dot used to sit alongside the metric here; removed by owner instruction (2026-08-31)
+after it stayed visually misaligned even past its known emoji-glyph-metrics cause being fixed,
+see `frontend/row_ui.py`'s `build_rich_row_html` docstring.
 
 **The lead metric is not a free choice per row.** It's exactly the one metric that is a CORE,
 verdict-deciding axis for that company type's own verdict rule in `scripts/assessment_rules.py`,
@@ -37,9 +40,9 @@ not merely any input of any weight to it:
 | Financial | Return on equity | Co-primary in `_verdict_financial`: checked first, alone can force red, and required good for green |
 | Pre-revenue | Cash runway (months) | The central axis of `_verdict_pre_revenue`'s "survival story" framing |
 
-A row with no verdict yet, or no value for its type's lead metric, still renders, just without
-that slot. Never a blank space or an invented number (`lead_metric_for_row` returns `None`, not
-a placeholder, when the value is missing).
+A row with no value for its type's lead metric still renders, just without that slot. Never a
+blank space or an invented number (`lead_metric_for_row` returns `None`, not a placeholder, when
+the value is missing).
 
 ---
 
@@ -50,11 +53,11 @@ a placeholder, when the value is missing).
 │ 6 match your filters · 0 saved              │  ← stats line (header, not this spec)
 ├─────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────┐ │
-│ │ Diageo                        ●   31.4% │ │  ← whole row tappable
+│ │ Diageo                            31.4% │ │  ← whole row tappable
 │ │ DGE · Consumer Defensive  Operating m...│ │
 │ └─────────────────────────────────────────┘ │
 │ ┌─────────────────────────────────────────┐ │
-│ │ Unilever                      ●   28.9% │ │
+│ │ Unilever                          28.9% │ │
 │ │ ULVR · Consumer Defensive Operating m...│ │
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
@@ -63,14 +66,9 @@ a placeholder, when the value is missing).
 **Left (`.ss-row-main`):** title is the company display name (`.ss-row-title`), subtitle is
 `{ticker} · {sector}` via `saved_row_subtitle()` (`.ss-row-sub`), the same function Saved and
 Search already use, so the two-line identity reads identically everywhere in the app.
-**Right (`.ss-row-side`):** verdict dot (`.ss-row-verdict`, a plain CSS-drawn circle colored by
-a `.ss-row-verdict--{green,yellow,red}` modifier class, not a color emoji character: an emoji
-glyph's internal vertical metrics vary by platform/font, which misaligned the dot row to row
-even though every row's own layout was pixel-identical), then the lead metric's value and label
-stacked (`.ss-row-metric-value` / `.ss-row-metric-label`). Either half of the right side can be
-absent independently; the row degrades gracefully, never to a blank box. The dot's only
-accessible name is its `aria-label` (`"Healthy"`/`"Mixed"`/`"Fragile"`, from
-`VERDICT_BADGE_LABEL`), not the color alone.
+**Right (`.ss-row-side`):** the lead metric's value and label stacked (`.ss-row-metric-value` /
+`.ss-row-metric-label`). Absent entirely when the card has no value for its type's lead metric;
+the row degrades gracefully, never to a blank box.
 
 ---
 
@@ -105,9 +103,9 @@ accessible name is its `aria-label` (`"Healthy"`/`"Mixed"`/`"Fragile"`, from
 
 ## 480px smoke
 
-- [ ] No horizontal scroll on the list, even with the verdict + metric column present
-- [ ] Company name + ticker · sector readable on the left, verdict + metric readable on the
-      right, neither column crowding the other
+- [ ] No horizontal scroll on the list, even with the metric column present
+- [ ] Company name + ticker · sector readable on the left, metric readable on the right,
+      neither column crowding the other
 - [ ] Whole row tappable, no tiny separate control
 - [ ] Filters row + stats + top of the list fit without horizontal scroll
 - [ ] Save / Not now reachable when a card is focused

@@ -52,9 +52,8 @@ HTML). Implementation: `frontend/row_ui.py` — `build_row_html()` (pure) + `ren
 (Streamlit-calling), mirroring `card_ui.py`'s own pure/render split.
 
 **Who uses this today:** Saved-list rows and Search results, via the plain row
-(`row_ui.render_row_list`); Discover's list, via the richer variant that adds a health
-verdict and one lead metric (`row_ui.render_rich_row_list`, see
-[`discover_list.md`](discover_list.md)).
+(`row_ui.render_row_list`); Discover's list, via the richer variant that adds one lead
+metric (`row_ui.render_rich_row_list`, see [`discover_list.md`](discover_list.md)).
 **Who doesn't:** every focus view (Discover, Saved, Search): those render the full card,
 not a row.
 

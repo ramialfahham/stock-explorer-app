@@ -125,8 +125,8 @@ one; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s 480px smoke checkl
 |------|----------|
 | Default scope | **All markets · All sectors** — not the full mixed worldwide queue |
 | Filters | Market (registry markets or All), optional sector; client-side on exported mart |
-| Browse | Filtering shows a scrollable list of every match: company name, ticker, sector, health verdict, and one type-aware lead metric per row. Tapping a row opens the full Company Snapshot (same layout Saved's focus view already uses), with a **Back to list** link |
-| List row | Verdict plus Operating margin (operating), Return on equity (financial), or Cash runway (pre_revenue): each is a core, verdict-deciding axis for that company type, not a metric chosen for the row alone |
+| Browse | Filtering shows a scrollable list of every match: company name, ticker, sector, and one type-aware lead metric per row. Tapping a row opens the full Company Snapshot (same layout Saved's focus view already uses), with a **Back to list** link |
+| List row | Operating margin (operating), Return on equity (financial), or Cash runway (pre_revenue): each is a core, verdict-deciding axis for that company type, not a metric chosen for the row alone |
 | Cards per session | **No limit** |
 | Ordering (list) | Alphabetical by company name: stable and re-findable, unlike a session-stateful walk order that could move a row for reasons unrelated to anything the reader just did |
 | Universe | **Card-eligible tickers only** (per company type's eligibility gate) |

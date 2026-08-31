@@ -12,30 +12,57 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !67 OPEN, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
+## Discover row verdict dot removed entirely, 2026-08-31: reviewed, not yet committed
 
-Status: **implemented, reviewed, MR open awaiting merge.** Branch `fix/discover-row-tap-target`,
-MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/67. Next concrete
-action: once merged, sync local `main` and delete the branch.
-Owner reported clicking a list row often opened the row above it, some row areas did nothing,
-and the first row in any list was completely unclickable. Diagnosed by direct DOM measurement,
-not guesswork: every row's invisible tap-target button was rendering entirely *below* its own
-visible row, because Streamlit sets `position: relative` on the button's own immediate wrapper
-(`stElementContainer`), which is nearer than the intended `stVerticalBlock` anchor and so wins
-as the containing block; that wrapper collapses to zero height (its only child is absolutely
-positioned) and the button renders at `min-height` right after the row's markdown, overlapping
-the next row. **Pre-existing bug, confirmed via `git log` to predate this session's own changes**
-(including the verdict-dot fix) **and shared by Discover, Saved, and Search alike** (same row
-primitive). Fixed with one CSS rule; verified live via real pixel hit-testing
-(`document.elementFromPoint`), not just programmatic clicks. Two-round review; full account in
-that branch's `.claude/task/review.md`.
+Status: **implemented, review still in progress as this entry is written (6+ rounds so far;
+each round caught one more stale cross-reference or handover-accuracy issue a prior sweep
+missed, including in this file itself -- see that branch's `.claude/task/review.md` once
+committed for the full account), not yet committed or pushed.** Branch
+`fix/discover-row-remove-verdict-dots`.
+Owner saw the CSS-dot fix (MR !65) live and said "Dots misaligned, just remove them" -- a final,
+decisive instruction, not a request to debug alignment further. `build_rich_row_html` no longer
+takes a `verdict` parameter; the list row now renders title/subtitle/lead-metric only. The
+Company Snapshot card's own separate verdict badge (`card_ui.py`'s `.ss-verdict-badge` family)
+is untouched, unaffected, still shows on the focus card. Live-verified: no dot, metric still
+renders, tap-target from MR !67's fix still resolves correctly at both row edges.
+
+**Two other things in the same owner message, explicitly deferred, not implemented:**
+- **Whether the list should show a lead metric at all** -- owner said "I'm not sure," an open
+  question, not a decision. Given as chat discussion, not code: recommended keeping a metric
+  (it's what lets a reader triage hundreds of unfamiliar companies, the reason Discover's row
+  was built richer than Saved/Search's in the first place) but capping/relabeling extreme
+  outlier values (e.g. 4DMedical's -823.3% operating margin) for pre-revenue-type companies
+  instead of removing the number app-wide. Not actioned; owner's call.
+- **Gemini AI feedback from testing two cards (4DMedical, Apple/AAPL)** -- owner said "file these
+  so we can discuss later." Verified against the codebase before filing (not transcribed
+  uncritically): all eight checkable technical claims confirmed TRUE or PARTIALLY TRUE against
+  current code -- no ratio sign-inversion guard exists (`int_stock__card_metrics.sql`'s ratio
+  fields guard only `!= 0`, never sign); the AI-read prompt (`generate_assessments.py`) requests
+  free text, not structured JSON, and has no post-generation hallucination/KPI reference-check;
+  `benchmark_range()` (`card_copy.py`) is pure linear min-max scaling with no outlier
+  compression; `_verdict_operating`'s core (`fcf_margin_pct`) and supporting
+  (`current_ratio_stmt`) axes are gated fully independently, confirmed by the repo's own
+  existing test `test_operating_supporting_weakness_blocks_green`
+  (`tests/tooling/test_assessment_rules.py`) -- Apple's real figures (current ratio 0.89, FCF
+  margin 23.7%) hit exactly that pattern, which is why it read Mixed; no verdict threshold
+  varies by sector or company size, only by the three-way company-type split. Not yet written up
+  as a backlog doc or actioned -- next concrete action once this branch's own review/commit/MR
+  flow is done.
+
+## MR !67 MERGED, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
+
+Every list row's invisible tap-target button was rendering entirely *below* its own visible
+row (Streamlit's `stElementContainer` default `position: relative` on the button's own wrapper
+outranked the intended `stVerticalBlock` anchor), breaking click-to-open across Discover, Saved,
+and Search alike. Pre-existing bug, not introduced by this session. Fixed with one CSS rule;
+verified live via real pixel hit-testing (`document.elementFromPoint`). Two-round review, full
+account in that branch's `.claude/task/review.md` history.
 
 **Owner also reported, in the same message, several other things checked and resolved in
 conversation, not yet all recorded as their own backlog items:**
-- **Dots still misaligned:** re-measured live, pixel-perfect (offset ~0.00px on every sampled
-  row). Could not reproduce; possible the owner was looking at the deployed app before Render
-  redeployed the earlier verdict-dot fix. Unresolved whether this is still a live complaint;
-  ask before assuming it's fine.
+- **Dots still misaligned:** resolved decisively, not by further alignment debugging. Owner's
+  next message on seeing the list again: "Dots misaligned, just remove them" -- see the dot
+  removal entry below, which removed the verdict dot from the list row entirely.
 - **"Hardcoded/random" list, missing new markets, only ~900 companies instead of 1,200+:**
   checked directly against live Supabase, not the code alone. The list itself is 100%
   data-driven (queried Supabase myself: 924 deduplicated eligible companies across exactly 5
@@ -55,33 +82,25 @@ conversation, not yet all recorded as their own backlog items:**
 **Owner also asked for a full user-flow simulation across the whole app** (Discover, Saved,
 Search) to find further inconsistencies, beyond the specific points already checked above. Not
 done yet, deliberately deferred until the click-target fix (the most severe, most clearly
-diagnosed issue) shipped first. Next concrete action: once this MR merges, either continue
-fixing the remaining confirmed items above (filters-on-focus-card, hardcoded filter dropdown)
-or do the broader flow simulation the owner asked for, depending on what they want next.
+diagnosed issue) shipped first, then the dots-removal instruction took priority next. Next
+concrete action: either continue fixing the remaining confirmed items above
+(filters-on-focus-card, hardcoded filter dropdown) or do the broader flow simulation the owner
+asked for, depending on what they want next.
 
-## MR !65 OPEN, 2026-08-30: Discover row verdict is a CSS dot, not emoji
+## MR !65 MERGED, 2026-08-31: Discover row verdict rendered as a CSS dot, not emoji
 
-Status: **implemented, reviewed, MR open awaiting merge.** Branch `feat/discover-row-verdict-dot`,
-MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/65. Next concrete
-action: once merged, sync local `main` and delete the branch.
-Owner reported the list's health-verdict indicator looked "scattered." Measured directly in the
-running app: every row's own flexbox layout was already pixel-identical (offset exactly 0.0
-across every sampled row); the misalignment was the native emoji's (🟢/🟡/🔴) own internal
-vertical glyph metrics, which vary by platform/font, not a CSS bug. Fixed by rendering a plain
-CSS-drawn circle instead: same three colors, same meaning, pixel-exact by construction. **No
-visible text label was added**, on explicit owner instruction: a word like "Healthy" sitting
-next to the row's one displayed metric would read as if it rated that specific number, when the
-verdict is actually derived from 3-6 different metrics depending on company type. The label
-(already-existing, owner-approved vocabulary: Healthy/Mixed/Fragile) reaches only the dot's
-`aria-label`, an accessibility improvement over the emoji (which had no reliable spoken name).
-One review round, both required reviewers passed clean; full account in that branch's
-`.claude/task/review.md`.
+Owner reported the list's health-verdict indicator looked "scattered." Root cause: the native
+emoji's (🟢/🟡/🔴) own internal vertical glyph metrics vary by platform/font, not a CSS bug
+(every row's own flexbox layout was already pixel-identical). Fixed by rendering a plain
+CSS-drawn circle instead. **Superseded 2026-08-31:** the dot still read as misaligned to the
+owner after this fix shipped, and rather than debug further the owner instructed removing it
+entirely -- see the dot-removal entry below. This entry stays for the record of what was tried
+and why it wasn't the final fix.
 
 ## Discover list performance: scoped 2026-08-31, not yet decided
 
 [`docs/backlog/discover_list_performance.md`](../docs/backlog/discover_list_performance.md).
-Doc-only, two-round scope-auditor review; MR !66 open,
-`docs/scope-discover-list-performance`, awaiting merge.
+Doc-only, two-round scope-auditor review; MR !66 merged (`docs/scope-discover-list-performance`).
 Found 2026-08-30 while investigating a report that tapping a list row visibly hangs before the
 card opens. Confirmed by direct measurement: with the full 923-row list showing, a click takes
 ~2.4s before Streamlit even starts processing it, because the page mounts 931 individual
@@ -110,9 +129,10 @@ worth keeping distinct wherever this is explained).
 ## MR !58 MERGED, 2026-08-30: Discover reworked to filter -> list -> focus
 
 Retired the one-card-at-a-time walk for a scrollable, alphabetically-ordered list of every
-filtered match; each row shows a health verdict plus one type-aware lead metric (Operating
-margin / Return on equity / Cash runway by company type, each a core, verdict-deciding axis for
-that type's own rule in `scripts/assessment_rules.py`, not a metric picked for the row alone);
+filtered match; each row shows one type-aware lead metric (Operating margin / Return on equity
+/ Cash runway by company type, each a core, verdict-deciding axis for that type's own rule in
+`scripts/assessment_rules.py`, not a metric picked for the row alone; a health-verdict dot
+originally sat alongside it too, removed 2026-08-31, see the entry near the top of this file);
 tapping a row opens the existing focus card. Six-round review, full account in that branch's
 `.claude/task/review.md` history. **If a future card metric gets used as a UI "lead" or headline
 figure anywhere else, check `assessment_rules.py`'s own verdict function for that company type

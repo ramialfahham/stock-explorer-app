@@ -20,9 +20,6 @@ def inject_global_css() -> None:
     --ss-accent: #c9a962;
     --ss-border: #27272a;
     --ss-track: #38383d;
-    --ss-verdict-green: #3fb950;
-    --ss-verdict-yellow: #f0b429;
-    --ss-verdict-red: #ef5350;
     --ss-value: 1.5rem;
     --ss-title: 1rem;
     --ss-label: 0.75rem;
@@ -785,9 +782,11 @@ section[data-testid="stSidebar"] {
     margin: 0.08rem 0 0;
 }
 
-/* Rich row variant (Discover list): verdict + one type-aware lead metric alongside the
-   plain title/subtitle. Keeps the base .ss-row class above so it inherits every tap-target
-   and hover rule unchanged; only the internal layout differs. */
+/* Rich row variant (Discover list): one type-aware lead metric alongside the plain
+   title/subtitle. Keeps the base .ss-row class above so it inherits every tap-target and
+   hover rule unchanged; only the internal layout differs. Used to also carry a health-verdict
+   dot; removed by owner instruction (2026-08-31), see frontend/row_ui.py's build_rich_row_html
+   docstring for why. */
 .ss-row.ss-row-rich {
     display: flex;
     justify-content: space-between;
@@ -799,22 +798,6 @@ section[data-testid="stSidebar"] {
     align-items: center;
     gap: 0.35rem;
     flex-shrink: 0;
-}
-.ss-row-rich .ss-row-verdict {
-    display: inline-block;
-    width: 0.6rem;
-    height: 0.6rem;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-.ss-row-rich .ss-row-verdict--green {
-    background: var(--ss-verdict-green);
-}
-.ss-row-rich .ss-row-verdict--yellow {
-    background: var(--ss-verdict-yellow);
-}
-.ss-row-rich .ss-row-verdict--red {
-    background: var(--ss-verdict-red);
 }
 .ss-row-rich .ss-row-metric {
     display: flex;

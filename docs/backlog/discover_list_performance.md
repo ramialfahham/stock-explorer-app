@@ -89,14 +89,14 @@ another.
   similar (a shorter first screen), so the distinction should stay explicit wherever this is
   explained to the owner or documented, not blurred.
 - **Scope: Discover only, or does Saved need the same look?** Saved's list uses the plain
-  `build_row_html`/`render_row_list` (not the rich verdict+metric row), and today's saved lists
+  `build_row_html`/`render_row_list` (not the richer metric row), and today's saved lists
   are user-curated and typically far smaller than 923 companies. Likely out of scope for now,
   but worth naming explicitly rather than silently assuming, since Saved could theoretically
   grow large for a heavy user.
 - **New mechanism.** Simple pagination (slicing an already-in-memory list by a session-state
   page index) needs no new dependency. A `st.dataframe`-based rewrite is Streamlit's more
   idiomatic pattern for large selectable lists, but a much bigger change: the row's visual
-  richness (verdict dot, lead metric, subtitle) would need to be re-expressed within a
+  richness (lead metric, subtitle) would need to be re-expressed within a
   dataframe's more constrained cell rendering. Real virtualization (a custom component,
   since Streamlit has no built-in windowing for a loop of custom HTML rows) would each be a new
   mechanism requiring its own sign-off, not something to reach for by default.
@@ -116,7 +116,7 @@ another.
    mechanism for a large, selectable list: one widget for the whole table instead of hundreds.
    Would very likely fix both symptoms outright, but at real cost: `st.dataframe`'s cell
    rendering is far more constrained than custom HTML, so the row's current visual design
-   (verdict dot + lead metric + two-line title/subtitle, all in one row) would need to be
+   (lead metric + two-line title/subtitle, all in one row) would need to be
    redesigned to fit, not just ported. A materially bigger change than the other options.
 4. **Virtualization (render only rows near the viewport).** The standard web-engineering fix
    for huge lists, but Streamlit has no native support for windowing a loop of custom HTML rows;
@@ -130,5 +130,7 @@ another.
 - `docs/backlog/discover_first_time_default.md`: the decision this doc's fix must not be
   confused with or silently reopen.
 - The verdict-dot alignment fix (`feat/discover-row-verdict-dot`, merged 2026-08-31), found and
-  fixed in the same investigation thread as this performance issue, but a fully separate,
-  already-resolved concern.
+  fixed in the same investigation thread as this performance issue, a fully separate concern.
+  The dot itself was later removed from the row entirely, by owner instruction, on the same day
+  -- so the row's current visual richness (this doc's "verdict dot, lead metric" phrasing above
+  was updated accordingly) is lead metric + two-line title/subtitle only, no dot.
