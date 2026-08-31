@@ -73,6 +73,21 @@ tapped. The `st.rerun()` buys immediate feedback at the cost described above. Re
 another way to short-circuit the current run's remaining work would trade one problem for
 another.
 
+**Update 2026-08-31, after pagination shipped:** owner reported the app "substantially faster"
+but still delayed 1-2s per click. The profiling pass this section called for was done (server-
+side timing instrumentation, temporary, not shipped -- the earlier browser-side JS-timer
+approach proved unreliable, throttled on a reported-hidden preview tab). It found a different,
+larger, and previously unidentified cost dominating: `get_anon_client()`
+(`frontend/supabase_client.py`) rebuilt a brand-new Supabase client from scratch on every single
+script run, measured at ~1.06-1.09s per run, versus ~0.12-0.18s for everything else in a run
+combined. Because this cost is fixed per run (not row-count- or position-dependent), and the
+`st.rerun()`-inside-the-loop pattern doubles it (the aborted run pays it, then the fresh run
+pays it again), it closely matched the reported 1-2s on its own -- independent of whether the
+row-position-scaling hypothesis above is also true. Fixed with `@st.cache_resource`; see the
+"Discover click latency" entry in `.claude/active_work.md`. The row-position-scaling hypothesis
+itself remains unconfirmed either way, though now capped at a much smaller absolute cost since
+pagination limits a run to at most 30 rows, not up to 923.
+
 ## Open questions (owner decisions, not answered here)
 
 - **Is a smaller live-widget count per render (pagination or equivalent) the direction, and if

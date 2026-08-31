@@ -12,11 +12,45 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Discover list paginated, 2026-08-31: review in progress, not yet committed
+## MR !71 OPEN, 2026-08-31: Discover click latency (Supabase anon-client caching)
 
-Status: **implemented, review in progress as this entry is written -- see that branch's
-`.claude/task/review.md` once committed for the full account.** Branch
-`perf/paginate-discover-list`, not yet pushed.
+Status: **implemented, reviewed (2 rounds; one Claude Code crash mid-review, recovered by
+re-dispatching against the same frozen diff -- see that branch's `.claude/task/review.md` for
+the full account), MR open awaiting merge.** Branch `perf/cache-supabase-anon-client`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/71. Next concrete action:
+once merged, sync local `main` and delete the branch.
+Owner reported the app "substantially faster" after MR !70's pagination fix (see the entry below
+this one) but still delayed 1-2s per click. Diagnosed with server-side timing instrumentation
+(temporary, not shipped -- the earlier browser-side JS-timer approach this session used for
+MR !70's own verification was unreliable, throttled on a reported-hidden preview tab; server-side
+`time.perf_counter()` checkpoints avoid that entirely). Found: `get_anon_client()`
+(`frontend/supabase_client.py`) rebuilt a brand-new Supabase client via `create_client(url, key)`
+from scratch on every single Streamlit script rerun, with zero caching -- unlike card data, which
+is correctly cached in `session_state`. Measured cost: ~1.06-1.09s per run, consistently, versus
+~0.12-0.18s for everything else in a run combined. Because `frontend/row_ui.py`'s row click
+handler calls `st.rerun()` right after registering a click (aborting the in-flight run and
+starting a fresh one), this cost was paid twice per click, not once -- closely matching the
+owner's reported 1-2s, and unrelated to row count or list position (fixed per-run cost, not
+scaling with the pool size pagination already capped).
+
+Fixed with `@st.cache_resource` (Streamlit's own primitive for an expensive-to-construct,
+shareable resource with no per-user state -- this is the anonymous, non-user-specific client).
+Cached globally across the whole server process, not per-session: the one-time construction cost
+is paid once total, not once per visitor. Live-verified post-fix: two clicks measured at ~0.30s
+and ~0.47s total click-to-response (down from ~1.2-1.4s for a single run pre-fix, worse across
+the two runs a click actually costs). `tests/frontend/test_supabase_client.py` added: confirms
+two calls return the same object with `create_client` invoked once, and that the
+credential-missing error path still runs on every call (a cached resource must not paper over a
+genuinely missing configuration).
+
+The `st.rerun()`-inside-the-loop pattern itself (row_ui.py, shared by Discover/Saved/Search) is
+untouched -- fixing it would mean restructuring the click-to-focus flow to avoid Streamlit's
+abort-and-restart dispatch, a larger, riskier change than this one. Flagged as a possible
+follow-up if the owner wants to squeeze out the remaining ~0.3-0.5s; not actioned here.
+
+## MR !70 MERGED, 2026-08-31: Discover list paginated
+
+Reviewed 8 rounds -- see that branch's `.claude/task/review.md` history for the full account.
 Owner reported the app as unusably slow: "Clicking on an element in the list and nothing
 happens... Usability is zero." This is the exact, already-scoped, already-measured problem in
 `docs/backlog/discover_list_performance.md` (full ~923-row pool mounting ~931 `st.button`
@@ -59,6 +93,9 @@ Fixed by tightening five selectors in `frontend/styles.py` to a direct-child
 `:has(> [data-testid="stElementContainer"] .ss-row)` form, matching a pattern already used
 correctly elsewhere in the same file. Two new regression-guard tests added to
 `tests/frontend/test_styles.py`, both verified to fail against the broken form before being kept.
+**Pagination alone was not the whole fix, see the entry near the top of this file:** owner
+reported the app "substantially faster" after this merged, but still delayed 1-2s per click,
+traced to a separate, larger cost this task's own investigation hadn't found yet.
 
 ## MR !68 MERGED, 2026-08-31: Discover row verdict dot removed entirely
 
@@ -175,9 +212,9 @@ scoping doc flags it as the first thing a profiling pass should check.
 
 **Decided and shipped, 2026-08-31, same day:** owner reported the app as unusably slow, was shown
 this doc's own open questions and candidate directions directly, and chose pagination,
-`DISCOVER_PAGE_SIZE = 30` -- see the "Discover list paginated" entry near the top of this file
-for the full account. This did not reopen the "first-time Discover default" decision (see the
-MR !61 section below this one): that was about content curation for beginners; this is a
+`DISCOVER_PAGE_SIZE = 30` -- see the "MR !70 MERGED... Discover list paginated" entry near the
+top of this file for the full account. This did not reopen the "first-time Discover default"
+decision (see the MR !61 section below this one): that was about content curation for beginners; this is a
 technical widget-count fix, a different justification, kept distinct on purpose. The
 `st.rerun()`-inside-the-loop hypothesis above was not separately spiked or confirmed -- pagination
 caps the widget count per render regardless of where in the row loop a click lands, which
