@@ -12,9 +12,11 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR pending, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
+## MR !67 OPEN, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
 
-Status: **implemented, reviewed, awaiting push/MR.** Branch `fix/discover-row-tap-target`.
+Status: **implemented, reviewed, MR open awaiting merge.** Branch `fix/discover-row-tap-target`,
+MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/67. Next concrete
+action: once merged, sync local `main` and delete the branch.
 Owner reported clicking a list row often opened the row above it, some row areas did nothing,
 and the first row in any list was completely unclickable. Diagnosed by direct DOM measurement,
 not guesswork: every row's invisible tap-target button was rendering entirely *below* its own
