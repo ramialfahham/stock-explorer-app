@@ -16,9 +16,7 @@ from browser_storage import (
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
 from card_copy import (
-    VERDICT_BADGE_LABEL,
     freshness_line,
-    health_verdict_token,
     lead_metric_for_row,
     saved_row_subtitle,
     sector_headline,
@@ -286,11 +284,6 @@ def _select_discover_row(card: dict) -> None:
     st.session_state["discover_focus_key"] = _saved_row_key(card)
 
 
-def _discover_row_verdict(card: dict) -> tuple[str, str] | None:
-    token = health_verdict_token(card)
-    return (token, VERDICT_BADGE_LABEL[token]) if token else None
-
-
 def _render_discover_tab(client) -> dict | None:
     """Filtered list, or the focused card. Filters run in _discovery_page.
 
@@ -312,7 +305,6 @@ def _render_discover_tab(client) -> dict | None:
             row_key_fn=_saved_row_key,
             title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
             subtitle_fn=saved_row_subtitle,
-            verdict_fn=_discover_row_verdict,
             metric_fn=lead_metric_for_row,
             on_select=_select_discover_row,
         )

@@ -95,6 +95,6 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 ## Related
 
 - [`design_system.md`](design_system.md) — row primitive tokens (radius, spacing, `.ss-row*`) this spec builds on
-- [`discover_list.md`](discover_list.md): Discover's richer row variant (verdict + lead metric), same tap mechanics
+- [`discover_list.md`](discover_list.md): Discover's richer row variant (adds one lead metric), same tap mechanics
 - [`card_metric_cell.md`](card_metric_cell.md) — metric layout on the focused snapshot
 - [`discover_header.md`](discover_header.md) — shared chrome above tabs

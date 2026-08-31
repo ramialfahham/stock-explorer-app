@@ -54,7 +54,7 @@ _LEAD_METRIC_BY_TYPE = {
 
 
 def lead_metric_for_row(card: dict) -> tuple[str, str] | None:
-    """The one metric a Discover list row leads with, alongside the health verdict.
+    """The one metric a Discover list row leads with.
 
     Operating margin for operating companies, Return on equity for financial (banks), cash
     runway for pre-revenue: each is a CORE, verdict-deciding input to that company type's
@@ -62,13 +62,13 @@ def lead_metric_for_row(card: dict) -> tuple[str, str] | None:
     `statement_roe_pct` was the first choice for both operating and financial, but for
     `_verdict_operating` it is only a supporting axis that "can break a tie but never rescue
     a red flag" (that function's own comment); the axes that actually decide red/green for
-    an operating card are net_debt_to_ebitda, ebit_margin_pct, and fcf_margin_pct. Pairing
-    the verdict badge with a metric that only weakly relates to it, on the majority company
-    type, would visually imply more than the verdict rule actually uses. `ebit_margin_pct`
-    is the one of those three axes with importance_tier 1 in the metric catalogue, already
-    the headline profitability figure for an operating card. Returns None, not
-    format_metric_value()'s em-dash placeholder, when the value is missing, so the row
-    degrades to verdict-only rather than showing a blank or invented number.
+    an operating card are net_debt_to_ebitda, ebit_margin_pct, and fcf_margin_pct. A metric
+    that only weakly relates to the actual verdict rule, on the majority company type, would
+    misrepresent what decides that company's assessment. `ebit_margin_pct` is the one of
+    those three axes with importance_tier 1 in the metric catalogue, already the headline
+    profitability figure for an operating card. Returns None, not format_metric_value()'s
+    em-dash placeholder, when the value is missing, so the row degrades to title/subtitle
+    only rather than showing a blank or invented number.
     """
     company_type = card.get("company_type") or DEFAULT_COMPANY_TYPE
     metric_id = _LEAD_METRIC_BY_TYPE.get(company_type)

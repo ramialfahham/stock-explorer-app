@@ -303,7 +303,7 @@ def test_lead_metric_for_row_defaults_to_operating_when_type_missing() -> None:
 
 
 def test_lead_metric_for_row_is_none_when_the_value_is_missing() -> None:
-    """A row degrades to verdict-only, never a blank or invented number."""
+    """A row degrades to title/subtitle only, never a blank or invented number."""
     card = _full_card("operating")
     card["ebit_margin_pct"] = None
     assert lead_metric_for_row(card) is None

@@ -31,29 +31,18 @@ def build_row_html(title: str, subtitle: str) -> str:
 def build_rich_row_html(
     title: str,
     subtitle: str,
-    verdict: tuple[str, str] | None,
     metric: tuple[str, str] | None,
 ) -> str:
-    """A row with a health verdict and one lead metric alongside title/subtitle.
+    """A row with one lead metric alongside title/subtitle.
 
     Keeps the base `ss-row` class so it inherits every tap-target and hover rule the plain
-    row already has (see styles.py); only the internal layout differs. `verdict` and
-    `metric` are both optional and independent: a card with no assessment yet, or no value
-    for its type's lead metric, still renders the row, just without that piece.
+    row already has (see styles.py); only the internal layout differs. `metric` is optional:
+    a card with no value for its type's lead metric still renders the row, just without it.
 
-    `verdict` is `(token, label)`, e.g. `("green", "Healthy")`: `token` selects the dot's
-    color via a CSS modifier class, `label` is the dot's only accessible name (`aria-label`).
-    Rendered as a plain CSS-drawn circle, not a color emoji character -- a colored-circle
-    emoji's internal vertical metrics vary by platform/font, which is what made the list
-    look misaligned row to row despite every row's own layout being pixel-identical.
+    Previously also carried a health-verdict dot; removed by owner instruction (2026-08-31)
+    after it stayed visually misaligned even once its known emoji-glyph-metrics cause was
+    fixed.
     """
-    verdict_html = ""
-    if verdict:
-        token, label = verdict
-        verdict_html = (
-            f'<span class="ss-row-verdict ss-row-verdict--{_esc(token)}" '
-            f'role="img" aria-label="{_esc(label)}"></span>'
-        )
     metric_html = ""
     if metric:
         label, value = metric
@@ -63,9 +52,7 @@ def build_rich_row_html(
             f'<span class="ss-row-metric-label">{_esc(label)}</span>'
             f"</span>"
         )
-    side_html = (
-        f'<div class="ss-row-side">{verdict_html}{metric_html}</div>' if (verdict_html or metric_html) else ""
-    )
+    side_html = f'<div class="ss-row-side">{metric_html}</div>' if metric_html else ""
     return (
         f'<div class="ss-row ss-row-rich">'
         f'<div class="ss-row-main">'
@@ -109,7 +96,6 @@ def render_rich_row_list(
     on_select: Callable[[_T], None],
     title_fn: Callable[[_T], str],
     subtitle_fn: Callable[[_T], str],
-    verdict_fn: Callable[[_T], tuple[str, str] | None],
     metric_fn: Callable[[_T], tuple[str, str] | None],
     row_key_fn: Callable[[_T], str],
 ) -> None:
@@ -121,7 +107,7 @@ def render_rich_row_list(
         title_fn=title_fn,
         row_key_fn=row_key_fn,
         html_fn=lambda item: build_rich_row_html(
-            title_fn(item), subtitle_fn(item), verdict_fn(item), metric_fn(item)
+            title_fn(item), subtitle_fn(item), metric_fn(item)
         ),
     )
 

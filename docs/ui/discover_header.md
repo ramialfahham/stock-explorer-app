@@ -55,7 +55,7 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 | Product name & tagline | Company name, ticker |
 | Tab navigation | Sector headline + peer count |
 | Active filter summary | Metric values and gloss |
-| Scope stats line (`N match your filters`) | List row content: health verdict + one type-aware lead metric per company (see [`discover_list.md`](discover_list.md)) |
+| Scope stats line (`N match your filters`) | List row content: one type-aware lead metric per company (see [`discover_list.md`](discover_list.md)) |
 | "Not investment advice" disclosure (permanent, every visit) | Focus card meta line: just the card's own listing venue (e.g. `FTSE 100`), same fallback Saved and Search already use, no position, since there is no walk to be positioned in |
 | | Eligible pool breakdown (⋯ → About the data) |
 
