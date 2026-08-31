@@ -12,11 +12,12 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Discover header polish, 2026-08-31: review in progress, not yet committed
+## MR !72 OPEN, 2026-08-31: Discover header polish
 
-Status: **implemented, review in progress as this entry is written -- see that branch's
-`.claude/task/review.md` once committed for the full account.** Branch
-`fix/discover-header-polish`, not yet pushed.
+Status: **implemented, reviewed (3 rounds -- see that branch's `.claude/task/review.md` for the
+full account), MR open awaiting merge.** Branch `fix/discover-header-polish`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/72. Next concrete action:
+once merged, sync local `main` and delete the branch.
 Two small, already-diagnosed bugs from the row-tap-target investigation (MR !67), surfaced to
 the owner as a "what's next" recommendation once the click-latency work landed, and confirmed
 with a plain "yes":
