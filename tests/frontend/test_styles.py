@@ -105,3 +105,44 @@ def test_card_face_p_class_rules_are_scoped_not_bare():
             f"`.ss-card-identity .{cls}`. If the class was renamed or removed, update "
             f"CARD_FACE_P_CLASSES so this guard keeps testing something real."
         )
+
+
+# A THIRD recurring bug class in this file, distinct from the two above: the invisible
+# full-row tap-target button (`.ss-row`'s `[data-testid="stButton"]`, `position: absolute;
+# inset: 0`) is meant to fill the row's own `stVerticalBlock` container. But Streamlit sets
+# `position: relative` on every `stElementContainer`, including the one that wraps the button
+# directly -- and since that wrapper is nearer than the intended `stVerticalBlock`, it becomes
+# the button's containing block instead. That wrapper has no content of its own (its only
+# child is absolutely positioned), so it collapses to zero height, and the button renders at
+# its `min-height` starting wherever that zero-height box falls in normal flow: right after
+# the row's own markdown, not on top of it.
+TAP_TARGET_NEUTRALIZER_PATTERN = re.compile(
+    r':has\(\.ss-row-group\)\s+div\[data-testid="stVerticalBlock"\]:has\(\.ss-row\)\s+'
+    r'\[data-testid="stElementContainer"\]:has\(>\s*\[data-testid="stButton"\]\)\s*\{'
+    r'[^}]*position:\s*static\s*!important'
+)
+
+
+def test_row_tap_target_neutralizes_its_own_element_container_position():
+    """Confirmed live before this test existed: every row's tap target rendered entirely
+    below its own visible row, overlapping the next row's top edge, so clicking a row opened
+    the one above it, and the first row (nothing above it to catch the click) did nothing at
+    all -- this broke the core interaction of Discover, Saved, and Search alike, since all
+    three share this row primitive. Confirmed fixed the same way: after adding the rule this
+    test guards, every sampled row's tap-target bounding box matched its own visible row
+    exactly, including real pixel hit-testing (`document.elementFromPoint`) at both the top
+    and bottom edge of several rows.
+
+    This can't run a browser, so it can't verify the fix actually renders correctly live --
+    but it can verify the neutralizing rule's shape never regresses out of frontend/styles.py.
+    """
+    css = STYLES_FILE.read_text(encoding="utf-8")
+    assert TAP_TARGET_NEUTRALIZER_PATTERN.search(css), (
+        "no rule found resetting `position` on the stElementContainer that directly wraps "
+        "a row's tap-target button. Without it, that wrapper's own Streamlit-default "
+        "`position: relative` outranks the intended `stVerticalBlock` anchor (it's nearer), "
+        "the wrapper collapses to zero height since its only child is absolutely positioned, "
+        "and the button renders below its own row instead of on top of it -- the exact bug "
+        "this test exists to catch, confirmed live via document.elementFromPoint hit-testing "
+        "before the fix and after."
+    )

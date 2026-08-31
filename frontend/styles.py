@@ -684,6 +684,20 @@ section[data-testid="stSidebar"] {
 :has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stMarkdown"] {
     margin: 0;
 }
+/* Streamlit itself sets `position: relative` on every stElementContainer, including the one
+   that directly wraps this st.button() -- since that wrapper is closer than the
+   stVerticalBlock two rules above, it becomes the button's containing block instead, and
+   because the wrapper has no content of its own it collapses to zero height, so `inset: 0`
+   resolves to a zero-size box and the button renders at min-height starting wherever that
+   zero-height box falls in normal flow: right after the row's markdown, not on top of it.
+   Confirmed live: the invisible tap target rendered entirely below its own visible row,
+   overlapping the next row's top edge, so clicking a row opened the one above it, and the
+   first row (nothing above it to catch the click) did nothing at all. Neutralizing this one
+   wrapper's position lets the button's `inset: 0` skip past it and reach the correctly-sized
+   stVerticalBlock instead. */
+:has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stElementContainer"]:has(> [data-testid="stButton"]) {
+    position: static !important;
+}
 :has(.ss-row-group) div[data-testid="stVerticalBlock"]:has(.ss-row) [data-testid="stButton"] {
     position: absolute;
     inset: 0;
