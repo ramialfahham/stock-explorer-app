@@ -12,13 +12,14 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Discover row verdict dot removed entirely, 2026-08-31: reviewed, not yet committed
+## MR !68 OPEN, 2026-08-31: Discover row verdict dot removed entirely
 
-Status: **implemented, review still in progress as this entry is written (6+ rounds so far;
-each round caught one more stale cross-reference or handover-accuracy issue a prior sweep
-missed, including in this file itself -- see that branch's `.claude/task/review.md` once
-committed for the full account), not yet committed or pushed.** Branch
-`fix/discover-row-remove-verdict-dots`.
+Status: **implemented, reviewed (8 rounds; each round caught one more stale cross-reference or
+handover-accuracy issue a prior sweep missed, including in this file itself -- see that branch's
+`.claude/task/review.md` for the full account), MR open awaiting merge.** Branch
+`fix/discover-row-remove-verdict-dots`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/68. Next concrete action:
+once merged, sync local `main` and delete the branch.
 Owner saw the CSS-dot fix (MR !65) live and said "Dots misaligned, just remove them" -- a final,
 decisive instruction, not a request to debug alignment further. `build_rich_row_html` no longer
 takes a `verdict` parameter; the list row now renders title/subtitle/lead-metric only. The
@@ -45,9 +46,11 @@ renders, tap-target from MR !67's fix still resolves correctly at both row edges
   existing test `test_operating_supporting_weakness_blocks_green`
   (`tests/tooling/test_assessment_rules.py`) -- Apple's real figures (current ratio 0.89, FCF
   margin 23.7%) hit exactly that pattern, which is why it read Mixed; no verdict threshold
-  varies by sector or company size, only by the three-way company-type split. Not yet written up
-  as a backlog doc or actioned -- next concrete action once this branch's own review/commit/MR
-  flow is done.
+  varies by sector or company size, only by the three-way company-type split. Filed as
+  [`docs/backlog/gemini_verdict_feedback.md`](../docs/backlog/gemini_verdict_feedback.md),
+  MR !69 (branch `docs/file-gemini-verdict-feedback`,
+  https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/69), open awaiting merge.
+  Not actioned -- the doc's own Open questions are the owner's call.
 
 ## MR !67 MERGED, 2026-08-31: fixed row tap-target misalignment (Discover/Saved/Search)
 
