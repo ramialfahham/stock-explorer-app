@@ -1,80 +1,83 @@
 # Review
 
-diff_sha256: 007334d53ef4816b09e43b1500974af715224845e728151e472d36c024e228da
+diff_sha256: 8551e3829f20c1c5ea3170785758c6e135cd3f70e3e9759d12946be04ccca5f7
 
-Two review rounds. Required reviewer per routing (`.claude/review_routing.json`): scope-auditor
-(always). No other pattern in the routing matches this file set (one `docs/backlog/*.md` file
-plus `.claude/active_work.md` and `.claude/task/contract.md`), so no other reviewer is required.
+One review round. Required reviewers per routing (`.claude/review_routing.json`): scope-auditor
+(always), cto-reviewer (`frontend/*`, `tests/*`). No dbt or `docs/data_contract.md` file in this
+diff, so analytics-engineer-reviewer and equity-analyst-reviewer are not required.
 
 **Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
-this session, so scope-auditor ran as a general-purpose agent instructed to read its own role
-file verbatim first. Cold, blinded, read-only input; the staged index was frozen to a patch file
-and sha256 before every dispatch and never moved while the reviewer was running.
+this session, so each ran as a general-purpose agent instructed to read its own role file
+verbatim first. Cold, blinded, read-only input; the staged index was frozen to a patch file and
+sha256 before dispatch and never moved while reviewers were running.
 
-**Final verdict (round 2, the commit gate):** scope-auditor PASS.
+**Final verdicts (round 1, the commit gate):** scope-auditor PASS, cto-reviewer PASS.
 
 ## What this is
 
-Records the owner's decision on "getting to the cards where learning content is located," the
-last unresolved part of the owner's original landing/onboarding complaint: no change needed.
-Unlike this session's other recent decision-recording tasks, the evidence here comes from
-directly inspecting a real, live focus card in the running app, not a mockup or a code-only
-read. One tap from the Discover list, a reader already sees a plain-English AI-written verdict
-paragraph and six lensed metrics, each with a plain-language gloss line; a sector comparison
-shows too where one genuinely exists (only the metrics the catalogue marks benchmarkable, ~4 of
-13). One further tap ("Understand these numbers") immediately reaches a median-comparison recap,
-a short analogy per metric, and an interactive playground; only each metric's fuller written
-explanation needs its own additional "Read more" tap. Closes
-`docs/backlog/landing_onboarding_rework.md`'s last open question, so that doc is now fully
-resolved: all three parts of the owner's original complaint (the one-card mechanism, the landing
-screen, and getting to the cards) are closed. Documentation only: no code, no CI, no new
-dependency.
+Fixes the Discover list's verdict-dot alignment. The owner reported the health-verdict dots
+looked "scattered" down the list. Live measurement in the running app confirmed every row's own
+flexbox layout was already pixel-identical (bounding-box offset exactly 0.0 across every
+sampled row); the misalignment was the native color emoji's (🟢/🟡/🔴) own internal vertical
+glyph metrics, which vary by platform/font and are outside CSS's control. Replaces the emoji
+character with a plain CSS-drawn circle, same three colors, same meaning, pixel-exact by
+construction. Explicitly does not add a visible text label next to the dot: the owner correctly
+flagged that a word (e.g. "Healthy") sitting beside the row's one displayed metric would read as
+if it rated that specific number, when the verdict is actually derived from 3-6 different
+metrics depending on company type. The label only reaches the dot's `aria-label` (using the
+already-existing, already owner-approved vocabulary `VERDICT_BADGE_LABEL`), never visible text.
+The full card's own separate verdict badge (`card_ui.py`) is untouched, since it renders once
+per card, not repeated hundreds of times down a scrolling list, and doesn't exhibit the
+alignment problem this task fixes.
 
 ## Round-by-round findings and fixes
 
-**Round 1**: failed on two factual overclaims in the recorded evidence, given particular
-scrutiny since this is exactly the kind of claim that's easy to accept without checking, and
-this session has caught two prior overreaches in adjacent decision-recording docs. The first
-draft claimed all six metrics shown on the sample card got both a plain-language gloss and a
-sector comparison; in fact only metrics the catalogue marks `benchmarkable` (4 of 13) ever get
-one, so a six-metric card always has at least two reading "No sector comparison for this metric"
-instead, by design. The first draft also claimed the single tap into "Understand these numbers"
-reached "fuller explanations" for each metric; in fact only the short analogy is immediately
-visible there, while each metric's fuller written explanation sits behind its own additional
-"Read more" toggle, one more tap per metric. Fixed: reworded to the precise mechanics, checked
-against `dbt_analytics/seeds/metric_catalogue.csv`'s `benchmarkable` column and
-`frontend/card_ui.py`'s actual rendering logic, which still support the same overall conclusion.
-
-**Round 2**: every corrected claim independently re-verified against source, line by line
-(`frontend/card_ui.py`'s `_metric_cell_html`, `_metric_learn_block_html`, `render_learn_panel`,
-and `frontend/metric_school.py`'s `render_metric_playgrounds`), confirming the fix holds exactly
-with no remaining overstatement, no understatement, and no repeat of the round-1 error pattern
-(the interactive playground was specifically re-checked to confirm it renders unconditionally
-and isn't incorrectly lumped in with the "Read more"-gated content). Confirmed clean.
+**Round 1**: both required reviewers passed clean on the first pass. Both independently traced
+the one edge case worth checking closely, a potential `KeyError` in
+`VERDICT_BADGE_LABEL[token]` when a card has no assessment yet, and confirmed
+`health_verdict_token` only ever returns `None` or a key already present in both
+`VERDICT_EMOJI` and `VERDICT_BADGE_LABEL`, so the ternary's short-circuit means the falsy-token
+path never touches the dict. Both also independently verified, directly against the diff rather
+than the contract's own claim, that no visible text label was added anywhere (the label reaches
+only the `aria-label` attribute), and that `frontend/card_ui.py`'s separate, untouched verdict
+badge still works unchanged. scope-auditor additionally ran the full `tests/frontend` suite live
+(166 passed) rather than trusting the reported count.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Whether the round-1 overclaims were genuinely fixed rather than reworded around: re-derived
-  the "~4 of 13 benchmarkable" count directly from `dbt_analytics/seeds/metric_catalogue.csv`
-  (exact, not approximate), and re-traced `frontend/card_ui.py`'s fallback path
-  (`_metric_range_unavailable_html`) and per-metric "Read more" gating
-  (`_metric_learn_block_html`) line by line against the corrected text.
-- Whether the fix introduced a new instance of the same error category: specifically re-checked
-  that the interactive playground (`frontend/metric_school.py`'s `render_metric_playgrounds`,
-  confirmed to render unconditionally, its own code comment says so) is correctly kept with the
-  "immediate, one tap" tier and not incorrectly grouped with the "Read more"-gated fuller
-  explanations.
-- Whether "no change needed" still holds given the corrected, more modest facts: the two tiers
-  that actually answer "what does this mean" (the gloss line and the short analogy) are both
-  honestly reachable in one and two taps respectively; only the deepest tier needs one more tap
-  per metric, which is documented, deliberate progressive disclosure, not a defect.
-- Whether documenting the round-1 finding itself introduced a new owner-reserved decision: it
-  corrects factual claims against source, it doesn't make new product/UX content, a new
-  mechanism, or a permanent naming choice.
-- Scope: exactly the three files in the contract's `scope_paths` were touched; no code, test,
-  CI, or dependency file in the diff.
-- No em/en dash on any added line, scanned programmatically across the full patch both rounds.
-- Both hash checks passed each round: the frozen patch's sha256 and a fresh
-  `git diff --staged --no-renames --no-abbrev | sha256sum` on the branch were identical every
-  time, confirming the staged index never moved during review.
+- No stale caller of `build_rich_row_html`/`render_rich_row_list` still passing the old
+  `str | None` verdict shape: repo-wide grep confirms `frontend/app.py` is the only caller;
+  Saved/Search use the untouched `build_row_html`/`render_row_list` path, which takes no
+  verdict argument at all.
+- The "no visible text label" claim holds in the actual live code path, not just the new test:
+  traced `_discover_row_verdict` through its single call site into `build_rich_row_html`'s only
+  verdict-rendering branch, confirming the label reaches only `aria-label`, never element text.
+- `frontend/card_ui.py` (the full card's own verdict badge) is untouched: not part of the diff,
+  live-read confirms it still imports and renders `VERDICT_EMOJI`/`VERDICT_BADGE_LABEL`
+  unchanged.
+- New and updated tests are genuine, non-tautological regression tests, confirmed by running
+  the full `tests/frontend` suite live (166 passed), not asserted from the contract.
+- Doc-sync: `docs/ui/discover_list.md`'s wireframe and prose updated accurately;
+  `docs/ui/design_system.md` checked for drift and found no stale claim.
+- No em/en dash on any added line, scanned programmatically across the full patch.
+- Both hash checks passed: the frozen patch's sha256 and a fresh
+  `git diff --staged --no-renames --no-abbrev | sha256sum` on the branch are identical.
+
+## cto-reviewer
+VERDICT: PASS
+risks_checked:
+- `KeyError` risk in `_discover_row_verdict`'s `VERDICT_BADGE_LABEL[token]` lookup when a card
+  has no assessment: traced `health_verdict_token` and confirmed it only ever returns `None` or
+  a key already present in both `VERDICT_EMOJI` and `VERDICT_BADGE_LABEL`; the ternary's
+  short-circuit means the falsy-token path never touches the dict.
+- Incomplete refactor or dead references: grepped the full repo for `verdict_emoji` and the raw
+  emoji glyphs; found none left in `row_ui.py`, `app.py`, or the updated test file, and
+  confirmed the pre-existing emoji usage in `card_ui.py`/`test_card_ui.py` is the deliberately
+  out-of-scope full-card badge, untouched.
+- The escaping test exercises both the verdict label and the metric independently, not just one
+  side.
+- The three new `--ss-verdict-*` tokens sit inside the `:root` block, not orphaned; the old
+  emoji-sizing CSS rule is fully replaced, no dead CSS left behind.
+- No em/en dash on any added line.
+- Both hash checks passed.

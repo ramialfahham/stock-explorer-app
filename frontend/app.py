@@ -16,7 +16,7 @@ from browser_storage import (
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
 from card_copy import (
-    VERDICT_EMOJI,
+    VERDICT_BADGE_LABEL,
     freshness_line,
     health_verdict_token,
     lead_metric_for_row,
@@ -286,9 +286,9 @@ def _select_discover_row(card: dict) -> None:
     st.session_state["discover_focus_key"] = _saved_row_key(card)
 
 
-def _discover_row_verdict(card: dict) -> str | None:
+def _discover_row_verdict(card: dict) -> tuple[str, str] | None:
     token = health_verdict_token(card)
-    return VERDICT_EMOJI.get(token) if token else None
+    return (token, VERDICT_BADGE_LABEL[token]) if token else None
 
 
 def _render_discover_tab(client) -> dict | None:

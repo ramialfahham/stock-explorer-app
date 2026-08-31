@@ -12,6 +12,48 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR !65 OPEN, 2026-08-30: Discover row verdict is a CSS dot, not emoji
+
+Status: **implemented, reviewed, MR open awaiting merge.** Branch `feat/discover-row-verdict-dot`,
+MR at https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/65. Next concrete
+action: once merged, sync local `main` and delete the branch.
+Owner reported the list's health-verdict indicator looked "scattered." Measured directly in the
+running app: every row's own flexbox layout was already pixel-identical (offset exactly 0.0
+across every sampled row); the misalignment was the native emoji's (🟢/🟡/🔴) own internal
+vertical glyph metrics, which vary by platform/font, not a CSS bug. Fixed by rendering a plain
+CSS-drawn circle instead: same three colors, same meaning, pixel-exact by construction. **No
+visible text label was added**, on explicit owner instruction: a word like "Healthy" sitting
+next to the row's one displayed metric would read as if it rated that specific number, when the
+verdict is actually derived from 3-6 different metrics depending on company type. The label
+(already-existing, owner-approved vocabulary: Healthy/Mixed/Fragile) reaches only the dot's
+`aria-label`, an accessibility improvement over the emoji (which had no reliable spoken name).
+One review round, both required reviewers passed clean; full account in that branch's
+`.claude/task/review.md`.
+
+## NOT YET SCOPED, found 2026-08-30: Discover list renders ~924 live widgets at once
+
+**This is a real, reproducible architectural problem, not yet scoped as a task. Next concrete
+action for a fresh session: scope it properly (Explore -> Plan -> Confirm) before touching any
+code.** The owner reported that tapping a list row to open its card visibly hangs before
+anything happens. Measured directly in the running app (not assumed): with the full 923-row
+list showing, a click takes ~2.4 seconds before Streamlit even *starts* processing it, because
+the page has 931 individual `st.button` widgets and ~20,600 DOM nodes mounted simultaneously,
+one full `st.button` per row for the tap mechanism. Narrowing the list to a 39-company market
+drops that pre-processing delay to ~0.6-0.7s, confirming the correlation. Separately, and less
+conclusively diagnosed, the actual server-side script run itself is also inconsistently slow
+(roughly 100ms-2s) in a way not clearly tied to company identity, cache warmth, Supabase fetches
+(bulk-loaded once, not per-card), or sector benchmarks (precomputed, not computed live) --
+ruled those out by reading the code, not just by guessing; this second issue needs real
+profiling, not more black-box browser timing, before it can be explained.
+
+**Working recommendation, not yet owner-approved: paginate the list** (render ~30-50 rows at a
+time instead of all ~924 buttons simultaneously). This does not reduce what's browsable --
+everything stays reachable via filter/search, nothing is hidden -- and does not reopen the
+"first-time Discover default" decision above (that was about not curating a smaller subset for
+beginners; this is a technical fix for a widget-count ceiling, a completely different
+justification). Flagged as a real tension to resolve explicitly when this is scoped, not
+something to wave away.
+
 ## MR !58 MERGED, 2026-08-30: Discover reworked to filter -> list -> focus
 
 Retired the one-card-at-a-time walk for a scrollable, alphabetically-ordered list of every

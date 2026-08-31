@@ -31,17 +31,29 @@ def build_row_html(title: str, subtitle: str) -> str:
 def build_rich_row_html(
     title: str,
     subtitle: str,
-    verdict_emoji: str | None,
+    verdict: tuple[str, str] | None,
     metric: tuple[str, str] | None,
 ) -> str:
     """A row with a health verdict and one lead metric alongside title/subtitle.
 
     Keeps the base `ss-row` class so it inherits every tap-target and hover rule the plain
-    row already has (see styles.py); only the internal layout differs. `verdict_emoji` and
+    row already has (see styles.py); only the internal layout differs. `verdict` and
     `metric` are both optional and independent: a card with no assessment yet, or no value
     for its type's lead metric, still renders the row, just without that piece.
+
+    `verdict` is `(token, label)`, e.g. `("green", "Healthy")`: `token` selects the dot's
+    color via a CSS modifier class, `label` is the dot's only accessible name (`aria-label`).
+    Rendered as a plain CSS-drawn circle, not a color emoji character -- a colored-circle
+    emoji's internal vertical metrics vary by platform/font, which is what made the list
+    look misaligned row to row despite every row's own layout being pixel-identical.
     """
-    verdict_html = f'<span class="ss-row-verdict">{_esc(verdict_emoji)}</span>' if verdict_emoji else ""
+    verdict_html = ""
+    if verdict:
+        token, label = verdict
+        verdict_html = (
+            f'<span class="ss-row-verdict ss-row-verdict--{_esc(token)}" '
+            f'role="img" aria-label="{_esc(label)}"></span>'
+        )
     metric_html = ""
     if metric:
         label, value = metric
@@ -97,7 +109,7 @@ def render_rich_row_list(
     on_select: Callable[[_T], None],
     title_fn: Callable[[_T], str],
     subtitle_fn: Callable[[_T], str],
-    verdict_fn: Callable[[_T], str | None],
+    verdict_fn: Callable[[_T], tuple[str, str] | None],
     metric_fn: Callable[[_T], tuple[str, str] | None],
     row_key_fn: Callable[[_T], str],
 ) -> None:
