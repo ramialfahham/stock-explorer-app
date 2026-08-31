@@ -30,29 +30,35 @@ verdict is actually derived from 3-6 different metrics depending on company type
 One review round, both required reviewers passed clean; full account in that branch's
 `.claude/task/review.md`.
 
-## NOT YET SCOPED, found 2026-08-30: Discover list renders ~924 live widgets at once
+## Discover list performance: scoped 2026-08-31, not yet decided
 
-**This is a real, reproducible architectural problem, not yet scoped as a task. Next concrete
-action for a fresh session: scope it properly (Explore -> Plan -> Confirm) before touching any
-code.** The owner reported that tapping a list row to open its card visibly hangs before
-anything happens. Measured directly in the running app (not assumed): with the full 923-row
-list showing, a click takes ~2.4 seconds before Streamlit even *starts* processing it, because
-the page has 931 individual `st.button` widgets and ~20,600 DOM nodes mounted simultaneously,
-one full `st.button` per row for the tap mechanism. Narrowing the list to a 39-company market
-drops that pre-processing delay to ~0.6-0.7s, confirming the correlation. Separately, and less
-conclusively diagnosed, the actual server-side script run itself is also inconsistently slow
-(roughly 100ms-2s) in a way not clearly tied to company identity, cache warmth, Supabase fetches
-(bulk-loaded once, not per-card), or sector benchmarks (precomputed, not computed live) --
-ruled those out by reading the code, not just by guessing; this second issue needs real
-profiling, not more black-box browser timing, before it can be explained.
+[`docs/backlog/discover_list_performance.md`](../docs/backlog/discover_list_performance.md).
+Doc-only, two-round scope-auditor review; MR !66 open,
+`docs/scope-discover-list-performance`, awaiting merge.
+Found 2026-08-30 while investigating a report that tapping a list row visibly hangs before the
+card opens. Confirmed by direct measurement: with the full 923-row list showing, a click takes
+~2.4s before Streamlit even starts processing it, because the page mounts 931 individual
+`st.button` widgets and ~20,600 DOM nodes unconditionally, every render, no pagination or
+windowing (`frontend/row_ui.py`'s `_render_tappable_rows`). Narrowing to a 39-company market
+drops that to ~0.6-0.7s, confirming the correlation.
 
-**Working recommendation, not yet owner-approved: paginate the list** (render ~30-50 rows at a
-time instead of all ~924 buttons simultaneously). This does not reduce what's browsable --
-everything stays reachable via filter/search, nothing is hidden -- and does not reopen the
-"first-time Discover default" decision above (that was about not curating a smaller subset for
-beginners; this is a technical fix for a widget-count ceiling, a completely different
-justification). Flagged as a real tension to resolve explicitly when this is scoped, not
-something to wave away.
+**New since the last note: a concrete, code-grounded (not yet empirically confirmed) mechanism
+for the second, previously-unexplained symptom** (inconsistent server-side run duration,
+~100ms-2s). `_render_tappable_rows`'s per-row click handler calls `st.rerun()` unconditionally
+right after `on_select`, aborting the already-in-progress run and starting a fresh one; because
+this fires from inside the row-rendering loop, **the aborted run's cost before the abort scales
+with how far down the list the clicked row sits**. This would explain the inconsistency without
+a per-company explanation, and means the two symptoms may share one root cause (rendering all
+rows unconditionally), not two separate problems. Not yet confirmed with a controlled test; the
+scoping doc flags it as the first thing a profiling pass should check.
+
+**Next concrete action:** get the owner's call on the doc's open questions (pagination vs.
+alternatives, page size, whether the `st.rerun()` hypothesis needs its own spike first) before
+writing a build contract. Working, not-yet-approved recommendation: pagination, since it
+addresses the confirmed problem directly, requires no new dependency, and doesn't reopen the
+"first-time Discover default" decision above (that was about content curation for beginners;
+this is a technical widget-count fix, a different justification, but similar-looking outcome
+worth keeping distinct wherever this is explained).
 
 ## MR !58 MERGED, 2026-08-30: Discover reworked to filter -> list -> focus
 
