@@ -1,96 +1,103 @@
 # Review
 
-diff_sha256: c2f81fce2c56815b093fb220d2b3e76fbf0a60c2fb483867fa0e3c2ae00335a9
+diff_sha256: c1bc1f029b6bc278c6f77d9d3dfea9ac0fb398159de8ab0e31d877bfa28a04ca
 
-Two review rounds. Required reviewers per routing (`.claude/review_routing.json`):
+Three review rounds. Required reviewers per routing (`.claude/review_routing.json`):
 scope-auditor (always), cto-reviewer (`frontend/*`, `tests/*`). No dbt or `docs/data_contract.md`
 file in this diff, so analytics-engineer-reviewer and equity-analyst-reviewer are not required.
 
 **Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
 this session, so each ran as a general-purpose agent instructed to read its own role file
 verbatim first. Cold, blinded, read-only input; the staged index was frozen to a patch file and
-sha256 before every dispatch and never moved while reviewers were running. Round 2's
-scope-auditor dispatch was interrupted by a Claude Code crash mid-run; the crashed agent was not
-resumable in the fresh session and was re-dispatched cleanly against the same frozen diff rather
-than trusting a partial transcript.
+sha256 before every dispatch and never moved while reviewers were running.
 
-**Final verdicts (round 2, the commit gate):** scope-auditor PASS, cto-reviewer PASS.
+**Final verdicts (round 3, the commit gate):** scope-auditor PASS, cto-reviewer PASS.
 
 ## What this is
 
-Fixes the click-latency problem the owner reported after the Discover pagination fix (MR !70)
-shipped: "substantially faster... but still delayed 1-2 seconds." Diagnosed with temporary
-server-side timing instrumentation (not shipped, removed before this diff was staged -- the
-earlier browser-side JS-timer approach used to verify MR !70 was found unreliable, throttled on
-a reported-hidden preview tab). Found: `get_anon_client()` (`frontend/supabase_client.py`)
-rebuilt a brand-new Supabase client via `create_client(url, key)` from scratch on every single
-Streamlit script rerun, measured at ~1.06-1.09s per call, versus ~0.12-0.18s for everything else
-in a run combined. Because `frontend/row_ui.py`'s row click handler calls `st.rerun()` right
-after registering a click, this cost was paid twice per click, closely matching the reported
-1-2s. Fixed with `@st.cache_resource`, Streamlit's own primitive for an expensive-to-construct,
-shareable resource with no per-user state. Live-verified post-fix: two clicks measured at ~0.30s
-and ~0.47s total click-to-response, down from ~1.2-1.4s for a single run pre-fix.
+Two small, already-diagnosed UI bugs from the row-tap-target investigation (MR !67), surfaced
+to the owner as a "what's next" recommendation once the click-latency work landed, confirmed
+with a plain "yes":
+
+1. **Market filter dropdown offered markets with zero companies.** `frontend/markets.py`'s
+   `MARKET_DISPLAY_NAMES` is a static 9-market dict; `explore_filters.market_filter_options()`
+   listed every entry regardless of whether that market had any eligible companies exported yet
+   (4 of the 9 were onboarded but the pipeline hadn't run for them since). Fixed:
+   `market_filter_options()` now takes the live `cards` list and only includes a market with at
+   least one eligible card, preserving the registry-ingest ordering among the ones shown, with a
+   self-healing session-state guard mirroring the existing `explore_sector` pattern.
+2. **Filters/stats stayed visible on the focus card.** `_render_explore_filters()` and the
+   "remaining match your filters" portion of `_render_scope_stats()` ran unconditionally on the
+   Discover tab regardless of focus state. Fixed: both now skip when a card is focused,
+   `{saved} saved` still renders regardless, matching Saved's own already-established behavior.
+
+Live-verified at both desktop and (after round 1's finding) an actual 480x900 mobile viewport.
 
 ## Round-by-round findings and fixes
 
-**Round 1**: scope-auditor FAILED on two internal-consistency defects in the new
-"Discover click latency" handover entry: (a) its heading said "reviewed" while its own Status:
-line, left as unedited context, said "review in progress"; (b) a cross-reference elsewhere in
-the file quoted the OLD heading text of a different entry ("Discover list paginated") verbatim,
-but this same diff renamed that heading to "MR !70 MERGED, 2026-08-31: Discover list paginated."
-Both fixed. Separately, cto-reviewer FAILED on a real test gap:
-`tests/frontend/test_supabase_client.py`'s credential-missing test called `get_anon_client()`
-only once, which cannot distinguish a correct fix from a regression where the failure itself
-gets cached (a second call under the same failure condition silently returning something falsy
-instead of re-raising). Fixed: the test now calls it three times in a loop and asserts
-`RuntimeError` on each.
+**Round 1**: scope-auditor FAILED on two points: (a) this diff is a Discover-chrome interaction
+change, so `docs/working_agreement.md`'s UX PR gate applies unconditionally, not only when a
+product decision is involved -- the original contract only addressed the working agreement's
+separate decision-rights question (§6). Fixed: the contract now walks through all five gate
+items explicitly, including a `north_star.md` check (the Browse row already says the focus view
+uses "the same layout Saved's focus view already uses," and Saved has no Filters row, so this
+change moves Discover INTO alignment, not away from it). (b) The new 480px smoke-checklist rows
+this diff itself added to `docs/ui/discover_header.md` were authored without ever being
+exercised at 480px -- only desktop-width accessibility-tree checks had been done. Fixed:
+actually re-verified at a 480x900 viewport -- no horizontal scroll on the list or focus view,
+Filters row genuinely absent with no leftover gap (screenshot-confirmed), Save/Not now
+reachable, "Back to list" restores cleanly. cto-reviewer PASSED round 1 cleanly, independently
+tracing the session-state guard's correctness and every branch of the new `discover_focused`
+condition.
 
-**Round 2**: cto-reviewer independently mutation-tested the round-1 test fix -- wrote a
-hypothetical regression (a version that caches the exception and returns `None` on retry),
-confirmed the round-1 single-call assertion would have passed against it (bug hidden) while the
-round-2 three-call version correctly fails on the second call -- and independently confirmed
-`st.cache_resource` does not cache exceptions in this repo's pinned Streamlit version. PASSED.
-scope-auditor's dispatch crashed mid-run (Claude Code process crash, unrelated to the diff) and
-was re-dispatched cleanly against the same frozen diff; verified all three round-1 fixes landed,
-re-ran the full grep sweep for any other stale cross-reference to the renamed heading (none
-found), and re-confirmed `pytest` (430 passed) and the em/en-dash rule independently. PASSED.
+**Round 2**: scope-auditor PASSED, independently re-verifying the north_star reasoning against
+`docs/ui/saved_list.md`'s own wireframe (confirmed Saved's focus view genuinely has no Filters
+row) and re-running the full suite fresh. Noted, not as a FAIL basis, an edge case: if the
+Discover pool ever became completely empty while a card was still focused (not currently
+reachable via Save/Skip/filter-change, which all clear `discover_focus_key`), the pre-existing
+empty-pool message would show while this diff's own fix hides the Filters control it points to.
+Also noted it could not reproduce the 480px live verification itself (no Supabase credentials in
+its review environment) and assessed via code/CSS reasoning instead, finding nothing that
+contradicted the claim. cto-reviewer PASSED, confirming no stale caller of the old
+`market_filter_options()` signature remains anywhere in the repo.
 
-## scope-auditor (round 2, final)
+**Round 3**: the edge case was recorded in `.claude/active_work.md` for the owner's future
+awareness, explicitly not fixed (low likelihood, not a scope or decision-rights issue). Both
+reviewers PASSED, re-confirming the note's technical accuracy against the actual code
+(`_render_discover_tab`'s empty-pool early-return firing before the focus-key self-heal),
+re-running `pytest` fresh (435 passed), and re-checking scope/decisions_reserved/the UX gate
+account are all still accurate.
+
+## scope-auditor (round 3, final)
 VERDICT: PASS
 risks_checked:
-- Whether `@st.cache_resource` counts as a new mechanism requiring escalation: `st.cache_data`
-  (the sibling primitive) is already established practice in this codebase
-  (`frontend/saved_news.py`, documented in `docs/ux_principles_finanz_lern_apps.md`) --
-  `cache_resource` is the same family of built-in framework primitive, not a new
-  dependency/service/framework.
-- Both round-1 fixes verified landed and no other stale cross-reference to the renamed heading
-  survived anywhere else in the file or repo.
-- `scope_paths` respected exactly; `decisions_reserved: none` accurate against the default
-  owner-decision list (this only changes how often an existing client object is constructed,
-  reducing cost, not raising it).
-- No doc-sync gap: only `docs/backlog/discover_list_performance.md` references this behavior,
-  and it's updated in this same diff.
-- UX PR gate correctly not triggered: backend caching only, zero UI/copy/interaction change.
-- `impact_map`'s "single call site" claim confirmed via grep (`frontend/app.py:532`, only one).
-- No em/en dash on any added line; `pytest` claim (430 passed) independently re-run and
-  confirmed, including that the credential-missing test genuinely loops three times.
+- Round-2 edge-case note's technical accuracy verified directly against `_render_discover_tab`:
+  the empty-pool early-return fires before the focus-key self-heal, and all three actual paths
+  to an empty pool today (Save, Not now, filter change) clear `discover_focus_key`
+  unconditionally, so the scenario genuinely requires an out-of-band trigger.
+- Scope: exactly six touched files, all inside `scope_paths`; no silent widening.
+- `pytest` re-run independently: 435 passed, matching `done_when` exactly.
+- Em/en-dash rule: zero matches on any added line across the whole patch.
+- UX PR gate account cross-checked against source, not just the contract's own claim:
+  `north_star.md`'s Browse row verbatim-matches the claimed quote; `_render_saved_tab` confirmed
+  to never call anything Filters-row-equivalent. `docs/ui/discover_header.md` read in full: no
+  stale claim left implying Filters/stats always show regardless of focus.
+- `impact_map`'s "Saved and Search untouched" claim verified directly: neither tab's render
+  function calls `_render_explore_filters` or the changed `show_remaining` logic.
+- `decisions_reserved: none` re-audited: both changes are bug fixes, not new product content;
+  the owner's "yes" confirmation is recorded in `active_work.md`, not left only in chat.
 
-## cto-reviewer (round 2, final)
+## cto-reviewer (round 3, final)
 VERDICT: PASS
 risks_checked:
-- Mutation-tested the round-1 test fix directly: wrote a hypothetical regression that caches
-  the exception and returns `None` on retry, confirmed the round-1 single-call version would
-  have passed against it (bug hidden) while the round-2 three-call version fails on the second
-  call -- the fix genuinely closes the gap, not just superficially.
-- Independently probed `st.cache_resource` (this repo's pinned Streamlit version) directly:
-  confirmed it does not cache exceptions -- a decorated function that raises re-executes and
-  re-raises on every subsequent call, matching the test's premise.
-- Core fix re-verified fresh: `@st.cache_resource` on `get_anon_client()`, single call site
-  (`frontend/app.py:532`), no change to `create_client()`'s own call, query logic, or auth scope.
-- Full suite re-run fresh: 430 passed (428 baseline + 2 new), including the new test file in
-  isolation.
-- Doc-consistency fixes verified by reading the current file, not just the diff: the click
-  latency entry and the renamed MR !70 entry are in the correct order, and the downstream
-  cross-reference matches the actual renamed heading.
-- No em/en dash on any added line, scanned programmatically. Scope discipline: every file in
-  the diff matches `scope_paths`; no new dependency, service, lifecycle hook, or workflow step.
+- New mechanism / boring technology: `market_filter_options()` mirrors the existing
+  `sectors_for_market()` pattern -- pure in-memory filtering over already-loaded data, no new
+  dependency, service, or workflow step.
+- Cost: no additional Supabase query volume; the focused-card branch now skips
+  `_discover_pool(client)` entirely, reducing per-render cost, not raising it.
+- Re-run/interruption safety: `market_filter_options(cards)` is a pure function, safe under
+  Streamlit's rerun-on-every-interaction model; the new self-healing reset is idempotent and
+  mirrors the pre-existing `explore_sector` pattern.
+- Guard integrity: only process/handover artifacts and the two frontend files plus their tests
+  changed -- no hooks, CI config, or dependency files touched.
+- Verified independently: `pytest` 435 passed; zero em/en dash on any added line.
