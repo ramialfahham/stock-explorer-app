@@ -29,9 +29,53 @@ def test_default_market_filter_is_all_markets() -> None:
 
 
 def test_market_filter_options_all_markets_first() -> None:
-    options = market_filter_options()
+    cards = [_card("AAPL", "Technology", market="us_sp500")]
+    options = market_filter_options(cards)
     assert options[0][0] == ALL_MARKETS
     assert options[0][1] == "All markets"
+
+
+def test_market_filter_options_all_markets_present_even_with_no_cards() -> None:
+    """An empty pool must never leave the Filters popover with zero options."""
+    options = market_filter_options([])
+    assert options == [(ALL_MARKETS, "All markets")]
+
+
+def test_market_filter_options_includes_a_market_with_an_eligible_card() -> None:
+    cards = [_card("AAPL", "Technology", market="us_sp500")]
+    options = market_filter_options(cards)
+    codes = {code for code, _ in options}
+    assert "us_sp500" in codes
+
+
+def test_market_filter_options_excludes_a_market_with_zero_eligible_cards() -> None:
+    """The actual bug this guards: a market can be onboarded (present in
+    MARKET_DISPLAY_NAMES) with zero exported data yet, e.g. the pipeline hasn't run for it
+    since onboarding -- the dropdown must not offer a choice that silently returns nothing."""
+    cards = [_card("AAPL", "Technology", market="us_sp500")]
+    options = market_filter_options(cards)
+    codes = {code for code, _ in options}
+    assert "fr_cac40" not in codes
+
+
+def test_market_filter_options_excludes_a_card_marked_not_eligible() -> None:
+    ineligible = {**_card("AAPL", "Technology", market="fr_cac40"), "is_card_eligible": False}
+    options = market_filter_options([ineligible])
+    codes = {code for code, _ in options}
+    assert "fr_cac40" not in codes
+
+
+def test_market_filter_options_preserves_registry_order_among_included_markets() -> None:
+    """Ordering must match MARKET_DISPLAY_NAMES's own registry-ingest order, not the order
+    cards happen to appear in -- FTSE 100 lists before Nikkei 225 in the registry regardless
+    of which one this pool saw an eligible card for first."""
+    cards = [
+        _card("SONY", "Technology", market="jp_nikkei225"),
+        _card("HSBA", "Financial Services", market="uk_ftse100"),
+    ]
+    options = market_filter_options(cards)
+    codes = [code for code, _ in options]
+    assert codes.index("uk_ftse100") < codes.index("jp_nikkei225")
 
 
 def test_filter_scope_summary() -> None:

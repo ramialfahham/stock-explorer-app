@@ -10,9 +10,22 @@ ALL_MARKETS = "all"
 ALL_SECTORS = "all"
 
 
-def market_filter_options() -> list[tuple[str, str]]:
+def market_filter_options(cards: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """Only markets with at least one eligible card, so the Filters popover never offers a
+    choice that silently returns an empty list -- a market can be registered in
+    `MARKET_DISPLAY_NAMES` (onboarded) with zero exported data yet (pipeline hasn't run for it
+    since onboarding). Preserves `MARKET_DISPLAY_NAMES`'s own registry-ingest-order ordering
+    among the markets actually shown, matching `sectors_for_market()`'s pattern of deriving
+    options from live cards rather than a static list."""
+    eligible_codes = {
+        card.get("market_code") for card in cards if card.get("is_card_eligible")
+    }
     options: list[tuple[str, str]] = [(ALL_MARKETS, "All markets")]
-    options.extend((code, market_display_name(code)) for code in MARKET_DISPLAY_NAMES)
+    options.extend(
+        (code, market_display_name(code))
+        for code in MARKET_DISPLAY_NAMES
+        if code in eligible_codes
+    )
     return options
 
 
