@@ -15,13 +15,17 @@
 ├─────────────────────────────────────────────┤
 │ [ Discover | Saved | Search ]          [⋯] │  4. Nav (+ overflow)
 ├─────────────────────────────────────────────┤
-│ [ Filters ▾ ]          All markets · All sectors │  5. Filters (Discover only)
+│ [ Filters ▾ ]          All markets · All sectors │  5. Filters (Discover list only)
 ├─────────────────────────────────────────────┤
-│ 47 match your filters · 3 saved             │  6. Stats (context line)
-├─────────────────────────────────────────────┤
+│ 47 match your filters · 3 saved             │  6. Stats (Discover list only;
+├─────────────────────────────────────────────┤     3 saved alone once focused)
 │ … tab body (card, list, or search) …        │
 └─────────────────────────────────────────────┘
 ```
+
+Rows 5-6 above depict the **list** view. Once a card is focused, row 5 (Filters) disappears
+entirely and row 6 (Stats) collapses to the `{saved} saved` count alone -- see their table
+entries below.
 
 | # | Block | Source | Notes |
 |---|--------|--------|-------|
@@ -29,8 +33,8 @@
 | 2 | Tagline | `_render_brand_header()` | One line under brand |
 | 3 | Disclosure | `_render_brand_header()` | "Not investment advice." A permanent caption, not a one-time screen. Replaced the old first-run landing gate (removed) so the disclosure stays reachable every visit instead of appearing once and never again |
 | 4 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
-| 5 | Filters | `_render_explore_filters()` | **Discover tab only**: one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()` |
-| 6 | Stats | `_render_scope_stats()` | Discover: `{remaining} match your filters · {saved} saved`; Saved/Search: `{saved} saved` only |
+| 5 | Filters | `_render_explore_filters()` | **Discover list view only**: one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()`. Hidden entirely once a card is focused -- a filter for a list that isn't currently on screen is dead chrome |
+| 6 | Stats | `_render_scope_stats()` | Discover list view: `{remaining} match your filters · {saved} saved`; Discover focus view, Saved, and Search: `{saved} saved` only |
 
 Sticky **Save** / **Not now** actions render **below** the card body on Discover — not in the header.
 
@@ -38,9 +42,9 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 
 ## Filters popover
 
-**Closed state:** `Filters` button + right-aligned summary (`All markets · All sectors` or scoped labels).
+**Closed state:** `Filters` button + right-aligned summary (`All markets · All sectors` or scoped labels). Not shown at all once a card is focused -- see the vertical-order table above.
 
-**Open state:** Market selectbox, then Sector selectbox (sector list respects current market). Changes return to the list (clearing any open focus card) via `_on_filter_change`.
+**Open state:** Market selectbox, then Sector selectbox (sector list respects current market). Market options are derived from live eligible cards (`market_filter_options()`), not `MARKET_DISPLAY_NAMES`'s full static list -- a market with zero exported companies yet doesn't appear, so the dropdown never offers a choice that silently returns nothing. Changes return to the list (clearing any open focus card) via `_on_filter_change`.
 
 **Removed:** “Surprise me worldwide” checkbox — use **All markets** in the popover instead.
 
@@ -94,7 +98,9 @@ Popover content order:
 
 - [ ] Brand + tagline + disclosure + nav visible without scrolling
 - [ ] **⋯** menu inline with Discover / Saved / Search (not on its own row)
-- [ ] Discover: Filters row + stats + top of card (or list) fit without horizontal scroll
+- [ ] Discover list view: Filters row + stats + top of the list fit without horizontal scroll
+- [ ] Discover focus view: Filters row is gone, stats shows `{saved} saved` alone, no leftover
+      gap where the Filters row used to be
 - [ ] Save / Not now reachable when a card is shown
 
 ---

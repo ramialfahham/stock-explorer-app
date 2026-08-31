@@ -12,13 +12,63 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !71 OPEN, 2026-08-31: Discover click latency (Supabase anon-client caching)
+## Discover header polish, 2026-08-31: review in progress, not yet committed
 
-Status: **implemented, reviewed (2 rounds; one Claude Code crash mid-review, recovered by
-re-dispatching against the same frozen diff -- see that branch's `.claude/task/review.md` for
-the full account), MR open awaiting merge.** Branch `perf/cache-supabase-anon-client`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/71. Next concrete action:
-once merged, sync local `main` and delete the branch.
+Status: **implemented, review in progress as this entry is written -- see that branch's
+`.claude/task/review.md` once committed for the full account.** Branch
+`fix/discover-header-polish`, not yet pushed.
+Two small, already-diagnosed bugs from the row-tap-target investigation (MR !67), surfaced to
+the owner as a "what's next" recommendation once the click-latency work landed, and confirmed
+with a plain "yes":
+- **Market filter dropdown offered markets with zero companies.** `frontend/markets.py`'s
+  `MARKET_DISPLAY_NAMES` is a static 9-market dict; `explore_filters.market_filter_options()`
+  listed every entry regardless of whether that market actually had eligible companies exported
+  yet (4 of the 9 -- France, Netherlands, Switzerland, Spain -- were onboarded but the pipeline
+  hadn't run for them since). `market_filter_options()` now takes the live `cards` list (matching
+  `sectors_for_market()`'s existing pattern) and only includes a market with at least one
+  eligible card, preserving `MARKET_DISPLAY_NAMES`'s registry-ingest ordering among the ones
+  shown. If the current session's `explore_market` selection drops out of the live list, it
+  resets to `default_market_filter()` before the selectbox renders, matching the existing
+  self-healing pattern already used for `explore_sector`. Live-verified via the accessibility
+  tree: exactly the 5 markets with live data (S&P 500, FTSE 100, Nikkei 225, ASX 200, DAX) now
+  appear, the other 4 don't.
+- **Filters/stats stayed visible on the focus card.** `_render_explore_filters()` and the
+  "remaining match your filters" portion of `_render_scope_stats()` ran unconditionally whenever
+  the active tab was Discover, with no check for whether a card was focused. Both now skip when
+  `st.session_state["discover_focus_key"]` is set; `{saved} saved` still renders regardless,
+  matching Saved's own already-established behavior of never hiding it. Live-verified: opening a
+  row hid the Filters button and "match your filters" text while "0 saved" remained, "Back to
+  list" restored both, Saved's own header (a separate, untouched code path) was unaffected.
+
+`docs/ui/discover_header.md` updated (vertical-order table rows 5-6, the wireframe caption, the
+Filters-popover section, and the 480px smoke checklist) to describe both as list-view-only.
+5 new tests in `tests/frontend/test_explore_filters.py` cover `market_filter_options()`'s
+filtering and ordering.
+
+**Round-1 scope-auditor catch: this diff is a Discover-chrome interaction change, so
+`docs/working_agreement.md`'s UX PR gate applies unconditionally, not only when a product
+decision is involved** -- the original contract only addressed the working agreement's separate
+decision-rights question (§6), not this gate. Walked through all five gate items: north_star
+check (`north_star.md`'s Browse row already says focus view matches "the same layout Saved's
+focus view already uses" -- Saved has no Filters row, so this change moves Discover INTO
+alignment, not away from it); component specs (`discover_header.md` updated in this same diff);
+one primary job and a mobile wireframe go in the MR body; 480px smoke was actually re-run at a
+480x900 viewport (round 1's live verification had only checked desktop width) -- no horizontal
+scroll on the list or focus view, Filters row genuinely absent with no leftover gap on focus
+(screenshot-confirmed), Save/Not now reachable, "Back to list" restores cleanly.
+
+**Round-2 scope-auditor edge case, not fixed, flagged for the owner's awareness:** if the
+Discover pool ever became completely empty while a card was still focused (not currently
+reachable via Save/Skip/filter-change, which all clear `discover_focus_key`; would need
+something like an external eligibility sync mid-session), `_render_discover_tab`'s existing
+empty-pool message ("Try another market, sector, or clear filters") would show while the
+Filters control it points to is hidden by this same diff's own fix. Low likelihood, not a
+scope or decision-rights issue, not actioned here.
+
+## MR !71 MERGED, 2026-08-31: Discover click latency (Supabase anon-client caching)
+
+Reviewed 2 rounds; one Claude Code crash mid-review, recovered by re-dispatching against the
+same frozen diff -- see that branch's `.claude/task/review.md` for the full account.
 Owner reported the app "substantially faster" after MR !70's pagination fix (see the entry below
 this one) but still delayed 1-2s per click. Diagnosed with server-side timing instrumentation
 (temporary, not shipped -- the earlier browser-side JS-timer approach this session used for

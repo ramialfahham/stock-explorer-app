@@ -270,8 +270,10 @@ def _render_explore_filters(client) -> None:
     filter_btn, summary_col = st.columns([2, 5], vertical_alignment="center")
     with filter_btn:
         with st.popover("Filters"):
-            market_labels = {code: label for code, label in market_filter_options()}
-            market_codes = [code for code, _ in market_filter_options()]
+            market_labels = {code: label for code, label in market_filter_options(cards)}
+            market_codes = [code for code, _ in market_filter_options(cards)]
+            if st.session_state.get("explore_market") not in market_codes:
+                st.session_state["explore_market"] = default_market_filter()
             st.selectbox(
                 "Market",
                 options=market_codes,
@@ -492,15 +494,19 @@ def _discovery_page(client) -> None:
     _render_brand_header()
     active = _render_bottom_nav(saved_count=saved_count, client=client)
 
-    if active == "Discover":
+    discover_focused = active == "Discover" and bool(
+        st.session_state.get("discover_focus_key")
+    )
+
+    if active == "Discover" and not discover_focused:
         _render_explore_filters(client)
 
     _sync_eligible_counts(client)
-    remaining = len(_discover_pool(client)) if active == "Discover" else 0
+    remaining = len(_discover_pool(client)) if active == "Discover" and not discover_focused else 0
     _render_scope_stats(
         remaining=remaining,
         saved_count=saved_count,
-        show_remaining=active == "Discover",
+        show_remaining=active == "Discover" and not discover_focused,
     )
 
     focused_card = None
