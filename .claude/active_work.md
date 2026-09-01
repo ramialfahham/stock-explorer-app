@@ -12,14 +12,15 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## IN PROGRESS, 2026-09-01: Decline sector/size threshold calibration (Gemini feedback point 9)
+## MR !79 OPEN, 2026-09-01: Decline sector/size threshold calibration (Gemini feedback point 9)
 
-Status: **implemented (docs only), reviewed 2 rounds (round 1: scope-auditor PASS, plus a
-voluntary equity-analyst-reviewer pass since the routing table doesn't require one for this
-file -- PASS with two wording precision fixes applied; round 2: scope-auditor FAILED on a third,
-unattributed claim that slipped in while applying those fixes, now fixed), not yet committed.**
-Branch `docs/decline-sector-size-calibration`. Next concrete action: write
-`.claude/task/review.md`, commit, and wait for explicit go-ahead to push/open the MR.
+Status: **implemented (docs only), reviewed 3 rounds (scope-auditor PASS by the final round,
+plus a voluntary equity-analyst-reviewer pass -- see that branch's `.claude/task/review.md` for
+the full account), committed (2 commits: decision + review.md separately), pushed, MR open
+awaiting merge.** Branch `docs/decline-sector-size-calibration`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/79. Pushed to the `gitlab`
+remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
+merged, sync local `main` and delete the branch.
 
 Owner asked to investigate point 9 (sector/size threshold calibration) properly, explicitly
 warning against inventing a proposal not grounded in real practice, and was openly skeptical
