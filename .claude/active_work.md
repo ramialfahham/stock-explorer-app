@@ -12,12 +12,19 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## IN PROGRESS, 2026-09-01: Ratio sign-inversion guard (Gemini feedback point 1)
+## MR !73 OPEN, 2026-09-01: Ratio sign-inversion guard (Gemini feedback point 1)
 
 Status: **implemented, dbt build + full `pytest` green (442 passed), reviewed 2 rounds (all four
 required reviewers PASS on round 2 -- see that branch's `.claude/task/review.md` for the full
-account), not yet committed.** Branch `fix/ratio-sign-inversion-guard`. Next concrete action:
-write `.claude/task/review.md`, commit, then wait for explicit go-ahead to push/open the MR.
+account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
+Branch `fix/ratio-sign-inversion-guard`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/73. Pushed to the `gitlab`
+remote, not `origin` -- `origin` points at a suspended GitHub account
+(`github.com/ramialfahham/stock-swipe-app`) unrelated to this project's actual GitLab-based
+workflow; use `git push gitlab <branch>` and `glab mr create`, not `git push`/`gh`, in this repo.
+Next concrete action: once merged, sync local `main` and delete the branch. Production verdicts
+only move on the next real pipeline run post-merge (the local dev sample has no company that
+trips either guard, so this couldn't be visually verified pre-merge).
 
 First point acted on from `docs/backlog/gemini_verdict_feedback.md` (filed 2026-08-31). Two
 operating-type verdict axes could flip sign when a denominator went negative, and the old
