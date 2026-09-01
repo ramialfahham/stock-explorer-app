@@ -12,16 +12,21 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !73 OPEN, 2026-09-01: Ratio sign-inversion guard (Gemini feedback point 1)
+## MR !73 MERGED, 2026-09-01: Ratio sign-inversion guard (Gemini feedback point 1)
 
-Status: **implemented, dbt build + full `pytest` green (442 passed), reviewed 2 rounds (all four
-required reviewers PASS on round 2 -- see that branch's `.claude/task/review.md` for the full
-account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
-Branch `fix/ratio-sign-inversion-guard`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/73. Pushed to the `gitlab`
-remote, not `origin` -- `origin` points at a suspended GitHub account
-(`github.com/ramialfahham/stock-swipe-app`) unrelated to this project's actual GitLab-based
-workflow; use `git push gitlab <branch>` and `glab mr create`, not `git push`/`gh`, in this repo.
+Status: **merged, local `main` synced, branch deleted, remote-tracking ref pruned.** MR was at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/73. Reviewed 2 rounds (all
+four required reviewers PASS on round 2 -- see that MR's commit `1d841a31` /
+`.claude/task/review.md` for the full account).
+
+**Remote note for future sessions: `origin` points at a suspended GitHub account**
+(`github.com/ramialfahham/stock-swipe-app`), unrelated to this project's actual GitLab-based
+workflow. Use `git push gitlab <branch>` and `glab mr create`, not `git push`/`gh`, in this repo.
+
+**Next concrete action: re-run the pipeline (dbt build already re-runs on the next scheduled CI
+job; `scripts/generate_assessments.py` against Supabase) to actually recompute production
+verdicts against this fix -- not yet done, and not something this session verified beyond the
+local dev sample (63 cards, no company that trips either guard).**
 Next concrete action: once merged, sync local `main` and delete the branch. Production verdicts
 only move on the next real pipeline run post-merge (the local dev sample has no company that
 trips either guard, so this couldn't be visually verified pre-merge).
