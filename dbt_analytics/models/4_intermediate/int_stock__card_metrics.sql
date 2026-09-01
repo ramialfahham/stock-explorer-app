@@ -121,6 +121,13 @@ metrics as (
                 then 'annual_latest'
         end as ebit_margin_basis,
         s.info_revenue_growth * 100.0 as revenue_growth_yoy_pct,
+        -- Passed through raw, alongside the ratio that uses it, so scripts/assessment_rules.py
+        -- can tell a genuine net-cash position (net_debt negative, ebitda positive) apart from
+        -- a sign flip caused by negative earnings (ebitda <= 0) -- the ratio's own sign can't
+        -- distinguish these, since either net_debt or ebitda going negative flips it the same
+        -- way. Data-only -- not in the metric catalogue or the Supabase export; see
+        -- .claude/task/contract.md.
+        s.info_ebitda,
         case
             when coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash) is not null
                 and s.info_ebitda is not null
@@ -144,6 +151,13 @@ metrics as (
                 and s.info_market_cap != 0
                 then s.info_free_cashflow / s.info_market_cap * 100.0
         end as fcf_yield_pct,
+        -- Passed through raw, alongside the ratio that uses it, for the same reason as
+        -- info_ebitda above: total debt is never negative in this data, but it CAN be exactly
+        -- zero, and 0 divided by a negative equity is 0, not negative -- so a debt-free company
+        -- with negative equity would silently evade a check on the ratio's own sign.
+        -- scripts/assessment_rules.py checks this column's sign directly instead. Data-only --
+        -- not in the metric catalogue or the Supabase export; see .claude/task/contract.md.
+        s.stmt_stockholders_equity,
         case
             when s.stmt_total_debt is not null
                 and s.stmt_stockholders_equity is not null

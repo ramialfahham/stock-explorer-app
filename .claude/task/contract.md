@@ -1,99 +1,142 @@
 # Task contract
 
-objective: Two small, already-diagnosed UI bugs from the row-tap-target investigation, both
-  confirmed in code before this task started, neither requiring a product decision:
-  1. **Market filter dropdown offers markets with zero companies.** `frontend/markets.py`'s
-     `MARKET_DISPLAY_NAMES` is a static, hardcoded 9-market dict; `explore_filters
-     .market_filter_options()` lists every entry in it regardless of whether that market
-     actually has any eligible companies exported yet. Confirmed live earlier this session via
-     direct Supabase query: 4 of the 9 markets (France, Netherlands, Switzerland, Spain) are
-     onboarded but have zero exported data (pipeline hasn't run for them since onboarding), so
-     the Filters popover currently offers four choices that silently return an empty list.
-  2. **Filters/stats stay visible on the focus card.** `frontend/app.py`'s
-     `_render_explore_filters()` and the "remaining match your filters" portion of
-     `_render_scope_stats()` are called unconditionally whenever `active == "Discover"`, with no
-     check for whether a card is currently focused -- so "923 match your filters" and a Filters
-     button that only makes sense for browsing the list both stay visible while looking at one
-     specific company's Snapshot.
+objective: Fix a ratio sign-inversion problem in the verdict engine, the first point from the
+  owner's filed Gemini feedback (`docs/backlog/gemini_verdict_feedback.md`). Two operating-type
+  metrics can flip sign when a denominator goes negative, and the verdict currently bands the
+  flipped value by raw magnitude, which can read a distressed company as "good" on that axis:
+  1. **`debt_to_equity`** -- total debt is never negative in this data, so a negative ratio
+     always means negative shareholders' equity. The metric catalogue's own applicability note
+     already says so: "heavy buybacks can push equity below zero, and the ratio then flips or
+     explodes and stops being meaningful." `card_copy.py`'s display gloss already special-cases
+     this ("Negative equity, so this ratio isn't a normal leverage read"); the verdict engine
+     does not. (See amendments: shipped as a direct check on equity's own sign, not the ratio's,
+     after a review round caught that the ratio's sign is not a reliable tell.)
+  2. **`net_debt_to_ebitda`** -- both net debt and EBITDA can independently be negative, so the
+     ratio's sign alone can't tell genuine net cash (good) from real debt divided by negative
+     earnings (bad, currently mis-banded as good). Telling these apart needs EBITDA's own sign,
+     which isn't available to the Python verdict layer today -- only the already-divided ratio
+     is passed through. Owner chose the precise fix: expose raw `info_ebitda` end to end so the
+     check is exact, not a proxy heuristic.
 
 scope_paths:
-  - frontend/explore_filters.py
-  - frontend/app.py
-  - tests/frontend/test_explore_filters.py
-  - docs/ui/discover_header.md
+  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
+  - dbt_analytics/models/4_intermediate/_intermediate.yml
+  - dbt_analytics/models/5_marts/mart_stock_cards.sql
+  - dbt_analytics/models/5_marts/_marts.yml
+  - scripts/assessment_rules.py
+  - scripts/generate_assessments.py
+  - tests/tooling/test_assessment_rules.py
+  - docs/data_contract.md
+  - docs/backlog/gemini_verdict_feedback.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved: none -- both are bug fixes with an already-diagnosed, mechanically-verifiable
-  root cause, not a product/UX decision. The user-facing content itself (market names, stats
-  wording) is unchanged; only which markets are offered and when the row is shown changes, both
-  restoring already-established, already-approved behavior (a filter shouldn't offer an empty
-  result; chrome that's list-only shouldn't persist onto the single-item focus view, matching
-  how the rest of Discover's chrome already behaves).
+decisions_reserved: none for the shape of the fix -- both the approach (guard both metrics'
+  verdict banding, not the raw displayed value) and the net_debt_to_ebitda mechanism (precise,
+  via a new `info_ebitda` column, not the ebit_margin_pct proxy heuristic) were explicitly
+  decided by the owner this session. This DOES change verdicts already shown to users for
+  companies matching either pattern -- the owner was told this explicitly before confirming.
 
 done_when:
-  - `market_filter_options()` takes the live `cards` list (matching `sectors_for_market()`'s
-    existing pattern) and only includes a market if at least one eligible card exists for it,
-    preserving `MARKET_DISPLAY_NAMES`'s registry-ingest-order ordering among the ones shown.
-    "All markets" always included regardless.
-  - The call site in `frontend/app.py`'s `_render_explore_filters` passes the already-available
-    `cards` list. If `st.session_state["explore_market"]` holds a code no longer in the live
-    options (a market that just dropped out), it's reset to `default_market_filter()` before the
-    selectbox renders, matching the existing self-healing pattern already used for
-    `explore_sector` two lines below it -- not left to crash `st.selectbox` on a stale value.
-  - `_render_explore_filters()` and the "remaining match your filters" portion of
-    `_render_scope_stats()` (i.e. `show_remaining`) are both skipped when a Discover card is
-    currently focused (`st.session_state.get("discover_focus_key")` set), matching how the rest
-    of Discover's list-only chrome already doesn't appear on the focus view. `saved_count` still
-    renders regardless of focus state, matching Saved's own already-established behavior of
-    never hiding it.
-  - `docs/ui/discover_header.md` updated: row 5 (Filters) and row 6 (Stats) in the vertical-order
-    table, and the wireframe/its caption, no longer imply both always show regardless of focus.
-  - `tests/frontend/test_explore_filters.py` covers `market_filter_options()`'s new filtering
-    behavior: a market with an eligible card is included, one with zero eligible cards is
-    excluded, "All markets" is always present and first, ordering among included markets matches
-    `MARKET_DISPLAY_NAMES`'s own order.
-  - `pytest` green. Done: 435 passed (430 baseline + 5 new).
-  - Live verification, not assumed from the code: with the dev server warm, confirm the Filters
-    popover's market list matches the markets actually present in the live pool (not the full
-    static 9); confirm opening a focus card hides the Filters row and the "N match your filters"
-    text, and confirm "Back to list" restores both; confirm Saved and Search are unaffected
-    (their own header behavior is untouched by this change). Done: confirmed via the accessibility
-    tree that all 5 markets with live eligible data (S&P 500, FTSE 100, Nikkei 225, ASX 200,
-    DAX) appear in the dropdown and all 4 without data (CAC 40, AEX, SMI, IBEX 35) don't; opening
-    a row hid the Filters button and "match your filters" text while "0 saved" remained, "Back to
-    list" restored both, and Saved's own header (unaffected code path) still showed correctly.
-  - **`docs/working_agreement.md`'s UX PR gate, checked explicitly (round-1 scope-auditor catch --
-    this diff is a Discover-chrome interaction change and the gate applies unconditionally, not
-    only when a product decision is involved):**
-    1. **north_star check** -- `docs/north_star.md`'s Discover Browse row already states focus
-       view uses "the same layout Saved's focus view already uses." Saved has no Filters row at
-       all, so hiding Discover's on focus brings it INTO alignment with this rule, not away from
-       it.
-    2. **Component specs** -- `docs/ui/discover_header.md` updated in this same diff (vertical-
-       order table, wireframe, Filters-popover section, 480px checklist) to match.
-    3. **One primary job** -- goes in the MR description, not this contract.
-    4. **Mobile wireframe** -- goes in the MR body (an ASCII sketch of the collapsed focus-view
-       header), matching `discover_header.md`'s own updated wireframe.
-    5. **480px smoke** -- actually exercised at a 480x900 viewport (not just desktop-width
-       accessibility-tree checks, which is all round 1 had): no horizontal scroll on the list or
-       the focus view; Filters row genuinely absent with no leftover gap on focus (screenshot
-       confirmed); Save/Not now reachable; "Back to list" restores the Filters row and stats text
-       with no horizontal scroll either.
+  - `int_stock__card_metrics.sql` exposes `info_ebitda` AND `stmt_stockholders_equity` as new
+    output columns (both already fetched upstream, just not currently passed past the
+    intermediate layer). Documented in `_intermediate.yml`, explicitly noted as internal
+    verdict-computation signals, not displayed metrics -- neither added to the metric catalogue,
+    neither added to the Supabase export list (`scripts/export_to_supabase.py`'s
+    `EXPORT_COLUMNS` untouched). `stmt_stockholders_equity` added in a review round (see
+    amendments): checking `debt_to_equity`'s own sign missed a debt-free company with negative
+    equity (total debt exactly zero divides out to a zero ratio regardless of equity's sign), so
+    the guard needs equity's own sign directly, the same reason `info_ebitda` exists for
+    `net_debt_to_ebitda`.
+  - `mart_stock_cards.sql` passes both columns through too, since `generate_assessments.py`
+    reads from this mart, not the intermediate model directly. Documented in `_marts.yml`.
+  - `generate_assessments.py`'s `ASSESSMENT_INPUT_COLUMNS` includes both directly (not via
+    `INPUT_FIELDS_BY_TYPE`, which specifically means "the full displayed set per type" per its
+    own docstring -- neither is displayed nor catalogued).
+  - `assessment_rules.py`: one generalized guard function (`_axis_unless_denominator_nonpositive`,
+    taking the band to use as a parameter) checks each ratio's raw denominator directly, not the
+    ratio's own sign. `net_debt_to_ebitda`'s verdict banding treats itself as `"unknown"` when
+    `info_ebitda` is present and `<= 0`. `debt_to_equity`'s verdict banding treats itself as
+    `"weak"` (see amendments -- not `"unknown"` as first planned) when `stmt_stockholders_equity`
+    is present and `<= 0`. A MISSING denominator does not trigger either guard -- both band
+    normally by magnitude, matching every other axis's "missing means unknown, never assumed"
+    treatment and, not incidentally, not breaking any existing test (none currently supply either
+    new column).
+  - `compute_input_hash` needs no separate change: its payload already includes the computed
+    `verdict` string directly, so a verdict that changes because of either new guard already
+    moves the hash and regenerates the AI-written read, without either new column needing its own
+    hash entry.
+  - `tests/tooling/test_assessment_rules.py`: new cases proving each guard actually changes an
+    outcome (a card that currently reads green/good on the affected axis with a sign-inverted
+    value now reads unknown/yellow-at-best), a case per guard confirming a genuinely healthy
+    company (real net cash + positive EBITDA; real low debt-to-equity + positive equity) is
+    unaffected, a case per guard confirming a MISSING denominator does not trigger it, and a case
+    proving `debt_to_equity`'s guard fires on the total-debt-exactly-zero edge case the ratio's
+    own sign would miss (`debt_to_equity == 0.0`, `stmt_stockholders_equity` negative).
+  - `docs/data_contract.md`'s verdict-rules section gets a short note on both guards, since it's
+    the authoritative description of how the color is decided.
+  - `docs/backlog/gemini_verdict_feedback.md` updated: point 1 marked acted on, with a pointer
+    to this branch.
+  - dbt build/test green for both changed models (unit test fixtures for
+    `int_stock__card_metrics` may need `info_ebitda` added to their `expect` blocks if the test
+    framework requires exact column matching -- verify, don't assume, during Verify).
+  - `pytest` green.
   - No em dash or en dash on any added line.
 
 impact_map:
-  - Discover tab only; Saved and Search's own header/stats logic is untouched.
-  - Pure display-layer filtering and a visibility condition; no change to pool computation,
-    card eligibility, or the underlying Supabase query/export.
-  - No dbt, ingestion, or data model change.
+  - Changes verdicts for real cards: any operating-type company with negative shareholders'
+    equity, or with `info_ebitda <= 0` (distressed/pre-profit by the catalogue's own words), no
+    longer gets a false assist toward green on that specific axis. Some cards currently green
+    may move to yellow. Corrected per amendments: the two guards do NOT land the same way --
+    `net_debt_to_ebitda`'s move to "unknown" is the neutral, no-worse-than-missing treatment
+    every other axis already gets, but `debt_to_equity`'s move to "weak" is deliberately a real
+    demotion (a supporting axis in "unknown" never changes anything), so it CAN cap a card at
+    yellow that would otherwise have reached green on every other axis.
+  - Requires re-running the pipeline (dbt build, then `scripts/generate_assessments.py`) to
+    actually recompute verdicts against the fix -- not something `pytest` alone verifies.
+  - Known, explicitly out of scope: the AI-written prose read still sees `net_debt_to_ebitda`'s
+    raw (possibly sign-flipped) value via its existing metric brief and could describe it
+    misleadingly even though the verdict itself is now correct. That's the separately-filed
+    "structured AI-read output" backlog point, not fixed here.
+  - No frontend change; the card face already shows whatever `net_debt_to_ebitda`/
+    `debt_to_equity` value the mart computes, unchanged by this fix (only the internal
+    verdict-banding interpretation of that value changes, not the number itself or its
+    display).
 
 amendments:
-  - **Round-1 scope-auditor catch:** the original contract's `decisions_reserved` argued only
-    that neither bug needed a §6 product/UX decision, which answers the working agreement's
-    decision-rights question but not the separate, unconditional UX PR gate in
-    `docs/working_agreement.md` (it does not carve out well-diagnosed bug fixes). Fixed: all
-    five gate items walked through explicitly above, and the 480px smoke was actually run at a
-    480x900 viewport (round 1's live verification only checked desktop width via the
-    accessibility tree, not mobile).
+  - Discovered mid-implementation: `debt_to_equity` is a SUPPORTING axis in `_verdict_operating`,
+    and supporting axes only affect the card's color when banded `"weak"` (they can block green,
+    never rescue it). The plan as written would have banded a negative value `"unknown"` --
+    exactly the same treatment supporting axes already tolerate for a genuinely MISSING value --
+    which is a no-op on every card's actual color, not the fix described above (some cards
+    currently green may move to yellow). Corrected to band `"weak"` instead: negative
+    shareholders' equity is a real solvency concern, not a neutral unknown, and `"weak"` gives it
+    the same yellow-capping ceiling any other weak supporting axis already has, never forcing red
+    on its own, consistent with every other supporting axis in this function. Surfaced to the
+    owner before implementing (asked to choose between keeping the no-op version, making it
+    count against the card, or dropping the debt_to_equity guard entirely); owner pushed back on
+    settling for the no-op as under-scoped work, agreeing with the proposed `"weak"` fix.
+  - Round-1 review: equity-analyst-reviewer FAILED the diff with three findings, the other three
+    required reviewers (scope-auditor, cto-reviewer, analytics-engineer-reviewer) PASSED. (1)
+    `docs/data_contract.md`'s prose calling negative equity "a real solvency concern" overclaimed
+    against the catalogue's own applicability note, which attributes it to "heavy buybacks" too
+    -- a benign, common pattern among the mature large-caps this app covers, not necessarily
+    distress. Fixed: softened to describe `"weak"` as a deliberate caution given the two causes
+    can't be told apart, not a claim about which one it is. (2) Real logic gap: checking
+    `debt_to_equity`'s own sign misses a debt-free company with negative equity, since
+    `stmt_total_debt` (never negative) can be exactly zero, and zero divided by any nonzero
+    number is zero, not negative -- such a card would have silently kept banding "good". Fixed:
+    added `stmt_stockholders_equity` as a second raw-denominator passthrough (mirroring
+    `info_ebitda`) and generalized the one guard function to check either ratio's actual
+    denominator, not its sign; new test proves the specific `debt_to_equity == 0.0` edge case is
+    now caught. (3) impact_map's blanket "none moves toward a WORSE color" line contradicted this
+    same document's amendments section, which explains `"weak"` was chosen BECAUSE it is a real
+    demotion `"unknown"` would not have been. Fixed: impact_map corrected above. Also surfaced,
+    not fixed here: `statement_roe_pct` (`stmt_net_income_common / stmt_stockholders_equity`) has
+    the identical sign-ambiguity problem `debt_to_equity` had, already documented as an accepted,
+    unaddressed output by an existing dbt unit test
+    (`card_metrics_statement_metrics_negative_equity`); out of this task's confirmed scope, noted
+    in `docs/backlog/gemini_verdict_feedback.md` as a likely-direct follow-on since the same
+    `stmt_stockholders_equity` column this fix now exposes would drive it too. All four reviewers
+    re-run against the corrected diff; see `.claude/task/review.md`.

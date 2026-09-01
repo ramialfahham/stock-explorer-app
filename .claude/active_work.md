@@ -12,12 +12,69 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !72 OPEN, 2026-08-31: Discover header polish
+## MR !73 OPEN, 2026-09-01: Ratio sign-inversion guard (Gemini feedback point 1)
 
-Status: **implemented, reviewed (3 rounds -- see that branch's `.claude/task/review.md` for the
-full account), MR open awaiting merge.** Branch `fix/discover-header-polish`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/72. Next concrete action:
-once merged, sync local `main` and delete the branch.
+Status: **implemented, dbt build + full `pytest` green (442 passed), reviewed 2 rounds (all four
+required reviewers PASS on round 2 -- see that branch's `.claude/task/review.md` for the full
+account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
+Branch `fix/ratio-sign-inversion-guard`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/73. Pushed to the `gitlab`
+remote, not `origin` -- `origin` points at a suspended GitHub account
+(`github.com/ramialfahham/stock-swipe-app`) unrelated to this project's actual GitLab-based
+workflow; use `git push gitlab <branch>` and `glab mr create`, not `git push`/`gh`, in this repo.
+Next concrete action: once merged, sync local `main` and delete the branch. Production verdicts
+only move on the next real pipeline run post-merge (the local dev sample has no company that
+trips either guard, so this couldn't be visually verified pre-merge).
+
+First point acted on from `docs/backlog/gemini_verdict_feedback.md` (filed 2026-08-31). Two
+operating-type verdict axes could flip sign when a denominator went negative, and the old
+magnitude-only banding read the flipped value as good:
+- **`net_debt_to_ebitda`** (core axis) -- both net debt and EBITDA can independently be negative,
+  so the ratio's own sign can't tell genuine net cash from real debt over negative earnings.
+  Fixed precisely (owner's call over a proxy heuristic): a new `info_ebitda` passthrough column
+  added end to end (`int_stock__card_metrics.sql` -> `mart_stock_cards.sql` ->
+  `generate_assessments.py`'s `ASSESSMENT_INPUT_COLUMNS`, data-only, not catalogued, not
+  exported to Supabase) lets the axis band `"unknown"` when `info_ebitda` is present and `<= 0`.
+  This is a CORE axis, so the fix changes real card colors: green -> yellow for any such card.
+- **`debt_to_equity`** (supporting axis) -- total debt is never negative in this data, so a
+  negative ratio always means negative shareholders' equity. **Mid-implementation correction**:
+  the original plan banded this `"unknown"` too, but supporting axes only affect the card's color
+  when banded `"weak"` (they block green, never rescue it) -- and a negative value was ALWAYS
+  `"good"` under the old banding too, so `"unknown"` would have been a no-op on every card's
+  actual color. Caught this, flagged it, owner pushed back on settling for the no-op ("reads like
+  you don't want to do the professional work"); corrected to band `"weak"` instead, which caps
+  the card at yellow the same way any other weak supporting axis already does.
+- **Round-1 equity-analyst-reviewer FAIL, round-2 fix.** Checking `debt_to_equity`'s own sign
+  missed a debt-free company (`stmt_total_debt` exactly zero) with negative equity, since zero
+  divided by any nonzero number is zero, not negative -- such a card would have silently kept
+  banding "good". Fixed by adding a second raw-denominator passthrough,
+  `stmt_stockholders_equity` (mirroring `info_ebitda`), and generalizing the one guard function
+  to check either ratio's actual denominator directly, never the ratio's own sign. Also softened
+  `docs/data_contract.md`'s prose, which had overclaimed negative equity as "a real solvency
+  concern" when the metric catalogue itself attributes it partly to benign buybacks -- now framed
+  as a deliberate caution given the two causes can't be told apart. See
+  `.claude/task/contract.md`'s `amendments` for the full two-round account.
+
+**Sibling bug found, not fixed here:** `statement_roe_pct` uses the same `stmt_stockholders_equity`
+denominator and has the identical sign-ambiguity problem (a loss over negative equity divides out
+to a spuriously positive ROE) -- already documented as an accepted, unaddressed output by an
+existing dbt unit test. Out of this task's confirmed scope; noted in
+`docs/backlog/gemini_verdict_feedback.md` as a likely-direct follow-on, since the same
+`stmt_stockholders_equity` column this fix now exposes would drive it too.
+
+7 new test cases in `tests/tooling/test_assessment_rules.py` (both guards flip a real case, both
+leave a genuinely-healthy case alone, both ignore a MISSING denominator/value rather than treating
+absence as bad, plus the debt-free/negative-equity edge case round 1 caught). `docs/data_contract.md`'s
+verdict-rules section and the backlog doc's point 1 updated. Local dev sample (63 cards, 7
+tickers/market) has no company that trips either guard, so `generate_assessments.py --dry-run`
+against it still shows all-green -- expected sampling gap, not a bug; guard correctness rests on
+the unit tests, not this local sample. Actual production verdicts only move on the next real
+pipeline run post-merge.
+
+## MR !72 MERGED, 2026-08-31: Discover header polish
+
+Status: **merged, local `main` synced, branch deleted.** MR was at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/72.
 Two small, already-diagnosed bugs from the row-tap-target investigation (MR !67), surfaced to
 the owner as a "what's next" recommendation once the click-latency work landed, and confirmed
 with a plain "yes":

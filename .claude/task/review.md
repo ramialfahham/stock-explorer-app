@@ -1,103 +1,107 @@
 # Review
 
-diff_sha256: c1bc1f029b6bc278c6f77d9d3dfea9ac0fb398159de8ab0e31d877bfa28a04ca
+diff_sha256: 676da00bb79b04bf9f8d20fbc5f2a831653554f4449368ff15179d4708bb8025
 
-Three review rounds. Required reviewers per routing (`.claude/review_routing.json`):
-scope-auditor (always), cto-reviewer (`frontend/*`, `tests/*`). No dbt or `docs/data_contract.md`
-file in this diff, so analytics-engineer-reviewer and equity-analyst-reviewer are not required.
+Two rounds. Round 1 (hash db9d2f8b02726c3e7abd8fd9ec3a5e144f1f69ce0b29768a15f69134ca169c7c):
+scope-auditor / cto-reviewer / analytics-engineer-reviewer PASS, equity-analyst-reviewer FAIL on
+three findings (see below). All three findings fixed; round 2 (hash
+b0065325918f11d2e4c1505da180bfbd83405bc2200773958e86018fcf81fa03) got PASS from all four. The
+hash above is the FINAL staged hash, one wording-only touch-up to `.claude/active_work.md` after
+round 2 (fixing a test-count miscount scope-auditor itself flagged in round 2) -- no reviewer
+routes to that file beyond scope-auditor's "always" rule, and the fix matches exactly what
+scope-auditor suggested, so this was not re-dispatched as a third full round.
 
-**Reviewer dispatch:** the plugin's reviewer agent types are not registered as dispatchable in
-this session, so each ran as a general-purpose agent instructed to read its own role file
-verbatim first. Cold, blinded, read-only input; the staged index was frozen to a patch file and
-sha256 before every dispatch and never moved while reviewers were running.
+## Round 1 findings (equity-analyst-reviewer FAIL) and how each was resolved
 
-**Final verdicts (round 3, the commit gate):** scope-auditor PASS, cto-reviewer PASS.
+1. **Overclaiming.** `docs/data_contract.md`'s prose called negative `debt_to_equity` "a real
+   solvency concern," stated as fact, when the metric catalogue's own applicability text
+   attributes negative equity partly to "heavy buybacks" -- a benign, common pattern among the
+   mature large-caps this app covers, not necessarily distress. Fixed: reworded in
+   `docs/data_contract.md`, `scripts/assessment_rules.py`'s guard-section comment, and the
+   backlog doc to frame `weak` as a deliberate caution given the two causes can't be
+   distinguished from the data available, not a claim about which one it is.
+2. **Real logic gap.** The guard checked `debt_to_equity`'s own sign to detect negative equity,
+   but `stmt_total_debt` (the ratio's numerator) can be exactly zero, and zero divided by any
+   nonzero number is zero, not negative -- a debt-free company with negative equity would
+   silently evade the guard and keep banding "good". Fixed: added a second raw-denominator
+   passthrough column, `stmt_stockholders_equity` (mirroring the existing `info_ebitda` pattern
+   for `net_debt_to_ebitda`), end to end through `int_stock__card_metrics.sql` ->
+   `mart_stock_cards.sql` -> `generate_assessments.py`'s `ASSESSMENT_INPUT_COLUMNS`. Generalized
+   the guard into one function, `_axis_unless_denominator_nonpositive` (now taking the band to
+   apply as a parameter), used for both metrics, checking each ratio's actual denominator
+   directly, never the ratio's own sign. New test
+   `test_debt_to_equity_guard_checks_equity_directly_not_the_ratios_sign` proves the specific
+   edge case (`debt_to_equity == 0.0`, `stmt_stockholders_equity` negative) is now caught.
+3. **Internal inconsistency.** `.claude/task/contract.md`'s `impact_map` claimed "none moves
+   toward a WORSE color than the guard's own 'unknown, neutral' treatment would justify," which
+   contradicted the contract's own `amendments` section explaining `debt_to_equity` was banded
+   `weak` specifically BECAUSE `unknown` would have been a no-op (i.e. `weak` demonstrably is a
+   worse color for some cards). Fixed: `impact_map` corrected to state the two guards land
+   differently (`net_debt_to_ebitda` -> `unknown` is neutral; `debt_to_equity` -> `weak` is a
+   real demotion).
 
-## What this is
+Also surfaced during round 1 fix-up, not fixed here (see `.claude/task/contract.md`'s
+`amendments` and `docs/backlog/gemini_verdict_feedback.md`): `statement_roe_pct` uses the same
+`stmt_stockholders_equity` denominator and has the identical sign-ambiguity problem, already
+documented as an accepted, unaddressed output by an existing dbt unit test
+(`card_metrics_statement_metrics_negative_equity`). Out of this task's confirmed scope.
 
-Two small, already-diagnosed UI bugs from the row-tap-target investigation (MR !67), surfaced
-to the owner as a "what's next" recommendation once the click-latency work landed, confirmed
-with a plain "yes":
-
-1. **Market filter dropdown offered markets with zero companies.** `frontend/markets.py`'s
-   `MARKET_DISPLAY_NAMES` is a static 9-market dict; `explore_filters.market_filter_options()`
-   listed every entry regardless of whether that market had any eligible companies exported yet
-   (4 of the 9 were onboarded but the pipeline hadn't run for them since). Fixed:
-   `market_filter_options()` now takes the live `cards` list and only includes a market with at
-   least one eligible card, preserving the registry-ingest ordering among the ones shown, with a
-   self-healing session-state guard mirroring the existing `explore_sector` pattern.
-2. **Filters/stats stayed visible on the focus card.** `_render_explore_filters()` and the
-   "remaining match your filters" portion of `_render_scope_stats()` ran unconditionally on the
-   Discover tab regardless of focus state. Fixed: both now skip when a card is focused,
-   `{saved} saved` still renders regardless, matching Saved's own already-established behavior.
-
-Live-verified at both desktop and (after round 1's finding) an actual 480x900 mobile viewport.
-
-## Round-by-round findings and fixes
-
-**Round 1**: scope-auditor FAILED on two points: (a) this diff is a Discover-chrome interaction
-change, so `docs/working_agreement.md`'s UX PR gate applies unconditionally, not only when a
-product decision is involved -- the original contract only addressed the working agreement's
-separate decision-rights question (§6). Fixed: the contract now walks through all five gate
-items explicitly, including a `north_star.md` check (the Browse row already says the focus view
-uses "the same layout Saved's focus view already uses," and Saved has no Filters row, so this
-change moves Discover INTO alignment, not away from it). (b) The new 480px smoke-checklist rows
-this diff itself added to `docs/ui/discover_header.md` were authored without ever being
-exercised at 480px -- only desktop-width accessibility-tree checks had been done. Fixed:
-actually re-verified at a 480x900 viewport -- no horizontal scroll on the list or focus view,
-Filters row genuinely absent with no leftover gap (screenshot-confirmed), Save/Not now
-reachable, "Back to list" restores cleanly. cto-reviewer PASSED round 1 cleanly, independently
-tracing the session-state guard's correctness and every branch of the new `discover_focused`
-condition.
-
-**Round 2**: scope-auditor PASSED, independently re-verifying the north_star reasoning against
-`docs/ui/saved_list.md`'s own wireframe (confirmed Saved's focus view genuinely has no Filters
-row) and re-running the full suite fresh. Noted, not as a FAIL basis, an edge case: if the
-Discover pool ever became completely empty while a card was still focused (not currently
-reachable via Save/Skip/filter-change, which all clear `discover_focus_key`), the pre-existing
-empty-pool message would show while this diff's own fix hides the Filters control it points to.
-Also noted it could not reproduce the 480px live verification itself (no Supabase credentials in
-its review environment) and assessed via code/CSS reasoning instead, finding nothing that
-contradicted the claim. cto-reviewer PASSED, confirming no stale caller of the old
-`market_filter_options()` signature remains anywhere in the repo.
-
-**Round 3**: the edge case was recorded in `.claude/active_work.md` for the owner's future
-awareness, explicitly not fixed (low likelihood, not a scope or decision-rights issue). Both
-reviewers PASSED, re-confirming the note's technical accuracy against the actual code
-(`_render_discover_tab`'s empty-pool early-return firing before the focus-key self-heal),
-re-running `pytest` fresh (435 passed), and re-checking scope/decisions_reserved/the UX gate
-account are all still accurate.
-
-## scope-auditor (round 3, final)
+## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Round-2 edge-case note's technical accuracy verified directly against `_render_discover_tab`:
-  the empty-pool early-return fires before the focus-key self-heal, and all three actual paths
-  to an empty pool today (Save, Not now, filter change) clear `discover_focus_key`
-  unconditionally, so the scenario genuinely requires an out-of-band trigger.
-- Scope: exactly six touched files, all inside `scope_paths`; no silent widening.
-- `pytest` re-run independently: 435 passed, matching `done_when` exactly.
-- Em/en-dash rule: zero matches on any added line across the whole patch.
-- UX PR gate account cross-checked against source, not just the contract's own claim:
-  `north_star.md`'s Browse row verbatim-matches the claimed quote; `_render_saved_tab` confirmed
-  to never call anything Filters-row-equivalent. `docs/ui/discover_header.md` read in full: no
-  stale claim left implying Filters/stats always show regardless of focus.
-- `impact_map`'s "Saved and Search untouched" claim verified directly: neither tab's render
-  function calls `_render_explore_filters` or the changed `show_remaining` logic.
-- `decisions_reserved: none` re-audited: both changes are bug fixes, not new product content;
-  the owner's "yes" confirmation is recorded in `active_work.md`, not left only in chat.
+- All 11 changed files fall inside `scope_paths`; no file outside the contract touched.
+- Round-1 finding 1 (overclaim) confirmed fixed by re-reading the corrected prose against the
+  catalogue's own applicability text.
+- Round-1 finding 2 (debt-free/negative-equity edge case) confirmed fixed by tracing
+  `_axis_unless_denominator_nonpositive` against the specific `debt_to_equity == 0.0,
+  stmt_stockholders_equity == -500.0` case and confirming via `pytest` and `dbt build`.
+- Round-1 finding 3 (impact_map self-contradiction) confirmed fixed by re-reading `impact_map`
+  and `amendments` side by side.
+- Ran `pytest` (442 passed) and `dbt build --select int_stock__card_metrics mart_stock_cards`
+  (19 unit tests + 20 data tests + 2 models, all green) directly, not on trust.
+- Scanned every added line for em/en dash bytes -- zero matches.
 
-## cto-reviewer (round 3, final)
+## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- New mechanism / boring technology: `market_filter_options()` mirrors the existing
-  `sectors_for_market()` pattern -- pure in-memory filtering over already-loaded data, no new
-  dependency, service, or workflow step.
-- Cost: no additional Supabase query volume; the focused-card branch now skips
-  `_discover_pool(client)` entirely, reducing per-render cost, not raising it.
-- Re-run/interruption safety: `market_filter_options(cards)` is a pure function, safe under
-  Streamlit's rerun-on-every-interaction model; the new self-healing reset is idempotent and
-  mirrors the pre-existing `explore_sector` pattern.
-- Guard integrity: only process/handover artifacts and the two frontend files plus their tests
-  changed -- no hooks, CI config, or dependency files touched.
-- Verified independently: `pytest` 435 passed; zero em/en dash on any added line.
+- Confirmed `_axis_unless_denominator_nonpositive` checks the raw denominator via `row.get(...)`
+  directly, never the ratio's own sign, at both call sites in `_verdict_operating`.
+- Hand-traced the debt-free/negative-equity edge case end to end and confirmed the new test
+  exercises it correctly; old ratio-sign-only logic would have failed this test, new logic
+  passes it.
+- Verified `ASSESSMENT_INPUT_COLUMNS` wiring for both `info_ebitda` and `stmt_stockholders_equity`
+  is correct with no double-counting and no Supabase export leak
+  (`build_assessment_records`'s explicit field list omits both).
+- Ran the full test suite directly: all passed, including all new sign-guard tests, no
+  regression from the generalized guard function's new `bad_band` parameter.
+- Grepped touched files for any remaining sign-as-denominator-proxy pattern -- none found;
+  `statement_roe_pct`'s identical latent bug is honestly disclosed as out of scope, not silently
+  left looking fixed.
+
+## analytics-engineer-reviewer
+VERDICT: PASS
+risks_checked:
+- `stmt_stockholders_equity` placement and documentation in `int_stock__card_metrics.sql`,
+  `_intermediate.yml`, `mart_stock_cards.sql`, and `_marts.yml` matches the established
+  `info_ebitda` pattern exactly (data-only, not catalogued, not exported).
+- Confirmed directly (not asserted) that `scripts/export_to_supabase.py`'s `EXPORT_COLUMNS` and
+  `dbt_analytics/seeds/metric_catalogue.csv` are untouched and free of both new column names.
+- Ran `dbt build --project-dir dbt_analytics --profiles-dir .` directly: 122/122 PASS, 0 ERROR,
+  including the pre-existing `card_metrics_statement_metrics_negative_equity` unit test.
+- Verified the `statement_roe_pct` sibling-bug claim in the backlog doc is accurate: the bug is
+  real (confirmed against the existing dbt unit test fixture), the doc note exists, and the code
+  is genuinely untouched -- no partial or inconsistent fix.
+
+## equity-analyst-reviewer
+VERDICT: PASS
+risks_checked:
+- Re-verified the reworded `docs/data_contract.md` prose against the metric catalogue's own
+  applicability text directly -- no longer asserts distress as fact, correctly hedged.
+- Independently traced the zero-debt/negative-equity edge case through
+  `int_stock__card_metrics.sql` -> `mart_stock_cards.sql` -> `generate_assessments.py` ->
+  `_axis_unless_denominator_nonpositive`, confirming the guard now fires on the raw denominator
+  regardless of the ratio's own value.
+- Confirmed a missing (not just non-positive) denominator still bands normally by magnitude for
+  both guards, matching every other axis's missing-means-unknown convention.
+- Confirmed `weak` cannot force RED on its own for a supporting axis, so
+  `docs/data_contract.md`'s "never forcing red on its own" claim is accurate.
