@@ -12,15 +12,15 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## IN PROGRESS, 2026-09-01: Joint liquidity evaluation (Gemini feedback points 6/8)
+## MR !75 OPEN, 2026-09-01: Joint liquidity evaluation (Gemini feedback points 6/8)
 
-Status: **implemented, dbt build + full `pytest` green, round 2 review complete: cto-reviewer,
-analytics-engineer-reviewer, equity-analyst-reviewer all PASS; scope-auditor FAILED on a
-process-only finding (contract.md's amendments prematurely claimed round-2 review had already
-happened, with a stale reviewer count) -- fixed, scope-auditor re-run pending, not yet committed.**
-Branch `fix/joint-liquidity-evaluation`. Next concrete action: re-run scope-auditor alone against
-the corrected contract, then write `.claude/task/review.md`, commit, and wait for explicit
-go-ahead to push/open the MR.
+Status: **implemented, dbt build + full `pytest` green (451 passed), reviewed 3 rounds (all four
+required reviewers PASS by round 3 -- see that branch's `.claude/task/review.md` for the full
+account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
+Branch `fix/joint-liquidity-evaluation`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/75. Pushed to the `gitlab`
+remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
+merged, sync local `main` and delete the branch.
 
 Second point acted on from `docs/backlog/gemini_verdict_feedback.md`. `current_ratio_stmt`
 (supporting axis) and free cash flow used to be graded fully independently in
