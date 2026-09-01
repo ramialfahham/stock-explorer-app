@@ -12,13 +12,15 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## IN PROGRESS, 2026-09-01: statement_roe_pct sign-inversion guard (sibling of MR !73)
+## MR !77 OPEN, 2026-09-01: statement_roe_pct sign-inversion guard (sibling of MR !73)
 
-Status: **implemented, full `pytest` green (459 passed), rounds 1-4 each caught and fixed a real
-issue (see contract amendments for the full account), round 5 pending.** Branch
-`fix/statement-roe-sign-inversion-guard`. Next concrete action: re-run scope-auditor and
-cto-reviewer against the corrected diff (both, since the file changed again after
-scope-auditor's round-4 PASS), then commit and wait for explicit go-ahead to push/open the MR.
+Status: **implemented, full `pytest` green (459 passed), reviewed 5 rounds (rounds 1-4 each
+caught and fixed a real issue -- see that branch's `.claude/task/review.md` for the full
+account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
+Branch `fix/statement-roe-sign-inversion-guard`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/77. Pushed to the `gitlab`
+remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
+merged, sync local `main` and delete the branch.
 
 The sibling bug flagged but not fixed while shipping MR !73: `statement_roe_pct` (`stmt_net_income_common
 / stmt_stockholders_equity`) has the identical sign-ambiguity problem `debt_to_equity` had -- a
