@@ -12,15 +12,26 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !75 OPEN, 2026-09-01: Joint liquidity evaluation (Gemini feedback points 6/8)
+## MR !75 MERGED, 2026-09-01: Joint liquidity evaluation (Gemini feedback points 6/8)
 
-Status: **implemented, dbt build + full `pytest` green (451 passed), reviewed 3 rounds (all four
-required reviewers PASS by round 3 -- see that branch's `.claude/task/review.md` for the full
-account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
-Branch `fix/joint-liquidity-evaluation`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/75. Pushed to the `gitlab`
-remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
-merged, sync local `main` and delete the branch.
+Status: **merged, local `main` synced, branch deleted, remote-tracking ref pruned.** MR was at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/75. Reviewed 3 rounds (all
+four required reviewers PASS by round 3 -- see that MR's commit `78ecdc9a` /
+`.claude/task/review.md` for the full account, including the round-1 financial-reasoning gap a
+review round caught and the redesign that fixed it).
+
+**Both Gemini-feedback points acted on this session (point 1: MR !73, points 6/8: MR !75) share
+one lesson worth carrying forward: a reviewer catching a real logic gap mid-task is normal here,
+not a sign the plan was wrong** -- both times the right move was to redesign properly (expose a
+raw denominator/dollar figure instead of inferring from a derived ratio) rather than patch around
+the finding with a caveat. Remaining backlog items from `docs/backlog/gemini_verdict_feedback.md`
+not yet raised with the owner: point 2 (early-stage classification review), points 3/4 (structured
+AI-read output + hallucination guard), point 5 (outlier-aware metric-range scaling), point 9
+(sector/size threshold calibration -- flagged in the doc itself as the largest of the set,
+warranting its own scoping pass). Also flagged, not yet its own task: `statement_roe_pct` has the
+identical sign-ambiguity bug `debt_to_equity` had (see MR !73's backlog note), and the
+`stmt_stockholders_equity` column MR !73 already exposed would very likely support the same fix
+directly.
 
 Second point acted on from `docs/backlog/gemini_verdict_feedback.md`. `current_ratio_stmt`
 (supporting axis) and free cash flow used to be graded fully independently in
