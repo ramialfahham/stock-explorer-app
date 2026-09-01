@@ -1,120 +1,88 @@
 # Review
 
-diff_sha256: e1721fc1a9a4ec26e864c724aac456d1ad31987af27fbabc56f074d1b48e958a
+diff_sha256: 2837085e8b57b428253c193e21c65ad9d85299b09dde6a2397a80ab3d27f4a23
 
-Five rounds. Round 1 (three reviewers, no `.sql`/`.yml` touched yet): scope-auditor PASS,
-cto-reviewer FAIL, equity-analyst-reviewer FAIL. Round 2 (same three): equity-analyst-reviewer
-PASS, cto-reviewer FAIL again on a deeper version of the same class of gap. Round 3
-(scope-auditor + cto-reviewer; equity-analyst-reviewer's routed file unchanged since its PASS):
-scope-auditor PASS, cto-reviewer FAIL. Round 4 (same two): scope-auditor PASS, cto-reviewer FAIL
-on a fresh error introduced by round 3's own fix. Round 5 (same two): both PASS. The hash above
-is the final staged hash all round-5 verdicts were rendered against.
+Three rounds. Documentation-only change: records a decision (not to calibrate verdict thresholds
+by sector or size, Gemini feedback point 9) rather than implementing anything. Only scope-auditor
+is required per `.claude/review_routing.json` -- the backlog doc doesn't route to any other
+reviewer. An equity-analyst-reviewer pass was dispatched anyway, voluntarily, since the doc makes
+analyst-grade financial claims and the entire point of the task was avoiding an unverified or
+hallucinated conclusion.
 
-## Round 1 findings and how each was resolved
+Round 1: scope-auditor PASS; equity-analyst-reviewer (voluntary) PASS with two precision findings
+(fixed). Round 2: scope-auditor FAIL on a claim introduced while applying those fixes (fixed).
+Round 3: scope-auditor PASS.
 
-1. **equity-analyst-reviewer FAIL -- overreached regulatory justification.** The first version
-   banded `statement_roe_pct` `weak` on `financial` (forcing red outright), reasoned from US bank
-   capital regulation (the FDIC's Prompt Corrective Action framework), after web research the
-   owner explicitly required ("don't hallucinate, do it like it is done in reality"). Caught that
-   this overreached what the data supports: `company_type == 'financial'` is the whole GICS
-   "Financial Services" sector (insurers, asset managers, broker-dealers, payment networks,
-   exchanges, mortgage finance, not only depository banks), spans nine markets under entirely
-   different regulatory regimes, and includes firms (payment networks especially) known for the
-   same benign buyback-driven negative equity operating companies can have -- exactly the case
-   the original reasoning itself said should get the mild treatment. Fixed: changed the
-   financial-type `bad_band` from `"weak"` to `"unknown"`, which still blocks green without
-   forcing red, matching the neutral treatment every other axis gets for undeterminable
-   information.
-2. **cto-reviewer FAIL -- confounded test.** `test_operating_statement_roe_guard_caps_a_
-   negative_equity_card_at_yellow` did not test the property it claimed -- confirmed by mutation
-   testing (reverting only the new guard left the test passing identically) because
-   `debt_to_equity`'s own, already-merged guard checks the SAME `stmt_stockholders_equity` field
-   unconditionally and alone already explains the yellow outcome. Fixed: added a direct
-   function-level test calling `_axis_unless_denominator_nonpositive` directly with each verdict
-   function's actual parameters.
+## Round 1 findings and how each was resolved (equity-analyst-reviewer, voluntary pass)
 
-## Round 2 finding and how it was resolved
+1. **Overclaimed provenance.** Calling the `net_debt_to_ebitda` leverage threshold's 1.5x/3x
+   band "lending-covenant conventions" overclaimed a specific source -- real loan covenants
+   typically sit higher (4x-6x) for leveraged borrowers. Fixed: reworded to "rating-agency-style
+   'low'/'aggressive' leverage tiers," a more accurate analogy, with the covenant-level distinction
+   stated explicitly rather than silently dropped.
+2. **Wrong mechanism named.** "Real analysts handle size effects through required-return
+   premiums" named an equity-valuation discount-rate construct, not how credit/fundamental
+   analysis actually treats issuer size, which is business-risk-profile overlays that TIGHTEN
+   (not loosen) expectations for smaller, less-diversified issuers. Neither finding reversed the
+   conclusion -- the corrected mechanism argues even more strongly against loosening thresholds
+   for small caps than the original, imprecise one did. Fixed: reworded across
+   `docs/backlog/gemini_verdict_feedback.md` and `.claude/task/contract.md`.
 
-3. **cto-reviewer FAIL -- the round-1 fix didn't close the actual gap.** The direct
-   function-level test proved the shared guard function works in isolation, but never called
-   `_verdict_operating` at all, so it provided zero protection against the operating call site
-   itself being silently reverted -- confirmed by mutation testing (reverting the call site left
-   ALL 75 tests passing, including both the confounded verdict-level test and the new isolated
-   function-level test). Root cause: because `debt_to_equity`'s guard fires unconditionally
-   whenever `stmt_stockholders_equity` is negative, independent of `debt_to_equity`'s own value or
-   presence, NO row constructible through `compute_verdict` can ever isolate `statement_roe_pct`'s
-   call site from `debt_to_equity`'s. Fixed: added
-   `test_operating_statement_roe_call_site_is_actually_wired`, using `pytest`'s `monkeypatch`
-   fixture to neutralize `debt_to_equity`'s guard specifically while leaving `statement_roe_pct`'s
-   call to the real guard, then driving the row through `compute_verdict` -- genuinely exercises
-   `_verdict_operating`'s actual code path. Also fixed a stale line in the backlog doc's Related
-   section, left over from the rejected "financial forces red" version.
+Also incorporated the reviewer's completeness note: the decision declines specifically the LIVE
+sector-median mechanism Gemini's point 9 proposed, not every conceivable sector-aware design; a
+deliberately-set, externally-anchored per-sector benchmark table (revised on a cycle, not live)
+would sidestep the instability concern and is worth naming as the version to scope if this is
+ever revisited.
 
-## Round 3 finding and how it was resolved
+## Round 2 finding and how it was resolved (scope-auditor)
 
-4. **cto-reviewer FAIL -- stale shared comment.** The module-level "Ratio sign-inversion guards"
-   preamble comment (untouched by any hunk in the diff until this point) still said "Two
-   operating-type ratios" / "Both guards," undercounting the third guarded metric
-   (`statement_roe_pct`, used from both verdict functions with a role-dependent band) this task
-   added, and contradicting the correctly-updated `docs/data_contract.md`. Fixed: rewrote the
-   preamble to count three guarded metrics across four call sites and explain
-   `statement_roe_pct`'s dual role.
-
-## Round 4 finding and how it was resolved
-
-5. **cto-reviewer FAIL -- a fresh factual error introduced by the round-3 fix.** The rewritten
-   preamble claimed `statement_roe_pct`'s numerator (net income) "is never negative" -- false, a
-   loss is the entire premise of the bug this guard exists to catch, and the claim directly
-   contradicted the preamble's own opening lines. Root cause: over-generalized `debt_to_equity`'s
-   true "numerator never negative" property across to `statement_roe_pct` while merging the two
-   explanations into one sentence. Fixed: rewrote the paragraph to describe three genuinely
-   distinct failure modes separately (net_debt_to_ebitda: numerator can be negative;
-   statement_roe_pct: numerator can also be negative, same double-negative ambiguity, which is
-   why the guard keys on equity's sign alone; debt_to_equity: numerator never negative but can be
-   exactly zero, a distinct third failure mode).
+3. **Unverified claim introduced while fixing the round-1 findings.** The completeness note
+   added in round 1 included a phrase pulled from the reviewer's own suggestion --  "closer to
+   how rating agencies publish industry benchmark tables" -- that was never propagated to
+   `.claude/task/contract.md` (inconsistent across the two documents) and, more importantly, was
+   never independently fact-checked the way the other two corrections were (both had explicit
+   citations; this one didn't). This is exactly the failure mode the whole exercise exists to
+   guard against: an unverified analyst-grade claim slipping into the document during what was
+   meant to be a precision-only fix. Fixed: removed the specific "rating agencies" citation
+   entirely, keeping only the self-evident structural point (deliberately set, revised on a
+   cycle, not live) that needs no external precedent to be true.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Re-verified every factual claim in the final preamble against the actual code, the dbt column
-  comments in `int_stock__card_metrics.sql`, and `metric_catalogue.csv`'s applicability text --
-  the round-4 defect is corrected and no new factual error survives in the same paragraph.
-- Swept the whole repo (not just `scope_paths`) across multiple rounds for the same staleness
-  pattern; found two further low-severity, out-of-scope instances
-  (`scripts/generate_assessments.py`'s comment, `dbt_analytics/models/4_intermediate/_intermediate.yml`'s
-  `stmt_stockholders_equity` description) -- both correctly disclosed in `impact_map` as deferred,
-  not silently dropped.
-- Independently re-verified the call-site count (4 across 3 metrics) by grepping the actual code
-  rather than trusting the comment's own claim.
-- Re-ran `pytest` at each round rather than trusting the contract's claimed counts -- always
-  matched (459 passed on the full suite by the final round).
-- Confirmed `scope_paths`, `done_when`, and cross-doc consistency (contract, `docs/data_contract.md`,
-  backlog doc) hold at every round, with no silently-taken owner-level decision.
+- Verified all four quoted threshold pairs (`net_debt_to_ebitda`, `ebit_margin_pct`,
+  `current_ratio_stmt`, `cash_runway_months`) against the live `scripts/assessment_rules.py`
+  source directly.
+- Verified the `north_star.md` sector-ranking rule quote word-for-word against the actual file.
+- Verified the AI-read's absolute framing claim directly against `VERDICT_MEANING` and
+  `READ_SYSTEM_PROMPT` -- no sector/peer language anywhere in the prompt.
+- Grepped the full diff for the round-2-flagged "rating agencies" phrase across all three
+  rounds; confirmed genuinely absent from live content by round 3, not just reworded.
+- Read the remaining completeness-note sentence fresh after the round-2 removal and confirmed it
+  stays grammatically and logically complete without the removed clause.
+- Confirmed via `.claude/review_routing.json` at every round that scope-auditor is the only
+  reviewer strictly required for these three files, and that the equity-analyst-reviewer pass
+  was correctly voluntary, not a skipped gate requirement.
+- Scanned every added line across all three rounds for em/en dash characters -- zero matches
+  throughout.
+- Verified the three edited locations in `docs/backlog/gemini_verdict_feedback.md` (point 9
+  Context, Open questions, candidate direction 3) state the same outcome and cross-reference
+  each other correctly at every round, without contradicting the unmodified Summary/Related
+  sections in the same file.
 
-## cto-reviewer
+## equity-analyst-reviewer (voluntary, round 1 only)
 VERDICT: PASS
 risks_checked:
-- Mutation-tested every guard boundary and call site across all five rounds: the operating and
-  financial `statement_roe_pct` call sites, the monkeypatch-based wiring test's actual
-  interception of `_verdict_operating`'s call (verified via CPython's late-binding global lookup
-  semantics, not just assumed), and the floor/coverage boundaries inherited from prior fixes.
-- Verified the final preamble's three failure-mode claims sentence by sentence against the real
-  SQL numerator/denominator expressions in `int_stock__card_metrics.sql` -- each holds, and the
-  three explanations no longer contradict each other or the per-call-site comments.
-- Confirmed the direct function-level test and the monkeypatch wiring test both actually prove
-  the property they claim, via live mutation (revert the guard, confirm the specific test fails,
-  restore, confirm the suite is green again) rather than reading the assertions and assuming.
-- Ran the full test suite directly at every round -- 459 passed, 0 regressions, matching the
-  contract's claims exactly.
-
-## equity-analyst-reviewer
-VERDICT: PASS (round 2; unchanged since -- `docs/data_contract.md` was not touched in rounds 3-5)
-risks_checked:
-- Independently verified the corrected `"unknown"` treatment is genuinely defensible: it reuses
-  the SAME semantics `_band` already assigns a genuinely missing value, not an invented severity
-  tier, and there is no other signal in this dataset (capital-adequacy data is explicitly
-  unsourceable from yfinance) to condition severity on -- the most defensible choice available.
-- Confirmed no residual trace of the rejected bank-specific regulatory justification is used to
-  support the CURRENT (not the rejected) severity anywhere in the diff.
-- Cross-checked `docs/data_contract.md`'s reworded prose against the shipped code line by line --
-  no overclaiming found.
+- Confirmed the verdict's "financially healthy on these figures" framing is genuinely absolute,
+  not relative, by reading `VERDICT_MEANING` and `READ_SYSTEM_PROMPT` directly -- no "vs. peers"
+  language anywhere.
+- Confirmed the `north_star.md` analogy is fairly applied: Gemini's actual point 9 proposes using
+  the mart's existing LIVE `sector_median`/`min`/`max` columns, exactly the same "grading on a
+  live curve" mechanism the existing rule already warns against -- not a strawman version.
+- Confirmed the biweekly refresh cadence is real (not an invented number) and that the sector
+  benchmark floor (8 eligible peers) is small enough to make live medians genuinely volatile,
+  strengthening the instability argument beyond what the diff itself claimed.
+- Checked every specific threshold number against the live code rather than taking them on
+  faith -- all four matched exactly, no invented thresholds, no false precision.
+- Caught two precision issues in the stated reasoning (see Round 1 findings above) -- neither a
+  fabrication, neither reversing the conclusion, both fixed.

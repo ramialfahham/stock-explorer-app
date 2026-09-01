@@ -153,6 +153,38 @@ on a third-party AI's say-so without the owner's own call.
    visualization, never the verdict computation. A small-cap and a mega-cap in the same sector
    are judged against identical thresholds today.
 
+   **Considered, not pursued (branch `docs/decline-sector-size-calibration`).** Investigated
+   whether the fixed thresholds should be calibrated by sector and/or size, at the owner's
+   request that any proposal be grounded in real practice, not invented. Findings against:
+   the current thresholds are not actually arbitrary -- `net_debt_to_ebitda` good/weak at
+   1.5x/3x mirrors common leverage credit-quality bands (rating-agency-style "low"/"aggressive"
+   leverage tiers, not a specific loan covenant, which typically sits higher, around 4x-6x, for
+   leveraged borrowers); `ebit_margin_pct` good at 10% is a standard double-digit-margin
+   heuristic; `current_ratio_stmt` good/weak at 1.5/1.0 is classic textbook liquidity convention;
+   `cash_runway_months` good/weak at 24/12 months is a standard startup-finance heuristic.
+   `docs/north_star.md` already carries an owner-signed rule against naive sector-relative
+   rankings for the display benchmark, and the same risk applies to verdict thresholds:
+   calibrating to sector would let a mediocre company in a currently-weak sector read green
+   purely because its peers are worse, contradicting the AI-read's own closing claim of an
+   absolute "financially healthy on these figures," not a relative one. Sector-relative
+   comparison is a real, standard equity-analysis practice, but size-adjusted THRESHOLDS are not
+   -- real credit/fundamental analysis handles issuer size through business-risk-profile
+   overlays that typically TIGHTEN expectations for smaller, less-diversified issuers to hold
+   the same rating, not through loosening what counts as a healthy margin or leverage ratio, so
+   any size-bucket cutoffs here would run backwards from how size is actually treated and would
+   still be exactly the kind of invented number the owner was concerned about. Sector medians
+   also shift on every biweekly refresh, and the display feature's own 8-peer minimum shows how
+   thin these peer groups can get, so a company's verdict could flip color with none of its own
+   numbers changing -- a real stability cost on top of the methodology concern.
+   This declines specifically the mechanism point 9 actually proposed (live `sector_median`/
+   `min`/`max` recalculated every refresh, the same one `north_star.md`'s existing rule already
+   warns against). It does not rule out a structurally different version -- deliberately set,
+   externally-anchored per-sector benchmark tables, revised on a deliberate cycle rather than a
+   live biweekly refresh -- which would sidestep the instability concern while still respecting
+   genuine sector-driven margin and leverage differences. Worth naming as the version to scope if
+   this is ever revisited, not something this decision forecloses.
+   Decision: do not calibrate verdict thresholds by sector or size.
+
 ## Open questions (owner decisions, not answered here)
 
 - **Is any of this worth fixing, and if so which parts first?** Seven confirmed gaps span three
@@ -171,7 +203,9 @@ on a third-party AI's say-so without the owner's own call.
   sector' rankings -- misleading for debt, negative growth, etc."); calibrating verdict
   *thresholds* by sector/size is a related but distinct question from ranking by sector, and
   worth keeping that distinction explicit rather than treating this point as already answered by
-  that existing rule.
+  that existing rule. **Answered: no.** Investigated properly rather than treated as
+  pre-answered; the same underlying risk that rule was written for applies here too. See point
+  9's "Considered, not pursued" entry above for the full reasoning.
 - **Is a sign-inversion guard (point 1) a targeted dbt/rules fix, or does it call for rethinking
   which ratios are safe to show raw at all** for companies with negative EBITDA or negative net
   debt? A narrow guard could mask the same companies' problems differently rather than fixing
@@ -189,10 +223,15 @@ on a third-party AI's say-so without the owner's own call.
    (a dollar comparison, not a revenue-scaled margin), floored so the relief can't apply to a
    genuinely dangerous ratio. Owner explicitly signed off before it was built, per the
    requirement above -- see point 6's Context entry.
-3. **Sector/size threshold calibration (point 9).** The largest change of the set: reworking
-   `weak_th`/`good_th` from a flat per-type constant to something sector- or size-aware would
-   touch the verdict engine's core structure, likely needs new baseline data, and would change
-   verdicts broadly, not just for outlier cards. Warrants its own scoping pass, not a quick fix.
+3. **Sector/size threshold calibration (point 9). Declined -- considered, not built.** The
+   largest change of the set: reworking `weak_th`/`good_th` from a flat per-type constant to
+   something sector- or size-aware would touch the verdict engine's core structure and change
+   verdicts broadly, not just for outlier cards. Given its own scoping pass, per the owner's
+   explicit request that any proposal be grounded in real practice: the current thresholds
+   already mirror standard financial conventions rather than being arbitrary, this app already
+   has an owner-signed rule against a closely related naive-sector-relative pattern for the same
+   underlying reason, and size-adjusted thresholds specifically have no real-analyst convention
+   to anchor them to. See point 9's Context entry above for the full reasoning.
 4. **Structured AI-read output + hallucination guard (points 3/4).** Two related but separable
    changes: requesting JSON/tool-call output from the Claude API call (a prompt/parsing change,
    no new dependency, `anthropic` already pinned), and a post-generation step that extracts
