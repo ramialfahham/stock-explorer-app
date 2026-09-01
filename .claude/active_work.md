@@ -12,15 +12,20 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !77 OPEN, 2026-09-01: statement_roe_pct sign-inversion guard (sibling of MR !73)
+## MR !77 MERGED, 2026-09-01: statement_roe_pct sign-inversion guard (sibling of MR !73)
 
-Status: **implemented, full `pytest` green (459 passed), reviewed 5 rounds (rounds 1-4 each
-caught and fixed a real issue -- see that branch's `.claude/task/review.md` for the full
-account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
-Branch `fix/statement-roe-sign-inversion-guard`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/77. Pushed to the `gitlab`
-remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
-merged, sync local `main` and delete the branch.
+Status: **merged, local `main` synced, branch deleted, remote-tracking ref pruned.** MR was at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/77. Reviewed 5 rounds (the
+most contested fix this session -- see that MR's commit `d27354d0` / `.claude/task/review.md`
+for the full account of what rounds 1-4 each caught and fixed).
+
+This closes out the three Gemini-feedback fixes shipped this session: MR !73 (ratio
+sign-inversion guard, points 1), MR !75 (joint liquidity evaluation, points 6/8), MR !77
+(statement_roe_pct sign-inversion guard, sibling of point 1). Remaining unactioned points in
+`docs/backlog/gemini_verdict_feedback.md`: point 2 (early-stage classification review), points
+3/4 (structured AI-read output + hallucination guard), point 5 (outlier-aware metric-range
+scaling), point 9 (sector/size threshold calibration -- flagged in the doc itself as the largest
+of the set, warranting its own scoping pass).
 
 The sibling bug flagged but not fixed while shipping MR !73: `statement_roe_pct` (`stmt_net_income_common
 / stmt_stockholders_equity`) has the identical sign-ambiguity problem `debt_to_equity` had -- a
