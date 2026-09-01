@@ -1,114 +1,120 @@
 # Review
 
-diff_sha256: 168932c4b1e2d2b820d846f80f964d8d15a962eb83a859683c8ecad1e0b6b35a
+diff_sha256: e1721fc1a9a4ec26e864c724aac456d1ad31987af27fbabc56f074d1b48e958a
 
-Three rounds. Round 1 (hash a411e5e91fbcd32753b98740030cb48ea7def808c225e120d7c305ec69710a5b,
-three reviewers -- no `.sql`/`.yml` touched yet): scope-auditor PASS, cto-reviewer FAIL, equity-
-analyst-reviewer FAIL. Round 2 (hash 174bb9adbea16167447dd3b7b6f43d3abbb43d7914678e26594ee106fedccb32,
-now four reviewers -- the redesign's new `stmt_free_cash_flow` passthrough routes to analytics-
-engineer-reviewer): cto-reviewer, analytics-engineer-reviewer, equity-analyst-reviewer all PASS;
-scope-auditor FAIL on a process-only finding. Round 3 (hash matches the FINAL hash above,
-scope-auditor only): PASS.
+Five rounds. Round 1 (three reviewers, no `.sql`/`.yml` touched yet): scope-auditor PASS,
+cto-reviewer FAIL, equity-analyst-reviewer FAIL. Round 2 (same three): equity-analyst-reviewer
+PASS, cto-reviewer FAIL again on a deeper version of the same class of gap. Round 3
+(scope-auditor + cto-reviewer; equity-analyst-reviewer's routed file unchanged since its PASS):
+scope-auditor PASS, cto-reviewer FAIL. Round 4 (same two): scope-auditor PASS, cto-reviewer FAIL
+on a fresh error introduced by round 3's own fix. Round 5 (same two): both PASS. The hash above
+is the final staged hash all round-5 verdicts were rendered against.
 
 ## Round 1 findings and how each was resolved
 
-1. **equity-analyst-reviewer FAIL -- mismatched comparison.** The first version gated
-   `current_ratio_stmt`'s relief on `fcf_margin_pct` (free cash flow / revenue) banding `good`.
-   The reviewer showed this is financially unsound: margin is scaled by revenue, not by the SIZE
-   of the liquidity gap, which isn't proportional to revenue for a company whose current
-   liabilities carry a near-term debt-maturity wall. It only worked for Apple by coincidence of
-   scale. Built a concrete counter-example (modest revenue, a 6% FCF margin that clears "good",
-   but real free cash flow a small fraction of a real dollar shortfall) where the old mechanism
-   would have wrongly relieved a card with genuine liquidity risk. Fixed: redesigned to a direct
-   dollar comparison, `stmt_free_cash_flow >= -working_capital` (does free cash flow actually
-   cover the working-capital shortfall). Required a new `stmt_free_cash_flow` raw passthrough
-   column (same pattern as `info_ebitda`/`stmt_stockholders_equity` from the prior task);
-   `working_capital` was already flowing through, no new wiring needed for it. Still relieves
-   Apple (FCF a large multiple of its comparatively small shortfall); correctly withholds relief
-   from the counter-example. Surfaced to the owner before implementing; owner said "go ahead."
-
-2. **cto-reviewer FAIL -- test didn't test what it claimed.** `test_current_ratio_relief_
-   requires_fcf_margin_actually_good` couldn't detect a broken relief gate, confirmed by mutation
-   testing (weakening the gate left the test passing), because its fixture's `fcf_margin_pct=3.0`
-   also failed an unrelated CORE-axis gate on the same field, forcing yellow regardless of what
-   the relief function did. Fixed: moot in the redesign, since the relief mechanism no longer
-   references `fcf_margin_pct` at all; replaced with
-   `test_current_ratio_relief_denied_when_fcf_margin_good_but_shortfall_too_large`, which sets
-   `fcf_margin_pct=6.0` (clears the unrelated core gate) alongside an insufficient dollar
-   shortfall, cleanly isolating the relief mechanism's own gate.
+1. **equity-analyst-reviewer FAIL -- overreached regulatory justification.** The first version
+   banded `statement_roe_pct` `weak` on `financial` (forcing red outright), reasoned from US bank
+   capital regulation (the FDIC's Prompt Corrective Action framework), after web research the
+   owner explicitly required ("don't hallucinate, do it like it is done in reality"). Caught that
+   this overreached what the data supports: `company_type == 'financial'` is the whole GICS
+   "Financial Services" sector (insurers, asset managers, broker-dealers, payment networks,
+   exchanges, mortgage finance, not only depository banks), spans nine markets under entirely
+   different regulatory regimes, and includes firms (payment networks especially) known for the
+   same benign buyback-driven negative equity operating companies can have -- exactly the case
+   the original reasoning itself said should get the mild treatment. Fixed: changed the
+   financial-type `bad_band` from `"weak"` to `"unknown"`, which still blocks green without
+   forcing red, matching the neutral treatment every other axis gets for undeterminable
+   information.
+2. **cto-reviewer FAIL -- confounded test.** `test_operating_statement_roe_guard_caps_a_
+   negative_equity_card_at_yellow` did not test the property it claimed -- confirmed by mutation
+   testing (reverting only the new guard left the test passing identically) because
+   `debt_to_equity`'s own, already-merged guard checks the SAME `stmt_stockholders_equity` field
+   unconditionally and alone already explains the yellow outcome. Fixed: added a direct
+   function-level test calling `_axis_unless_denominator_nonpositive` directly with each verdict
+   function's actual parameters.
 
 ## Round 2 finding and how it was resolved
 
-3. **scope-auditor FAIL -- contract self-consistency.** `.claude/task/contract.md`'s
-   `amendments` section asserted, in completed past tense, that round-2 review had already
-   happened and pointed at `.claude/task/review.md` as if it already recorded the outcome --
-   neither was true at the time it was written, and the reviewer count was still "three," not
-   the four actually required once the `.sql`/`.yml` touches routed to analytics-engineer-
-   reviewer. Fixed: replaced the premature claim with an accurately-tensed account; this file
-   is written only now, after all round-3 verdicts are in hand. A secondary, non-blocking
-   observation (one flaky `pytest` failure, 1 of 32 runs) was also raised, traced to concurrent
-   reviewer agents running `pytest` in this same shared working directory while another
-   reviewer's mutation testing was temporarily editing `scripts/assessment_rules.py` in place --
-   confirmed non-reproducible in isolation (multiple clean re-runs, including by scope-auditor
-   itself in round 3).
+3. **cto-reviewer FAIL -- the round-1 fix didn't close the actual gap.** The direct
+   function-level test proved the shared guard function works in isolation, but never called
+   `_verdict_operating` at all, so it provided zero protection against the operating call site
+   itself being silently reverted -- confirmed by mutation testing (reverting the call site left
+   ALL 75 tests passing, including both the confounded verdict-level test and the new isolated
+   function-level test). Root cause: because `debt_to_equity`'s guard fires unconditionally
+   whenever `stmt_stockholders_equity` is negative, independent of `debt_to_equity`'s own value or
+   presence, NO row constructible through `compute_verdict` can ever isolate `statement_roe_pct`'s
+   call site from `debt_to_equity`'s. Fixed: added
+   `test_operating_statement_roe_call_site_is_actually_wired`, using `pytest`'s `monkeypatch`
+   fixture to neutralize `debt_to_equity`'s guard specifically while leaving `statement_roe_pct`'s
+   call to the real guard, then driving the row through `compute_verdict` -- genuinely exercises
+   `_verdict_operating`'s actual code path. Also fixed a stale line in the backlog doc's Related
+   section, left over from the rejected "financial forces red" version.
+
+## Round 3 finding and how it was resolved
+
+4. **cto-reviewer FAIL -- stale shared comment.** The module-level "Ratio sign-inversion guards"
+   preamble comment (untouched by any hunk in the diff until this point) still said "Two
+   operating-type ratios" / "Both guards," undercounting the third guarded metric
+   (`statement_roe_pct`, used from both verdict functions with a role-dependent band) this task
+   added, and contradicting the correctly-updated `docs/data_contract.md`. Fixed: rewrote the
+   preamble to count three guarded metrics across four call sites and explain
+   `statement_roe_pct`'s dual role.
+
+## Round 4 finding and how it was resolved
+
+5. **cto-reviewer FAIL -- a fresh factual error introduced by the round-3 fix.** The rewritten
+   preamble claimed `statement_roe_pct`'s numerator (net income) "is never negative" -- false, a
+   loss is the entire premise of the bug this guard exists to catch, and the claim directly
+   contradicted the preamble's own opening lines. Root cause: over-generalized `debt_to_equity`'s
+   true "numerator never negative" property across to `statement_roe_pct` while merging the two
+   explanations into one sentence. Fixed: rewrote the paragraph to describe three genuinely
+   distinct failure modes separately (net_debt_to_ebitda: numerator can be negative;
+   statement_roe_pct: numerator can also be negative, same double-negative ambiguity, which is
+   why the guard keys on equity's sign alone; debt_to_equity: numerator never negative but can be
+   exactly zero, a distinct third failure mode).
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- All 11 changed files fall inside `scope_paths` (updated in round 2 to include the four
-  `dbt_analytics/` files the redesign touches).
-- Round-1 findings (mismatched comparison, confounded test) both confirmed fixed by tracing the
-  actual code and test logic, not by trusting the contract's claims.
-- Round-2 finding (contract self-consistency) confirmed fixed by re-reading the amendments
-  section's exact tense and cross-checking the reviewer count against
-  `.claude/review_routing.json`'s path patterns independently.
-- Re-ran `pytest tests/` multiple times in isolation across rounds 2 and 3: consistently 451
-  passed, confirming the flakiness explanation rather than a real defect.
-- Scanned every added line across the full three-round diff for em/en dash characters -- zero
-  matches throughout.
+- Re-verified every factual claim in the final preamble against the actual code, the dbt column
+  comments in `int_stock__card_metrics.sql`, and `metric_catalogue.csv`'s applicability text --
+  the round-4 defect is corrected and no new factual error survives in the same paragraph.
+- Swept the whole repo (not just `scope_paths`) across multiple rounds for the same staleness
+  pattern; found two further low-severity, out-of-scope instances
+  (`scripts/generate_assessments.py`'s comment, `dbt_analytics/models/4_intermediate/_intermediate.yml`'s
+  `stmt_stockholders_equity` description) -- both correctly disclosed in `impact_map` as deferred,
+  not silently dropped.
+- Independently re-verified the call-site count (4 across 3 metrics) by grepping the actual code
+  rather than trusting the comment's own claim.
+- Re-ran `pytest` at each round rather than trusting the contract's claimed counts -- always
+  matched (459 passed on the full suite by the final round).
+- Confirmed `scope_paths`, `done_when`, and cross-doc consistency (contract, `docs/data_contract.md`,
+  backlog doc) hold at every round, with no silently-taken owner-level decision.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Confirmed `_current_ratio_axis_with_fcf_coverage_relief` contains no reference to
-  `fcf_margin_pct` anywhere -- the round-1 confound is structurally impossible to recur.
-- Mutation-tested the redesigned relief gate directly (weakening the dollar comparison, the
-  floor check, and the non-negative-`working_capital` guard) and confirmed each corresponding
-  test fails when the logic is broken and passes when correct; reverted all mutations afterward.
-- Traced every boundary condition by hand: FCF exactly equal to the shortfall, `working_capital`
-  exactly zero, missing `stmt_free_cash_flow`/`working_capital`, the floor boundary itself, and
-  the `row["current_ratio_stmt"]` direct-index access's safety given `_band`'s missing-value
-  handling.
-- Verified `ASSESSMENT_INPUT_COLUMNS` wiring directly: `stmt_free_cash_flow` added once
-  explicitly; `working_capital` flows through `_METRIC_COLUMNS` via
-  `INPUT_FIELDS_BY_TYPE["pre_revenue"]` with no duplicate wiring, matching the contract's claim.
-
-## analytics-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- `stmt_free_cash_flow`'s placement and documentation in `int_stock__card_metrics.sql`,
-  `_intermediate.yml`, `mart_stock_cards.sql`, and `_marts.yml` matches the established
-  `info_ebitda`/`stmt_stockholders_equity` pattern exactly.
-- Confirmed directly (not asserted) that `scripts/export_to_supabase.py`'s `EXPORT_COLUMNS` and
-  `dbt_analytics/seeds/metric_catalogue.csv` are free of `stmt_free_cash_flow` as a standalone
-  entry.
-- Ran `dbt build --project-dir dbt_analytics --profiles-dir .` directly: 122/122 PASS, 0 ERROR.
-- Confirmed `working_capital` is computed unconditionally (no `company_type` gate) in both the
-  intermediate model and the mart, so no new dbt wiring was needed for it, only for
-  `stmt_free_cash_flow`.
+- Mutation-tested every guard boundary and call site across all five rounds: the operating and
+  financial `statement_roe_pct` call sites, the monkeypatch-based wiring test's actual
+  interception of `_verdict_operating`'s call (verified via CPython's late-binding global lookup
+  semantics, not just assumed), and the floor/coverage boundaries inherited from prior fixes.
+- Verified the final preamble's three failure-mode claims sentence by sentence against the real
+  SQL numerator/denominator expressions in `int_stock__card_metrics.sql` -- each holds, and the
+  three explanations no longer contradict each other or the per-call-site comments.
+- Confirmed the direct function-level test and the monkeypatch wiring test both actually prove
+  the property they claim, via live mutation (revert the guard, confirm the specific test fails,
+  restore, confirm the suite is green again) rather than reading the assertions and assuming.
+- Ran the full test suite directly at every round -- 459 passed, 0 regressions, matching the
+  contract's claims exactly.
 
 ## equity-analyst-reviewer
-VERDICT: PASS
+VERDICT: PASS (round 2; unchanged since -- `docs/data_contract.md` was not touched in rounds 3-5)
 risks_checked:
-- Independently verified `stmt_free_cash_flow >= -working_capital` is a sound, same-units dollar
-  comparison with no sign-convention error, no double-counting, and no hidden timing-mismatch
-  flaw -- structurally the same construction as the standard "cash flow to current liabilities"
-  liquidity ratio used in real credit/equity analysis, and FCF (net of capex) is more
-  conservative than the OCF numerator that ratio normally uses.
-- Hand-traced the exact debt-maturity-wall counter-example that failed round 1 against the
-  redesigned mechanism and confirmed relief is now correctly denied.
-- Compared `docs/data_contract.md`'s reworded prose line by line against the shipped code --
-  every claim (floor semantics, `ok` not `good`, no rescue of other axes, scoped to this one
-  metric pair) matches exactly, no overclaiming found.
-- Confirmed the round-1-failed test no longer exists and its replacement genuinely isolates the
-  relief mechanism from the unrelated core-axis gate.
+- Independently verified the corrected `"unknown"` treatment is genuinely defensible: it reuses
+  the SAME semantics `_band` already assigns a genuinely missing value, not an invented severity
+  tier, and there is no other signal in this dataset (capital-adequacy data is explicitly
+  unsourceable from yfinance) to condition severity on -- the most defensible choice available.
+- Confirmed no residual trace of the rejected bank-specific regulatory justification is used to
+  support the CURRENT (not the rejected) severity anywhere in the diff.
+- Cross-checked `docs/data_contract.md`'s reworded prose against the shipped code line by line --
+  no overclaiming found.
