@@ -123,32 +123,47 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 
 
 # --- Ratio sign-inversion guards ---------------------------------------------------------
-# Two operating-type ratios can flip sign when their denominator goes negative, and banding the
-# flipped value by raw magnitude reads a distressed or thin-equity company as "good" on that
-# axis. Both cases are already named in metric_catalogue.csv's own applicability text:
-# net_debt_to_ebitda "explodes when EBITDA ~ 0 (distressed/pre-profit)"; debt_to_equity "flips or
-# explodes and stops being meaningful" when equity goes negative. Filed as Gemini feedback
-# point 1 (docs/backlog/gemini_verdict_feedback.md).
+# Three ratios can flip sign when their denominator goes negative, and banding the flipped value
+# by raw magnitude reads a distressed or thin-equity company as "good" on that axis. All three
+# cases are already named in metric_catalogue.csv's own applicability text: net_debt_to_ebitda
+# "explodes when EBITDA ~ 0 (distressed/pre-profit)"; debt_to_equity "flips or explodes and stops
+# being meaningful" when equity goes negative; statement_roe_pct "can read as a spuriously
+# positive percentage" over negative equity. Filed as Gemini feedback point 1 and its sibling-bug
+# note (docs/backlog/gemini_verdict_feedback.md). statement_roe_pct's guard is used from BOTH
+# _verdict_operating and _verdict_financial, not operating only.
 #
-# Both guards check the RATIO'S OWN DENOMINATOR directly (info_ebitda, stmt_stockholders_equity),
-# not the ratio's sign. Checking the ratio's sign is not equivalent: net_debt_to_ebitda's
-# numerator can itself be negative (genuine net cash), and debt_to_equity's numerator (total
-# debt) is never negative in this data but CAN be exactly zero, and zero divided by a negative
-# number is zero, not negative -- a debt-free company with negative equity would silently evade
-# a check on the ratio's own sign. Both raw denominators are passed through the mart for exactly
-# this reason; see their own column comments in int_stock__card_metrics.sql.
+# All three guards check the RATIO'S OWN DENOMINATOR directly (info_ebitda,
+# stmt_stockholders_equity), not the ratio's sign, because the ratio's sign fails for a different
+# reason per metric. net_debt_to_ebitda's numerator can itself be negative (genuine net cash), so
+# a negative EBITDA divided into a negative net debt gives an ambiguous positive ratio no
+# different in sign from a genuinely low-leverage company. statement_roe_pct's numerator (net
+# income) can also legitimately be negative (a real loss), so the SAME double-negative ambiguity
+# applies there: whenever equity is negative, a genuine loss divides out to a spuriously positive
+# percentage indistinguishable in sign from real profit over positive equity -- which is why the
+# guard keys on equity's own sign alone and does not need to look at net income's sign at all.
+# debt_to_equity's failure mode is different again: its numerator (total debt) is never negative
+# in this data, but CAN be exactly zero, and zero divided by a negative number is zero, not
+# negative, so a debt-free company with negative equity would silently evade a check on the
+# ratio's own sign even though total debt itself never goes negative. All raw denominators are
+# passed through the mart for exactly this reason; see their own column comments in
+# int_stock__card_metrics.sql.
 #
-# The two guards land on different bands because the two axes play different roles.
-# net_debt_to_ebitda is a CORE axis (every core axis must be "good" for green), so it is fixed
-# by treating it as "unknown" -- the same neutral treatment every other axis already gets for a
-# missing value. debt_to_equity is a SUPPORTING axis, which never needs to be "good" to reach
-# green -- only "weak" changes anything, since supporting axes can block green but never rescue
-# it. Relabeling negative equity "unknown" there would have been a no-op on every card's actual
-# color, which is not a fix. So it is banded "weak" instead, capping the card at yellow, the
-# same ceiling every other weak supporting axis already has, never forcing red on its own.
-# Negative equity is not always distress on its own (it can come from a healthy company's own
-# buybacks, per the catalogue's own applicability note) -- "weak" is deliberately the mildest
-# band that still changes anything, a caution rather than a verdict on the cause.
+# The guards land on different bands because the axes play different roles, and the SAME axis
+# can play a different role in a different verdict function. net_debt_to_ebitda is a CORE axis in
+# _verdict_operating (every core axis must be "good" for green), so it is fixed by treating it as
+# "unknown" -- the same neutral treatment every other axis already gets for a missing value.
+# debt_to_equity is a SUPPORTING axis, which never needs to be "good" to reach green -- only
+# "weak" changes anything, since supporting axes can block green but never rescue it. Relabeling
+# negative equity "unknown" there would have been a no-op on every card's actual color, which is
+# not a fix. So it is banded "weak" instead, capping the card at yellow, the same ceiling every
+# other weak supporting axis already has, never forcing red on its own. Negative equity is not
+# always distress on its own (it can come from a healthy company's own buybacks, per the
+# catalogue's own applicability note) -- "weak" is deliberately the mildest band that still
+# changes anything, a caution rather than a verdict on the cause. statement_roe_pct gets the same
+# "weak" treatment in _verdict_operating (same supporting role as debt_to_equity), but "unknown"
+# in _verdict_financial, where it is effectively a CORE axis -- see the comment above
+# _verdict_financial for why that function's population makes "unknown" the honest choice rather
+# than the harsher "weak" a first version of this guard used.
 
 
 def _axis_unless_denominator_nonpositive(
@@ -279,9 +294,11 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
         _axis(row, "fcf_margin_pct", weak_th=0.0, good_th=5.0),
     )
     # Supporting axes may be null; they can break a tie but never rescue a red flag.
-    # debt_to_equity goes through the same sign-inversion guard: "weak" (not "unknown", which
-    # would be a no-op on a supporting axis) when stmt_stockholders_equity is present and <= 0,
-    # capping the card at yellow, the same ceiling any other weak supporting axis already gets.
+    # debt_to_equity and statement_roe_pct both go through the same sign-inversion guard: "weak"
+    # (not "unknown", which would be a no-op on a supporting axis) when stmt_stockholders_equity
+    # is present and <= 0, capping the card at yellow, the same ceiling any other weak supporting
+    # axis already gets. A loss over negative equity divides out to a spuriously POSITIVE
+    # statement_roe_pct, the exact case the catalogue's own applicability note warns about.
     # current_ratio_stmt goes through the joint-liquidity-evaluation relief: "ok" (not "weak")
     # when it would otherwise band weak, free cash flow covers the working-capital shortfall,
     # and it isn't below the liquidity floor -- see the comment above
@@ -291,7 +308,9 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
             row, "debt_to_equity", "stmt_stockholders_equity", "weak", weak_th=2.0, good_th=1.0
         ),
         _current_ratio_axis_with_fcf_coverage_relief(row),
-        _axis(row, "statement_roe_pct", weak_th=0.0, good_th=10.0),
+        _axis_unless_denominator_nonpositive(
+            row, "statement_roe_pct", "stmt_stockholders_equity", "weak", weak_th=0.0, good_th=10.0
+        ),
     )
     if any(b == "weak" for b in core):
         return VERDICT_RED
@@ -307,7 +326,25 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
 def _verdict_financial(row: Mapping[str, Any]) -> str:
     # Banks: profitability/returns only. Capital adequacy (CET1/Tier 1) is unsourceable
     # from yfinance, so this verdict is deliberately modest (documented in data_contract).
-    roe = _axis(row, "statement_roe_pct", weak_th=0.0, good_th=8.0)
+    # statement_roe_pct goes through the same sign-inversion guard as the operating verdict, but
+    # bands "unknown" here (roe is core-like in this function: "unknown" still blocks green,
+    # since only "good" counts, but does NOT force red the way "weak" would).
+    #
+    # An earlier version of this guard used "weak" here, forcing red outright, reasoned from US
+    # bank capital regulation (the FDIC's Prompt Corrective Action framework requires regulatory
+    # intervention well before a bank's capital depletion reaches zero). A review caught that
+    # this overreached what the data actually supports: company_type == 'financial' is the whole
+    # GICS "Financial Services" sector (insurers, asset managers, broker-dealers, payment
+    # networks, exchanges, mortgage finance -- not only depository banks), spans markets under
+    # entirely different regulatory regimes (this app covers US, UK, Japan, Australia, Germany,
+    # France, Netherlands, Switzerland, Spain), and includes firms (e.g. payment networks) known
+    # for the same benign buyback-driven negative equity operating companies can have. Nothing in
+    # the data distinguishes a bank in real distress from a payment network mid-buyback, so
+    # "unknown" -- the same neutral, no-severity-claim treatment every other axis gets for
+    # information this app cannot actually determine -- is the honest choice, not "weak".
+    roe = _axis_unless_denominator_nonpositive(
+        row, "statement_roe_pct", "stmt_stockholders_equity", "unknown", weak_th=0.0, good_th=8.0
+    )
     margin = _axis(row, "net_margin_pct", weak_th=0.0, good_th=15.0)
     roa = _axis(row, "roa_pct", weak_th=0.0, good_th=0.8)
     if roe == "weak" or margin == "weak":

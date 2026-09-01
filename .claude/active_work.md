@@ -12,6 +12,74 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR !77 OPEN, 2026-09-01: statement_roe_pct sign-inversion guard (sibling of MR !73)
+
+Status: **implemented, full `pytest` green (459 passed), reviewed 5 rounds (rounds 1-4 each
+caught and fixed a real issue -- see that branch's `.claude/task/review.md` for the full
+account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
+Branch `fix/statement-roe-sign-inversion-guard`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/77. Pushed to the `gitlab`
+remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
+merged, sync local `main` and delete the branch.
+
+The sibling bug flagged but not fixed while shipping MR !73: `statement_roe_pct` (`stmt_net_income_common
+/ stmt_stockholders_equity`) has the identical sign-ambiguity problem `debt_to_equity` had -- a
+loss over negative equity divides out to a spuriously POSITIVE percentage. Fixed by reusing the
+existing `_axis_unless_denominator_nonpositive` guard (no new function, no new dbt column) on both
+call sites, checking `stmt_stockholders_equity`'s own sign directly.
+
+**Round-1 review caught a real overreach in the financial-side justification -- corrected.**
+First version banded `weak` on `financial` (forcing red outright), reasoned from US bank capital
+regulation (FDIC Prompt Corrective Action) after web research the owner explicitly required
+("don't hallucinate, do it like it is done in reality"). equity-analyst-reviewer FAILED it: the
+research was sound for US depository banks specifically, but `company_type == 'financial'` is the
+whole GICS "Financial Services" sector (insurers, asset managers, payment networks, exchanges,
+mortgage finance -- not just banks), spans nine markets under entirely different regulators (US,
+UK, Japan, Australia, Germany, France, Netherlands, Switzerland, Spain), and includes firms
+(payment networks especially) famous for the same benign buyback-driven negative equity operating
+companies can have -- exactly the case the original reasoning itself said should get the mild
+treatment. Corrected: financial's band changed from `"weak"` to `"unknown"` -- still blocks green,
+no longer forces red, matching the neutral treatment every other axis gets for information this
+app cannot actually determine. **cto-reviewer separately FAILED a test**
+(`test_operating_statement_roe_guard_caps_a_negative_equity_card_at_yellow`) that couldn't
+actually detect a broken guard, confirmed by mutation testing, because `debt_to_equity`'s own
+pre-existing guard checks the SAME `stmt_stockholders_equity` field unconditionally and alone
+already explains the yellow outcome. Fixed (round 1) by adding a direct function-level test
+isolating the new guard from the old one -- but that test only proved the shared guard function
+works, without ever calling `_verdict_operating`. **Round 2, both scope-auditor and cto-reviewer
+independently caught the deeper version of the same gap**: mutation-tested by reverting the
+operating call site back to plain `_axis(...)` and running the whole suite -- all 75 tests in the
+file still passed, since NO row constructible through `compute_verdict` can isolate
+`statement_roe_pct`'s call site from `debt_to_equity`'s (the latter fires unconditionally on
+`stmt_stockholders_equity`'s sign alone, regardless of its own metric's value or even presence).
+Fixed properly this time: `test_operating_statement_roe_call_site_is_actually_wired` uses
+`pytest`'s `monkeypatch` fixture to neutralize `debt_to_equity`'s guard specifically while
+leaving `statement_roe_pct`'s call to the real guard, then drives the row through
+`compute_verdict` -- verified directly (reverted the call site, confirmed this specific new test
+fails while the old confounded one still passes, then restored and reran the full suite green).
+Also fixed a stale backlog-doc line both reviewers caught, left over from the rejected "forces
+red" version. **Round 3, cto-reviewer caught one more staleness**: the module-level "Ratio
+sign-inversion guards" preamble comment (untouched by any hunk in this diff until then) still
+said "Two operating-type ratios" / "Both guards," but this diff adds a third guarded metric
+(`statement_roe_pct`, used from both verdict functions with a role-dependent band), which the
+preamble neither counted nor explained -- exactly the kind of shared-comment sweep the per-call-
+site updates all missed. Fixed by rewriting the preamble. **Round 4, cto-reviewer caught a fresh
+error the round-3 rewrite itself introduced**: the new preamble claimed statement_roe_pct's
+numerator (net income) "is never negative" -- false, a loss is exactly the bug this guard exists
+to catch, and the claim contradicted the preamble's own opening sentences. Root cause:
+over-generalized debt_to_equity's true "numerator never negative" property across to
+statement_roe_pct while merging the two explanations into one sentence. Fixed by describing all
+three metrics' genuinely distinct failure modes separately. Full account in
+`.claude/task/contract.md`'s `amendments`.
+
+8 test cases in `tests/tooling/test_assessment_rules.py` (a direct function-level isolation test,
+a monkeypatch-based call-site wiring test, plus verdict-level cases per card type: guard flips a
+real case, positive-equity unaffected, missing equity unaffected; operating confirms a red core
+axis still wins; financial confirms a genuinely weak margin still independently forces red).
+`docs/data_contract.md`'s verdict-rules
+section and the backlog doc's sibling-bug note updated to match the corrected mechanism. No dbt
+changes needed.
+
 ## MR !75 MERGED, 2026-09-01: Joint liquidity evaluation (Gemini feedback points 6/8)
 
 Status: **merged, local `main` synced, branch deleted, remote-tracking ref pruned.** MR was at

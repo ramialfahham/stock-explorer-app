@@ -44,7 +44,7 @@ on a third-party AI's say-so without the owner's own call.
    and named in the AI read is unchanged; that is candidate direction 4 (structured AI-read
    output), not this fix.
 
-   **Sibling bug found while reviewing this fix, NOT fixed here (separate, unscoped issue):**
+   **Sibling bug found while reviewing this fix, NOT fixed here (separate, unscoped issue).**
    `statement_roe_pct` (`stmt_net_income_common / stmt_stockholders_equity`, in
    `int_stock__card_metrics.sql`) has the identical sign-ambiguity problem `debt_to_equity` had --
    a loss over negative equity divides out to a spuriously POSITIVE return on equity, which an
@@ -54,6 +54,26 @@ on a third-party AI's say-so without the owner's own call.
    same as `debt_to_equity`, so the same `stmt_stockholders_equity`-based guard mechanism this fix
    already built could very likely apply directly. Not touched here because it was outside this
    task's confirmed scope (`.claude/task/contract.md` names only the two metrics above).
+
+   **Acted on, branch `fix/statement-roe-sign-inversion-guard`.** `statement_roe_pct` now goes
+   through the same guard as `debt_to_equity`, checking `stmt_stockholders_equity`'s own sign
+   directly. On `operating` it bands `weak` (a supporting axis, caps at yellow, same as
+   `debt_to_equity`). On `financial` it bands `unknown` (roe is effectively a core axis there:
+   `unknown` still blocks green, but doesn't force red the way `weak` would).
+
+   **Mid-implementation correction**: the first version banded `weak` on financial too, forcing
+   red outright, reasoned from US bank capital regulation (the FDIC's Prompt Corrective Action
+   framework). An equity-analyst review round caught that this overreached what the data
+   supports: `company_type == 'financial'` is the whole GICS "Financial Services" sector
+   (insurers, asset managers, broker-dealers, payment networks, exchanges, mortgage finance, not
+   only depository banks), spans markets under entirely different regulatory regimes (this app
+   covers US, UK, Japan, Australia, Germany, France, Netherlands, Switzerland, Spain), and
+   includes firms (payment networks especially) known for the same benign buyback-driven negative
+   equity operating companies can have -- exactly the case the original reasoning said should get
+   the mild treatment, not the harsh one. Corrected to `unknown`: nothing in the data
+   distinguishes a bank in genuine distress from a payment network mid-buyback, so the same
+   neutral treatment every other axis gets for undeterminable information is the honest choice.
+   See `docs/data_contract.md`'s verdict-rules section for the shipped behavior.
 
 2. **Early-stage/pre-revenue context awareness -- PARTIALLY TRUE.** The framework is not
    blind to early-stage companies in general: `_verdict_pre_revenue()`
@@ -207,3 +227,8 @@ on a third-party AI's say-so without the owner's own call.
   example of that principle without qualification.
 - `docs/north_star.md`'s existing rule against naive sector-relative rankings, distinct from but
   adjacent to point 9.
+- `tests/tooling/test_assessment_rules.py`'s `test_operating_statement_roe_guard_*` and
+  `test_financial_statement_roe_guard_*`: the sibling-bug fix's test coverage, including the
+  asymmetric consequence (operating caps at yellow; financial blocks green but does not force red,
+  since `company_type == 'financial'` spans a heterogeneous, multi-jurisdiction population the
+  data can't distinguish real distress within).

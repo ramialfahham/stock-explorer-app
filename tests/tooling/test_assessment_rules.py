@@ -289,6 +289,152 @@ def test_debt_to_equity_guard_ignores_a_missing_equity_value() -> None:
     assert rules.compute_verdict({**row, "stmt_stockholders_equity": None}) == rules.VERDICT_GREEN
 
 
+# --- statement_roe_pct sign-inversion guard (both verdict functions) ----------------------
+# Same bug class as debt_to_equity: statement_roe_pct = stmt_net_income_common /
+# stmt_stockholders_equity, so a loss over negative equity divides out to a spuriously POSITIVE
+# percentage. Operating treats it as a supporting axis (weak caps at yellow, same as
+# debt_to_equity). Financial treats it as core-like, but bands "unknown", not "weak" -- it
+# blocks green (roe must band "good" to reach green) without forcing red, because
+# company_type == 'financial' spans a heterogeneous, multi-jurisdiction population (insurers,
+# asset managers, payment networks, exchanges, not only depository banks, across markets with
+# very different bank regulators) the data cannot distinguish "genuine distress" from "a payment
+# network mid-buyback" within -- see the comment above _verdict_financial for the full account,
+# including why an earlier version of this guard forcing red was corrected in review.
+
+def test_statement_roe_guard_function_is_isolated_from_debt_to_equitys_shared_denominator() -> None:
+    """Direct test of the guard mechanism itself, calling _axis_unless_denominator_nonpositive
+    with each verdict function's actual parameters. debt_to_equity's own guard (a prior, merged
+    fix) keys off the SAME stmt_stockholders_equity field unconditionally, so a
+    compute_verdict-level row with negative equity trips BOTH guards at once -- a
+    compute_verdict-level test alone cannot prove this guard's own effect, confirmed by mutation
+    testing in review (reverting only this guard left the operating verdict-level test below
+    passing identically, since debt_to_equity's guard alone already explains its outcome)."""
+    negative_equity = {"statement_roe_pct": 20.0, "stmt_stockholders_equity": -1000.0}
+    healthy_equity = {"statement_roe_pct": 20.0, "stmt_stockholders_equity": 1000.0}
+    missing_equity = {"statement_roe_pct": 20.0}
+    # Operating's parameters: bad_band "weak".
+    assert rules._axis_unless_denominator_nonpositive(
+        negative_equity, "statement_roe_pct", "stmt_stockholders_equity", "weak",
+        weak_th=0.0, good_th=10.0,
+    ) == "weak"
+    assert rules._axis_unless_denominator_nonpositive(
+        healthy_equity, "statement_roe_pct", "stmt_stockholders_equity", "weak",
+        weak_th=0.0, good_th=10.0,
+    ) == "good"
+    assert rules._axis_unless_denominator_nonpositive(
+        missing_equity, "statement_roe_pct", "stmt_stockholders_equity", "weak",
+        weak_th=0.0, good_th=10.0,
+    ) == "good"
+    # Financial's parameters: bad_band "unknown".
+    assert rules._axis_unless_denominator_nonpositive(
+        negative_equity, "statement_roe_pct", "stmt_stockholders_equity", "unknown",
+        weak_th=0.0, good_th=8.0,
+    ) == "unknown"
+    assert rules._axis_unless_denominator_nonpositive(
+        healthy_equity, "statement_roe_pct", "stmt_stockholders_equity", "unknown",
+        weak_th=0.0, good_th=8.0,
+    ) == "good"
+
+
+def test_operating_statement_roe_guard_caps_a_negative_equity_card_at_yellow() -> None:
+    """Integration-level sanity check: the whole card computes sensibly with negative equity.
+    Both debt_to_equity's and statement_roe_pct's guards trip on the same field here (realistic --
+    a company's negative equity affects every ratio computed from it), so this does not in
+    isolation prove statement_roe_pct's own call site is wired -- see
+    test_operating_statement_roe_call_site_is_actually_wired below for that."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.6, "current_ratio_stmt": 1.8,
+        "statement_roe_pct": 20.0, "stmt_stockholders_equity": -1000.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+    # A red core axis still wins outright; the guard must not soften that.
+    weak_core = {**row, "ebit_margin_pct": -5.0}
+    assert rules.compute_verdict(weak_core) == rules.VERDICT_RED
+
+
+def test_operating_statement_roe_call_site_is_actually_wired(monkeypatch) -> None:
+    """Proves _verdict_operating's statement_roe_pct call site is genuinely routed through the
+    guard, not just that the shared guard function behaves correctly on its own (the gap the
+    direct function test above does not close, and the verdict-level test above cannot close
+    either, since debt_to_equity's own guard on the SAME stmt_stockholders_equity field fires
+    unconditionally whenever that field is negative, regardless of debt_to_equity's own value or
+    even its presence -- there is no row where the shared denominator is negative that trips only
+    one of the two guards, confirmed by mutation testing in review).
+
+    Neutralizes debt_to_equity's guard specifically (falls back to plain magnitude banding for
+    that one call) while leaving statement_roe_pct's call to the real guard, then drives the row
+    through compute_verdict -- if statement_roe_pct's call site were ever silently reverted to
+    plain _axis(...), this row would read GREEN instead of YELLOW, since every other axis bands
+    good/ok once debt_to_equity's guard is neutralized.
+    """
+    real_guard = rules._axis_unless_denominator_nonpositive
+
+    def neutralize_debt_to_equity(row, metric, denominator_field, bad_band, weak_th, good_th):
+        if metric == "debt_to_equity":
+            return rules._axis(row, metric, weak_th, good_th)
+        return real_guard(row, metric, denominator_field, bad_band, weak_th, good_th)
+
+    monkeypatch.setattr(rules, "_axis_unless_denominator_nonpositive", neutralize_debt_to_equity)
+
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.6, "current_ratio_stmt": 1.8,
+        "statement_roe_pct": 20.0, "stmt_stockholders_equity": -1000.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_operating_statement_roe_guard_does_not_touch_genuinely_healthy_equity() -> None:
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.6, "current_ratio_stmt": 1.8,
+        "statement_roe_pct": 20.0, "stmt_stockholders_equity": 1000.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+
+
+def test_operating_statement_roe_guard_ignores_a_missing_equity_value() -> None:
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.6, "current_ratio_stmt": 1.8,
+        "statement_roe_pct": 20.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**row, "stmt_stockholders_equity": None}) == rules.VERDICT_GREEN
+
+
+def test_financial_statement_roe_guard_blocks_green_but_does_not_force_red() -> None:
+    """Unlike a genuinely weak margin (which forces red on its own), a negative-equity roe bands
+    "unknown": it blocks green (roe must band "good" to reach green) but does not force red,
+    since the data can't tell a bank in real distress apart from a payment network mid-buyback."""
+    row = {
+        "company_type": "financial", "statement_roe_pct": 13.0, "net_margin_pct": 30.0,
+        "roa_pct": 1.2, "stmt_stockholders_equity": -500.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+    # A genuinely weak margin still forces red on its own, unaffected by this guard.
+    weak_margin = {**row, "net_margin_pct": -5.0}
+    assert rules.compute_verdict(weak_margin) == rules.VERDICT_RED
+
+
+def test_financial_statement_roe_guard_does_not_touch_genuinely_healthy_equity() -> None:
+    row = {
+        "company_type": "financial", "statement_roe_pct": 13.0, "net_margin_pct": 30.0,
+        "roa_pct": 1.2, "stmt_stockholders_equity": 500.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+
+
+def test_financial_statement_roe_guard_ignores_a_missing_equity_value() -> None:
+    row = {
+        "company_type": "financial", "statement_roe_pct": 13.0, "net_margin_pct": 30.0,
+        "roa_pct": 1.2,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**row, "stmt_stockholders_equity": None}) == rules.VERDICT_GREEN
+
+
 # --- Joint liquidity evaluation (current_ratio_stmt relief from FCF covering the shortfall) ---
 # Gemini feedback points 6/8: current_ratio_stmt and fcf_margin_pct used to be graded fully
 # independently, so a company with excellent free cash flow but a merely-weak current ratio was

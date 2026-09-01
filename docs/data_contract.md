@@ -390,22 +390,37 @@ the LLM — and measures **financial health / resilience** on the card's own num
 Conservative — one serious weakness caps it:
 - **operating** — leverage (`net_debt_to_ebitda`), profitability (`ebit_margin_pct`), cash (`fcf_margin_pct`);
   `debt_to_equity` / `current_ratio_stmt` / `statement_roe_pct` are supporting (tie-breakers).
-- **Sign-inversion guards, operating only.** Two of the leverage metrics can flip sign when a
-  denominator goes negative, and banding the flipped value by raw magnitude used to read a
-  distressed or thin-equity company as good on that axis (`docs/backlog/gemini_verdict_feedback.md`
-  point 1). Both guards check the ratio's own raw denominator directly, not the ratio's sign:
+- **Sign-inversion guards.** Three metrics can flip sign when a denominator goes negative, and
+  banding the flipped value by raw magnitude used to read a distressed or thin-equity company as
+  good on that axis (`docs/backlog/gemini_verdict_feedback.md` point 1 and its sibling-bug note).
+  All three guards check the ratio's own raw denominator directly, not the ratio's sign:
   `net_debt_to_ebitda`'s sign alone cannot tell a genuine net-cash position apart from real debt
   divided by negative earnings, and `debt_to_equity`'s numerator (total debt) can be exactly
   zero, which divides out to a zero ratio regardless of equity's sign, so checking the ratio's
   own sign would miss a debt-free company with negative equity. `net_debt_to_ebitda` is banded
-  `unknown` (not by magnitude) when `info_ebitda` is present and `<= 0`; `debt_to_equity` is
-  banded `weak` (not `unknown`, which would be a no-op on a supporting axis) when
-  `stmt_stockholders_equity` is present and `<= 0`, giving it the same yellow-capping ceiling any
-  other weak supporting axis already has, never forcing red on its own. Negative equity is not
-  always distress by itself (a healthy company's own buybacks can produce it too, per the metric
-  catalogue's own applicability note), so `weak` is deliberately the mildest band that still
-  changes anything, a caution rather than a verdict on the cause. Both raw denominators are
-  carried through the mart for exactly these checks and are not themselves displayed metrics.
+  `unknown` (not by magnitude) when `info_ebitda` is present and `<= 0`; `debt_to_equity` and
+  `statement_roe_pct` are banded `weak` (not `unknown`, which would be a no-op on a supporting
+  axis) when `stmt_stockholders_equity` is present and `<= 0`. Negative equity is not always
+  distress by itself for an operating company (a healthy company's own buybacks can produce it
+  too, per the metric catalogue's own applicability note), so `weak` there is deliberately the
+  mildest band that still changes anything, a caution rather than a verdict on the cause, giving
+  the same yellow-capping ceiling any other weak supporting axis already has, never forcing red
+  on its own. All raw denominators are carried through the mart for exactly these checks and are
+  not themselves displayed metrics.
+- **`statement_roe_pct`'s guard bands `unknown`, not `weak`, on financial cards.** On `operating`
+  it is a supporting axis, same treatment as `debt_to_equity` above (`weak`, capping at yellow).
+  On `financial` it is effectively a core axis (`good` is required for green; only `weak` on this
+  or `net_margin_pct` forces red), so the guard bands `unknown` instead: it blocks green (an
+  `unknown` roe is never `good`) without forcing red on its own. This is a deliberate, narrower
+  choice than a first version that banded `weak` (forcing red outright), reasoned from US bank
+  capital regulation. Corrected in review: `company_type == 'financial'` is the whole GICS
+  "Financial Services" sector (insurers, asset managers, broker-dealers, payment networks,
+  exchanges, mortgage finance, not only depository banks), spans markets under entirely different
+  regulatory regimes (this app covers US, UK, Japan, Australia, Germany, France, Netherlands,
+  Switzerland, Spain), and includes firms known for the same benign buyback-driven negative
+  equity operating companies can have. Nothing in the data distinguishes a bank in genuine
+  distress from a payment network mid-buyback, so `unknown` -- the same neutral treatment every
+  other axis gets for information this app cannot actually determine -- is the honest choice.
 - **Joint liquidity evaluation, operating only.** `current_ratio_stmt` and free cash flow used
   to be graded fully independently, so a company with excellent free cash flow but a
   merely-weak current ratio was capped at yellow regardless of how strong its cash generation was
