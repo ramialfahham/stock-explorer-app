@@ -53,6 +53,16 @@ ASSESSMENT_INPUT_COLUMNS = [
     "company_type",
     "currency",
     "snapshot_date",
+    # Verdict-computation signals, not displayed metrics -- deliberately NOT routed through
+    # INPUT_FIELDS_BY_TYPE (that set is specifically "the full displayed set per type" per its
+    # own docstring). Feed _verdict_operating's two sign-inversion guards: info_ebitda tells
+    # genuine net cash apart from a ratio flipped by negative EBITDA; stmt_stockholders_equity
+    # tells genuine low leverage apart from a ratio flipped by negative equity, checked directly
+    # rather than inferred from debt_to_equity's own sign (unreliable when total debt is exactly
+    # zero). Neither is hashed separately since compute_input_hash already hashes the computed
+    # verdict itself, and a verdict either guard changes already moves it.
+    "info_ebitda",
+    "stmt_stockholders_equity",
     *_METRIC_COLUMNS,
 ]
 

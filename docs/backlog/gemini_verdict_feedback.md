@@ -31,6 +31,30 @@ on a third-party AI's say-so without the owner's own call.
    (inverted) ratio is still shown on the card face and named in the AI read as if healthy. No
    guardrail function exists anywhere in the repo today.
 
+   **Acted on, branch `fix/ratio-sign-inversion-guard`.** `net_debt_to_ebitda` (a core axis) is
+   now banded `unknown` when a new `info_ebitda` passthrough column is present and `<= 0`, since
+   the ratio's own sign cannot distinguish genuine net cash from real debt over negative
+   earnings. `debt_to_equity` (a supporting axis) is now banded `weak` when a new
+   `stmt_stockholders_equity` passthrough column is present and `<= 0`. Both guards check the raw
+   denominator directly rather than the ratio's own sign: an equity-analyst review round caught
+   that inferring equity's sign from `debt_to_equity`'s sign misses a debt-free company with
+   negative equity (total debt exactly zero divides out to a zero ratio regardless of equity's
+   sign), which the raw-denominator check catches. See `docs/data_contract.md`'s verdict-rules
+   section for the shipped behavior. The raw (possibly sign-flipped) value shown on the card face
+   and named in the AI read is unchanged; that is candidate direction 4 (structured AI-read
+   output), not this fix.
+
+   **Sibling bug found while reviewing this fix, NOT fixed here (separate, unscoped issue):**
+   `statement_roe_pct` (`stmt_net_income_common / stmt_stockholders_equity`, in
+   `int_stock__card_metrics.sql`) has the identical sign-ambiguity problem `debt_to_equity` had --
+   a loss over negative equity divides out to a spuriously POSITIVE return on equity, which an
+   existing dbt unit test (`card_metrics_statement_metrics_negative_equity` in
+   `dbt_analytics/models/4_intermediate/_intermediate.yml`) already documents as an accepted,
+   unaddressed output. `statement_roe_pct` is itself a supporting axis in `_verdict_operating`,
+   same as `debt_to_equity`, so the same `stmt_stockholders_equity`-based guard mechanism this fix
+   already built could very likely apply directly. Not touched here because it was outside this
+   task's confirmed scope (`.claude/task/contract.md` names only the two metrics above).
+
 2. **Early-stage/pre-revenue context awareness -- PARTIALLY TRUE.** The framework is not
    blind to early-stage companies in general: `_verdict_pre_revenue()`
    (`scripts/assessment_rules.py`) judges only cash/runway/working-capital, never profitability,
@@ -110,10 +134,10 @@ on a third-party AI's say-so without the owner's own call.
 
 ## Candidate directions (not decisions, for owner discussion)
 
-1. **Ratio sign-inversion guard (point 1).** A small, targeted `scripts/assessment_rules.py` or
-   dbt-layer function that detects a negative-denominator inversion and either suppresses the
-   ratio's "good" banding or flags it distinctly. Lowest engineering risk of the set; narrow
-   scope, no new dependency.
+1. **Ratio sign-inversion guard (point 1). Done -- branch `fix/ratio-sign-inversion-guard`.** A
+   small, targeted `scripts/assessment_rules.py` function that detects a negative-denominator
+   inversion and reclassifies the axis instead of banding it by raw magnitude. Lowest engineering
+   risk of the set; narrow scope, no new dependency. See point 1's Context entry above.
 2. **Joint liquidity evaluation (points 6/8).** Replace `_verdict_operating`'s independent
    core/supporting gating for `current_ratio_stmt` with a function that weighs it against
    `fcf_margin_pct`. Would change some already-shipped verdicts (see open questions); needs

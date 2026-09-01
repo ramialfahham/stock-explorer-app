@@ -122,6 +122,59 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
     return _band(row.get(metric), DIRECTION_BY_METRIC[metric], weak_th, good_th)
 
 
+# --- Ratio sign-inversion guards ---------------------------------------------------------
+# Two operating-type ratios can flip sign when their denominator goes negative, and banding the
+# flipped value by raw magnitude reads a distressed or thin-equity company as "good" on that
+# axis. Both cases are already named in metric_catalogue.csv's own applicability text:
+# net_debt_to_ebitda "explodes when EBITDA ~ 0 (distressed/pre-profit)"; debt_to_equity "flips or
+# explodes and stops being meaningful" when equity goes negative. Filed as Gemini feedback
+# point 1 (docs/backlog/gemini_verdict_feedback.md).
+#
+# Both guards check the RATIO'S OWN DENOMINATOR directly (info_ebitda, stmt_stockholders_equity),
+# not the ratio's sign. Checking the ratio's sign is not equivalent: net_debt_to_ebitda's
+# numerator can itself be negative (genuine net cash), and debt_to_equity's numerator (total
+# debt) is never negative in this data but CAN be exactly zero, and zero divided by a negative
+# number is zero, not negative -- a debt-free company with negative equity would silently evade
+# a check on the ratio's own sign. Both raw denominators are passed through the mart for exactly
+# this reason; see their own column comments in int_stock__card_metrics.sql.
+#
+# The two guards land on different bands because the two axes play different roles.
+# net_debt_to_ebitda is a CORE axis (every core axis must be "good" for green), so it is fixed
+# by treating it as "unknown" -- the same neutral treatment every other axis already gets for a
+# missing value. debt_to_equity is a SUPPORTING axis, which never needs to be "good" to reach
+# green -- only "weak" changes anything, since supporting axes can block green but never rescue
+# it. Relabeling negative equity "unknown" there would have been a no-op on every card's actual
+# color, which is not a fix. So it is banded "weak" instead, capping the card at yellow, the
+# same ceiling every other weak supporting axis already has, never forcing red on its own.
+# Negative equity is not always distress on its own (it can come from a healthy company's own
+# buybacks, per the catalogue's own applicability note) -- "weak" is deliberately the mildest
+# band that still changes anything, a caution rather than a verdict on the cause.
+
+
+def _axis_unless_denominator_nonpositive(
+    row: Mapping[str, Any],
+    metric: str,
+    denominator_field: str,
+    bad_band: str,
+    weak_th: float,
+    good_th: float,
+) -> str:
+    """Like `_axis`, but `bad_band` when the ratio's own denominator is present and <= 0.
+
+    Dividing by a non-positive denominator breaks the ratio's normal higher/lower-is-better
+    meaning regardless of the numerator's sign -- net cash divided by negative EBITDA can look
+    identical in sign to real debt divided by negative EBITDA, and a debt-free company divided by
+    negative equity looks identical in sign to a company with no debt problem at all (0 either
+    way). Checking the denominator directly, not the ratio, resolves both. A MISSING denominator
+    does not trigger this: only a denominator we can actually see is bad, matching every other
+    axis's missing-means-unknown treatment rather than assuming without evidence.
+    """
+    denominator = row.get(denominator_field)
+    if not _is_missing(denominator) and float(denominator) <= 0:
+        return bad_band
+    return _axis(row, metric, weak_th, good_th)
+
+
 # --- Per-type verdict policies (owner-signed §6 bands; conservative worst-axis-wins) ---
 # The verdict is HEALTH/resilience: leverage, profitability, cash, liquidity, runway, and
 # revenue growth, but growth counts in ONLY one direction. Valuation used to be excluded
@@ -158,14 +211,24 @@ def _is_shrinking(row: Mapping[str, Any]) -> bool:
 
 def _verdict_operating(row: Mapping[str, Any]) -> str:
     # Core axes are eligibility-required, so present for eligible operating cards.
+    # net_debt_to_ebitda goes through the sign-inversion guard: "unknown" (not "good") when
+    # info_ebitda is present and <= 0, so a distressed company can't reach green just because
+    # dividing by negative earnings flipped the ratio's sign favorably.
     core = (
-        _axis(row, "net_debt_to_ebitda", weak_th=3.0, good_th=1.5),
+        _axis_unless_denominator_nonpositive(
+            row, "net_debt_to_ebitda", "info_ebitda", "unknown", weak_th=3.0, good_th=1.5
+        ),
         _axis(row, "ebit_margin_pct", weak_th=0.0, good_th=10.0),
         _axis(row, "fcf_margin_pct", weak_th=0.0, good_th=5.0),
     )
     # Supporting axes may be null; they can break a tie but never rescue a red flag.
+    # debt_to_equity goes through the same sign-inversion guard: "weak" (not "unknown", which
+    # would be a no-op on a supporting axis) when stmt_stockholders_equity is present and <= 0,
+    # capping the card at yellow, the same ceiling any other weak supporting axis already gets.
     supporting = (
-        _axis(row, "debt_to_equity", weak_th=2.0, good_th=1.0),
+        _axis_unless_denominator_nonpositive(
+            row, "debt_to_equity", "stmt_stockholders_equity", "weak", weak_th=2.0, good_th=1.0
+        ),
         _axis(row, "current_ratio_stmt", weak_th=1.0, good_th=1.5),
         _axis(row, "statement_roe_pct", weak_th=0.0, good_th=10.0),
     )

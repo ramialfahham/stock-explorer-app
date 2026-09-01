@@ -88,6 +88,13 @@ models:
       - name: revenue_growth_yoy_pct
         description: >
           YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
+      - name: info_ebitda
+        description: >
+          Raw EBITDA passthrough, alongside net_debt_to_ebitda below which is computed from it.
+          Data-only -- not in the metric catalogue or the Supabase export. Lets
+          scripts/assessment_rules.py's verdict banding detect when net_debt_to_ebitda's sign
+          flipped because ebitda went negative (a leverage ratio that "explodes when EBITDA ~ 0",
+          per this metric's own catalogue applicability note), not because net debt did.
       - name: net_debt_to_ebitda
         description: >
           Leverage ratio: coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda.
@@ -121,6 +128,14 @@ models:
           freeCashflow over current marketCap; guarded against null/zero market cap). Nullable (null for
           financials with no freeCashflow); not clipped. Data-only — not in eligibility, the metric
           catalogue, or the Supabase export yet.
+      - name: stmt_stockholders_equity
+        description: >
+          Raw shareholders' equity passthrough, alongside debt_to_equity below which is computed
+          from it. Data-only -- not in the metric catalogue or the Supabase export. Lets
+          scripts/assessment_rules.py's verdict banding check equity's own sign directly, since
+          stmt_total_debt can be exactly zero, and zero divided by negative equity is zero, not
+          negative -- a debt-free company with negative equity would otherwise evade a check on
+          the ratio's own sign.
       - name: debt_to_equity
         description: >
           Leverage: stmt_total_debt / stmt_stockholders_equity (statement-based; equity excludes

@@ -185,6 +185,105 @@ def test_boundaries() -> None:
     assert rules.compute_verdict(pr(11.9)) == rules.VERDICT_RED
 
 
+# --- Ratio sign-inversion guards ----------------------------------------------------------
+# Gemini feedback point 1 (docs/backlog/gemini_verdict_feedback.md): net_debt_to_ebitda and
+# debt_to_equity can flip sign when a denominator goes negative, and banding the flipped value
+# by raw magnitude used to read a distressed company as good on that axis.
+
+def test_net_debt_to_ebitda_guard_moves_a_green_card_to_yellow() -> None:
+    """Core axis: net debt looks tiny relative to a *negative* EBITDA (info_ebitda <= 0), which
+    the old magnitude-only banding read as excellent leverage. The guard needs info_ebitda's own
+    sign to catch this -- the ratio's sign alone can't, since a negative numerator would look
+    identical."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 0.2, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "info_ebitda": -5.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+    # Same numbers, profitable EBITDA instead: nothing wrong here, still green.
+    healthy = {**row, "info_ebitda": 5.0}
+    assert rules.compute_verdict(healthy) == rules.VERDICT_GREEN
+
+
+def test_net_debt_to_ebitda_guard_ignores_a_missing_info_ebitda() -> None:
+    """A MISSING info_ebitda must not trigger the guard -- only a denominator we can actually
+    see is bad, the same "missing means unknown, never assumed" treatment every other axis
+    gets. Without this, every card computed before info_ebitda existed would silently degrade."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 0.2, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**row, "info_ebitda": None}) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**row, "info_ebitda": float("nan")}) == rules.VERDICT_GREEN
+
+
+def test_net_debt_to_ebitda_guard_does_not_touch_genuine_net_cash() -> None:
+    """A real net-cash position (negative net_debt_to_ebitda, positive info_ebitda) is the
+    case the guard must leave alone -- it is genuinely the best leverage reading, not a sign
+    flip to catch."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": -0.5, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "info_ebitda": 8.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+
+
+def test_debt_to_equity_guard_caps_a_negative_equity_card_at_yellow() -> None:
+    """Supporting axis: total debt is never negative in this data, so a negative ratio always
+    means negative shareholders' equity. The old magnitude-only banding treated any negative
+    value as "good" (lower-is-better, and negative is always below the good threshold), so this
+    used to help a distressed company toward green. "weak" gives it the same ceiling every
+    other weak supporting axis already has: it caps the card at yellow, it does not force red."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": -3.0, "stmt_stockholders_equity": -500.0,
+        "current_ratio_stmt": 1.8, "statement_roe_pct": 22.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+    # A red core axis still wins outright; the guard must not soften that.
+    weak_core = {**row, "ebit_margin_pct": -5.0}
+    assert rules.compute_verdict(weak_core) == rules.VERDICT_RED
+
+
+def test_debt_to_equity_guard_checks_equity_directly_not_the_ratios_sign() -> None:
+    """The ratio's own sign is not a reliable tell: total debt is never negative in this data,
+    but it CAN be exactly zero, and zero divided by negative equity is zero, not negative. A
+    debt-free company with negative equity (debt_to_equity == 0.0) would silently evade a check
+    on the ratio's own sign and still band "good". Checking stmt_stockholders_equity's own sign
+    directly catches this case too."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.0, "stmt_stockholders_equity": -500.0,
+        "current_ratio_stmt": 1.8, "statement_roe_pct": 22.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_debt_to_equity_guard_does_not_touch_genuinely_low_leverage() -> None:
+    """A real low-leverage company (positive debt_to_equity, positive equity) is unaffected --
+    the guard only fires when it can see equity itself is non-positive."""
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.6, "stmt_stockholders_equity": 800.0,
+        "current_ratio_stmt": 1.8, "statement_roe_pct": 22.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+
+
+def test_debt_to_equity_guard_ignores_a_missing_equity_value() -> None:
+    # A MISSING stmt_stockholders_equity does not trigger the guard -- only equity we can
+    # actually see is bad, matching every other axis's missing-means-unknown treatment. The
+    # ratio itself may still be present (e.g. from a period the pipeline didn't carry equity for).
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 12.0, "debt_to_equity": 0.6, "current_ratio_stmt": 1.8,
+        "statement_roe_pct": 22.0,
+    }
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+    assert rules.compute_verdict({**row, "stmt_stockholders_equity": None}) == rules.VERDICT_GREEN
+
+
 # --- Null tolerance + totality ------------------------------------------------------------
 
 def test_operating_optional_metrics_null_still_resolves() -> None:

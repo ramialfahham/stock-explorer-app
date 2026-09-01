@@ -390,6 +390,22 @@ the LLM — and measures **financial health / resilience** on the card's own num
 Conservative — one serious weakness caps it:
 - **operating** — leverage (`net_debt_to_ebitda`), profitability (`ebit_margin_pct`), cash (`fcf_margin_pct`);
   `debt_to_equity` / `current_ratio_stmt` / `statement_roe_pct` are supporting (tie-breakers).
+- **Sign-inversion guards, operating only.** Two of the leverage metrics can flip sign when a
+  denominator goes negative, and banding the flipped value by raw magnitude used to read a
+  distressed or thin-equity company as good on that axis (`docs/backlog/gemini_verdict_feedback.md`
+  point 1). Both guards check the ratio's own raw denominator directly, not the ratio's sign:
+  `net_debt_to_ebitda`'s sign alone cannot tell a genuine net-cash position apart from real debt
+  divided by negative earnings, and `debt_to_equity`'s numerator (total debt) can be exactly
+  zero, which divides out to a zero ratio regardless of equity's sign, so checking the ratio's
+  own sign would miss a debt-free company with negative equity. `net_debt_to_ebitda` is banded
+  `unknown` (not by magnitude) when `info_ebitda` is present and `<= 0`; `debt_to_equity` is
+  banded `weak` (not `unknown`, which would be a no-op on a supporting axis) when
+  `stmt_stockholders_equity` is present and `<= 0`, giving it the same yellow-capping ceiling any
+  other weak supporting axis already has, never forcing red on its own. Negative equity is not
+  always distress by itself (a healthy company's own buybacks can produce it too, per the metric
+  catalogue's own applicability note), so `weak` is deliberately the mildest band that still
+  changes anything, a caution rather than a verdict on the cause. Both raw denominators are
+  carried through the mart for exactly these checks and are not themselves displayed metrics.
 - **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
   adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the bank verdict stays modest).
 - **`revenue_growth_yoy_pct` — ONE-SIDED, on operating and financial cards**.

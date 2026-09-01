@@ -84,12 +84,24 @@ models:
       - name: revenue_growth_yoy_pct
         description: >
           Card metric 3 — revenue growth YoY percent (0–100 scale).
+      - name: info_ebitda
+        description: >
+          Raw EBITDA, passed through so scripts/generate_assessments.py can give
+          assessment_rules.py's verdict banding a way to detect when net_debt_to_ebitda's sign
+          flipped from negative earnings rather than genuine net cash. Data-only -- not in the
+          metric catalogue or the Supabase export.
       - name: net_debt_to_ebitda
         description: >
           Card metric 4 — net debt to EBITDA ratio.
       - name: fcf_margin_pct
         description: >
           Card metric 5 — free cash flow margin percent (0–100 scale).
+      - name: stmt_stockholders_equity
+        description: >
+          Raw shareholders' equity, passed through so scripts/generate_assessments.py can give
+          assessment_rules.py's verdict banding a way to check equity's own sign directly rather
+          than inferring it from debt_to_equity's sign, which is unreliable when total debt is
+          exactly zero. Data-only -- not in the metric catalogue or the Supabase export.
       - name: debt_to_equity
         description: >
           Operating-card solvency metric — total debt / shareholders' equity (statement-based,
