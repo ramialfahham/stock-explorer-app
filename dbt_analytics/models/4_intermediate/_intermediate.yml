@@ -99,6 +99,14 @@ models:
         description: >
           Leverage ratio: coalesce(info_net_debt, info_total_debt - info_total_cash) / info_ebitda.
           Null when numerator or denominator missing or ebitda is zero.
+      - name: stmt_free_cash_flow
+        description: >
+          Raw free cash flow passthrough, alongside fcf_margin_pct below which is computed from
+          it. Data-only -- not in the metric catalogue or the Supabase export. Lets
+          scripts/assessment_rules.py's current_ratio_stmt liquidity relief check free cash flow
+          against the dollar size of the working-capital shortfall directly, rather than against
+          fcf_margin_pct's revenue-scaled proxy, which doesn't track a liquidity gap that isn't
+          proportional to revenue (e.g. a near-term debt-maturity wall).
       - name: fcf_margin_pct
         description: >
           FCF margin percent: stmt_free_cash_flow / stmt_total_revenue × 100. Null when revenue zero or fields missing.

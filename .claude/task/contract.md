@@ -1,22 +1,19 @@
 # Task contract
 
-objective: Fix a ratio sign-inversion problem in the verdict engine, the first point from the
-  owner's filed Gemini feedback (`docs/backlog/gemini_verdict_feedback.md`). Two operating-type
-  metrics can flip sign when a denominator goes negative, and the verdict currently bands the
-  flipped value by raw magnitude, which can read a distressed company as "good" on that axis:
-  1. **`debt_to_equity`** -- total debt is never negative in this data, so a negative ratio
-     always means negative shareholders' equity. The metric catalogue's own applicability note
-     already says so: "heavy buybacks can push equity below zero, and the ratio then flips or
-     explodes and stops being meaningful." `card_copy.py`'s display gloss already special-cases
-     this ("Negative equity, so this ratio isn't a normal leverage read"); the verdict engine
-     does not. (See amendments: shipped as a direct check on equity's own sign, not the ratio's,
-     after a review round caught that the ratio's sign is not a reliable tell.)
-  2. **`net_debt_to_ebitda`** -- both net debt and EBITDA can independently be negative, so the
-     ratio's sign alone can't tell genuine net cash (good) from real debt divided by negative
-     earnings (bad, currently mis-banded as good). Telling these apart needs EBITDA's own sign,
-     which isn't available to the Python verdict layer today -- only the already-divided ratio
-     is passed through. Owner chose the precise fix: expose raw `info_ebitda` end to end so the
-     check is exact, not a proxy heuristic.
+objective: Give `current_ratio_stmt` relief from strong free cash flow in the operating verdict,
+  the second point acted on from the owner's filed Gemini feedback
+  (`docs/backlog/gemini_verdict_feedback.md`, points 6/8). `_verdict_operating` currently grades
+  `fcf_margin_pct` (core) and `current_ratio_stmt` (supporting) completely independently, so a
+  company with excellent free cash flow but a merely-weak current ratio is capped at yellow
+  regardless -- exactly Apple's real card (current ratio 0.89, FCF margin 23.7%), which the
+  owner judged contradicts real-world consensus on Apple's financial health. Shipped mechanism
+  (see amendments for how this changed from the first, reviewer-failed version): when
+  `current_ratio_stmt` bands `weak`, reclassify it to `ok` instead of `weak` when free cash flow
+  (`stmt_free_cash_flow`, a raw dollar figure) covers the working-capital shortfall
+  (`stmt_free_cash_flow >= -working_capital`) -- UNLESS `current_ratio_stmt` is below a floor of
+  0.5 (current liabilities more than double current assets), in which case it stays `weak`
+  regardless of FCF. `ok` is not `weak`, so it no longer blocks green on its own; it is also not
+  `good`, so it earns no other privilege a genuinely strong ratio would.
 
 scope_paths:
   - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
@@ -32,111 +29,115 @@ scope_paths:
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved: none for the shape of the fix -- both the approach (guard both metrics'
-  verdict banding, not the raw displayed value) and the net_debt_to_ebitda mechanism (precise,
-  via a new `info_ebitda` column, not the ebit_margin_pct proxy heuristic) were explicitly
-  decided by the owner this session. This DOES change verdicts already shown to users for
-  companies matching either pattern -- the owner was told this explicitly before confirming.
+decisions_reserved: none for the shape of the fix -- the mechanism (relief to `ok`, not a full
+  override to `good`) and the floor value (0.5) were both explicitly decided by the owner this
+  session, after the owner rejected leaving the current behavior as-is. The specific gating
+  signal changed mid-task (fcf_margin_pct -> dollar FCF-vs-shortfall comparison; see amendments)
+  after a review round found the original gate financially unsound; the owner confirmed
+  proceeding with the corrected mechanism before it was built, per the same standard applied to
+  the mechanism's first version. This DOES change verdicts already shown to users: any operating
+  card with a weak-but-not-catastrophic current ratio whose free cash flow covers its
+  working-capital shortfall moves from yellow to green (unless another axis still blocks it).
 
 done_when:
-  - `int_stock__card_metrics.sql` exposes `info_ebitda` AND `stmt_stockholders_equity` as new
-    output columns (both already fetched upstream, just not currently passed past the
-    intermediate layer). Documented in `_intermediate.yml`, explicitly noted as internal
-    verdict-computation signals, not displayed metrics -- neither added to the metric catalogue,
-    neither added to the Supabase export list (`scripts/export_to_supabase.py`'s
-    `EXPORT_COLUMNS` untouched). `stmt_stockholders_equity` added in a review round (see
-    amendments): checking `debt_to_equity`'s own sign missed a debt-free company with negative
-    equity (total debt exactly zero divides out to a zero ratio regardless of equity's sign), so
-    the guard needs equity's own sign directly, the same reason `info_ebitda` exists for
-    `net_debt_to_ebitda`.
-  - `mart_stock_cards.sql` passes both columns through too, since `generate_assessments.py`
-    reads from this mart, not the intermediate model directly. Documented in `_marts.yml`.
-  - `generate_assessments.py`'s `ASSESSMENT_INPUT_COLUMNS` includes both directly (not via
-    `INPUT_FIELDS_BY_TYPE`, which specifically means "the full displayed set per type" per its
-    own docstring -- neither is displayed nor catalogued).
-  - `assessment_rules.py`: one generalized guard function (`_axis_unless_denominator_nonpositive`,
-    taking the band to use as a parameter) checks each ratio's raw denominator directly, not the
-    ratio's own sign. `net_debt_to_ebitda`'s verdict banding treats itself as `"unknown"` when
-    `info_ebitda` is present and `<= 0`. `debt_to_equity`'s verdict banding treats itself as
-    `"weak"` (see amendments -- not `"unknown"` as first planned) when `stmt_stockholders_equity`
-    is present and `<= 0`. A MISSING denominator does not trigger either guard -- both band
-    normally by magnitude, matching every other axis's "missing means unknown, never assumed"
-    treatment and, not incidentally, not breaking any existing test (none currently supply either
-    new column).
-  - `compute_input_hash` needs no separate change: its payload already includes the computed
-    `verdict` string directly, so a verdict that changes because of either new guard already
-    moves the hash and regenerates the AI-written read, without either new column needing its own
-    hash entry.
-  - `tests/tooling/test_assessment_rules.py`: new cases proving each guard actually changes an
-    outcome (a card that currently reads green/good on the affected axis with a sign-inverted
-    value now reads unknown/yellow-at-best), a case per guard confirming a genuinely healthy
-    company (real net cash + positive EBITDA; real low debt-to-equity + positive equity) is
-    unaffected, a case per guard confirming a MISSING denominator does not trigger it, and a case
-    proving `debt_to_equity`'s guard fires on the total-debt-exactly-zero edge case the ratio's
-    own sign would miss (`debt_to_equity == 0.0`, `stmt_stockholders_equity` negative).
-  - `docs/data_contract.md`'s verdict-rules section gets a short note on both guards, since it's
-    the authoritative description of how the color is decided.
-  - `docs/backlog/gemini_verdict_feedback.md` updated: point 1 marked acted on, with a pointer
-    to this branch.
-  - dbt build/test green for both changed models (unit test fixtures for
-    `int_stock__card_metrics` may need `info_ebitda` added to their `expect` blocks if the test
-    framework requires exact column matching -- verify, don't assume, during Verify).
-  - `pytest` green.
+  - `int_stock__card_metrics.sql` exposes `stmt_free_cash_flow` as a new raw passthrough column
+    (already fetched, just not currently passed past the intermediate layer -- the same pattern
+    as `info_ebitda`/`stmt_stockholders_equity` from the prior fix). Documented in
+    `_intermediate.yml`, data-only, not catalogued, not exported to Supabase. `mart_stock_cards.sql`
+    passes it through too, documented in `_marts.yml`. `generate_assessments.py`'s
+    `ASSESSMENT_INPUT_COLUMNS` includes it directly; `working_capital` needs no separate wiring
+    since it's already part of `_METRIC_COLUMNS` via `INPUT_FIELDS_BY_TYPE["pre_revenue"]`, so
+    every row already carries it regardless of company_type.
+  - `scripts/assessment_rules.py` gets `CURRENT_RATIO_WEAK_TH`/`CURRENT_RATIO_GOOD_TH` (1.0/1.5,
+    extracted from the pre-existing inline literals) and `CURRENT_RATIO_LIQUIDITY_FLOOR` (0.5,
+    new), each with a comment stating the reasoning the owner gave (why 0.5, why relief lands on
+    `ok` not `good`).
+  - A new function, `_current_ratio_axis_with_fcf_coverage_relief(row)`, replaces the direct
+    `_axis(row, "current_ratio_stmt", ...)` call in `_verdict_operating`'s `supporting` tuple.
+    Bands normally (`good`/`ok`/`unknown`) in every case except: value present, bands `weak`,
+    value `>= CURRENT_RATIO_LIQUIDITY_FLOOR`, `working_capital` present and negative, and
+    `stmt_free_cash_flow` present and `>= -working_capital` -- only then does it return `ok`
+    instead of `weak`.
+  - `tests/tooling/test_assessment_rules.py`: `test_operating_supporting_weakness_blocks_green`
+    updated to demonstrate the general "weak supporting axis blocks green" principle on an axis
+    the relief mechanism does NOT touch (`statement_roe_pct`). New cases: relief actually flips a
+    green-eligible Apple-shaped card to green; the exact debt-maturity-wall counter-example a
+    revenue-scaled gate would have missed (decent FCF margin, real FCF far short of the dollar
+    shortfall) is correctly denied; the floor still blocks relief below 0.5 regardless of FCF
+    coverage; the floor boundary itself; the coverage boundary itself (FCF exactly equal to the
+    shortfall clears it); missing `stmt_free_cash_flow` or `working_capital` earns no relief; a
+    non-negative `working_capital` despite a weak ratio earns no relief (defensive); relief does
+    not rescue an unrelated weak axis elsewhere; a missing `current_ratio_stmt` is untouched.
+  - `docs/data_contract.md`'s verdict-rules section documents the relief mechanism and its floor,
+    since it's the authoritative description of how the color is decided.
+  - `docs/backlog/gemini_verdict_feedback.md` updated: points 6/8 marked acted on, with a pointer
+    to this branch and the corrected mechanism.
+  - `pytest` green. `dbt build` green for the changed models.
   - No em dash or en dash on any added line.
 
 impact_map:
-  - Changes verdicts for real cards: any operating-type company with negative shareholders'
-    equity, or with `info_ebitda <= 0` (distressed/pre-profit by the catalogue's own words), no
-    longer gets a false assist toward green on that specific axis. Some cards currently green
-    may move to yellow. Corrected per amendments: the two guards do NOT land the same way --
-    `net_debt_to_ebitda`'s move to "unknown" is the neutral, no-worse-than-missing treatment
-    every other axis already gets, but `debt_to_equity`'s move to "weak" is deliberately a real
-    demotion (a supporting axis in "unknown" never changes anything), so it CAN cap a card at
-    yellow that would otherwise have reached green on every other axis.
+  - Changes verdicts for real cards: any operating-type company with `current_ratio_stmt` in
+    [0.5, 1.0) whose free cash flow covers its working-capital shortfall moves from yellow to
+    green, unless a different axis still blocks it. Below 0.5, nothing changes regardless of FCF.
+    A company with a decent `fcf_margin_pct` but FCF far short of a real shortfall (e.g. a
+    near-term debt-maturity wall) correctly does NOT move -- this is the specific case the first,
+    reviewer-failed version of this fix would have wrongly relieved.
   - Requires re-running the pipeline (dbt build, then `scripts/generate_assessments.py`) to
-    actually recompute verdicts against the fix -- not something `pytest` alone verifies.
-  - Known, explicitly out of scope: the AI-written prose read still sees `net_debt_to_ebitda`'s
-    raw (possibly sign-flipped) value via its existing metric brief and could describe it
-    misleadingly even though the verdict itself is now correct. That's the separately-filed
-    "structured AI-read output" backlog point, not fixed here.
-  - No frontend change; the card face already shows whatever `net_debt_to_ebitda`/
-    `debt_to_equity` value the mart computes, unchanged by this fix (only the internal
-    verdict-banding interpretation of that value changes, not the number itself or its
-    display).
+    actually recompute verdicts against the fix -- not something `pytest` alone verifies. Local
+    dev sample (63 cards) is unlikely to contain a card matching this exact profile, so this
+    can't be visually verified pre-merge, matching the prior sign-inversion fix.
+  - Known, explicitly out of scope: `_verdict_operating`'s other supporting axes
+    (`debt_to_equity`, `statement_roe_pct`) get no analogous relief mechanism. This fix is scoped
+    to the one metric pair Gemini's feedback and the owner's decision named; extending the same
+    idea to other pairs is a new, separate decision, not implied by this one.
+  - No frontend change; the card face already shows whatever `current_ratio_stmt`/
+    `fcf_margin_pct` values the mart computes, unchanged by this fix. `stmt_free_cash_flow` and
+    `working_capital` are internal signals only, not displayed.
 
 amendments:
-  - Discovered mid-implementation: `debt_to_equity` is a SUPPORTING axis in `_verdict_operating`,
-    and supporting axes only affect the card's color when banded `"weak"` (they can block green,
-    never rescue it). The plan as written would have banded a negative value `"unknown"` --
-    exactly the same treatment supporting axes already tolerate for a genuinely MISSING value --
-    which is a no-op on every card's actual color, not the fix described above (some cards
-    currently green may move to yellow). Corrected to band `"weak"` instead: negative
-    shareholders' equity is a real solvency concern, not a neutral unknown, and `"weak"` gives it
-    the same yellow-capping ceiling any other weak supporting axis already has, never forcing red
-    on its own, consistent with every other supporting axis in this function. Surfaced to the
-    owner before implementing (asked to choose between keeping the no-op version, making it
-    count against the card, or dropping the debt_to_equity guard entirely); owner pushed back on
-    settling for the no-op as under-scoped work, agreeing with the proposed `"weak"` fix.
-  - Round-1 review: equity-analyst-reviewer FAILED the diff with three findings, the other three
-    required reviewers (scope-auditor, cto-reviewer, analytics-engineer-reviewer) PASSED. (1)
-    `docs/data_contract.md`'s prose calling negative equity "a real solvency concern" overclaimed
-    against the catalogue's own applicability note, which attributes it to "heavy buybacks" too
-    -- a benign, common pattern among the mature large-caps this app covers, not necessarily
-    distress. Fixed: softened to describe `"weak"` as a deliberate caution given the two causes
-    can't be told apart, not a claim about which one it is. (2) Real logic gap: checking
-    `debt_to_equity`'s own sign misses a debt-free company with negative equity, since
-    `stmt_total_debt` (never negative) can be exactly zero, and zero divided by any nonzero
-    number is zero, not negative -- such a card would have silently kept banding "good". Fixed:
-    added `stmt_stockholders_equity` as a second raw-denominator passthrough (mirroring
-    `info_ebitda`) and generalized the one guard function to check either ratio's actual
-    denominator, not its sign; new test proves the specific `debt_to_equity == 0.0` edge case is
-    now caught. (3) impact_map's blanket "none moves toward a WORSE color" line contradicted this
-    same document's amendments section, which explains `"weak"` was chosen BECAUSE it is a real
-    demotion `"unknown"` would not have been. Fixed: impact_map corrected above. Also surfaced,
-    not fixed here: `statement_roe_pct` (`stmt_net_income_common / stmt_stockholders_equity`) has
-    the identical sign-ambiguity problem `debt_to_equity` had, already documented as an accepted,
-    unaddressed output by an existing dbt unit test
-    (`card_metrics_statement_metrics_negative_equity`); out of this task's confirmed scope, noted
-    in `docs/backlog/gemini_verdict_feedback.md` as a likely-direct follow-on since the same
-    `stmt_stockholders_equity` column this fix now exposes would drive it too. All four reviewers
-    re-run against the corrected diff; see `.claude/task/review.md`.
+  - Round-1 review: equity-analyst-reviewer and cto-reviewer both FAILED the first version of
+    this diff; scope-auditor PASSED. (1) equity-analyst-reviewer: gating relief on
+    `fcf_margin_pct` banding `good` is a mismatched comparison -- margin is scaled by revenue,
+    not by the size of the liquidity gap, which isn't proportional to revenue for a company whose
+    current liabilities carry a near-term debt-maturity wall. Built a concrete counter-example
+    (modest revenue, a 6% FCF margin that clears "good", but real FCF a small fraction of a real
+    dollar shortfall) where the old mechanism would have wrongly relieved a card with genuine
+    liquidity risk. Fixed: replaced the `fcf_margin_pct`-gated check with a direct dollar
+    comparison, `stmt_free_cash_flow >= -working_capital` (does free cash flow actually cover the
+    working-capital shortfall), requiring a new `stmt_free_cash_flow` raw passthrough column
+    (same pattern as `info_ebitda`/`stmt_stockholders_equity`) and reusing the already-computed
+    `working_capital` column (already flows through `_METRIC_COLUMNS` via
+    `INPUT_FIELDS_BY_TYPE["pre_revenue"]`, no new wiring needed for it). This still relieves
+    Apple (FCF a large multiple of its comparatively small shortfall) and correctly withholds
+    relief from the counter-example. Surfaced to the owner before implementing; owner confirmed
+    "go ahead" on the proposed redesign. (2) cto-reviewer: the test
+    `test_current_ratio_relief_requires_fcf_margin_actually_good` did not test the property its
+    docstring claimed -- confirmed by mutation testing (weakening the relief gate from `good` to
+    `!= weak` left the test passing) because its fixture's `fcf_margin_pct=3.0` also failed the
+    CORE axis's own independent `fcf_margin_pct >= 5.0` requirement, forcing yellow regardless of
+    whatever the relief function did. Moot in the corrected design: the relief mechanism no
+    longer references `fcf_margin_pct` at all, so this specific confound cannot recur; replaced
+    with `test_current_ratio_relief_denied_when_fcf_margin_good_but_shortfall_too_large`, which
+    sets `fcf_margin_pct=6.0` (clears the unrelated core gate) alongside an insufficient dollar
+    shortfall, isolating the relief mechanism's own gate cleanly. Corrected diff re-dispatched to
+    FOUR reviewers, not three -- the redesign's new `stmt_free_cash_flow` passthrough touches
+    `.sql`/`.yml` files, which route to analytics-engineer-reviewer per
+    `.claude/review_routing.json`'s `*.sql`/`dbt_analytics/*.yml` patterns, on top of the three
+    from round 1.
+  - Round-2 review: cto-reviewer, analytics-engineer-reviewer, and equity-analyst-reviewer all
+    PASSED the corrected mechanism (dollar-comparison logic, boundary conditions, and financial
+    soundness all independently verified, including mutation testing and a hand-traced re-check
+    of the exact debt-maturity-wall counter-example). scope-auditor FAILED on a real but
+    process-only finding: this `amendments` section's previous entry (see above) asserted, in
+    completed past tense, that review had already happened and pointed at
+    `.claude/task/review.md` as if it already recorded the outcome -- neither was true at the
+    time it was written, and the reviewer count was still "three", not the four actually
+    dispatched. Fixed: this entry replaces the premature claim; `.claude/task/review.md` is
+    written only after all round-2 verdicts are in hand, per the same sequencing every prior task
+    this session has followed. scope-auditor also flagged one flaky `pytest` failure (1 of 32
+    full-suite runs, not reproducible in isolation or in 31 other runs including with a fixed
+    hash seed) as a non-blocking observation, most likely transient interference from multiple
+    reviewer agents running `pytest` concurrently in this same shared (non-worktree-isolated)
+    working directory while cto-reviewer's own mutation testing was temporarily editing
+    `scripts/assessment_rules.py` in place -- not a defect in the staged diff itself; re-run
+    clean before commit.

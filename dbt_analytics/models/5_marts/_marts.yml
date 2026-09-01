@@ -93,6 +93,12 @@ models:
       - name: net_debt_to_ebitda
         description: >
           Card metric 4 — net debt to EBITDA ratio.
+      - name: stmt_free_cash_flow
+        description: >
+          Raw free cash flow, passed through so scripts/generate_assessments.py can give
+          assessment_rules.py's current_ratio_stmt liquidity relief a real dollar basis (FCF
+          against the working-capital shortfall) instead of fcf_margin_pct's revenue-scaled
+          proxy. Data-only -- not in the metric catalogue or the Supabase export.
       - name: fcf_margin_pct
         description: >
           Card metric 5 — free cash flow margin percent (0–100 scale).

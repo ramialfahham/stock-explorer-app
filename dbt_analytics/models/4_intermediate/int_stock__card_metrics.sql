@@ -135,6 +135,13 @@ metrics as (
                 then coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash)
                     / s.info_ebitda
         end as net_debt_to_ebitda,
+        -- Passed through raw, alongside the ratio that uses it, so scripts/assessment_rules.py
+        -- can check current_ratio_stmt's joint-liquidity-evaluation relief on a real dollar
+        -- basis (does free cash flow actually cover the working-capital shortfall) rather than
+        -- fcf_margin_pct's revenue-scaled proxy, which doesn't track the SIZE of a liquidity
+        -- gap that isn't proportional to revenue (e.g. a near-term debt-maturity wall). Data-only
+        -- -- not in the metric catalogue or the Supabase export; see .claude/task/contract.md.
+        s.stmt_free_cash_flow,
         case
             when s.stmt_free_cash_flow is not null
                 and s.stmt_total_revenue is not null

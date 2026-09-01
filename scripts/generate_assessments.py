@@ -63,6 +63,12 @@ ASSESSMENT_INPUT_COLUMNS = [
     # verdict itself, and a verdict either guard changes already moves it.
     "info_ebitda",
     "stmt_stockholders_equity",
+    # Feeds current_ratio_stmt's joint-liquidity-evaluation relief: a real dollar comparison of
+    # free cash flow against the working-capital shortfall, rather than fcf_margin_pct's
+    # revenue-scaled proxy. working_capital itself is NOT added here -- it's already part of
+    # _METRIC_COLUMNS below via INPUT_FIELDS_BY_TYPE["pre_revenue"], so every row already carries
+    # it regardless of company_type (the mart computes it unconditionally).
+    "stmt_free_cash_flow",
     *_METRIC_COLUMNS,
 ]
 
