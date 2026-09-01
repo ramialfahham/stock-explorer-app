@@ -209,6 +209,63 @@ def _is_shrinking(row: Mapping[str, Any]) -> bool:
     return float(value) < GROWTH_DECLINE_THRESHOLD_PCT
 
 
+# --- Joint liquidity evaluation (current_ratio_stmt relief from FCF covering the shortfall) ----
+# Gemini feedback points 6/8 (docs/backlog/gemini_verdict_feedback.md): current_ratio_stmt and
+# fcf_margin_pct were graded fully independently, so a company with excellent free cash flow but
+# a merely-weak current ratio was capped at yellow regardless -- Apple's real card (current ratio
+# 0.89, FCF margin 23.7%) is exactly this case.
+#
+# First version of this relief gated on fcf_margin_pct banding "good" (FCF / revenue). A review
+# caught that this is a mismatched comparison: fcf_margin_pct is scaled by REVENUE, not by the
+# SIZE of the liquidity gap, so it only happens to work for Apple because Apple's revenue and
+# current-liability scale roughly track each other. A company with modest revenue but a large
+# near-term debt-maturity wall sitting in current liabilities could clear a "good" FCF margin
+# while its actual free cash flow covers only a small fraction of the real shortfall -- exactly
+# the case this relief exists to NOT wave through.
+#
+# Corrected to a direct dollar comparison instead: does free cash flow actually cover the
+# working-capital shortfall (current_liabilities - current_assets, i.e. -working_capital when
+# working_capital is negative)? This still relieves Apple (whose free cash flow is a large
+# multiple of its comparatively small shortfall) and correctly withholds relief from a company
+# whose cash generation can't plug the hole, regardless of how the ratio compares to revenue.
+CURRENT_RATIO_WEAK_TH = 1.0
+CURRENT_RATIO_GOOD_TH = 1.5
+
+# Owner-decided floor (2026-09-01): below this, current liabilities are more than double current
+# assets -- the level where a company is fully dependent on uninterrupted cash inflow with zero
+# cushion, a real distress signal no amount of free cash flow should paper over. Relief only ever
+# raises a "weak" current ratio to "ok", never to "good": free cash flow covering the shortfall
+# earns relief from a borderline ratio, not a claim that the ratio itself is actually strong.
+CURRENT_RATIO_LIQUIDITY_FLOOR = 0.5
+
+
+def _current_ratio_axis_with_fcf_coverage_relief(row: Mapping[str, Any]) -> str:
+    """Like `_axis(row, "current_ratio_stmt", ...)`, but "ok" instead of "weak" when free cash
+    flow (stmt_free_cash_flow) covers the working-capital shortfall (-working_capital) and
+    current_ratio_stmt is not below the liquidity floor.
+
+    Only the "weak" case is touched -- a genuinely good or already-unknown current ratio is
+    unaffected. Relief requires BOTH stmt_free_cash_flow and working_capital to actually be
+    present and evidence a real shortfall (working_capital < 0) -- missing data earns no relief,
+    the same "only apply an exception when we have positive evidence for it" stance the
+    sign-inversion guards above take, not the reverse.
+    """
+    band = _axis(row, "current_ratio_stmt", weak_th=CURRENT_RATIO_WEAK_TH, good_th=CURRENT_RATIO_GOOD_TH)
+    if band != "weak":
+        return band
+    # band == "weak" only reachable when current_ratio_stmt is present -- _band returns
+    # "unknown" for a missing value before ever comparing it to a threshold.
+    if float(row["current_ratio_stmt"]) < CURRENT_RATIO_LIQUIDITY_FLOOR:
+        return "weak"
+    fcf = row.get("stmt_free_cash_flow")
+    shortfall = row.get("working_capital")
+    if _is_missing(fcf) or _is_missing(shortfall) or float(shortfall) >= 0:
+        return "weak"
+    if float(fcf) >= -float(shortfall):
+        return "ok"
+    return "weak"
+
+
 def _verdict_operating(row: Mapping[str, Any]) -> str:
     # Core axes are eligibility-required, so present for eligible operating cards.
     # net_debt_to_ebitda goes through the sign-inversion guard: "unknown" (not "good") when
@@ -225,11 +282,15 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
     # debt_to_equity goes through the same sign-inversion guard: "weak" (not "unknown", which
     # would be a no-op on a supporting axis) when stmt_stockholders_equity is present and <= 0,
     # capping the card at yellow, the same ceiling any other weak supporting axis already gets.
+    # current_ratio_stmt goes through the joint-liquidity-evaluation relief: "ok" (not "weak")
+    # when it would otherwise band weak, free cash flow covers the working-capital shortfall,
+    # and it isn't below the liquidity floor -- see the comment above
+    # _current_ratio_axis_with_fcf_coverage_relief.
     supporting = (
         _axis_unless_denominator_nonpositive(
             row, "debt_to_equity", "stmt_stockholders_equity", "weak", weak_th=2.0, good_th=1.0
         ),
-        _axis(row, "current_ratio_stmt", weak_th=1.0, good_th=1.5),
+        _current_ratio_axis_with_fcf_coverage_relief(row),
         _axis(row, "statement_roe_pct", weak_th=0.0, good_th=10.0),
     )
     if any(b == "weak" for b in core):

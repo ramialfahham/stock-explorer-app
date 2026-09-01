@@ -12,6 +12,50 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR !75 OPEN, 2026-09-01: Joint liquidity evaluation (Gemini feedback points 6/8)
+
+Status: **implemented, dbt build + full `pytest` green (451 passed), reviewed 3 rounds (all four
+required reviewers PASS by round 3 -- see that branch's `.claude/task/review.md` for the full
+account), committed (2 commits: fix + review.md separately), pushed, MR open awaiting merge.**
+Branch `fix/joint-liquidity-evaluation`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/75. Pushed to the `gitlab`
+remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
+merged, sync local `main` and delete the branch.
+
+Second point acted on from `docs/backlog/gemini_verdict_feedback.md`. `current_ratio_stmt`
+(supporting axis) and free cash flow used to be graded fully independently in
+`_verdict_operating`, so a company with excellent free cash flow but a merely-weak current ratio
+was capped at yellow regardless -- Apple's real card (current ratio 0.89, FCF margin 23.7%) is
+exactly this case. Owner explicitly judged the Mixed reading as the actual defect (contradicts
+real-world consensus on Apple's financial health), not the conservative "one weakness caps it"
+design -- a genuine methodology fork, escalated and decided before any code was written (see
+`.claude/task/contract.md`).
+
+**Round-1 review caught a real financial-reasoning gap, redesigned.** First version gated relief
+on `fcf_margin_pct` banding `good` (FCF ÷ revenue). equity-analyst-reviewer FAILED it: margin
+doesn't track the SIZE of the liquidity gap, which isn't proportional to revenue for a company
+whose current liabilities carry a near-term debt-maturity wall -- built a concrete counter-example
+(modest revenue, decent FCF margin, real FCF a small fraction of a real dollar shortfall) that
+the old mechanism would have wrongly waved through. Redesigned to a direct dollar comparison:
+`current_ratio_stmt` now bands `ok` instead of `weak` when free cash flow (`stmt_free_cash_flow`,
+a new raw passthrough, same pattern as `info_ebitda`) covers the working-capital shortfall
+(`stmt_free_cash_flow >= -working_capital`; `working_capital` was already flowing through, no new
+wiring needed there) AND `current_ratio_stmt` is at or above `CURRENT_RATIO_LIQUIDITY_FLOOR`
+(`0.5`, unchanged). Still relieves Apple (FCF a large multiple of its small shortfall), correctly
+withholds relief from the counter-example. cto-reviewer separately FAILED a test
+(`...requires_fcf_margin_actually_good`) that couldn't actually detect a broken relief gate,
+confirmed by mutation testing -- moot now since the redesign no longer references
+`fcf_margin_pct` at all. Full account in `.claude/task/contract.md`'s `amendments`.
+
+10 test cases in `tests/tooling/test_assessment_rules.py` covering the relief mechanism (Apple's
+numbers reach green, the debt-maturity-wall counter-example is correctly denied, the floor and
+its boundary, the coverage boundary, missing FCF/working_capital earns no relief, a non-negative
+working_capital earns no relief, relief doesn't rescue an unrelated weak axis, a missing current
+ratio is untouched). `test_operating_supporting_weakness_blocks_green` uses `statement_roe_pct`
+instead of `current_ratio_stmt` as its weak-supporting-axis example now.
+`docs/data_contract.md`'s verdict-rules section and the backlog doc's points 6/8 updated to match
+the corrected mechanism.
+
 ## MR !73 MERGED, 2026-09-01: Ratio sign-inversion guard (Gemini feedback point 1)
 
 Status: **merged, local `main` synced, branch deleted, remote-tracking ref pruned.** MR was at

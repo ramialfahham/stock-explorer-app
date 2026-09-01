@@ -37,10 +37,15 @@ def test_operating_verdicts() -> None:
 
 
 def test_operating_supporting_weakness_blocks_green() -> None:
-    # Core all good but a supporting metric is weak -> not green (yellow).
+    # Core all good but a supporting metric is weak -> not green (yellow). Uses statement_roe_pct
+    # here, not current_ratio_stmt: current_ratio_stmt now has one explicit exception (see the
+    # joint-liquidity-evaluation tests below), so a fixture pairing weak current_ratio_stmt with
+    # a strong fcf_margin_pct (as this test used to) would exercise that relief instead of the
+    # general principle this test is about. The general principle still holds for every other
+    # supporting axis.
     row = {
         "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
-        "fcf_margin_pct": 12.0, "current_ratio_stmt": 0.8,  # weak liquidity
+        "fcf_margin_pct": 12.0, "statement_roe_pct": -5.0,  # weak returns
     }
     assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
 
@@ -282,6 +287,115 @@ def test_debt_to_equity_guard_ignores_a_missing_equity_value() -> None:
     }
     assert rules.compute_verdict(row) == rules.VERDICT_GREEN
     assert rules.compute_verdict({**row, "stmt_stockholders_equity": None}) == rules.VERDICT_GREEN
+
+
+# --- Joint liquidity evaluation (current_ratio_stmt relief from FCF covering the shortfall) ---
+# Gemini feedback points 6/8: current_ratio_stmt and fcf_margin_pct used to be graded fully
+# independently, so a company with excellent free cash flow but a merely-weak current ratio was
+# capped at yellow regardless -- Apple's real card (current ratio 0.89, FCF margin 23.7%).
+#
+# A review round caught that gating relief on fcf_margin_pct (FCF / revenue) is a mismatched
+# comparison: it doesn't track the SIZE of the liquidity gap, which isn't proportional to revenue
+# (e.g. a near-term debt-maturity wall). Corrected to a direct dollar comparison: does free cash
+# flow (stmt_free_cash_flow) actually cover the working-capital shortfall (-working_capital)?
+# fcf_margin_pct remains a CORE axis in its own right (unrelated to this relief), so it still
+# needs to band "good" for a row to reach green -- these tests set it accordingly and vary
+# stmt_free_cash_flow/working_capital independently to isolate the relief mechanism itself.
+
+def _liquidity_row(**overrides) -> dict:
+    row = {
+        "company_type": "operating", "net_debt_to_ebitda": 1.0, "ebit_margin_pct": 20.0,
+        "fcf_margin_pct": 23.7, "statement_roe_pct": 22.0, "debt_to_equity": 0.6,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_current_ratio_weak_gets_relief_when_fcf_covers_the_shortfall() -> None:
+    """Apple's real figures: current ratio 0.89 (weak, below the 1.0 threshold), but free cash
+    flow comfortably exceeds the working-capital shortfall. This used to cap the card at yellow
+    purely on the ratio; it should now reach green."""
+    row = _liquidity_row(
+        current_ratio_stmt=0.89, working_capital=-100.0, stmt_free_cash_flow=200.0,
+    )
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
+
+
+def test_current_ratio_relief_denied_when_fcf_margin_good_but_shortfall_too_large() -> None:
+    """The exact case the fcf_margin_pct-only version missed: a decent FCF margin (6%, bands
+    "good") that is nowhere near large enough in dollar terms to cover a real shortfall, e.g.
+    from a near-term debt-maturity wall sitting in current liabilities. Revenue-scaled margin
+    alone would have wrongly granted relief here; the dollar comparison correctly withholds it."""
+    row = _liquidity_row(
+        fcf_margin_pct=6.0, current_ratio_stmt=0.525,
+        working_capital=-950.0, stmt_free_cash_flow=60.0,
+    )
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_current_ratio_relief_has_a_floor_regardless_of_fcf_coverage() -> None:
+    """The relief is not unconditional. Below CURRENT_RATIO_LIQUIDITY_FLOOR, current liabilities
+    are more than double current assets -- a real distress signal no amount of free cash flow
+    should paper over, since the company is fully dependent on uninterrupted cash inflow with
+    zero cushion. FCF here would clear the coverage check easily; the floor still blocks it."""
+    row = _liquidity_row(
+        current_ratio_stmt=0.4, working_capital=-50.0, stmt_free_cash_flow=500.0,
+    )
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_current_ratio_relief_floor_boundary() -> None:
+    row = lambda cr: _liquidity_row(
+        current_ratio_stmt=cr, working_capital=-100.0, stmt_free_cash_flow=200.0,
+    )
+    assert rules.compute_verdict(row(0.5)) == rules.VERDICT_GREEN  # exactly at the floor: relief
+    assert rules.compute_verdict(row(0.49)) == rules.VERDICT_YELLOW  # just below: no relief
+
+
+def test_current_ratio_relief_coverage_boundary() -> None:
+    # FCF exactly equal to the shortfall clears it (>=); a cent short does not.
+    row = lambda fcf: _liquidity_row(
+        current_ratio_stmt=0.89, working_capital=-100.0, stmt_free_cash_flow=fcf,
+    )
+    assert rules.compute_verdict(row(100.0)) == rules.VERDICT_GREEN
+    assert rules.compute_verdict(row(99.99)) == rules.VERDICT_YELLOW
+
+
+def test_current_ratio_relief_ignores_missing_fcf_or_working_capital() -> None:
+    # Missing data earns no relief -- the same "only apply an exception when we have positive
+    # evidence for it" stance as the sign-inversion guards, not the reverse.
+    row = _liquidity_row(current_ratio_stmt=0.89, working_capital=-100.0)  # no stmt_free_cash_flow
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+    row2 = _liquidity_row(current_ratio_stmt=0.89, stmt_free_cash_flow=200.0)  # no working_capital
+    assert rules.compute_verdict(row2) == rules.VERDICT_YELLOW
+
+
+def test_current_ratio_relief_ignores_a_non_negative_working_capital() -> None:
+    # Defensive: current_ratio_stmt banding "weak" implies working_capital should be negative
+    # (both derive from the same current assets/liabilities), but the relief function must not
+    # misbehave on inconsistent input -- a working_capital that isn't actually negative is not
+    # evidence of a shortfall to cover, so no relief.
+    row = _liquidity_row(current_ratio_stmt=0.89, working_capital=0.0, stmt_free_cash_flow=200.0)
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_current_ratio_relief_does_not_rescue_other_weak_axes() -> None:
+    """Relief is narrowly scoped to current_ratio_stmt -- it does not have a broader "everything
+    is fine" side effect on the rest of the card."""
+    row = _liquidity_row(
+        current_ratio_stmt=0.89, working_capital=-100.0, stmt_free_cash_flow=200.0,
+        statement_roe_pct=-5.0,  # weak
+    )
+    assert rules.compute_verdict(row) == rules.VERDICT_YELLOW
+
+
+def test_current_ratio_relief_ignores_a_missing_current_ratio() -> None:
+    # A MISSING current_ratio_stmt bands "unknown", not "weak" -- the relief function must not
+    # touch it (and must not crash trying to read a value that isn't there).
+    row = _liquidity_row(
+        current_ratio_stmt=None, working_capital=-100.0, stmt_free_cash_flow=200.0,
+    )
+    assert rules.compute_verdict(row) == rules.VERDICT_GREEN
 
 
 # --- Null tolerance + totality ------------------------------------------------------------

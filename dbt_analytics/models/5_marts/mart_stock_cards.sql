@@ -21,6 +21,7 @@ final as (
         m.revenue_growth_yoy_pct,
         m.info_ebitda,
         m.net_debt_to_ebitda,
+        m.stmt_free_cash_flow,
         m.fcf_margin_pct,
         m.stmt_stockholders_equity,
         m.debt_to_equity,

@@ -95,6 +95,24 @@ on a third-party AI's say-so without the owner's own call.
    margin, weak current ratio) still yields yellow. Apple's real figures (current ratio 0.89,
    FCF margin 23.7%) map to precisely that case, which is why it read Mixed.
 
+   **Acted on, branch `fix/joint-liquidity-evaluation`.** Owner judged the Mixed reading
+   contradicted real-world consensus on Apple's financial health. `current_ratio_stmt` now bands
+   `ok` instead of `weak` when free cash flow (`stmt_free_cash_flow`, a raw dollar figure) covers
+   the working-capital shortfall and `current_ratio_stmt` is at or above a new floor,
+   `CURRENT_RATIO_LIQUIDITY_FLOOR` (`0.5`) -- below that floor, current liabilities are more than
+   double current assets, a real distress signal no amount of free cash flow overrides.
+   **Mid-implementation correction**: the first version gated relief on `fcf_margin_pct` banding
+   `good` (free cash flow ÷ revenue). A review round caught that this is a mismatched comparison
+   -- margin doesn't track the SIZE of the liquidity gap, which isn't proportional to revenue for
+   a company whose current liabilities carry a near-term debt-maturity wall, so it only worked
+   for Apple by coincidence of scale. Corrected to a direct dollar comparison
+   (`stmt_free_cash_flow >= -working_capital`) that still relieves Apple and correctly withholds
+   relief from the debt-maturity-wall case a margin-only check would have missed.
+   `test_operating_supporting_weakness_blocks_green` was updated to demonstrate the general "weak
+   supporting axis blocks green" principle on `statement_roe_pct` instead, since its old fixture
+   now falls inside this relief. See `docs/data_contract.md`'s verdict-rules section for the
+   shipped behavior.
+
 7. All six metric values Gemini read off Apple's card (Operating Margin 33.2%, Revenue Growth
    YoY 16.4%, FCF Margin 23.7%, Return on Equity 151.9%, Debt/Equity 1.34, Net Debt/EBITDA 0.13)
    were reported as accurate by Gemini itself; no verification needed here.
@@ -102,6 +120,11 @@ on a third-party AI's say-so without the owner's own call.
 8. **No function jointly evaluates current ratio against FCF margin -- TRUE.** Same evidence
    as point 6: the two axes are gated fully independently; no combined liquidity function exists
    in the codebase.
+
+   **Acted on, branch `fix/joint-liquidity-evaluation`.**
+   `_current_ratio_axis_with_fcf_coverage_relief` in `scripts/assessment_rules.py` is that
+   combined function now. See point 6's entry above for
+   the mechanism.
 
 9. **No sector or company-size calibration of verdict thresholds -- TRUE.** Every `weak_th`/
    `good_th` pair is hardcoded per `company_type` bucket only (three buckets total), with no
@@ -120,7 +143,9 @@ on a third-party AI's say-so without the owner's own call.
 - **Does a joint liquidity evaluation (point 6/8) change verdicts on cards already shown to
   users, and is that an acceptable outcome?** Any change here would flip some already-computed
   `health_verdict` values; the working agreement treats "changing an already-shipped output" as
-  an owner call every time.
+  an owner call every time. **Answered:** yes, and yes -- owner judged the alternative (leaving
+  Apple's card reading Mixed) as the actual defect, since it contradicted real-world consensus on
+  Apple's financial health. See candidate direction 2's "Done" entry.
 - **Does sector/size calibration (point 9) fit this app's stated design at all?** `north_star.md`
   already states a rule against naive sector-relative rankings ("do not use naive 'Top 10% in
   sector' rankings -- misleading for debt, negative growth, etc."); calibrating verdict
@@ -138,10 +163,12 @@ on a third-party AI's say-so without the owner's own call.
    small, targeted `scripts/assessment_rules.py` function that detects a negative-denominator
    inversion and reclassifies the axis instead of banding it by raw magnitude. Lowest engineering
    risk of the set; narrow scope, no new dependency. See point 1's Context entry above.
-2. **Joint liquidity evaluation (points 6/8).** Replace `_verdict_operating`'s independent
-   core/supporting gating for `current_ratio_stmt` with a function that weighs it against
-   `fcf_margin_pct`. Would change some already-shipped verdicts (see open questions); needs
-   explicit sign-off before it's built, not just before it's shipped.
+2. **Joint liquidity evaluation (points 6/8). Done -- branch `fix/joint-liquidity-evaluation`.**
+   Replaced `_verdict_operating`'s independent core/supporting gating for `current_ratio_stmt`
+   with a function that gives it relief when free cash flow covers the working-capital shortfall
+   (a dollar comparison, not a revenue-scaled margin), floored so the relief can't apply to a
+   genuinely dangerous ratio. Owner explicitly signed off before it was built, per the
+   requirement above -- see point 6's Context entry.
 3. **Sector/size threshold calibration (point 9).** The largest change of the set: reworking
    `weak_th`/`good_th` from a flat per-type constant to something sector- or size-aware would
    touch the verdict engine's core structure, likely needs new baseline data, and would change
@@ -172,7 +199,11 @@ on a third-party AI's say-so without the owner's own call.
 - `dbt_analytics/models/.../int_stock__sector_benchmarks.sql`: raw sector min/max aggregation.
 - `frontend/card_copy.py`'s `benchmark_range()`, `frontend/styles.py`'s `.ss-metric-range-*`
   rules.
-- `tests/tooling/test_assessment_rules.py`'s `test_operating_supporting_weakness_blocks_green`:
-  the existing test that already demonstrates point 6/8's behavior directly.
+- `tests/tooling/test_assessment_rules.py`'s `test_current_ratio_weak_gets_relief_when_fcf_covers_the_shortfall`
+  and its neighbors: the point 6/8 fix's test coverage.
+  `test_operating_supporting_weakness_blocks_green` demonstrated the pre-fix behavior for
+  `current_ratio_stmt` specifically; it now demonstrates the general "weak supporting axis blocks
+  green" principle on `statement_roe_pct` instead, since `current_ratio_stmt` is no longer an
+  example of that principle without qualification.
 - `docs/north_star.md`'s existing rule against naive sector-relative rankings, distinct from but
   adjacent to point 9.
