@@ -12,22 +12,11 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !83 OPEN, 2026-09-02: Drop the Apple example from data_contract.md's liquidity-relief bullet
-
-Status: **implemented, reviewed (scope-auditor PASS on round 2 after a round-1 FAIL, equity-
-analyst-reviewer PASS -- full account in that branch's `.claude/task/review.md`), committed (2
-commits: trim + review.md separately), pushed, MR open.** Branch
-`docs/trim-data-contract-liquidity-example`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/83. Pushed to the `gitlab`
-remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
-
-Follow-up to MR !81's own comment-trim (see that entry's amendment in the merged
-`.claude/task/contract.md` history): the same Apple current-ratio/FCF-margin example existed in
-two places, the code comment (trimmed in MR !81) and this doc bullet (trimmed here) -- flagged as
-a background task during MR !81, actioned directly in this session on request rather than spun
-off separately. scope-auditor's first round caught real scope creep: the fix also reworded an
-adjacent clause, dropping the "capped at yellow" idiom used identically elsewhere in the same
-doc -- restored verbatim, confirmed via word-diff on the second round.
+## MR !83 MERGED, 2026-09-02: Drop the Apple example from data_contract.md's liquidity-relief
+bullet -- follow-up to MR !81's own code-comment trim (same example existed in two places).
+scope-auditor's first round caught real scope creep (an adjacent clause got reworded, dropping
+the "capped at yellow" idiom used elsewhere in the doc); fixed and PASSed on round 2, confirmed
+via word-diff. Local `main` synced, branch deleted, remote-tracking ref pruned.
 
 ## MR !81 MERGED, 2026-09-02: Structured AI-read output + hallucination guard (Gemini feedback
 points 3/4), plus a frontend fallback for a null `ai_read`
