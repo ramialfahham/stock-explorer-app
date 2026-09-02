@@ -87,6 +87,25 @@ on a third-party AI's say-so without the owner's own call.
    `_verdict_operating`'s mature-company thresholds with no early-stage allowance, which is a
    real gap for this specific card even though the framework generically has an early-stage path.
 
+   **Considered, not pursued.** The existing 0.1%-of-market-cap classification bar is not
+   arbitrary: it was set from a specific degenerate case, Deep Yellow (ASX: DYL), whose revenue
+   was ~0.001% of market cap and produced a -129,810%/-90,334% margin outlier that swamped its
+   sector's whole range (see `int_stock__card_metrics.sql`'s classification CASE for the full
+   account). 4DMedical does not clear that bar for a materially different reason: its revenue,
+   while small, is not a rounding error the way Deep Yellow's was -- it is a genuinely different,
+   non-degenerate situation (an early operating company with thin margins), not the same failure
+   mode the threshold exists to catch. Moving the threshold specifically to also sweep in
+   4DMedical would have no grounding beyond disliking one card's output -- the same invented-
+   number problem point 9 was declined for. An `_verdict_operating` early-stage carve-out has the
+   identical problem in a different spot: any relief condition still needs a cutoff with nothing
+   external to anchor it to. -823.3% is an honest, correctly computed number for a company
+   spending heavily against thin revenue; it is not evidence the classification or verdict logic
+   is wrong. If the actual discomfort is how that number LOOKS on the card (an extreme ratio
+   distorting a sector range mark), that is point 5's problem (outlier-aware metric-range
+   scaling), a display change, not a classification or verdict-computation one.
+   Decision: do not move the pre-revenue classification threshold, and do not add an
+   early-stage carve-out to `_verdict_operating`.
+
 3. **No structured/JSON output from the AI-read prompt -- TRUE.** `scripts/
    generate_assessments.py`'s call to the Claude API passes no `tools`, `tool_choice`, or JSON
    schema; the system prompt explicitly asks for "2-3 sentences" of prose, parsed back as free
@@ -261,11 +280,11 @@ on a third-party AI's say-so without the owner's own call.
    `benchmark_range()`'s positioning (e.g. a log scale past some threshold, or clamping the
    *displayed* extreme while still labeling the true value) rather than linear min-max. Purely a
    display change; doesn't touch verdict computation.
-6. **Early-stage classification review (point 2).** Check whether 4DMedical (and similar small-
-   revenue-against-large-cap companies) should classify as `pre_revenue` rather than `operating`,
-   or whether `_verdict_operating` itself needs an early-stage carve-out. Smallest-scoped of the
-   set if the answer is "adjust the classification threshold"; larger if it requires a new
-   verdict path.
+6. **Early-stage classification review (point 2). Declined -- considered, not built.** Neither
+   moving the pre-revenue classification threshold nor adding an early-stage carve-out to
+   `_verdict_operating` has any grounding beyond making one card's output (4DMedical) look less
+   extreme; the existing threshold is set from a real degenerate case (Deep Yellow) that
+   4DMedical is not an instance of. See point 2's Context entry above for the full reasoning.
 
 ## Related
 
