@@ -12,18 +12,17 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Branch `feat/ai-read-structured-hallucination-guard` IN PROGRESS, 2026-09-02: Structured
-AI-read output + hallucination guard (Gemini feedback points 3/4), plus a frontend fallback for
-a null `ai_read`
+## MR !81 OPEN, 2026-09-02: Structured AI-read output + hallucination guard (Gemini feedback
+points 3/4), plus a frontend fallback for a null `ai_read`
 
-Status: **implemented (backend + frontend + tests), full pytest suite green (470 passed), docs
+Status: **implemented (backend + frontend + tests), full pytest suite green (473 passed), docs
 updated (`data_contract.md`, `north_star.md`, `backlog/gemini_verdict_feedback.md`), em/en-dash
-swept. Not yet reviewed, not yet committed, not yet pushed.** Next concrete action: stage
-everything, hash the diff, dispatch the three required reviewers (scope-auditor always;
-cto-reviewer for `scripts/*`, `tests/*`, `frontend/*`; equity-analyst-reviewer for
-`docs/data_contract.md`), write `.claude/task/review.md`, commit (main change then review.md
-separately), then wait for the owner's explicit instruction to push -- push to the `gitlab`
-remote, not `origin`.
+swept, reviewed (scope-auditor PASS, equity-analyst-reviewer PASS, cto-reviewer PASS on round 2
+after a round-1 FAIL was fixed -- full account in that branch's `.claude/task/review.md`),
+committed (2 commits: main change `5fb2e747` then `review.md` `b3a68238` separately), pushed, MR
+open.** Branch `feat/ai-read-structured-hallucination-guard`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/81. Pushed to the `gitlab`
+remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
 
 Owner confirmed the design across conversation, then reworked the frontend fallback text several
 more times after implementation (see `.claude/task/contract.md`'s `amendments` for the full
