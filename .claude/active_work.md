@@ -12,14 +12,14 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Branch `docs/decline-early-stage-classification` IN PROGRESS, 2026-09-02: Decline early-stage
-classification review (Gemini feedback point 2)
+## MR !85 OPEN, 2026-09-02: Decline early-stage classification review (Gemini feedback point 2)
 
-Status: **implemented (docs only), not yet reviewed, not yet committed, not yet pushed.** Next
-concrete action: stage `docs/backlog/gemini_verdict_feedback.md`, hash the diff, dispatch
-scope-auditor (the only required reviewer -- this file isn't in `.claude/review_routing.json`'s
-`paths` map), write `.claude/task/review.md`, commit (main change then review.md separately),
-push to `gitlab`, open the MR.
+Status: **implemented (docs only), reviewed 2 rounds (scope-auditor FAIL on round 1 for a
+missing blank line before a heading, PASS on round 2 -- full account in that branch's
+`.claude/task/review.md`), committed (2 commits: decision + review.md separately), pushed, MR
+open.** Branch `docs/decline-early-stage-classification`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/85. Pushed to the `gitlab`
+remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
 
 Owner decision: neither move the pre-revenue classification threshold nor add an early-stage
 carve-out to `_verdict_operating` for 4DMedical's -823.3% operating margin. Reasoning: the
