@@ -48,61 +48,27 @@ in code comments, state the current rule and its rationale only. A matching exam
 `docs/data_contract.md`'s joint-liquidity-evaluation bullet was flagged as a spawned background
 task (`task_df34cb5b`), not fixed in this branch (out of this task's own `scope_paths` intent).
 
-## MR !79 OPEN, 2026-09-01: Decline sector/size threshold calibration (Gemini feedback point 9)
+## MR !79 MERGED, 2026-09-01: Decline sector/size threshold calibration (Gemini feedback point 9)
 
-Status: **implemented (docs only), reviewed 3 rounds (scope-auditor PASS by the final round,
-plus a voluntary equity-analyst-reviewer pass -- see that branch's `.claude/task/review.md` for
-the full account), committed (2 commits: decision + review.md separately), pushed, MR open
-awaiting merge.** Branch `docs/decline-sector-size-calibration`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/79. Pushed to the `gitlab`
-remote, not `origin` (see the remote note under MR !73's entry below). Next concrete action: once
-merged, sync local `main` and delete the branch.
+Status: **merged, local `main` synced, branch deleted, remote-tracking ref pruned.** MR was at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/79. Reviewed 3 rounds
+(scope-auditor PASS by the final round, plus a voluntary equity-analyst-reviewer pass that caught
+two real precision corrections in the backlog doc's financial-convention claims -- see that MR's
+commit `03e77bbc` / `.claude/task/review.md` for the full account). MR !80 (the trivial handover
+close-out originally meant to flip this entry to MERGED) never merged and went stale/conflicting
+as later handover edits (MRs !81-!84) touched the same file region; this entry supersedes it --
+close !80 without merging, do not resurrect it.
 
-Owner asked to investigate point 9 (sector/size threshold calibration) properly, explicitly
-warning against inventing a proposal not grounded in real practice, and was openly skeptical
-anything less arbitrary than the status quo exists. Investigated rather than assumed either way:
-the current fixed thresholds turn out to already mirror standard financial conventions (leverage
-credit-quality bands, textbook liquidity ratios, standard margin/runway heuristics), not
-arbitrary picks; `docs/north_star.md` already carries an owner-signed rule against naive
-sector-relative rankings for the display benchmark, and the same risk applies to verdict
-thresholds (a mediocre company in a weak sector would read green purely because its peers are
-worse, contradicting the AI-read's own absolute "financially healthy on these figures" framing);
-size-adjusted thresholds specifically have no real-analyst convention to anchor them to; sector
-medians shift every biweekly refresh, so calibrated verdicts could flip color with no change in
-the company's own numbers.
+Decision: do not calibrate verdict thresholds by sector or size -- the current fixed thresholds
+already mirror standard financial conventions, and this app already carries an owner-signed rule
+against naive sector-relative rankings for the same underlying instability reason.
+`docs/backlog/gemini_verdict_feedback.md` point 9 marked "Considered, not pursued."
 
-**Dispatched equity-analyst-reviewer voluntarily, since this doc makes analyst-grade financial
-claims that scope-auditor's own review flagged as never getting an independent domain check
-under the current routing.** Caught two real precision issues (not fabrications, didn't reverse
-the conclusion): calling the leverage threshold's 1.5x/3x band "lending-covenant conventions"
-overclaimed a specific provenance -- real covenants typically sit higher (4x-6x) for leveraged
-borrowers; what it actually mirrors is closer to rating-agency-style credit-quality banding.
-And "real analysts handle size via required-return premiums" named the wrong mechanism -- that's
-an equity-valuation discount-rate construct, not how credit/fundamental analysis treats issuer
-size, which is business-risk-profile overlays that TIGHTEN (not loosen) expectations for smaller
-issuers -- a correction that argues even more strongly against loosening thresholds, not less.
-Both fixed in the backlog doc and this contract. Also added, per the reviewer's completeness
-note: this decision declines specifically the live-sector-median mechanism Gemini's point 9
-proposed, not every conceivable sector-aware design -- a deliberately-set, externally-anchored
-per-sector benchmark table (revised on a cycle, not live) would sidestep the instability concern
-and is worth naming as the version to scope if this is ever revisited.
-
-**Round-2 scope-auditor FAIL, on the completeness note itself.** While incorporating it, one
-phrase from the reviewer's own suggestion -- "closer to how rating agencies publish industry
-benchmark tables" -- made it into the backlog doc but never got propagated to this contract, and
-was never independently fact-checked the way the other two corrections were (both had explicit
-citations; this one didn't). scope-auditor caught the inconsistency and, more importantly, the
-fact that it was an unverified analyst-grade claim added mid-edit in the exact document whose
-premise is not shipping unverified claims -- the failure mode this whole exercise exists to
-avoid, right down to the letter. Fixed by removing the specific "rating agencies" citation from
-the backlog doc, keeping only the self-evident structural point (deliberately set, revised on a
-cycle, not live) that needs no external precedent to be true.
-
-Decision: do not calibrate verdict thresholds by sector or size. `docs/backlog/gemini_verdict_feedback.md`
-updated: point 9 marked "Considered, not pursued" with the reasoning, candidate direction 3
-marked "Declined" (this session's first candidate direction to resolve to "don't build it" rather
-than "acted on"), the open question about whether this fits the app's design answered "no."
-No code, test, or verdict-logic changes -- documentation only.
+This closes out every Gemini-feedback point raised with the owner as of MR !81 (2026-09-02):
+points 1, 6/8, and the sibling ROE bug shipped as fixes (MRs !73, !75, !77); points 3/4 shipped as
+the structured-output/hallucination-guard change (MR !81); point 9 decided against (this entry).
+Remaining, not yet raised: point 2 (early-stage classification review), point 5 (outlier-aware
+metric-range scaling).
 
 ## MR !77 MERGED, 2026-09-01: statement_roe_pct sign-inversion guard (sibling of MR !73)
 
