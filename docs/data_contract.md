@@ -441,21 +441,20 @@ Conservative — one serious weakness caps it:
 - **Joint liquidity evaluation, operating only.** `current_ratio_stmt` and free cash flow used
   to be graded fully independently, so a company with excellent free cash flow but a
   merely-weak current ratio was capped at yellow regardless of how strong its cash generation was
-  (`docs/backlog/gemini_verdict_feedback.md` points 6/8; Apple's real card, current ratio 0.89,
-  FCF margin 23.7%, is exactly this case). `current_ratio_stmt` now bands `ok` instead of `weak`
-  when free cash flow (`stmt_free_cash_flow`, a raw dollar figure) covers the working-capital
-  shortfall (`stmt_free_cash_flow >= -working_capital`, both carried through for exactly this
-  check) AND `current_ratio_stmt` is at or above `CURRENT_RATIO_LIQUIDITY_FLOOR` (`0.5`) -- below
-  that floor, current liabilities are more than double current assets, a real distress signal no
-  amount of free cash flow should override. A dollar comparison, not `fcf_margin_pct` (free cash
-  flow ÷ revenue): margin is scaled by revenue, not by the size of the liquidity gap, which isn't
-  proportional to revenue for a company whose current liabilities carry a near-term debt-maturity
-  wall -- a revenue-scaled check would have wrongly relieved that case. `fcf_margin_pct` still
-  gates green in its own right as a core axis, unrelated to this relief. Relief lands on `ok`,
-  never `good`: it stops the ratio blocking green on its own, but does not claim the ratio itself
-  is strong, and does not rescue any other weak axis. `debt_to_equity` and `statement_roe_pct`
-  get no analogous relief -- this is scoped to the one metric pair the feedback and the owner's
-  decision named.
+  (`docs/backlog/gemini_verdict_feedback.md` points 6/8). `current_ratio_stmt` now bands `ok`
+  instead of `weak` when free cash flow (`stmt_free_cash_flow`, a raw dollar figure) covers the
+  working-capital shortfall (`stmt_free_cash_flow >= -working_capital`, both carried through for
+  exactly this check) AND `current_ratio_stmt` is at or above
+  `CURRENT_RATIO_LIQUIDITY_FLOOR` (`0.5`) -- below that floor, current liabilities are more than
+  double current assets, a real distress signal no amount of free cash flow should override. A
+  dollar comparison, not `fcf_margin_pct` (free cash flow ÷ revenue): margin is scaled by
+  revenue, not by the size of the liquidity gap, which isn't proportional to revenue for a
+  company whose current liabilities carry a near-term debt-maturity wall -- a revenue-scaled
+  check would have wrongly relieved that case. `fcf_margin_pct` still gates green in its own
+  right as a core axis, unrelated to this relief. Relief lands on `ok`, never `good`: it stops
+  the ratio blocking green on its own, but does not claim the ratio itself is strong, and does
+  not rescue any other weak axis. `debt_to_equity` and `statement_roe_pct` get no analogous
+  relief -- this is scoped to the one metric pair the feedback and the owner's decision named.
 - **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
   adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the bank verdict stays modest).
 - **`revenue_growth_yoy_pct` — ONE-SIDED, on operating and financial cards**.
