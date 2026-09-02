@@ -92,10 +92,29 @@ on a third-party AI's say-so without the owner's own call.
    schema; the system prompt explicitly asks for "2-3 sentences" of prose, parsed back as free
    text.
 
+   **Acted on, branch `feat/ai-read-structured-hallucination-guard`.** See point 4's entry below
+   for the mechanism; the structured-output and hallucination-guard changes shipped together.
+
 4. **No post-generation KPI/hallucination reference-check -- TRUE.** The generated read is
    taken verbatim (only checked for being non-empty) and stored with no step that parses numbers
    out of it and cross-checks them against the card's actual metric values. The only mitigation
    is a soft prompt-level instruction ("reason only from the numbers given, never guess").
+
+   **Acted on, branch `feat/ai-read-structured-hallucination-guard`.** The Claude Haiku call now
+   forces tool-use (`write_card_read`): the model returns `read` plus `referenced_metrics`, one
+   `{label, value_as_shown}` entry per metric the read cites, copied exactly as shown in the
+   prompt's own facts block. `validate_read_metrics` checks each pair against the same rendering
+   the model was shown (`_present_metric_renderings`, reused from `build_read_messages`): a
+   numeric cross-check, not an LLM judge, so it catches a stated number that does not match the
+   card's data but not an unsupported qualitative claim that cites no wrong number. Any mismatch,
+   unknown label, or malformed tool response fails exactly like an API exception already does:
+   `ai_read`/`read_model` stay absent and the existing regenerate-on-`input_hash`-change path
+   picks the card up again next run. No retry. `INPUT_HASH_VERSION` not bumped: this is a
+   generation-mechanism change, not an input change, so already-stored reads are unaffected. When
+   `ai_read` is absent, the card now shows a deterministic, owner-authored one-line summary under
+   its own "What the verdict means" heading instead of a bare badge (`frontend/card_copy.py`'s
+   `VERDICT_FALLBACK_READ`), never labeled AI-written. See `docs/data_contract.md`'s
+   `card_assessments` section for the shipped behavior.
 
 5. **Metric-range visualization has no extreme-outlier handling -- TRUE.**
    `frontend/card_copy.py`'s `benchmark_range()` is pure linear min-max normalization, clamped
@@ -232,11 +251,12 @@ on a third-party AI's say-so without the owner's own call.
    has an owner-signed rule against a closely related naive-sector-relative pattern for the same
    underlying reason, and size-adjusted thresholds specifically have no real-analyst convention
    to anchor them to. See point 9's Context entry above for the full reasoning.
-4. **Structured AI-read output + hallucination guard (points 3/4).** Two related but separable
-   changes: requesting JSON/tool-call output from the Claude API call (a prompt/parsing change,
-   no new dependency, `anthropic` already pinned), and a post-generation step that extracts
-   numbers from the read and cross-checks them against the card's own metric values before
-   storing it (new code, modest scope, directly closes the hallucination gap named in point 4).
+4. **Structured AI-read output + hallucination guard (points 3/4). Done -- branch
+   `feat/ai-read-structured-hallucination-guard`.** Forced tool-call output from the Claude API
+   call (a prompt/parsing change, no new dependency, `anthropic` already pinned), plus a
+   post-generation step that cross-checks the model's cited metrics against the card's own values
+   before storing the read, closing the hallucination gap named in point 4. See point 3/4's
+   Context entries above for the shipped behavior.
 5. **Outlier-aware metric-range scaling (point 5).** Compress or cap extreme values in
    `benchmark_range()`'s positioning (e.g. a log scale past some threshold, or clamping the
    *displayed* extreme while still labeling the true value) rather than linear min-max. Purely a

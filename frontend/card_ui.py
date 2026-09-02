@@ -13,6 +13,7 @@ from card_copy import (
     METRIC_LABELS,
     VERDICT_BADGE_LABEL,
     VERDICT_EMOJI,
+    VERDICT_FALLBACK_READ,
     ai_read,
     benchmark_compare_available,
     benchmark_compare_unavailable_learn,
@@ -205,6 +206,12 @@ def build_learn_panel_body_html(card: dict) -> str:
 # written from the card's figures, it does not condense a longer text.
 BLOCK_LABEL_ASSESSMENT = "What the numbers say · AI-written"
 BLOCK_LABEL_DESCRIPTION = "About the company"
+# Heads VERDICT_FALLBACK_READ (card_copy.py) when ai_read is absent. Deliberately NOT
+# BLOCK_LABEL_ASSESSMENT's "AI-written" -- this text is a deterministic, human-authored
+# one-liner naming what the verdict means, not model output, and labelling it "AI-written"
+# would be the same false attribution BLOCK_LABEL_ASSESSMENT already avoids in the other
+# direction. Owner-chosen (§6); see .claude/task/contract.md decisions_reserved.
+BLOCK_LABEL_VERDICT_MEANING = "What the verdict means"
 
 
 def _block_label_html(text: str) -> str:
@@ -235,8 +242,17 @@ def _company_summary_html(card: dict) -> str:
 
 
 def _health_block_html(card: dict) -> str:
-    """Verdict badge + AI read, or "" when no card_assessments row matched this card —
-    never a placeholder. Both always visible when present, no click needed."""
+    """Verdict badge + narrative, or "" when no card_assessments row matched this card --
+    never a placeholder. Both always visible when present, no click needed.
+
+    The narrative is either the AI-written read (when ai_read is present) or a deterministic
+    fallback one-liner (VERDICT_FALLBACK_READ) naming what the verdict means, when it is
+    absent -- 5a always writes a verdict, but 5b's read can be pending, a per-card API failure,
+    or a hallucination-guard reject (scripts/generate_assessments.py's validate_read_metrics).
+    A bare badge with nothing else read as broken to a reader, not "not yet written" (owner
+    feedback, 2026-09-01); the fallback fills that gap under its own honest heading, never
+    BLOCK_LABEL_ASSESSMENT's "AI-written", which the fallback text is not.
+    """
     token = health_verdict_token(card)
     if not token:
         return ""
@@ -250,17 +266,18 @@ def _health_block_html(card: dict) -> str:
     # verdict is decided by fixed rules in scripts/assessment_rules.py, never by the model
     # (see that file's header, docs/data_contract.md and docs/north_star.md, which all say
     # so). Putting an "AI-written" label above the badge would credit the one auditable,
-    # deterministic part of this block to a language model — exactly backwards. The label
-    # heads the prose, which is the only part a model actually writes, and is omitted
-    # entirely when there is no prose: a verdict can be stored with a null ai_read (5a
-    # writes verdicts; generate_assessments isolates per-card read failures), and a heading
-    # reading "AI-written" over zero AI-written words would be a plain falsehood.
+    # deterministic part of this block to a language model -- exactly backwards.
     read = ai_read(card)
-    if not read:
+    if read:
+        label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
+        read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
+        return f'<div class="ss-health-block">{badge}{label}{read_html}</div>'
+    fallback = VERDICT_FALLBACK_READ.get(token)
+    if not fallback:
         return f'<div class="ss-health-block">{badge}</div>'
-    label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
-    read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
-    return f'<div class="ss-health-block">{badge}{label}{read_html}</div>'
+    label = _block_label_html(BLOCK_LABEL_VERDICT_MEANING)
+    fallback_html = f'<p class="ss-verdict-fallback">{_esc(fallback)}</p>'
+    return f'<div class="ss-health-block">{badge}{label}{fallback_html}</div>'
 
 
 def _metric_stack_with_groups(card: dict, cell_fn) -> str:

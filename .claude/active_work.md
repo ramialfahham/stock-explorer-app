@@ -12,6 +12,36 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR !81 OPEN, 2026-09-02: Structured AI-read output + hallucination guard (Gemini feedback
+points 3/4), plus a frontend fallback for a null `ai_read`
+
+Status: **implemented (backend + frontend + tests), full pytest suite green (473 passed), docs
+updated (`data_contract.md`, `north_star.md`, `backlog/gemini_verdict_feedback.md`), em/en-dash
+swept, reviewed (scope-auditor PASS, equity-analyst-reviewer PASS, cto-reviewer PASS on round 2
+after a round-1 FAIL was fixed -- full account in that branch's `.claude/task/review.md`),
+committed (2 commits: main change `5fb2e747` then `review.md` `b3a68238` separately), pushed, MR
+open.** Branch `feat/ai-read-structured-hallucination-guard`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/81. Pushed to the `gitlab`
+remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
+
+Owner confirmed the design across conversation, then reworked the frontend fallback text several
+more times after implementation (see `.claude/task/contract.md`'s `amendments` for the full
+account): the original plan sketched fallback body text as a description of the verdict engine's
+internal rule mechanics, but that was found mid-task to reference concepts (a
+decisive-vs-supporting metric split, per-metric thresholds) with zero representation anywhere in
+the UI -- `metrics_for_card()` renders every metric flatly, and the catalogue's `importance_tier`
+tier-visibility split is defined but unused anywhere in `frontend/`. Final wording is an
+owner-authored general one-line business-language summary per verdict color instead
+(`frontend/card_copy.py`'s `VERDICT_FALLBACK_READ`).
+
+Also trimmed one pre-existing comment in `scripts/assessment_rules.py` (current-ratio
+FCF-coverage relief) that embedded a real company's exact figures and a version-history
+narrative, after it caused Claude to misdescribe the logic to the owner as "hard-coded" --
+standing instruction going forward: no concrete real-world examples or version-history narrative
+in code comments, state the current rule and its rationale only. A matching example in
+`docs/data_contract.md`'s joint-liquidity-evaluation bullet was flagged as a spawned background
+task (`task_df34cb5b`), not fixed in this branch (out of this task's own `scope_paths` intent).
+
 ## MR !79 OPEN, 2026-09-01: Decline sector/size threshold calibration (Gemini feedback point 9)
 
 Status: **implemented (docs only), reviewed 3 rounds (scope-auditor PASS by the final round,

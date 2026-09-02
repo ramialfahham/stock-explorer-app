@@ -8,6 +8,7 @@ from card_copy import (  # noqa: E402
     ALL_METRICS,
     BENCHMARK_METRICS,
     VERDICT_BADGE_LABEL,
+    VERDICT_FALLBACK_READ,
     _BY_ID,
     metric_perspective_label,
     metrics_for_card,
@@ -15,6 +16,7 @@ from card_copy import (  # noqa: E402
 from card_ui import (  # noqa: E402
     BLOCK_LABEL_ASSESSMENT,
     BLOCK_LABEL_DESCRIPTION,
+    BLOCK_LABEL_VERDICT_MEANING,
     _company_summary_html,
     _health_block_html,
     build_card_html,
@@ -405,15 +407,18 @@ def test_labels_render_inside_the_card_identity_section() -> None:
 
 def test_ai_label_never_appears_without_ai_text() -> None:
     """A verdict can be stored with a null ai_read: 5a writes verdicts, and
-    generate_assessments isolates a per-card read failure rather than failing the batch.
-    The badge is rule-computed, so it must still render — but heading it "AI-written"
-    with no AI-written words under it would be a plain falsehood about where the
-    assessment came from."""
+    generate_assessments isolates a per-card read failure (or a hallucination-guard reject)
+    rather than failing the batch. The badge is rule-computed, so it must still render -- but
+    heading it "AI-written" with no AI-written words under it would be a plain falsehood about
+    where the assessment came from. The deterministic fallback gets its OWN, honest heading
+    instead (BLOCK_LABEL_VERDICT_MEANING), never BLOCK_LABEL_ASSESSMENT."""
     card = {"company_name": "Test Co", "ticker": "TST", "health_verdict": "green"}
     html = _health_block_html(card)
     assert VERDICT_BADGE_LABEL["green"] in html
     assert BLOCK_LABEL_ASSESSMENT not in html
     assert "ss-ai-read" not in html
+    assert BLOCK_LABEL_VERDICT_MEANING in html
+    assert VERDICT_FALLBACK_READ["green"] in html
 
 
 def test_ai_label_heads_the_prose_not_the_rule_computed_badge() -> None:
@@ -447,6 +452,14 @@ def test_badge_labels_match_the_words_the_model_is_told_to_end_on() -> None:
         )
 
 
+def test_verdict_fallback_read_covers_every_badge_token() -> None:
+    """No mechanical wording sync is possible against VERDICT_MEANING (the fallback
+    deliberately explains the rule, not the model-facing fragment -- see card_copy.py's
+    comment), but every verdict the badge can show must have a fallback sentence, or a card
+    whose read is absent would fall back to nothing for that one color."""
+    assert set(VERDICT_FALLBACK_READ) == set(VERDICT_BADGE_LABEL)
+
+
 def test_health_block_absent_without_matching_assessment() -> None:
     """No card_assessments row matched (pipeline lag) -> omit entirely, never a
     placeholder or a "not yet assessed" line."""
@@ -455,7 +468,7 @@ def test_health_block_absent_without_matching_assessment() -> None:
     assert "ss-health-block" not in build_card_html(card)
 
 
-def test_health_block_shows_badge_without_ai_read_when_null() -> None:
+def test_health_block_shows_badge_and_fallback_without_ai_read_when_null() -> None:
     card = _card_with_all_metrics("operating")
     card["health_verdict"] = "yellow"
     card["ai_read"] = None
@@ -463,6 +476,11 @@ def test_health_block_shows_badge_without_ai_read_when_null() -> None:
     assert "🟡" in html
     assert "Mixed" in html
     assert "ss-ai-read" not in html
+    assert "ss-verdict-fallback" in html
+    assert VERDICT_FALLBACK_READ["yellow"] in html
+    assert html.index("ss-verdict-badge") < html.index("ss-verdict-fallback"), (
+        "the fallback, like the AI read, must not precede the rules-computed verdict badge"
+    )
 
 
 def test_health_block_ignores_unrecognized_verdict_token() -> None:
