@@ -12,6 +12,26 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## MR !85 OPEN, 2026-09-02: Decline early-stage classification review (Gemini feedback point 2)
+
+Status: **implemented (docs only), reviewed 2 rounds (scope-auditor FAIL on round 1 for a
+missing blank line before a heading, PASS on round 2 -- full account in that branch's
+`.claude/task/review.md`), committed (2 commits: decision + review.md separately), pushed, MR
+open.** Branch `docs/decline-early-stage-classification`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/85. Pushed to the `gitlab`
+remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
+
+Owner decision: neither move the pre-revenue classification threshold nor add an early-stage
+carve-out to `_verdict_operating` for 4DMedical's -823.3% operating margin. Reasoning: the
+existing 0.1%-of-market-cap threshold is grounded in a real degenerate case (Deep Yellow,
+ASX: DYL, revenue ~0.001% of market cap producing a -129,810%/-90,334% outlier); 4DMedical's
+revenue, while small, is not that same failure mode -- it is a genuinely early operating company
+with thin margins. Moving the threshold (or adding a carve-out) specifically to soften this one
+card's output would be the identical invented-number problem point 9 was declined for. The
+number is honest; if its display effect is the real complaint, that is point 5's problem (a
+display change), not this one's. This closes out every raised Gemini-feedback point except
+point 5, still open.
+
 ## MR !83 MERGED, 2026-09-02: Drop the Apple example from data_contract.md's liquidity-relief
 bullet -- follow-up to MR !81's own code-comment trim (same example existed in two places).
 scope-auditor's first round caught real scope creep (an adjacent clause got reworded, dropping
