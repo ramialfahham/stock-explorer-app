@@ -514,6 +514,26 @@ VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 # to end its paragraph; if they drift, a card's prose contradicts its own badge.
 VERDICT_BADGE_LABEL = {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
 
+# Deterministic fallback for the health block's narrative when ai_read is absent (5a wrote the
+# verdict; 5b's read is pending, a per-card API failure, or a hallucination-guard reject -- see
+# scripts/generate_assessments.py's validate_read_metrics). A bare badge with nothing else read
+# as broken to a reader, not "not yet written" (owner feedback, 2026-09-01) -- this fills that
+# gap under its own honest heading ("What the verdict means" in frontend/card_ui.py, never
+# BLOCK_LABEL_ASSESSMENT's "AI-written", which this text is not). Owner-authored wording (§6): a
+# general one-line summary, not a description of the verdict engine's internal logic -- the
+# engine's decisive-vs-supporting metric split and its per-metric thresholds have no
+# representation anywhere in the UI, so text that leaned on either would assert something a
+# reader has no way to check. No mechanical sync test against VERDICT_MEANING is possible or
+# intended (deliberately different in kind, not just phrasing); tests/frontend/test_card_ui.py
+# only checks this covers the same three verdict tokens. Keep these strings free of apostrophes
+# and em/en-dashes -- _esc() HTML-entity-escapes them, which is fine for rendering but breaks a
+# literal-substring test match.
+VERDICT_FALLBACK_READ = {
+    "green": "Strong across all financial-health metrics, with zero red flags.",
+    "yellow": "No severe financial vulnerabilities, but not every metric clears the bar for strong.",
+    "red": "Exhibits at least one severe financial vulnerability that impairs overall stability.",
+}
+
 
 def health_verdict_token(card: dict) -> str | None:
     """The card's health_verdict token if present and a known value, else None — a missing

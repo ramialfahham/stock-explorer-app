@@ -226,23 +226,11 @@ def _is_shrinking(row: Mapping[str, Any]) -> bool:
 
 # --- Joint liquidity evaluation (current_ratio_stmt relief from FCF covering the shortfall) ----
 # Gemini feedback points 6/8 (docs/backlog/gemini_verdict_feedback.md): current_ratio_stmt and
-# fcf_margin_pct were graded fully independently, so a company with excellent free cash flow but
-# a merely-weak current ratio was capped at yellow regardless -- Apple's real card (current ratio
-# 0.89, FCF margin 23.7%) is exactly this case.
-#
-# First version of this relief gated on fcf_margin_pct banding "good" (FCF / revenue). A review
-# caught that this is a mismatched comparison: fcf_margin_pct is scaled by REVENUE, not by the
-# SIZE of the liquidity gap, so it only happens to work for Apple because Apple's revenue and
-# current-liability scale roughly track each other. A company with modest revenue but a large
-# near-term debt-maturity wall sitting in current liabilities could clear a "good" FCF margin
-# while its actual free cash flow covers only a small fraction of the real shortfall -- exactly
-# the case this relief exists to NOT wave through.
-#
-# Corrected to a direct dollar comparison instead: does free cash flow actually cover the
-# working-capital shortfall (current_liabilities - current_assets, i.e. -working_capital when
-# working_capital is negative)? This still relieves Apple (whose free cash flow is a large
-# multiple of its comparatively small shortfall) and correctly withholds relief from a company
-# whose cash generation can't plug the hole, regardless of how the ratio compares to revenue.
+# fcf_margin_pct were graded fully independently, so strong free cash flow could never rescue a
+# merely-weak current ratio. Relief compares actual dollar amounts -- does free cash flow cover
+# the working-capital shortfall? -- rather than fcf_margin_pct, because that margin is scaled by
+# revenue, not by the size of the liquidity gap: a company with modest revenue but a large
+# near-term liability wall could clear a "good" margin while its cash barely covers the shortfall.
 CURRENT_RATIO_WEAK_TH = 1.0
 CURRENT_RATIO_GOOD_TH = 1.5
 
@@ -450,6 +438,12 @@ def compute_input_hash(
 READ_SYSTEM_PROMPT = """You write a short, plain-language "read" of a company's financial health for a complete beginner using a stock-learning app. You are given the company type, a set of already-computed numbers, and a health verdict (green, yellow, or red) that fixed rules decided - not you. In 2-3 sentences, explain what those numbers say about the company's financial health, ending on what the verdict means in plain words.
 
 Rules:
+- Respond by calling the write_card_read tool with two fields: "read" (the prose) and
+  "referenced_metrics" (one entry per metric from the numbers list below that the read explicitly
+  cites, each with "label" and "value_as_shown" copied EXACTLY as given below, character for
+  character, not reformatted, rounded, or recomputed). If the read cites no specific number,
+  "referenced_metrics" may be empty. Never invent a label or value that is not in the numbers
+  list.
 - Educational only. Never give investment advice. Do not say or imply whether to buy, sell, hold, or avoid the share, whether it is cheap, expensive, or "worth it", and never predict the price. You explain what the numbers describe; you never recommend an action.
 - Write for someone who knows no finance vocabulary. If you use a term, gloss it in plain words or an everyday comparison. Leave no jargon unexplained.
 - Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
@@ -475,6 +469,51 @@ VERDICT_MEANING: dict[str, str] = {
     VERDICT_GREEN: "green - financially healthy on these figures",
     VERDICT_YELLOW: "yellow - a mixed financial picture on these figures",
     VERDICT_RED: "red - financially fragile on these figures",
+}
+
+
+# Forces structured output instead of free text (Gemini feedback points 3/4,
+# docs/backlog/gemini_verdict_feedback.md): the model must name which facts it used, in the
+# exact form it was given them, so scripts/generate_assessments.py can check the read against
+# the card's own numbers before storing it -- a numeric hallucination guard, not an LLM judge.
+# Pure data, no I/O; the actual API call lives in scripts/generate_assessments.py.
+READ_TOOL_NAME = "write_card_read"
+READ_TOOL_SCHEMA: dict[str, Any] = {
+    "name": READ_TOOL_NAME,
+    "description": "Write the plain-language financial health read for this card.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "read": {
+                "type": "string",
+                "description": "The 2-3 sentence plain-language read, following every rule in the system prompt.",
+            },
+            "referenced_metrics": {
+                "type": "array",
+                "description": (
+                    "One entry per metric from the numbers list that the read explicitly cites. "
+                    "Copy label and value_as_shown EXACTLY as given in the numbers list -- do "
+                    "not reformat, round, or recompute either one. Empty if the read cites no "
+                    "specific number."
+                ),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "label": {
+                            "type": "string",
+                            "description": "The metric's label exactly as it appears in the numbers list, e.g. 'Operating margin'.",
+                        },
+                        "value_as_shown": {
+                            "type": "string",
+                            "description": "That metric's value exactly as it appears in the numbers list, e.g. '24.0%'.",
+                        },
+                    },
+                    "required": ["label", "value_as_shown"],
+                },
+            },
+        },
+        "required": ["read", "referenced_metrics"],
+    },
 }
 
 
@@ -610,6 +649,26 @@ def _format_metric_value(value: Any, fmt: str, currency: str | None = None) -> s
     return f"{v:.2f}"  # ratio
 
 
+def _present_metric_renderings(
+    row: Mapping[str, Any], ctype: str, currency: str | None
+) -> dict[str, str]:
+    """label -> rendered display string, for every PRESENT per-type metric, keyed by the SAME
+    label text the model is shown (never the internal field name, which the model never sees).
+
+    Shared by build_read_messages (the facts block the model reads) and
+    validate_read_metrics (the hallucination guard) so the two can never disagree about what
+    "as shown" means for a given label -- one renderer, two callers.
+    """
+    out: dict[str, str] = {}
+    for field in INPUT_FIELDS_BY_TYPE[ctype]:
+        value = row.get(field)
+        if _is_missing(value):
+            continue
+        brief = READ_METRIC_BRIEF[field]
+        out[brief["label"]] = _format_metric_value(value, brief["fmt"], currency)
+    return out
+
+
 def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]:
     """Pure: build the (system, user) messages for the Claude Haiku prose read.
 
@@ -624,14 +683,13 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
     currency = row.get("currency")
     if _is_missing(currency):
         currency = None
-    lines: list[str] = []
-    for field in INPUT_FIELDS_BY_TYPE[ctype]:
-        value = row.get(field)
-        if _is_missing(value):
-            continue
-        brief = READ_METRIC_BRIEF[field]
-        rendered = _format_metric_value(value, brief["fmt"], currency)
-        lines.append(f"- {brief['label']}: {rendered} - {brief['gloss']}")
+    renderings = _present_metric_renderings(row, ctype, currency)
+    glosses = {field: READ_METRIC_BRIEF[field]["gloss"] for field in INPUT_FIELDS_BY_TYPE[ctype]}
+    labels_to_fields = {READ_METRIC_BRIEF[f]["label"]: f for f in INPUT_FIELDS_BY_TYPE[ctype]}
+    lines = [
+        f"- {label}: {rendered} - {glosses[labels_to_fields[label]]}"
+        for label, rendered in renderings.items()
+    ]
     facts = "\n".join(lines) if lines else "- (no metric values available)"
     meaning = VERDICT_MEANING.get(verdict, verdict)
     display_currency = _display_currency(currency)
@@ -644,3 +702,28 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
         "Write the 2-3 sentence read."
     )
     return READ_SYSTEM_PROMPT, user
+
+
+def validate_read_metrics(row: Mapping[str, Any], referenced_metrics: list[Any]) -> bool:
+    """True iff every {"label", "value_as_shown"} pair in referenced_metrics matches this row's
+    OWN rendering of that label, exactly as build_read_messages showed it to the model.
+
+    An empty list is valid -- a read may legitimately discuss the verdict without citing a
+    specific number. An unknown label, a missing key, or a mismatched value fails closed
+    (returns False): the model either cited something it wasn't given, or misquoted a number it
+    was. Either way the read is not trustworthy as written. No tolerance/rounding logic here --
+    both sides use the identical renderer, so a genuine citation matches character for character.
+    """
+    ctype = normalize_company_type(row.get("company_type"))
+    currency = row.get("currency")
+    if _is_missing(currency):
+        currency = None
+    renderings = _present_metric_renderings(row, ctype, currency)
+    for entry in referenced_metrics:
+        if not isinstance(entry, Mapping):
+            return False
+        label = entry.get("label")
+        claimed = entry.get("value_as_shown")
+        if label not in renderings or claimed != renderings[label]:
+            return False
+    return True

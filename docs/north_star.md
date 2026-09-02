@@ -67,11 +67,13 @@ widget in v1 — users open **Yahoo Finance** via the card footer link (`st.link
 with its own inline Read more/Show less toggle when truncated (see
 [`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)) — not inside the learn panel.
 
-**Health verdict + AI read (Slice 6c):** a 🟢/🟡/🔴 verdict (deterministic rules, Slice 5a) plus a
-short Claude-written plain-language read (Slice 5b) render right after identity, always
-visible — see the Progressive disclosure table below and
-[`data_contract.md`](data_contract.md)'s `card_assessments` section. Omitted entirely (no
-placeholder) when a card has no matching assessment yet.
+**Health verdict + read (Slice 6c):** a 🟢/🟡/🔴 verdict (deterministic rules, Slice 5a) renders
+right after identity, always visible whenever a card has a matching `card_assessments` row;
+omitted entirely (no placeholder) when it does not. Alongside the badge: a short Claude-written
+plain-language read (Slice 5b) when one has passed generation and its hallucination guard, or
+otherwise a deterministic, non-AI one-line summary under its own "What the verdict means" heading
+(never labeled AI-written). See the Progressive disclosure table below and
+[`data_contract.md`](data_contract.md)'s `card_assessments` section.
 
 **Large constituent bucket, smaller eligible pool:** index constituents are ingested broadly;
 only tickers passing their company type's eligibility gate enter discovery. Bad or incomplete
@@ -86,7 +88,7 @@ Three tiers — never all expanded at once on first load:
 | Tier | Content | Goal |
 |------|---------|------|
 | **Scan** | Name, ticker, market, sector headline, health verdict badge, metric values for this company's type (lens-grouped, no hero/tier split) | Answer “what company?” in seconds |
-| **Gloss** | AI read (always visible), sector one-liner, company blurb preview (expands inline to the full text when truncated), metric gloss lines under values | Plain-English context without clutter |
+| **Gloss** | AI read when one exists, otherwise a deterministic verdict summary (always visible), sector one-liner, company blurb preview (expands inline to the full text when truncated), metric gloss lines under values | Plain-English context without clutter |
 | **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?” (each metric behind its own Read more toggle), practice-number playgrounds — all in **one** learn panel. The full company summary has its own inline toggle on the card face instead (Gloss tier), not in this panel | Optional learning on demand |
 
 **Median primer and sector benchmarks** live inside **How we compare to similar companies**

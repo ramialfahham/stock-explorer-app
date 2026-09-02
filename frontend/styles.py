@@ -311,7 +311,13 @@ section[data-testid="stSidebar"] {
     padding: var(--ss-space-1) var(--ss-space-2);
     margin: 0 0 0.3rem;
 }
-.ss-health-block .ss-ai-read {
+/* .ss-verdict-fallback (frontend/card_ui.py's deterministic "What the verdict means"
+   one-liner, shown when ai_read is absent) styled identically to .ss-ai-read on purpose: it
+   should read as a natural, equally-weighted piece of card content, not visually flagged as
+   lesser than the AI-written narrative. Kept as a separate class, not reused, so the two are
+   distinguishable in the DOM and in tests. */
+.ss-health-block .ss-ai-read,
+.ss-health-block .ss-verdict-fallback {
     font-size: 0.78rem;
     color: var(--ss-text);
     margin: 0 0 0.28rem;

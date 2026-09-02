@@ -30,9 +30,12 @@ from supabase import create_client
 
 from assessment_rules import (
     INPUT_FIELDS_BY_TYPE,
+    READ_TOOL_NAME,
+    READ_TOOL_SCHEMA,
     build_read_messages,
     compute_input_hash,
     compute_verdict,
+    validate_read_metrics,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +43,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # Slice 5b: the Claude Haiku prose read. READ_MODEL is the request model; the id
 # actually stored in read_model is response.model (echoed back by the API).
 READ_MODEL = "claude-haiku-4-5"
-READ_MAX_TOKENS = 256
+# Forced tool-use (READ_TOOL_SCHEMA) adds JSON structure on top of the prose itself -- the
+# read's own 2-3 sentences plus a handful of {label, value_as_shown} pairs -- so this is higher
+# than a free-text call would need, to avoid truncating the read to make room for the wrapper.
+READ_MAX_TOKENS = 512
 
 # Union of every per-type card metric (derived from the rules module so it can't drift),
 # plus the keys the verdict/hash and dedupe need. `currency` is named to the model whenever
@@ -161,7 +167,14 @@ def _fetch_existing_assessments(client) -> dict[tuple, dict]:
 
 def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | None]:
     """Call Claude Haiku for one card's prose read. Returns (text, model_id), or
-    (None, None) on any failure so a single bad card never fails the batch."""
+    (None, None) on any failure so a single bad card never fails the batch.
+
+    Forces tool-use (READ_TOOL_SCHEMA) so the model returns the read alongside the exact
+    metrics it cited, then checks those against the card's own numbers (validate_read_metrics)
+    before accepting the read -- a malformed response, an empty read, or any citation that
+    doesn't match the data is treated the same as an API failure: fail closed, self-heals next
+    run via the existing regenerate-on-input-hash-change path. No retry.
+    """
     system, user = build_read_messages(row, verdict)
     try:
         resp = client.messages.create(
@@ -169,6 +182,8 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             max_tokens=READ_MAX_TOKENS,
             system=system,
             messages=[{"role": "user", "content": user}],
+            tools=[READ_TOOL_SCHEMA],
+            tool_choice={"type": "tool", "name": READ_TOOL_NAME},
         )
     except Exception as exc:  # noqa: BLE001 - resilience: isolate one card's failure
         print(
@@ -176,12 +191,34 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             file=sys.stderr,
         )
         return None, None
-    text = "".join(
-        getattr(block, "text", "")
-        for block in resp.content
-        if getattr(block, "type", None) == "text"
-    ).strip()
-    if not text:
+    tool_block = next(
+        (block for block in resp.content if getattr(block, "type", None) == "tool_use"),
+        None,
+    )
+    if tool_block is None:
+        print(
+            f"  read failed for {row.get('market_code')}/{row.get('ticker')}: "
+            f"no tool_use block in response (stop_reason={getattr(resp, 'stop_reason', None)!r})",
+            file=sys.stderr,
+        )
+        return None, None
+    payload = tool_block.input if isinstance(tool_block.input, dict) else {}
+    text = str(payload.get("read") or "").strip()
+    referenced = payload.get("referenced_metrics")
+    if not text or not isinstance(referenced, list):
+        print(
+            f"  read failed for {row.get('market_code')}/{row.get('ticker')}: "
+            f"malformed tool payload (read={'present' if text else 'blank'}, "
+            f"referenced_metrics type={type(referenced).__name__})",
+            file=sys.stderr,
+        )
+        return None, None
+    if not validate_read_metrics(row, referenced):
+        print(
+            f"  read REJECTED (unverifiable metric) for "
+            f"{row.get('market_code')}/{row.get('ticker')}",
+            file=sys.stderr,
+        )
         return None, None
     return text, resp.model
 

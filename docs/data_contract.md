@@ -370,6 +370,23 @@ verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` with a **Cla
 (`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and ends on the verdict's
 meaning — regenerated only when `input_hash` changes or `ai_read` is null. The card renders it in **Slice 6**.
 
+**Structured output + hallucination guard (Gemini feedback points 3/4).** The Haiku call forces
+tool-use (`tool_choice`, `write_card_read`): the model returns `read` (the prose) plus
+`referenced_metrics`, one `{label, value_as_shown}` entry per metric the read explicitly cites,
+copied exactly as shown in the prompt's own facts block. `validate_read_metrics` checks each pair
+against `_present_metric_renderings`, the same rendering the model was shown: a numeric
+cross-check, not an LLM judge. It catches the model stating a number that does not match the
+card's data, not an unsupported qualitative claim that cites no wrong number (an LLM-judge second
+pass would catch that too, at roughly double the cost; not built here). Any mismatch, unknown
+label, or malformed tool response fails exactly like an API exception already does: `ai_read` /
+`read_model` stay absent, and the existing regenerate-on-`input_hash`-change path picks the card
+up again next run. No retry, no separate failure state. When `ai_read` is absent (a brand-new
+card, a per-card API failure, or a hallucination-guard reject), the card shows a deterministic,
+non-AI one-line summary under its own "What the verdict means" heading instead of the AI-written
+read (`frontend/card_copy.py`'s `VERDICT_FALLBACK_READ`), never AI-attributed, phrased as a
+general summary rather than a description of the rules below since neither the decisive-vs-
+supporting metric split nor the per-metric thresholds are shown anywhere on the card.
+
 **Grain:** one row per `(market_code, ticker)` — latest snapshot only (differs from `mart_stock_cards`,
 keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migration `010_card_assessments.sql`).
 

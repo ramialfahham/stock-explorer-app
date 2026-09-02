@@ -675,6 +675,13 @@ def test_read_brief_covers_every_input_field() -> None:
     for brief in rules.READ_METRIC_BRIEF.values():
         assert {"label", "gloss", "fmt"} <= set(brief)
         assert brief["fmt"] in {"pct", "ratio", "months", "currency"}
+    # _present_metric_renderings keys its dict by label, not field name, for every company
+    # type -- if two fields for the same type ever shared a label, one would silently
+    # overwrite the other, both in what the model is shown and in what the hallucination
+    # guard checks against. Labels must be unique per type or that guard is not trustworthy.
+    for ctype, fields in rules.INPUT_FIELDS_BY_TYPE.items():
+        labels = [rules.READ_METRIC_BRIEF[f]["label"] for f in fields]
+        assert len(labels) == len(set(labels)), f"duplicate label in {ctype}: {labels}"
 
 
 def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
@@ -723,6 +730,76 @@ def test_build_read_messages_omits_missing_metrics() -> None:
     assert rules.READ_METRIC_BRIEF["current_ratio_stmt"]["label"] not in user
     assert rules.READ_METRIC_BRIEF["net_debt_to_ebitda"]["label"] in user
     assert "None" not in user  # missing values never render as a number
+
+
+# --- Structured output + hallucination guard (Gemini feedback points 3/4) ------------------
+
+def test_validate_read_metrics_accepts_a_genuine_citation() -> None:
+    row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
+    label = rules.READ_METRIC_BRIEF["ebit_margin_pct"]["label"]
+    assert rules.validate_read_metrics(
+        row, [{"label": label, "value_as_shown": "24.0%"}]
+    ) is True
+
+
+def test_validate_read_metrics_rejects_a_mismatched_value() -> None:
+    """The exact case the guard exists for: a number that doesn't match the card's own data."""
+    row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
+    label = rules.READ_METRIC_BRIEF["ebit_margin_pct"]["label"]
+    assert rules.validate_read_metrics(
+        row, [{"label": label, "value_as_shown": "99.9%"}]
+    ) is False
+
+
+def test_validate_read_metrics_rejects_an_unknown_label() -> None:
+    # Citing a metric that was never in the facts block at all -- either invented, or from a
+    # field that was missing (and so correctly omitted) rather than actually present.
+    row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
+    assert rules.validate_read_metrics(
+        row, [{"label": "Not a real metric", "value_as_shown": "1.0"}]
+    ) is False
+
+
+def test_validate_read_metrics_rejects_a_missing_field_cited_anyway() -> None:
+    # debt_to_equity is absent here, so it never appeared in the facts block -- citing its
+    # label at all is already a violation, regardless of what value is claimed for it.
+    row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
+    label = rules.READ_METRIC_BRIEF["debt_to_equity"]["label"]
+    assert rules.validate_read_metrics(
+        row, [{"label": label, "value_as_shown": "0.60"}]
+    ) is False
+
+
+def test_validate_read_metrics_accepts_an_empty_list() -> None:
+    # A read may legitimately discuss the verdict without citing any specific number.
+    row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
+    assert rules.validate_read_metrics(row, []) is True
+
+
+def test_validate_read_metrics_matches_currency_formatted_values() -> None:
+    row = {
+        "company_type": "pre_revenue", "currency": "GBP",
+        "net_cash": 4.0e8, "working_capital": 2.1e9,
+    }
+    label = rules.READ_METRIC_BRIEF["working_capital"]["label"]
+    assert rules.validate_read_metrics(
+        row, [{"label": label, "value_as_shown": "£2.1B"}]
+    ) is True
+    assert rules.validate_read_metrics(
+        row, [{"label": label, "value_as_shown": "$2.1B"}]  # wrong currency symbol
+    ) is False
+
+
+def test_validate_read_metrics_rejects_a_malformed_entry() -> None:
+    row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
+    assert rules.validate_read_metrics(row, [{"label": "missing value_as_shown key"}]) is False
+    assert rules.validate_read_metrics(row, ["not a dict at all"]) is False
+
+
+def test_read_tool_schema_requires_read_and_referenced_metrics() -> None:
+    assert rules.READ_TOOL_SCHEMA["name"] == rules.READ_TOOL_NAME
+    required = rules.READ_TOOL_SCHEMA["input_schema"]["required"]
+    assert set(required) == {"read", "referenced_metrics"}
 
 
 def test_build_read_messages_financial_states_profitability_only_limit() -> None:

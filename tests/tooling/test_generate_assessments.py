@@ -83,25 +83,54 @@ def test_missing_duckdb_returns_error() -> None:
 
 
 # --- Slice 5b: the Claude Haiku read path (fakes injected, no network) ---------
+# The real call forces tool-use (READ_TOOL_SCHEMA), so the fake response carries a tool_use
+# block with an .input dict, not a text block -- matching what _generate_read actually parses.
 
-class _FakeBlock:
-    def __init__(self, text: str) -> None:
+class _FakeToolUseBlock:
+    def __init__(self, payload: dict) -> None:
+        self.type = "tool_use"
+        self.input = payload
+
+
+class _FakeTextBlock:
+    """Simulates a response that ignored tool_choice, e.g. a stop_reason/SDK-version change --
+    the `tool_block is None` branch in _generate_read has no tool_use block to find."""
+
+    def __init__(self, text: str = "(no tool call)") -> None:
         self.type = "text"
         self.text = text
 
 
 class _FakeMessage:
-    def __init__(self, text: str, model: str) -> None:
-        self.content = [_FakeBlock(text)]
+    def __init__(
+        self,
+        text: str,
+        model: str,
+        referenced_metrics: list | None = None,
+        *,
+        content: list | None = None,
+        stop_reason: str = "tool_use",
+    ) -> None:
+        if content is None:
+            payload = {"read": text, "referenced_metrics": referenced_metrics or []}
+            content = [_FakeToolUseBlock(payload)]
+        self.content = content
         self.model = model
+        self.stop_reason = stop_reason
 
 
 class _FakeMessages:
     def __init__(self, text: str = "A steady read.", model: str = "claude-haiku-4-5",
-                 fail_calls: set[int] = frozenset()) -> None:
+                 fail_calls: set[int] = frozenset(),
+                 referenced_metrics: list | None = None,
+                 content: list | None = None,
+                 stop_reason: str = "tool_use") -> None:
         self._text = text
         self._model = model
         self._fail_calls = set(fail_calls)
+        self._referenced_metrics = referenced_metrics
+        self._content = content
+        self._stop_reason = stop_reason
         self.calls: list[dict] = []
 
     def create(self, **kwargs):
@@ -109,7 +138,10 @@ class _FakeMessages:
         self.calls.append(kwargs)
         if idx in self._fail_calls:
             raise RuntimeError("boom")
-        return _FakeMessage(self._text, self._model)
+        return _FakeMessage(
+            self._text, self._model, self._referenced_metrics,
+            content=self._content, stop_reason=self._stop_reason,
+        )
 
 
 class _FakeAnthropic:
@@ -218,6 +250,61 @@ def test_attach_reads_isolates_a_failed_card() -> None:
     assert summary == {"generated": 1, "carried": 0, "failed": 1}
     assert "ai_read" not in a          # failed card left null (retries next run)
     assert b["ai_read"] == "ok read"   # the batch kept going
+
+
+def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> None:
+    """The hallucination guard's own reason to exist: a structured response whose
+    referenced_metrics don't match the card's real data is treated exactly like an API
+    failure -- fails closed, lands in the same "failed" count, no separate code path."""
+    rec = _base_record()
+    client = _FakeAnthropic(
+        text="Operating margin looks strong.",
+        referenced_metrics=[{"label": "Operating margin", "value_as_shown": "99.9%"}],  # wrong
+    )
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+
+
+def test_attach_reads_accepts_a_read_citing_a_number_that_matches() -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(
+        text="Operating margin looks strong.",
+        referenced_metrics=[{"label": "Operating margin", "value_as_shown": "24.0%"}],  # correct
+    )
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert rec["ai_read"] == "Operating margin looks strong."
+
+
+def test_attach_reads_rejects_a_response_with_no_tool_use_block(capsys) -> None:
+    """The model ignoring tool_choice (a stop_reason/SDK-version change) must fail closed
+    exactly like every other rejection, not be swallowed silently -- the whole point of this
+    guard is that a real pipeline run can tell WHY a card came back unread."""
+    rec = _base_record()
+    client = _FakeAnthropic(content=[_FakeTextBlock()], stop_reason="end_turn")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+    assert "no tool_use block" in capsys.readouterr().err
+
+
+def test_attach_reads_rejects_a_blank_read(capsys) -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(text="   ")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+    assert "malformed tool payload" in capsys.readouterr().err
+
+
+def test_attach_reads_rejects_non_list_referenced_metrics(capsys) -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(text="Operating margin looks strong.", referenced_metrics="oops")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+    assert "malformed tool payload" in capsys.readouterr().err
 
 
 def test_main_without_anthropic_key_upserts_verdicts_only(tmp_path: Path, monkeypatch) -> None:
