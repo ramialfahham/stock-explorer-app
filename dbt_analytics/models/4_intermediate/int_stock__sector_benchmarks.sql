@@ -78,21 +78,65 @@ sector_medians as (
         -- unfiltered peer count, same as every other metric). Same tolerance this model already
         -- has for any metric that's null for some fraction of a sector's peers -- not a new
         -- fragility class, just this filter's own instance of it.
-        median(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then debt_to_equity end) as sector_median_debt_to_equity,
-        min(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then debt_to_equity end) as sector_min_debt_to_equity,
-        max(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then debt_to_equity end) as sector_max_debt_to_equity,
-        quantile_cont(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then debt_to_equity end, 0.25) as sector_q1_debt_to_equity,
-        quantile_cont(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then debt_to_equity end, 0.75) as sector_q3_debt_to_equity,
+        median(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then debt_to_equity
+            end
+        ) as sector_median_debt_to_equity,
+        min(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then debt_to_equity
+            end
+        ) as sector_min_debt_to_equity,
+        max(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then debt_to_equity
+            end
+        ) as sector_max_debt_to_equity,
+        quantile_cont(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then debt_to_equity
+            end,
+            0.25
+        ) as sector_q1_debt_to_equity,
+        quantile_cont(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then debt_to_equity
+            end,
+            0.75
+        ) as sector_q3_debt_to_equity,
         median(current_ratio_stmt) as sector_median_current_ratio_stmt,
         min(current_ratio_stmt) as sector_min_current_ratio_stmt,
         max(current_ratio_stmt) as sector_max_current_ratio_stmt,
         quantile_cont(current_ratio_stmt, 0.25) as sector_q1_current_ratio_stmt,
         quantile_cont(current_ratio_stmt, 0.75) as sector_q3_current_ratio_stmt,
-        median(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then statement_roe_pct end) as sector_median_statement_roe_pct,
-        min(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then statement_roe_pct end) as sector_min_statement_roe_pct,
-        max(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then statement_roe_pct end) as sector_max_statement_roe_pct,
-        quantile_cont(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then statement_roe_pct end, 0.25) as sector_q1_statement_roe_pct,
-        quantile_cont(case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0 then statement_roe_pct end, 0.75) as sector_q3_statement_roe_pct,
+        median(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then statement_roe_pct
+            end
+        ) as sector_median_statement_roe_pct,
+        min(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then statement_roe_pct
+            end
+        ) as sector_min_statement_roe_pct,
+        max(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then statement_roe_pct
+            end
+        ) as sector_max_statement_roe_pct,
+        quantile_cont(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then statement_roe_pct
+            end,
+            0.25
+        ) as sector_q1_statement_roe_pct,
+        quantile_cont(
+            case when stmt_stockholders_equity is null or stmt_stockholders_equity > 0
+                then statement_roe_pct
+            end,
+            0.75
+        ) as sector_q3_statement_roe_pct,
         median(net_margin_pct) as sector_median_net_margin_pct,
         min(net_margin_pct) as sector_min_net_margin_pct,
         max(net_margin_pct) as sector_max_net_margin_pct,
