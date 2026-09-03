@@ -132,14 +132,20 @@ each batch and nobody tracking it as of the last check.
 
 ## Open items (carried forward, genuinely unresolved as of 2026-09-03)
 
-1. **BXB, RMS, SPK (`au_asx200`) dropped out of the eligible set** as of the 2026-08-26 run
-   and had not returned across three consecutive snapshots checked at the time; root cause
-   (which of the four operating-eligibility fields is null for them) was never diagnosed.
-   Separately, **there is no eviction mechanism**: a ticker that stops being exported keeps
-   its last card in the deck indefinitely (frontend dedupes to newest row per ticker, not
-   newest snapshot). Whether the deck should evict by snapshot age is an owner call. **Needs
-   re-verification against current production data** -- several scheduled pipeline runs
-   should have happened since this was last checked.
+1. **BXB, RMS, SPK (`au_asx200`) are still stuck on a 2026-08-20 snapshot as of 2026-09-03**
+   (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
+   and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
+   operating-eligibility fields, computed straight from Yahoo's `info.revenueGrowth` scalar
+   with no fallback) is `None` for all three in live yfinance data right now, confirmed by
+   direct probe, though it had a real value as of the 08-20 snapshot -- a genuine, current
+   Yahoo data gap for these specific tickers, not an app bug. **Owner decision 2026-09-03:
+   leave it for now** -- known, accepted category of yfinance noise, not worth building a
+   revenue-growth fallback (e.g. computed from ingested total-revenue statement rows instead
+   of the fragile info scalar) for three cards. Revisit if Yahoo's data doesn't recover, or if
+   this pattern shows up on more tickers. **Still separately open, not resolved by the above:
+   there is no eviction mechanism** -- a ticker that stops being exported keeps its last card
+   in the deck indefinitely (frontend dedupes to newest row per ticker, not newest snapshot).
+   Whether the deck should evict by snapshot age remains an owner call.
 2. **11-metric benchmark expansion** (financial + pre-revenue company types, 2 more operating
    metrics) is an explicit owner-approved follow-up to the range-mark feature, not started.
 3. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
