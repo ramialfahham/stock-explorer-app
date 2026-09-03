@@ -146,8 +146,25 @@ each batch and nobody tracking it as of the last check.
    there is no eviction mechanism** -- a ticker that stops being exported keeps its last card
    in the deck indefinitely (frontend dedupes to newest row per ticker, not newest snapshot).
    Whether the deck should evict by snapshot age remains an owner call.
-2. **11-metric benchmark expansion** (financial + pre-revenue company types, 2 more operating
-   metrics) is an explicit owner-approved follow-up to the range-mark feature, not started.
+2. **5-metric benchmark expansion (scoped down from the original "11-metric" idea) is
+   implemented and committed, not yet pushed.** Branch `feat/benchmark-financial-operating-metrics`
+   (2 commits: `7dba81f8` main change, `e608869b` review.md), local only -- waiting on explicit
+   "push" instruction. Adds range marks for `debt_to_equity`, `current_ratio_stmt`,
+   `statement_roe_pct`, `net_margin_pct`, `roa_pct` (9 benchmarked metrics total now, was 4).
+   Pre-revenue's 4 metrics stay explicitly out of scope: only 3 pre-revenue companies exist
+   app-wide, can never clear the 8-peer rendering threshold. Mid-review, two reviewers
+   independently caught a real bug -- `debt_to_equity`/`statement_roe_pct`'s new sector
+   aggregates had no guard against negative stockholders' equity (the same sign-inversion
+   failure mode MR !73 already guards at the verdict layer, but that guard never covered
+   peer-benchmark aggregation). Fixed by excluding negative-equity peers from just those 2
+   metrics' 5 statistics each; escalated to the owner first since it broke the task's own
+   "no metric-specific exception" scope, approved ("go") after a first overly jargon-heavy ask
+   was rejected. Went through unusually many review rounds (5 reviewers, several re-dispatches)
+   -- worth reading as a caution: after the substantive bug was fixed and re-confirmed, most of
+   the later rounds were the same low-stakes stale-comment-count pattern ("4" -> "9"
+   benchmarkable metrics) resurfacing in different phrasing across files; the last two instances
+   were fixed directly without a further automated re-dispatch, per explicit owner authorization
+   to stop re-running full reviewer rounds for cosmetic, zero-functional-impact findings.
 3. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
