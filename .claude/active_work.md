@@ -147,10 +147,11 @@ each batch and nobody tracking it as of the last check.
    in the deck indefinitely (frontend dedupes to newest row per ticker, not newest snapshot).
    Whether the deck should evict by snapshot age remains an owner call.
 2. **5-metric benchmark expansion (scoped down from the original "11-metric" idea) is
-   implemented and committed, not yet pushed.** Branch `feat/benchmark-financial-operating-metrics`
-   (2 commits: `7dba81f8` main change, `e608869b` review.md), local only -- waiting on explicit
-   "push" instruction. Adds range marks for `debt_to_equity`, `current_ratio_stmt`,
-   `statement_roe_pct`, `net_margin_pct`, `roa_pct` (9 benchmarked metrics total now, was 4).
+   implemented, committed, pushed, and open as MR !92 -- awaiting the owner's merge.**
+   Branch `feat/benchmark-financial-operating-metrics` (3 commits: `7dba81f8` main change,
+   `e608869b` review.md, `6d6a30a0` this handover entry). Adds range marks for
+   `debt_to_equity`, `current_ratio_stmt`, `statement_roe_pct`, `net_margin_pct`, `roa_pct`
+   (9 benchmarked metrics total now, was 4).
    Pre-revenue's 4 metrics stay explicitly out of scope: only 3 pre-revenue companies exist
    app-wide, can never clear the 8-peer rendering threshold. Mid-review, two reviewers
    independently caught a real bug -- `debt_to_equity`/`statement_roe_pct`'s new sector
