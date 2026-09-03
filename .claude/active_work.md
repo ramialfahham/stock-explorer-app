@@ -10,12 +10,6 @@ the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WA
 flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
 back under cap by moving settled history into the new archive above._
 
-**MR !89 OPEN, 2026-09-03: this archival pass itself** -- branch `docs/handover-archival-pass`,
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/89, pushed to `gitlab`,
-scope-auditor PASS (round 2, after round 1 caught a reversed dbt/venv claim -- see
-`.claude/task/review.md` on that branch). Once merged: sync local `main`, delete the branch,
-collapse this note to one line.
-
 ## Recent work (2026-09-01 to 2026-09-02)
 
 This session shipped every one of the nine Gemini-feedback points in
