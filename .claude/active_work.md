@@ -12,18 +12,20 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## Branch `feat/outlier-aware-metric-range-scaling` IN PROGRESS, 2026-09-02: Outlier-aware
-metric-range scaling (Gemini feedback point 5)
+## MR !87 OPEN, 2026-09-02: Outlier-aware metric-range scaling (Gemini feedback point 5)
 
 Status: **implemented (dbt + Supabase + frontend + tests), full pytest suite green (481
 passed), full dbt build/test green (123 passed), docs updated (`data_contract.md`,
 `ui/card_metric_cell.md`, `backlog/gemini_verdict_feedback.md`), em/en-dash swept, reviewed
 (scope-auditor PASS, equity-analyst-reviewer PASS, analytics-engineer-reviewer PASS,
-cto-reviewer PASS on retry after a transient API error killed the first attempt -- full
-account in that branch's `.claude/task/review.md`). Not yet committed, not yet pushed.** Next
-concrete action: write `.claude/task/review.md`, commit (main change then review.md
-separately), then wait for the owner's explicit instruction to push -- push to the `gitlab`
-remote, not `origin`.
+cto-reviewer PASS on retry after a transient API error killed the first attempt,
+data-engineer-reviewer PASS -- initially missed by dispatch since `*.sql` and `supabase/*`
+both match the new migration file and route to two different reviewers, caught by the commit
+gate before the first commit attempt -- full account in that branch's `.claude/task/review.md`),
+committed (2 commits: main change `c02887db` then review.md `090d9bc7` separately), pushed, MR
+open.** Branch `feat/outlier-aware-metric-range-scaling`, MR at
+https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/87. Pushed to the `gitlab`
+remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
 
 Owner reviewed a mockup (a synthetic sector with one extreme outlier) before scoping and chose
 clamping the display range over log-scaling (rejected: not beginner friendly). The mechanism
