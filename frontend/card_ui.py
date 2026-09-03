@@ -46,6 +46,16 @@ def _range_point_html(row_class: str, left: str, text: str) -> str:
     return f'<span class="{row_class}" style="left:{left}">{text}</span>'
 
 
+def _off_scale_arrow_html(side: str) -> str:
+    """A small arrow at the track's edge when this card's own value fell outside the
+    displayed (fence-clamped) range -- the raw value shown in the value row above is
+    completely unaffected; this only flags that the marker's position doesn't reach as far
+    as the true value would put it. See docs/ui/card_metric_cell.md's Range mark mechanics."""
+    edge_class = "ss-metric-range-offscale-low" if side == "low" else "ss-metric-range-offscale-high"
+    glyph = "◂" if side == "low" else "▸"
+    return f'<span class="ss-metric-range-offscale {edge_class}">{glyph}</span>'
+
+
 def _metric_range_html(card: dict, metric: str) -> str:
     """Monochrome range mark: numbers row (min/median/max values) above the bar, the bar
     itself (two segments with a gap at the median, plus this company's marker), then a
@@ -53,7 +63,13 @@ def _metric_range_html(card: dict, metric: str) -> str:
     their real position using the identical rule, so min/median/max read as one
     consistent reference framework and the marker is the only thing that moves within
     it. Replaces the old inline "Higher/Lower than sector median" text on the card face —
-    see docs/ui/card_metric_cell.md."""
+    see docs/ui/card_metric_cell.md.
+
+    min/median/max come from benchmark_range()'s outlier-aware display range (a Tukey-fence
+    clamp, not necessarily the sector's raw extreme) -- when this card's own value falls
+    outside that range, the marker pins to the near edge and _off_scale_arrow_html() adds a
+    small directional arrow there. The card's raw value in _metric_cell_html()'s value row is
+    untouched either way."""
     for m_key, median_key, _direction in BENCHMARK_METRICS:
         if m_key != metric:
             continue
@@ -81,6 +97,11 @@ def _metric_range_html(card: dict, metric: str) -> str:
             + _range_point_html("ss-metric-range-word", median_left, "median")
             + _range_point_html("ss-metric-range-word", "100%", "max")
         )
+        offscale_html = ""
+        if rng.get("low_off_scale"):
+            offscale_html = _off_scale_arrow_html("low")
+        elif rng.get("high_off_scale"):
+            offscale_html = _off_scale_arrow_html("high")
         return (
             f'<div class="ss-metric-range">'
             f'<div class="ss-metric-range-numbers">{numbers_row}</div>'
@@ -90,6 +111,7 @@ def _metric_range_html(card: dict, metric: str) -> str:
             f'<div class="ss-metric-range-bar ss-metric-range-bar-end" '
             f'style="left:calc({median_pct}% + 2px)"></div>'
             f'<div class="ss-metric-range-marker" style="left:{value_pct}%"></div>'
+            f"{offscale_html}"
             f"</div>"
             f'<div class="ss-metric-range-words">{words_row}</div>'
             f"</div>"

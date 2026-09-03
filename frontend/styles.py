@@ -513,6 +513,23 @@ section[data-testid="stSidebar"] {
     border-radius: 0.1rem;
     transform: translateX(-50%);
 }
+/* Off-scale arrow (Gemini feedback point 5): shown only when this card's own value fell
+   outside the fence-clamped display range, at the track edge the marker pinned to. Small
+   and muted deliberately -- a secondary cue next to the marker, not competing with it; the
+   raw value is still the primary, unaffected fact shown in the value row above. */
+.ss-metric-range-offscale {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    color: var(--ss-muted);
+}
+.ss-metric-range-offscale-low {
+    left: -0.65rem;
+}
+.ss-metric-range-offscale-high {
+    right: -0.65rem;
+}
 /* font-size and margin both live only in the two scoped rules below, not here -- a
    Streamlit emotion-cache rule resets both properties on any bare `<p class="single">`
    at higher specificity than a single class, silently overriding either one if set

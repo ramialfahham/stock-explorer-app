@@ -400,38 +400,67 @@ def benchmark_position(
     return "at"
 
 
-def benchmark_range(card: dict, metric: str, median_key: str) -> dict | None:
-    """Position this card's value within its sector's [min, max], median labeled.
+# Standard box-plot outlier-fence multiplier (Tukey, 1977) -- not a value picked to fit any
+# one card. Used by benchmark_range() to clamp the displayed range so one extreme peer no
+# longer dominates every other peer's marker position in the same sector (Gemini feedback
+# point 5, docs/backlog/gemini_verdict_feedback.md).
+_TUKEY_FENCE_MULTIPLIER = 1.5
 
-    Returns None when unavailable (peer count < 8, same threshold benchmark_position
-    already applies — min/median/max are null together below it) or degenerate (min ==
-    max: every eligible peer reports the same value, so there is no range to show).
-    position_pct / median_pct are clamped to [0, 100] defensively; under normal operation
-    the card's own company is part of the cohort its own min/max is computed from, so its
-    value should already fall inside that range by construction.
+
+def benchmark_range(card: dict, metric: str, median_key: str) -> dict | None:
+    """Position this card's value within its sector's outlier-aware display range, median
+    labeled.
+
+    The display range clamps to a Tukey fence (Q1 - 1.5*IQR .. Q3 + 1.5*IQR) whenever the
+    sector's quartiles are present, so one extreme peer no longer dominates every other peer's
+    marker position in the same sector -- the exact case documented in
+    docs/ui/card_metric_cell.md's "Known data-quality interaction" note (Deep Yellow/DYL,
+    -129,810.5% FCF margin, ASX Energy). Falls back to the raw [sector_min, sector_max] range
+    when quartiles are null (a sector exported before this shipped, or any transitional state),
+    so nothing regresses to "no mark". For a sector with no real outlier, the fence is wider
+    than the true min/max, so the clamp is a no-op and the displayed range is unchanged.
+
+    Returns None when unavailable (peer count < 8, same threshold benchmark_position already
+    applies) or degenerate (the display range collapses to zero width -- every eligible peer
+    reports the same value). `min`/`max` in the returned dict are the DISPLAYED bound -- what
+    actually renders at the 0%/100% track edges -- which is the fence-clamped value when a
+    fence narrows the range, not necessarily the single most extreme peer's raw value.
+
+    `low_off_scale` / `high_off_scale` report whether this card's OWN value fell outside the
+    displayed range on that side; its raw value is never affected, only its marker position.
+    position_pct / median_pct are clamped to [0, 100] defensively.
     """
     if not _benchmark_eligible(card):
         return None
     value = card.get(metric)
     median = card.get(median_key)
-    min_key = f"sector_min_{metric}"
-    max_key = f"sector_max_{metric}"
-    minimum = card.get(min_key)
-    maximum = card.get(max_key)
+    minimum = card.get(f"sector_min_{metric}")
+    maximum = card.get(f"sector_max_{metric}")
     if value is None or median is None or minimum is None or maximum is None:
         return None
-    span = maximum - minimum
+    q1 = card.get(f"sector_q1_{metric}")
+    q3 = card.get(f"sector_q3_{metric}")
+    display_min, display_max = minimum, maximum
+    if q1 is not None and q3 is not None:
+        iqr = q3 - q1
+        fence_low = q1 - _TUKEY_FENCE_MULTIPLIER * iqr
+        fence_high = q3 + _TUKEY_FENCE_MULTIPLIER * iqr
+        display_min = max(minimum, fence_low)
+        display_max = min(maximum, fence_high)
+    span = display_max - display_min
     if span <= 0:
         return None
-    position_pct = max(0.0, min(100.0, (value - minimum) / span * 100))
-    median_pct = max(0.0, min(100.0, (median - minimum) / span * 100))
+    position_pct = max(0.0, min(100.0, (value - display_min) / span * 100))
+    median_pct = max(0.0, min(100.0, (median - display_min) / span * 100))
     return {
-        "min": minimum,
+        "min": display_min,
         "median": median,
-        "max": maximum,
+        "max": display_max,
         "value": value,
         "position_pct": position_pct,
         "median_pct": median_pct,
+        "low_off_scale": value < display_min,
+        "high_off_scale": value > display_max,
     }
 
 

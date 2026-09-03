@@ -63,6 +63,22 @@ def test_export_columns_include_sector_min_max() -> None:
         assert f"sector_max_{metric}" in exp.EXPORT_COLUMNS
 
 
+def test_export_columns_include_sector_quartiles() -> None:
+    """Same regression guard as above, for the Q1/Q3 columns added for the outlier-aware
+    range-mark display clamp (Gemini feedback point 5). forward_pe deliberately excluded --
+    it already left the catalogue and carries no range mark, so it gets no quartile columns."""
+    for metric in (
+        "ebit_margin_pct",
+        "revenue_growth_yoy_pct",
+        "net_debt_to_ebitda",
+        "fcf_margin_pct",
+    ):
+        assert f"sector_q1_{metric}" in exp.EXPORT_COLUMNS
+        assert f"sector_q3_{metric}" in exp.EXPORT_COLUMNS
+    assert "sector_q1_forward_pe" not in exp.EXPORT_COLUMNS
+    assert "sector_q3_forward_pe" not in exp.EXPORT_COLUMNS
+
+
 def test_target_dev_passes_dev_schema_to_create_client(tmp_path: Path, monkeypatch) -> None:
     db = tmp_path / "mart.duckdb"
     _make_mart(db, [_ROW])

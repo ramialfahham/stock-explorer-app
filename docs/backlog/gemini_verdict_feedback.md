@@ -141,6 +141,22 @@ on a third-party AI's say-so without the owner's own call.
    min/max inputs feeding it are raw aggregates with no percentile trimming. An extreme value
    like -823% simply becomes the new range floor, compressing every peer toward the opposite end.
 
+   **Acted on, branch `feat/outlier-aware-metric-range-scaling`.** `benchmark_range()`'s display
+   range now clamps to a Tukey fence (`Q1 - 1.5*IQR` .. `Q3 + 1.5*IQR`, the standard box-plot
+   outlier-bound convention), computed from two new sector quartile columns
+   (`sector_q1_*`/`sector_q3_*`, added to `int_stock__sector_benchmarks.sql` for the 4
+   benchmarkable metrics only -- `forward_pe` already carries dead, unused min/median/max
+   columns and gets no quartile columns). For a normally-spread sector the fence is wider than
+   the true min/max, so the clamp is a no-op; it only narrows the display range when a real
+   outlier exists, which is exactly when the old linear scaling compressed every OTHER peer's
+   marker regardless of how ordinary that peer's own number was. When a card's own value falls
+   outside the clamped range its marker pins to the edge with a small off-scale arrow; its raw
+   value keeps rendering unchanged in the value row, a separate code path from the range mark.
+   Log-scaling was considered and rejected (owner: not beginner friendly). This required a dbt
+   model change plus a new Supabase migration and export-column update, not a frontend-only
+   edit -- see `docs/data_contract.md` and `docs/ui/card_metric_cell.md`'s "Range mark
+   mechanics" for the shipped behavior.
+
 **On Apple (AAPL), a mature large-cap:**
 
 6. **The "Mixed" verdict's liquidity check doesn't weigh FCF margin against the current
@@ -276,10 +292,12 @@ on a third-party AI's say-so without the owner's own call.
    post-generation step that cross-checks the model's cited metrics against the card's own values
    before storing the read, closing the hallucination gap named in point 4. See point 3/4's
    Context entries above for the shipped behavior.
-5. **Outlier-aware metric-range scaling (point 5).** Compress or cap extreme values in
-   `benchmark_range()`'s positioning (e.g. a log scale past some threshold, or clamping the
-   *displayed* extreme while still labeling the true value) rather than linear min-max. Purely a
-   display change; doesn't touch verdict computation.
+5. **Outlier-aware metric-range scaling (point 5). Done -- branch
+   `feat/outlier-aware-metric-range-scaling`.** Clamps `benchmark_range()`'s display range to a
+   Tukey fence rather than compressing everything toward the raw min/max. Corrected scope from
+   this entry's original framing: not "purely a display change" -- it needed new dbt-computed
+   quartile columns and a Supabase migration, not a frontend-only edit. Verdict computation is
+   untouched either way. See point 5's Context entry above for the shipped behavior.
 6. **Early-stage classification review (point 2). Declined -- considered, not built.** Neither
    moving the pre-revenue classification threshold nor adding an early-stage carve-out to
    `_verdict_operating` has any grounding beyond making one card's output (4DMedical) look less

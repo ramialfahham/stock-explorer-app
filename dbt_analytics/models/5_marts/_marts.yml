@@ -197,6 +197,14 @@ models:
       - name: sector_max_ebit_margin_pct
         description: >
           Sector maximum for EBIT margin (card range mark); null if peer count < 8.
+      - name: sector_q1_ebit_margin_pct
+        description: >
+          Sector 25th percentile for EBIT margin (outlier-aware range-mark display clamp,
+          Gemini feedback point 5); null if peer count < 8.
+      - name: sector_q3_ebit_margin_pct
+        description: >
+          Sector 75th percentile for EBIT margin (outlier-aware range-mark display clamp);
+          null if peer count < 8.
       - name: sector_median_revenue_growth_yoy_pct
         description: >
           Sector median benchmark for revenue growth; null if peer count < 8.
@@ -206,6 +214,14 @@ models:
       - name: sector_max_revenue_growth_yoy_pct
         description: >
           Sector maximum for revenue growth (card range mark); null if peer count < 8.
+      - name: sector_q1_revenue_growth_yoy_pct
+        description: >
+          Sector 25th percentile for revenue growth (outlier-aware range-mark display clamp,
+          Gemini feedback point 5); null if peer count < 8.
+      - name: sector_q3_revenue_growth_yoy_pct
+        description: >
+          Sector 75th percentile for revenue growth (outlier-aware range-mark display clamp);
+          null if peer count < 8.
       - name: sector_median_net_debt_to_ebitda
         description: >
           Sector median benchmark for leverage; null if peer count < 8.
@@ -215,6 +231,14 @@ models:
       - name: sector_max_net_debt_to_ebitda
         description: >
           Sector maximum for leverage (card range mark); null if peer count < 8.
+      - name: sector_q1_net_debt_to_ebitda
+        description: >
+          Sector 25th percentile for leverage (outlier-aware range-mark display clamp, Gemini
+          feedback point 5); null if peer count < 8.
+      - name: sector_q3_net_debt_to_ebitda
+        description: >
+          Sector 75th percentile for leverage (outlier-aware range-mark display clamp); null if
+          peer count < 8.
       - name: sector_median_fcf_margin_pct
         description: >
           Sector median benchmark for FCF margin; null if peer count < 8.
@@ -224,6 +248,14 @@ models:
       - name: sector_max_fcf_margin_pct
         description: >
           Sector maximum for FCF margin (card range mark); null if peer count < 8.
+      - name: sector_q1_fcf_margin_pct
+        description: >
+          Sector 25th percentile for FCF margin (outlier-aware range-mark display clamp, Gemini
+          feedback point 5); null if peer count < 8.
+      - name: sector_q3_fcf_margin_pct
+        description: >
+          Sector 75th percentile for FCF margin (outlier-aware range-mark display clamp); null
+          if peer count < 8.
       - name: snapshot_date
         description: >
           Fundamentals as-of date exported with the card row.

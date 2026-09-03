@@ -372,14 +372,21 @@ def test_stale_snapshot_days_covers_worst_case_healthy_gap() -> None:
     assert STALE_SNAPSHOT_DAYS > worst_case_healthy_gap_days
 
 
-def _range_card(*, value=21.5, minimum=4.1, median=15.3, maximum=38.9, peer_count=20) -> dict:
-    return {
+def _range_card(
+    *, value=21.5, minimum=4.1, median=15.3, maximum=38.9, peer_count=20, q1=None, q3=None
+) -> dict:
+    card = {
         "sector_peer_count": peer_count,
         "ebit_margin_pct": value,
         "sector_min_ebit_margin_pct": minimum,
         "sector_median_ebit_margin_pct": median,
         "sector_max_ebit_margin_pct": maximum,
     }
+    if q1 is not None:
+        card["sector_q1_ebit_margin_pct"] = q1
+    if q3 is not None:
+        card["sector_q3_ebit_margin_pct"] = q3
+    return card
 
 
 def test_benchmark_range_computes_position_and_median_pct() -> None:
@@ -416,6 +423,68 @@ def test_benchmark_range_clamps_value_outside_min_max() -> None:
     rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
     assert rng is not None
     assert rng["position_pct"] == 100.0
+    assert rng["high_off_scale"] is True
+    assert rng["low_off_scale"] is False
+
+
+# --- Outlier-aware display range, Gemini feedback point 5 --------------------------------
+
+def test_benchmark_range_falls_back_to_raw_min_max_when_quartiles_absent() -> None:
+    """A sector exported before this shipped (or any transitional state) has null q1/q3 --
+    must render the old way, not disappear or error."""
+    card = _range_card(value=21.5, minimum=4.1, median=15.3, maximum=38.9, q1=None, q3=None)
+    rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
+    assert rng is not None
+    assert rng["min"] == 4.1
+    assert rng["max"] == 38.9
+    assert rng["low_off_scale"] is False
+    assert rng["high_off_scale"] is False
+
+
+def test_benchmark_range_fence_is_a_no_op_without_a_real_outlier() -> None:
+    """A normally-spread sector's Tukey fence is WIDER than its true min/max (that's the
+    whole point of the convention), so the clamp changes nothing here. min=10, Q1=13.5,
+    median=17, Q3=20.5, max=24 (hand-verified against DuckDB quantile_cont in
+    dbt_analytics's sector_benchmarks_computes_quartiles_with_real_spread unit test);
+    IQR=7.0, fence = [13.5-1.5*7, 20.5+1.5*7] = [3.0, 31.0], both wider than [10, 24]."""
+    card = _range_card(value=17.0, minimum=10.0, median=17.0, maximum=24.0, q1=13.5, q3=20.5)
+    rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
+    assert rng is not None
+    assert rng["min"] == 10.0
+    assert rng["max"] == 24.0
+
+
+def test_benchmark_range_clamps_the_axis_when_a_real_outlier_exists() -> None:
+    """The actual bug this fixes: peers [-800, 5, 7, 9, 11, 13, 15, 17] (min=-800, Q1=6.5,
+    median=10, Q3=13.5, max=17 -- fence = [6.5-1.5*7, 13.5+1.5*7] = [-4.0, 24.0], and since
+    24.0 > true max 17.0 the upper bound stays the true max). A normal peer at 11.0: under
+    the OLD raw-min/max scaling this would land at (11-(-800))/(17-(-800))*100 ~= 99.3%,
+    almost indistinguishable from the sector maximum. Clamped, it lands in the middle of
+    the range instead -- the whole point of this task."""
+    card = _range_card(value=11.0, minimum=-800.0, median=10.0, maximum=17.0, q1=6.5, q3=13.5)
+    rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
+    assert rng is not None
+    assert rng["min"] == -4.0
+    assert rng["max"] == 17.0
+    # (11 - (-4)) / (17 - (-4)) * 100
+    assert rng["position_pct"] == pytest.approx(71.43, abs=0.01)
+    assert rng["low_off_scale"] is False
+    assert rng["high_off_scale"] is False
+
+
+def test_benchmark_range_flags_the_outlier_itself_as_off_scale() -> None:
+    """Same sector as above, but this IS the outlier card (-800.0). Its marker pins to the
+    clamped edge (0%) rather than reporting a meaningless raw position; low_off_scale is
+    the signal frontend/card_ui.py uses to draw the off-scale arrow. Its raw value is a
+    completely separate code path (_metric_cell_html's value row) and is never touched
+    here -- benchmark_range() only ever computes a POSITION, never a displayed value."""
+    card = _range_card(value=-800.0, minimum=-800.0, median=10.0, maximum=17.0, q1=6.5, q3=13.5)
+    rng = benchmark_range(card, "ebit_margin_pct", "sector_median_ebit_margin_pct")
+    assert rng is not None
+    assert rng["position_pct"] == 0.0
+    assert rng["low_off_scale"] is True
+    assert rng["high_off_scale"] is False
+    assert rng["value"] == -800.0  # the raw value is carried through unchanged
 
 
 def test_hardcoded_analogy_overrides_name_no_currency() -> None:

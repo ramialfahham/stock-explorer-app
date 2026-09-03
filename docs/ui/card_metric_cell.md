@@ -196,9 +196,25 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   three different rules and made the max label drift away from its own tick. Don't
   reintroduce a per-role class (`-min`/`-max`/`-median-label`) — the shared class *is*
   the guarantee that all three stay visually consistent.
+- **Outlier-aware display range (Gemini feedback point 5).** `[min, max]` above is the
+  DISPLAYED bound, not necessarily the sector's raw most-extreme peer -- `benchmark_range()`
+  clamps it to a Tukey fence (`Q1 - 1.5*IQR` .. `Q3 + 1.5*IQR`, the standard box-plot
+  outlier-bound convention, not a value picked to fit any one card) whenever the sector's
+  quartiles (`sector_q1_*`/`sector_q3_*`) are present. Falls back to the raw sector min/max
+  when quartiles are null (a sector exported before this shipped). For a normally-spread
+  sector the fence is WIDER than the true min/max, so the clamp is a no-op -- it only changes
+  anything when a real outlier peer exists, which is exactly when the old behavior compressed
+  every OTHER peer's marker toward one end regardless of how ordinary that peer's own number
+  actually was. When this card's own value falls outside the clamped range, its marker pins
+  to the near edge and a small directional arrow (`.ss-metric-range-offscale`,
+  `_off_scale_arrow_html()` in `frontend/card_ui.py`) renders there -- the card's raw value in
+  `.ss-metric-value` (a completely separate render path, `_metric_cell_html`) is never
+  affected either way, so the true number is always still visible as plain text regardless of
+  where the marker sits.
 - The company's own value and the median are both clamped to `[0, 100]%` position within
-  `[min, max]` defensively; under normal operation the card's own company is part of the
-  cohort its own min/max is computed from, so it should already fall inside that range.
+  the DISPLAYED `[min, max]` defensively; under normal operation the card's own company is
+  part of the cohort the range is computed from, so it should already fall inside it, but a
+  real outlier's own card is a legitimate, expected exception -- see above.
 - The median **label's** on-track reading position (in both the numbers and words rows)
   is separately floored/ceilinged 3rem from either track edge —
   `left:clamp(3rem, {median_pct}%, calc(100% - 3rem))` — a realistically skewed sector
@@ -231,17 +247,20 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   detail panel.
 - When peers &lt; 8, that section shows one calm line: “Fewer than 8 similar companies in this market: sector compare is hidden.”
 
-**Known data-quality interaction:** sector min/max are computed from raw ratios with no
-outlier handling upstream. At least one live sector (ASX Energy, `fcf_margin_pct` /
-`ebit_margin_pct`) currently has its whole cohort's range dominated by one company with
-a near-zero-revenue denominator (Deep Yellow / DYL: -129,810.5% FCF margin), which
-compresses every other company's marker in that sector toward one end of the bar. The
-mark still renders correctly (verified — no visual bug), but the *comparison itself* is
-close to meaningless for that sector until the underlying metric/eligibility rule
-excludes or winsorizes near-zero-revenue denominators upstream. That's a dbt-layer
-metric-definition decision (owner's call, `docs/layering.md` + working agreement §6),
-not something to patch in the frontend — flagged here so it isn't rediscovered from
-scratch.
+**Known data-quality interaction, addressed (Gemini feedback point 5).** Sector min/max are
+still computed from raw ratios with no outlier handling at the metric-definition level --
+that underlying choice (whether to exclude or winsorize near-zero-revenue denominators
+upstream) is unchanged, and remains the dbt-layer metric-definition decision this note
+originally flagged (owner's call, `docs/layering.md` + working agreement §6). What changed is
+the DISPLAY layer: at least one live sector (ASX Energy, `fcf_margin_pct` / `ebit_margin_pct`)
+had its whole cohort's range dominated by one company with a near-zero-revenue denominator
+(Deep Yellow / DYL: -129,810.5% FCF margin), compressing every other company's marker in that
+sector toward one end of the bar. The range mark's display range now clamps to a Tukey fence
+(see "Range mark mechanics" above), so that sector's OTHER peers position sensibly again; Deep
+Yellow's own card correctly shows an off-scale marker instead of silently anchoring the whole
+sector's scale. The comparison for that sector is meaningful again at the display level; the
+underlying "should this metric even be computed this way for a near-zero-revenue company"
+question is still open and still belongs upstream, not here.
 
 ---
 
@@ -295,6 +314,8 @@ scratch.
       "No sector comparison for this metric." placeholder, not a silent gap
 - [ ] Gloss line has visible, even breathing room from what's above it, whether that's
       a range mark or the unavailable placeholder — not visually stuck together
+- [ ] The off-scale arrow (when a card's own value falls outside its sector's fence-clamped
+      range) doesn't clip against the card edge or collide with the min/max numbers row
 
 ---
 

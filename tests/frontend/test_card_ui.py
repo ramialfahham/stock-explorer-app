@@ -341,6 +341,52 @@ def test_build_card_range_mark_omitted_for_degenerate_sector() -> None:
     assert "ss-metric-range-unavailable" in html
 
 
+# --- Outlier-aware display range, Gemini feedback point 5 --------------------------------
+# Same hand-verified peer set as test_card_copy.py's fence tests: min=-800, Q1=6.5,
+# median=10, Q3=13.5, max=17 -- fence clamps the display range to [-4.0, 17.0].
+
+def test_range_mark_no_off_scale_arrow_for_a_normal_peer_within_the_fence() -> None:
+    card = _card_with_benchmark_range(
+        ebit_margin_pct=11.0,
+        sector_min_ebit_margin_pct=-800.0,
+        sector_median_ebit_margin_pct=10.0,
+        sector_max_ebit_margin_pct=17.0,
+        sector_q1_ebit_margin_pct=6.5,
+        sector_q3_ebit_margin_pct=13.5,
+    )
+    html = build_card_html(card)
+    assert "ss-metric-range-offscale" not in html
+    # the axis label is the CLAMPED bound, not the raw sector minimum
+    assert 'class="ss-metric-range-number" style="left:0%">-4.0%<' in html
+    assert "-800.0%" not in html
+
+
+def test_range_mark_off_scale_arrow_for_the_outlier_card_itself() -> None:
+    """The outlier's own marker pins to the clamped edge with an off-scale arrow -- its
+    RAW value keeps showing correctly in the value row, a completely separate code path
+    from the range mark."""
+    card = _card_with_benchmark_range(
+        ebit_margin_pct=-800.0,
+        sector_min_ebit_margin_pct=-800.0,
+        sector_median_ebit_margin_pct=10.0,
+        sector_max_ebit_margin_pct=17.0,
+        sector_q1_ebit_margin_pct=6.5,
+        sector_q3_ebit_margin_pct=13.5,
+    )
+    html = build_card_html(card)
+    assert "ss-metric-range-offscale ss-metric-range-offscale-low" in html
+    assert '<div class="ss-metric-range-marker" style="left:0.0%">' in html
+    assert '<span class="ss-metric-value">-800.0%</span>' in html  # true value, unaffected
+
+
+def test_range_mark_falls_back_to_raw_min_max_when_quartiles_null() -> None:
+    """A sector exported before this shipped has null q1/q3 on every row -- the mark must
+    still render the old way (raw min/max), not disappear."""
+    html = build_card_html(_card_with_benchmark_range())  # no q1/q3 override -> both null
+    assert "ss-metric-range-offscale" not in html
+    assert 'class="ss-metric-range-number" style="left:0%">4.1%<' in html
+
+
 def test_build_card_financial_shows_bank_metrics() -> None:
     html = build_card_html(_card_with_all_metrics("financial"))
     for label in ("Net margin", "Return on assets", "Return on equity"):
