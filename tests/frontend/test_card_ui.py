@@ -171,7 +171,7 @@ def test_range_mark_min_median_max_share_identical_alignment_rule() -> None:
 def test_range_mark_direction_cue_shown_for_net_debt() -> None:
     """net_debt_to_ebitda is a rightward-marker-is-bad-news metric -- the gloss line must
     say so, since the mark itself (a bar-and-marker) otherwise reads as "further right =
-    better" the way it correctly does for the 3 higher-better metrics. The cue's full
+    better" the way it correctly does for the other, higher-better benchmarked metrics. The cue's full
     branch coverage (every catalogued direction, the net-cash suppression) lives in
     test_card_copy.py against metric_gloss() directly; this is an integration smoke
     check that build_card_html() actually renders what that function returns."""
@@ -261,14 +261,17 @@ def test_build_card_omits_range_mark_below_peer_threshold() -> None:
 
 
 def test_build_card_shows_unavailable_placeholder_for_never_benchmarked_metric() -> None:
-    """debt_to_equity is not in BENCHMARK_METRICS at all (a different code path from
-    the below-threshold/degenerate cases, which start from a benchmarkable metric that
+    """net_cash is not in BENCHMARK_METRICS at all (a different code path from the
+    below-threshold/degenerate cases, which start from a benchmarkable metric that
     becomes unavailable for a specific card) -- it must still get the placeholder, not
-    a silent gap, on every card that shows it."""
-    card = _card_with_all_metrics("operating")
+    a silent gap, on every card that shows it. Pre-revenue is the only company type with
+    a never-benchmarked metric left: the 5-metric benchmark expansion (owner-approved
+    follow-up to MR #22) made every operating/financial metric benchmarkable, so
+    debt_to_equity (this test's example before that change) no longer fits."""
+    card = _card_with_all_metrics("pre_revenue")
     card["sector_peer_count"] = 20  # would be plenty for a benchmarkable metric
     html = build_card_html(card)
-    assert "Borrowed money vs owners" in html  # debt_to_equity's own gloss, sanity check
+    assert "Cash left after clearing all debt" in html  # net_cash's own gloss, sanity check
     assert "ss-metric-range-unavailable" in html
 
 

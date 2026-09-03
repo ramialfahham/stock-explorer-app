@@ -296,6 +296,31 @@ models:
                 and sector_max_fcf_margin_pct is null
                 and sector_q1_fcf_margin_pct is null
                 and sector_q3_fcf_margin_pct is null
+                and sector_median_debt_to_equity is null
+                and sector_min_debt_to_equity is null
+                and sector_max_debt_to_equity is null
+                and sector_q1_debt_to_equity is null
+                and sector_q3_debt_to_equity is null
+                and sector_median_current_ratio_stmt is null
+                and sector_min_current_ratio_stmt is null
+                and sector_max_current_ratio_stmt is null
+                and sector_q1_current_ratio_stmt is null
+                and sector_q3_current_ratio_stmt is null
+                and sector_median_statement_roe_pct is null
+                and sector_min_statement_roe_pct is null
+                and sector_max_statement_roe_pct is null
+                and sector_q1_statement_roe_pct is null
+                and sector_q3_statement_roe_pct is null
+                and sector_median_net_margin_pct is null
+                and sector_min_net_margin_pct is null
+                and sector_max_net_margin_pct is null
+                and sector_q1_net_margin_pct is null
+                and sector_q3_net_margin_pct is null
+                and sector_median_roa_pct is null
+                and sector_min_roa_pct is null
+                and sector_max_roa_pct is null
+                and sector_q1_roa_pct is null
+                and sector_q3_roa_pct is null
               )
       - dbt_utils.expression_is_true:
           name: sector_benchmarks_min_le_median_le_max
@@ -319,6 +344,26 @@ models:
               and (sector_q1_fcf_margin_pct is null or sector_q1_fcf_margin_pct <= sector_median_fcf_margin_pct)
               and (sector_q3_fcf_margin_pct is null or sector_median_fcf_margin_pct <= sector_q3_fcf_margin_pct)
               and (sector_max_fcf_margin_pct is null or coalesce(sector_q3_fcf_margin_pct, sector_median_fcf_margin_pct) <= sector_max_fcf_margin_pct)
+              and (sector_min_debt_to_equity is null or sector_min_debt_to_equity <= coalesce(sector_q1_debt_to_equity, sector_median_debt_to_equity))
+              and (sector_q1_debt_to_equity is null or sector_q1_debt_to_equity <= sector_median_debt_to_equity)
+              and (sector_q3_debt_to_equity is null or sector_median_debt_to_equity <= sector_q3_debt_to_equity)
+              and (sector_max_debt_to_equity is null or coalesce(sector_q3_debt_to_equity, sector_median_debt_to_equity) <= sector_max_debt_to_equity)
+              and (sector_min_current_ratio_stmt is null or sector_min_current_ratio_stmt <= coalesce(sector_q1_current_ratio_stmt, sector_median_current_ratio_stmt))
+              and (sector_q1_current_ratio_stmt is null or sector_q1_current_ratio_stmt <= sector_median_current_ratio_stmt)
+              and (sector_q3_current_ratio_stmt is null or sector_median_current_ratio_stmt <= sector_q3_current_ratio_stmt)
+              and (sector_max_current_ratio_stmt is null or coalesce(sector_q3_current_ratio_stmt, sector_median_current_ratio_stmt) <= sector_max_current_ratio_stmt)
+              and (sector_min_statement_roe_pct is null or sector_min_statement_roe_pct <= coalesce(sector_q1_statement_roe_pct, sector_median_statement_roe_pct))
+              and (sector_q1_statement_roe_pct is null or sector_q1_statement_roe_pct <= sector_median_statement_roe_pct)
+              and (sector_q3_statement_roe_pct is null or sector_median_statement_roe_pct <= sector_q3_statement_roe_pct)
+              and (sector_max_statement_roe_pct is null or coalesce(sector_q3_statement_roe_pct, sector_median_statement_roe_pct) <= sector_max_statement_roe_pct)
+              and (sector_min_net_margin_pct is null or sector_min_net_margin_pct <= coalesce(sector_q1_net_margin_pct, sector_median_net_margin_pct))
+              and (sector_q1_net_margin_pct is null or sector_q1_net_margin_pct <= sector_median_net_margin_pct)
+              and (sector_q3_net_margin_pct is null or sector_median_net_margin_pct <= sector_q3_net_margin_pct)
+              and (sector_max_net_margin_pct is null or coalesce(sector_q3_net_margin_pct, sector_median_net_margin_pct) <= sector_max_net_margin_pct)
+              and (sector_min_roa_pct is null or sector_min_roa_pct <= coalesce(sector_q1_roa_pct, sector_median_roa_pct))
+              and (sector_q1_roa_pct is null or sector_q1_roa_pct <= sector_median_roa_pct)
+              and (sector_q3_roa_pct is null or sector_median_roa_pct <= sector_q3_roa_pct)
+              and (sector_max_roa_pct is null or coalesce(sector_q3_roa_pct, sector_median_roa_pct) <= sector_max_roa_pct)
     columns:
       - name: market_code
         description: >
@@ -415,6 +460,103 @@ models:
         description: >
           75th percentile (continuous interpolation) of fcf_margin_pct among eligible peers --
           feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+      - name: sector_median_debt_to_equity
+        description: >
+          Median debt_to_equity among eligible peers with positive stockholders' equity (a peer
+          with negative equity has a sign-flipped ratio and is excluded, not just clamped -- see
+          model SQL comment). Null when sector_peer_count < 8.
+      - name: sector_min_debt_to_equity
+        description: >
+          Minimum debt_to_equity among eligible peers with positive stockholders' equity (card
+          range mark). Null when sector_peer_count < 8.
+      - name: sector_max_debt_to_equity
+        description: >
+          Maximum debt_to_equity among eligible peers with positive stockholders' equity (card
+          range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_debt_to_equity
+        description: >
+          25th percentile (continuous interpolation) of debt_to_equity among eligible peers with
+          positive stockholders' equity -- feeds the card range mark's outlier-aware display
+          clamp. Null when sector_peer_count < 8.
+      - name: sector_q3_debt_to_equity
+        description: >
+          75th percentile (continuous interpolation) of debt_to_equity among eligible peers with
+          positive stockholders' equity -- feeds the card range mark's outlier-aware display
+          clamp. Null when sector_peer_count < 8.
+      - name: sector_median_current_ratio_stmt
+        description: >
+          Median current_ratio_stmt among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_current_ratio_stmt
+        description: >
+          Minimum current_ratio_stmt among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_current_ratio_stmt
+        description: >
+          Maximum current_ratio_stmt among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_current_ratio_stmt
+        description: >
+          25th percentile (continuous interpolation) of current_ratio_stmt among eligible peers -- feeds
+          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+      - name: sector_q3_current_ratio_stmt
+        description: >
+          75th percentile (continuous interpolation) of current_ratio_stmt among eligible peers -- feeds
+          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+      - name: sector_median_statement_roe_pct
+        description: >
+          Median statement_roe_pct among eligible peers with positive stockholders' equity (a peer
+          with negative equity has a sign-flipped ratio and is excluded, not just clamped -- see
+          model SQL comment). Null when sector_peer_count < 8.
+      - name: sector_min_statement_roe_pct
+        description: >
+          Minimum statement_roe_pct among eligible peers with positive stockholders' equity (card
+          range mark). Null when sector_peer_count < 8.
+      - name: sector_max_statement_roe_pct
+        description: >
+          Maximum statement_roe_pct among eligible peers with positive stockholders' equity (card
+          range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_statement_roe_pct
+        description: >
+          25th percentile (continuous interpolation) of statement_roe_pct among eligible peers
+          with positive stockholders' equity -- feeds the card range mark's outlier-aware display
+          clamp. Null when sector_peer_count < 8.
+      - name: sector_q3_statement_roe_pct
+        description: >
+          75th percentile (continuous interpolation) of statement_roe_pct among eligible peers
+          with positive stockholders' equity -- feeds the card range mark's outlier-aware display
+          clamp. Null when sector_peer_count < 8.
+      - name: sector_median_net_margin_pct
+        description: >
+          Median net_margin_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_net_margin_pct
+        description: >
+          Minimum net_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_net_margin_pct
+        description: >
+          Maximum net_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_net_margin_pct
+        description: >
+          25th percentile (continuous interpolation) of net_margin_pct among eligible peers -- feeds
+          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+      - name: sector_q3_net_margin_pct
+        description: >
+          75th percentile (continuous interpolation) of net_margin_pct among eligible peers -- feeds
+          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+      - name: sector_median_roa_pct
+        description: >
+          Median roa_pct among eligible peers. Null when sector_peer_count < 8.
+      - name: sector_min_roa_pct
+        description: >
+          Minimum roa_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_max_roa_pct
+        description: >
+          Maximum roa_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_roa_pct
+        description: >
+          25th percentile (continuous interpolation) of roa_pct among eligible peers -- feeds
+          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+      - name: sector_q3_roa_pct
+        description: >
+          75th percentile (continuous interpolation) of roa_pct among eligible peers -- feeds
+          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
 
 unit_tests:
   - name: card_metrics_eligible_when_all_inputs_present
@@ -931,6 +1073,93 @@ unit_tests:
             sector_median_ebit_margin_pct: 17.0,
             sector_q3_ebit_margin_pct: 20.5,
             sector_max_ebit_margin_pct: 24.0,
+          }
+  - name: sector_benchmarks_quartiles_extend_to_the_5_new_metrics
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # Same evenly-spaced 10..24 spread and the same hand-verified quartiles as
+          # sector_benchmarks_computes_quartiles_with_real_spread above (min=10, Q1=13.5,
+          # median=17.0, Q3=20.5, max=24.0) -- not re-derived here, just applied to
+          # statement_roe_pct to prove the 5-metric benchmark expansion's aggregate columns
+          # use the identical, already-proven mechanism, not a new one.
+          - {market_code: us_sp500, ticker: T1, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 12.0}
+          - {market_code: us_sp500, ticker: T3, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 14.0}
+          - {market_code: us_sp500, ticker: T4, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 16.0}
+          - {market_code: us_sp500, ticker: T5, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 18.0}
+          - {market_code: us_sp500, ticker: T6, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 20.0}
+          - {market_code: us_sp500, ticker: T7, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 22.0}
+          - {market_code: us_sp500, ticker: T8, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 24.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: "Financial Services",
+            sector_peer_count: 8,
+            sector_min_statement_roe_pct: 10.0,
+            sector_q1_statement_roe_pct: 13.5,
+            sector_median_statement_roe_pct: 17.0,
+            sector_q3_statement_roe_pct: 20.5,
+            sector_max_statement_roe_pct: 24.0,
+          }
+  - name: sector_benchmarks_excludes_negative_equity_peer_from_debt_to_equity_and_roe
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # 7 clean peers with a REAL spread (not degenerate -- a repeated single value can't
+          # distinguish "guard applied" from "guard removed" for quantile_cont's interpolated
+          # Q1/Q3: analytics-engineer-reviewer's round-2 catch, hand-verified below) and ordinary
+          # positive equity. debt_to_equity 1.0..7.0 step 1; statement_roe_pct 10.0..70.0 step 10,
+          # same relative shape so both metrics hand-verify the same way. The 8th peer has
+          # NEGATIVE stmt_stockholders_equity: its debt_to_equity (-100.0) and statement_roe_pct
+          # (-1000.0) are sign-flipped per assessment_rules.py's own documented failure mode, and
+          # must be excluded from ALL FIVE of these 2 metrics' statistics, not just min -- an
+          # extreme low value like this would otherwise become the new sector_min AND pull every
+          # other statistic (median, Q1, Q3) toward it too.
+          #
+          # Hand-computed via DuckDB's linear-interpolation formula (h = (n-1)*p), same method
+          # already used elsewhere in this file, not derived from the SQL under test:
+          # WITH the guard (n=7, contaminated peer excluded): sorted [1,2,3,4,5,6,7].
+          #   min=1.0, max=7.0, median: h=6*0.5=3 -> idx3=4.0 (exact).
+          #   Q1: h=6*0.25=1.5 -> idx1+0.5*(idx2-idx1) = 2+0.5*(3-2) = 2.5.
+          #   Q3: h=6*0.75=4.5 -> idx4+0.5*(idx5-idx4) = 5+0.5*(6-5) = 5.5.
+          #   statement_roe_pct is the same shape x10: min=10.0, median=40.0, Q1=25.0, Q3=55.0,
+          #   max=70.0.
+          # WITHOUT the guard (n=8, contaminated peer included): sorted [-100,1,2,3,4,5,6,7].
+          #   min=-100.0 (0-indexed idx0), median: h=7*0.5=3.5 -> idx3+0.5*(idx4-idx3) =
+          #   3+0.5*(4-3) = 3.5. Q1: h=7*0.25=1.75 -> idx1+0.75*(idx2-idx1) = 1+0.75*(2-1) = 1.75.
+          #   Q3: h=7*0.75=5.25 -> idx5+0.25*(idx6-idx5) = 5+0.25*(6-5) = 5.25.
+          # Every statistic but max differs between the two (max is unaffected either way since
+          # the contaminant is an extreme LOW value, never the max) -- so this fixture actually
+          # discriminates "guard applied" from "guard removed" on min, median, Q1, and Q3 alike,
+          # unlike the all-equal-clean-peer fixture this test used before.
+          - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T4, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 4.0, statement_roe_pct: 40.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T5, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 5.0, statement_roe_pct: 50.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T6, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 6.0, statement_roe_pct: 60.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T7, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 7.0, statement_roe_pct: 70.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T8, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: -100.0, statement_roe_pct: -1000.0, stmt_stockholders_equity: -5000.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Industrials,
+            sector_peer_count: 8,
+            sector_min_debt_to_equity: 1.0,
+            sector_q1_debt_to_equity: 2.5,
+            sector_median_debt_to_equity: 4.0,
+            sector_q3_debt_to_equity: 5.5,
+            sector_max_debt_to_equity: 7.0,
+            sector_min_statement_roe_pct: 10.0,
+            sector_q1_statement_roe_pct: 25.0,
+            sector_median_statement_roe_pct: 40.0,
+            sector_q3_statement_roe_pct: 55.0,
+            sector_max_statement_roe_pct: 70.0,
           }
   - name: card_metrics_statement_metrics_computed
     model: int_stock__card_metrics

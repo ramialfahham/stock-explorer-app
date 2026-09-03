@@ -79,6 +79,40 @@ def test_export_columns_include_sector_quartiles() -> None:
     assert "sector_q3_forward_pe" not in exp.EXPORT_COLUMNS
 
 
+def test_export_columns_include_sector_financial_operating_expansion() -> None:
+    """Same regression guard as above, for the 5-metric benchmark expansion (owner-approved
+    follow-up to MR #22): debt_to_equity, current_ratio_stmt (operating) and
+    statement_roe_pct, net_margin_pct, roa_pct (financial). All 5 statistics per metric,
+    same as every other benchmarked metric."""
+    for metric in (
+        "debt_to_equity",
+        "current_ratio_stmt",
+        "statement_roe_pct",
+        "net_margin_pct",
+        "roa_pct",
+    ):
+        assert f"sector_median_{metric}" in exp.EXPORT_COLUMNS
+        assert f"sector_min_{metric}" in exp.EXPORT_COLUMNS
+        assert f"sector_max_{metric}" in exp.EXPORT_COLUMNS
+        assert f"sector_q1_{metric}" in exp.EXPORT_COLUMNS
+        assert f"sector_q3_{metric}" in exp.EXPORT_COLUMNS
+
+    # Pre-revenue's 4 metrics stay deliberately unbenchmarked (only 3 pre-revenue companies
+    # exist app-wide -- can never clear the 8-peer rendering threshold): this documents the
+    # scope boundary as a test, not just prose.
+    for metric in (
+        "net_cash",
+        "working_capital",
+        "cash_runway_months",
+        "burn_rate_monthly",
+    ):
+        assert f"sector_median_{metric}" not in exp.EXPORT_COLUMNS
+        assert f"sector_min_{metric}" not in exp.EXPORT_COLUMNS
+        assert f"sector_max_{metric}" not in exp.EXPORT_COLUMNS
+        assert f"sector_q1_{metric}" not in exp.EXPORT_COLUMNS
+        assert f"sector_q3_{metric}" not in exp.EXPORT_COLUMNS
+
+
 def test_target_dev_passes_dev_schema_to_create_client(tmp_path: Path, monkeypatch) -> None:
     db = tmp_path / "mart.duckdb"
     _make_mart(db, [_ROW])

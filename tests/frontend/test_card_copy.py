@@ -68,7 +68,7 @@ def test_metric_analogy_and_learn_text_cover_negative_equity() -> None:
 
 
 # --- Universal direction cue (metric_direction / metric_gloss's ". Higher/Lower is
-# better." suffix) -- applies to every catalogued metric, not just the 4 with a range
+# better." suffix) -- applies to every catalogued metric, not just the 9 with a range
 # mark (owner's ceteris-paribus generalization; see card_copy.metric_gloss docstring).
 # Integration smoke checks that build_card_html() renders this live in test_card_ui.py;
 # the branch coverage over metric_direction()/metric_gloss() itself lives here.
@@ -99,7 +99,7 @@ def test_metric_gloss_appends_lower_is_better_cue() -> None:
 
 def test_metric_gloss_cue_applies_without_a_range_mark() -> None:
     """The cue is universal now -- it does not depend on whether this metric is one of
-    the 4 with a sector range mark. working_capital has no range mark at all."""
+    the 9 with a sector range mark. working_capital has no range mark at all."""
     assert metric_gloss("working_capital", 2_100_000_000.0).endswith(". Higher is better.")
 
 

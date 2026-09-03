@@ -260,10 +260,19 @@ Computed per `(market_code, sector)` over **card-eligible** tickers in that mark
 | Output | Description |
 |--------|-------------|
 | `sector_peer_count` | Count of eligible peers in sector |
-| `sector_median_*` | Median for each benchmarked metric (4; forward_pe is no longer one) |
+| `sector_median_*` | Median for each benchmarked metric (9; forward_pe is no longer one) |
 | `sector_min_*` | Minimum for each benchmarked metric (card range mark) |
 | `sector_max_*` | Maximum for each benchmarked metric (card range mark) |
 | `sector_q1_*` / `sector_q3_*` | 25th/75th percentile for each benchmarked metric (outlier-aware range-mark display clamp, Gemini feedback point 5 -- see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s "Range mark mechanics" for how these feed the clamp) |
+
+Benchmarked: `ebit_margin_pct`, `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`,
+`current_ratio_stmt` (operating-only); `net_margin_pct`, `roa_pct` (financial-only);
+`revenue_growth_yoy_pct`, `statement_roe_pct` (both operating and financial). `debt_to_equity`
+and `statement_roe_pct`'s benchmark aggregates exclude peers with negative stockholders' equity
+(a sign-flipped ratio, not just an extreme one -- see `int_stock__sector_benchmarks.sql`'s own
+comment). Pre-revenue's 4 metrics (`net_cash`, `working_capital`, `cash_runway_months`,
+`burn_rate_monthly`) are deliberately excluded: only 3 pre-revenue companies exist app-wide,
+which can never clear the 8-peer rendering threshold (see "Peer threshold" below).
 
 **Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; UI omits benchmark line.
 
@@ -345,6 +354,11 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `sector_median_revenue_growth_yoy_pct` | numeric | nullable |
 | `sector_median_net_debt_to_ebitda` | numeric | nullable |
 | `sector_median_fcf_margin_pct` | numeric | nullable |
+| `sector_median_debt_to_equity` | numeric | nullable |
+| `sector_median_current_ratio_stmt` | numeric | nullable |
+| `sector_median_statement_roe_pct` | numeric | nullable |
+| `sector_median_net_margin_pct` | numeric | nullable |
+| `sector_median_roa_pct` | numeric | nullable |
 | `sector_min_forward_pe` | numeric | nullable |
 | `sector_max_forward_pe` | numeric | nullable |
 | `sector_min_ebit_margin_pct` | numeric | nullable |
@@ -355,6 +369,16 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `sector_max_net_debt_to_ebitda` | numeric | nullable |
 | `sector_min_fcf_margin_pct` | numeric | nullable |
 | `sector_max_fcf_margin_pct` | numeric | nullable |
+| `sector_min_debt_to_equity` | numeric | nullable |
+| `sector_max_debt_to_equity` | numeric | nullable |
+| `sector_min_current_ratio_stmt` | numeric | nullable |
+| `sector_max_current_ratio_stmt` | numeric | nullable |
+| `sector_min_statement_roe_pct` | numeric | nullable |
+| `sector_max_statement_roe_pct` | numeric | nullable |
+| `sector_min_net_margin_pct` | numeric | nullable |
+| `sector_max_net_margin_pct` | numeric | nullable |
+| `sector_min_roa_pct` | numeric | nullable |
+| `sector_max_roa_pct` | numeric | nullable |
 | `sector_q1_ebit_margin_pct` | numeric | nullable |
 | `sector_q3_ebit_margin_pct` | numeric | nullable |
 | `sector_q1_revenue_growth_yoy_pct` | numeric | nullable |
@@ -363,6 +387,16 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `sector_q3_net_debt_to_ebitda` | numeric | nullable |
 | `sector_q1_fcf_margin_pct` | numeric | nullable |
 | `sector_q3_fcf_margin_pct` | numeric | nullable |
+| `sector_q1_debt_to_equity` | numeric | nullable |
+| `sector_q3_debt_to_equity` | numeric | nullable |
+| `sector_q1_current_ratio_stmt` | numeric | nullable |
+| `sector_q3_current_ratio_stmt` | numeric | nullable |
+| `sector_q1_statement_roe_pct` | numeric | nullable |
+| `sector_q3_statement_roe_pct` | numeric | nullable |
+| `sector_q1_net_margin_pct` | numeric | nullable |
+| `sector_q3_net_margin_pct` | numeric | nullable |
+| `sector_q1_roa_pct` | numeric | nullable |
+| `sector_q3_roa_pct` | numeric | nullable |
 | `snapshot_date` | date | Fundamentals as-of date |
 | `exported_at` | timestamptz | |
 

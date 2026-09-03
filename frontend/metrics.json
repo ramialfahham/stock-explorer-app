@@ -80,7 +80,7 @@
       "learn": "Debt-to-equity divides total debt by shareholders' equity (the owners' stake) from the latest annual balance sheet. It is a second read on leverage alongside Net debt / EBITDA: how heavily the company leans on borrowing versus its own capital. Read a very high number, or negative equity, with care.",
       "importance_tier": 2,
       "display_order": 5,
-      "benchmarkable": false,
+      "benchmarkable": true,
       "applies_to": [
         "operating"
       ]
@@ -101,7 +101,7 @@
       "learn": "The current ratio divides current assets (cash and things convertible to cash within a year) by current liabilities (bills due within a year), from the latest annual balance sheet. Above 1 means near-term resources cover near-term obligations, though a very high ratio can mean cash sitting idle instead of being put to work. Banks do not report this split, so it shows only for operating companies.",
       "importance_tier": 2,
       "display_order": 6,
-      "benchmarkable": false,
+      "benchmarkable": true,
       "applies_to": [
         "operating"
       ]
@@ -143,7 +143,7 @@
       "learn": "Return on equity (ROE) divides profit attributable to common shareholders by their equity stake, from the latest annual statements. It asks: on the money owners have in the business, how much profit did it earn this year? We use period-end equity, so it can differ from Yahoo's averaged figure. Watch out when equity is very small or negative: a loss divided by negative equity can come out positive, looking like strong profitability when it is not.",
       "importance_tier": 2,
       "display_order": 8,
-      "benchmarkable": false,
+      "benchmarkable": true,
       "applies_to": [
         "operating",
         "financial"
@@ -165,7 +165,7 @@
       "learn": "Net margin divides bottom-line net income by revenue. Unlike operating margin, it is after interest and taxes too: the final slice kept. For banks, where \"revenue\" means net interest income plus fees, it reads as overall profitability.",
       "importance_tier": 1,
       "display_order": 10,
-      "benchmarkable": false,
+      "benchmarkable": true,
       "applies_to": [
         "financial"
       ]
@@ -186,7 +186,7 @@
       "learn": "Return on assets divides total profit by total assets (from the latest annual statements). It answers: on everything the company owns, how much profit? Banks live on this because they operate enormous balance sheets. Note it uses total net income, while Return on equity uses profit belonging to common shareholders: different profit lines by design.",
       "importance_tier": 2,
       "display_order": 11,
-      "benchmarkable": false,
+      "benchmarkable": true,
       "applies_to": [
         "financial"
       ]

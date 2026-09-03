@@ -123,7 +123,7 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 `". Higher is better."` / `". Lower is better."`, via `metric_direction()` /
 `metric_gloss()` in `frontend/card_copy.py`.
 
-- **Applies to every metric, not just the 4 with a range mark.** A metric without a
+- **Applies to every metric, not just the 9 with a range mark.** A metric without a
   mark (not `benchmarkable: true`, or a marked metric whose sector fell below the peer
   threshold this card) still gets the same plain cue — see the next section for why
   the mark itself is more limited. This decouples two things an earlier design
@@ -221,9 +221,10 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   can put the true median within a few percent of the min or max, and the label text
   must not run into the min/max labels at the track's own edges. The bar's actual gap
   still renders at the true, unclamped `median_pct`; only the label text is nudged
-  inward. Verified against every real range-mark row in production (3,967 rows across
-  all benchmarked metrics (5 at the time, 4 now), incl. a sector with a -129,810.5% FCF-margin outlier — see
-  the data-quality note below) plus synthetic cases beyond today's real spread; the
+  inward. Verified against every real range-mark row in production as of MR !87 (3,967 rows
+  across all benchmarked metrics -- 5 when this floor was first verified, 4 by MR !87 itself,
+  9 today (see "Range mark mechanics" above), incl. a sector with a -129,810.5% FCF-margin
+  outlier -- see the data-quality note below) plus synthetic cases beyond today's real spread; the
   tightest real numbers-row gap currently live is ~12px, comfortably non-colliding.
   This is a fixed floor, not width-aware — an even more extreme future data shape could
   in principle still crowd it. If a real case ever visibly collides, widen the floor
@@ -233,13 +234,23 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   precision the value itself already uses, no separate formatting logic. No "min "/"max "
   text prefix on the numbers row (that was the old design) — the words row directly
   below carries "min"/"median"/"max" instead, once, for the whole row.
-- Only the 4 metrics with `benchmarkable: true` in the metric catalogue get a range
-  mark today (operating margin, revenue growth, net debt/EBITDA, FCF margin) — financial
-  and pre-revenue metrics aren't benchmarked yet, a separate follow-up. (The direction cue
-  is not limited this way — see above.) Was 5 before forward P/E was dropped
-  from the catalogue along with the other two price-carrying metrics; the bank card lost 3
-  of its 7 metrics in the same change, and the pre-revenue card swapped its net-cash ratio
-  for a money amount, which moved that metric from the valuation lens to cash.
+- Only the 9 metrics with `benchmarkable: true` in the metric catalogue get a range
+  mark today: operating margin, net debt/EBITDA, FCF margin, debt-to-equity, and current ratio
+  (operating-only); net margin and ROA (financial-only); revenue growth and statement ROE (both
+  operating and financial cards). Pre-revenue's 4 metrics (net cash, working capital, cash
+  runway, burn rate) stay deliberately unbenchmarked, not just "not done yet": only 3
+  pre-revenue companies exist app-wide today, which can never clear the 8-peer threshold below
+  in any sector, so building it now would ship a mark nobody could ever see. (The direction cue
+  is not limited this way; see above.) Debt-to-equity and statement ROE's sector aggregates also
+  exclude any peer with negative stockholders' equity -- that peer's own ratio has flipped sign
+  (a loss can divide out to a spuriously positive-looking number) and would otherwise silently
+  skew the whole sector's benchmark, not just look like an ordinary outlier the display clamp
+  below would catch. Was 4 before the 5-metric benchmark expansion (owner-approved follow-up to
+  MR #22) added debt-to-equity, current ratio, statement ROE, net margin, and ROA. Before that,
+  was 5 before forward P/E was dropped from the catalogue along with the other two
+  price-carrying metrics; the bank card lost 3 of its 7 metrics in the same change, and the
+  pre-revenue card swapped its net-cash ratio for a money amount, which moved that metric from
+  the valuation lens to cash.
 - Full median primer and per-metric compare lines still live in **How we compare to
   similar companies** inside **Understand these numbers** — that recap list is unchanged,
   still text-only (`.ss-bench-indicator`, `benchmark_indicator_label()`); the scanability
