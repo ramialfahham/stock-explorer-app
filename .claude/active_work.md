@@ -62,6 +62,22 @@ FAILs this session (cto-reviewer catching two silent failure branches and a labe
 gap on !81; scope-auditor catching scope creep on !83's "minimal trim" turning into a
 reword; a missing blank line on !85), are in `docs/handover_2026-09-03.md`.
 
+**MR !92 (2026-09-03) -- 5-metric benchmark expansion, merged.** Owner-approved follow-up to
+!22, not one of the nine Gemini points above (scoped down from an original "11-metric" idea
+after finding pre-revenue's 3-company coverage could never clear the 8-peer rendering
+threshold). Extends the range-mark feature from 4 to 9 benchmarked metrics
+(`debt_to_equity`/`current_ratio_stmt`/`statement_roe_pct`/`net_margin_pct`/`roa_pct` added).
+Mid-review, two reviewers independently caught a real bug: the new
+`debt_to_equity`/`statement_roe_pct` sector aggregates had no guard against negative
+stockholders' equity, the same sign-inversion class !73/!77 already guard at the verdict
+layer but that guard never covered peer-benchmark aggregation. Fixed and escalated to the
+owner (approved, "go") since it broke the task's own "no metric-specific exception" scope --
+worth reading as a caution for future benchmark-style aggregates over any ratio with a
+denominator that can legitimately flip sign. Also caught post-push: a `sqlfluff`
+line-length violation CI flagged that should have been checked locally before the first
+push -- run `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (and the rest of
+`validate:full`'s local-equivalent commands) before pushing, not just `pytest`/`dbt build`.
+
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
 - **Metric-assignment matrix**: perspectives (valuation/profitability/growth/solvency/
@@ -146,45 +162,25 @@ each batch and nobody tracking it as of the last check.
    there is no eviction mechanism** -- a ticker that stops being exported keeps its last card
    in the deck indefinitely (frontend dedupes to newest row per ticker, not newest snapshot).
    Whether the deck should evict by snapshot age remains an owner call.
-2. **5-metric benchmark expansion (scoped down from the original "11-metric" idea) is
-   implemented, committed, pushed, and open as MR !92 -- awaiting the owner's merge.**
-   Branch `feat/benchmark-financial-operating-metrics` (3 commits: `7dba81f8` main change,
-   `e608869b` review.md, `6d6a30a0` this handover entry). Adds range marks for
-   `debt_to_equity`, `current_ratio_stmt`, `statement_roe_pct`, `net_margin_pct`, `roa_pct`
-   (9 benchmarked metrics total now, was 4).
-   Pre-revenue's 4 metrics stay explicitly out of scope: only 3 pre-revenue companies exist
-   app-wide, can never clear the 8-peer rendering threshold. Mid-review, two reviewers
-   independently caught a real bug -- `debt_to_equity`/`statement_roe_pct`'s new sector
-   aggregates had no guard against negative stockholders' equity (the same sign-inversion
-   failure mode MR !73 already guards at the verdict layer, but that guard never covered
-   peer-benchmark aggregation). Fixed by excluding negative-equity peers from just those 2
-   metrics' 5 statistics each; escalated to the owner first since it broke the task's own
-   "no metric-specific exception" scope, approved ("go") after a first overly jargon-heavy ask
-   was rejected. Went through unusually many review rounds (5 reviewers, several re-dispatches)
-   -- worth reading as a caution: after the substantive bug was fixed and re-confirmed, most of
-   the later rounds were the same low-stakes stale-comment-count pattern ("4" -> "9"
-   benchmarkable metrics) resurfacing in different phrasing across files; the last two instances
-   were fixed directly without a further automated re-dispatch, per explicit owner authorization
-   to stop re-running full reviewer rounds for cosmetic, zero-functional-impact findings.
-3. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
+2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
-4. **The bank card's capital-adequacy blind spot** survives only as an LLM prompt instruction
+3. **The bank card's capital-adequacy blind spot** survives only as an LLM prompt instruction
    with no card-face caveat, so a card with a null `ai_read` warns nobody. Needs new bank-card
    copy (§6, owner content).
-5. **`frontend/browser_storage.py` has zero test coverage**, likely because it wraps a
+4. **`frontend/browser_storage.py` has zero test coverage**, likely because it wraps a
    Streamlit component awkward to test without a live session. Pre-existing gap, not
    introduced by any specific branch.
-6. **A full user-flow simulation across Discover/Saved/Search**, requested by the owner
+5. **A full user-flow simulation across Discover/Saved/Search**, requested by the owner
    2026-08-31 to find further UX inconsistencies beyond the ones already found and fixed;
    never done.
-7. Two of the six backlog docs in `docs/backlog/` are genuinely open (the other four are
+6. Two of the six backlog docs in `docs/backlog/` are genuinely open (the other four are
    closed/resolved -- see that directory): `discover_metric_filters_phase2.md` (a prior
    attempt was built and reverted; needs redesign against its own stated revisit criteria)
    and `name_vs_yfinance_audit_guard.md` (needs owner decisions on live-fetch vs. cached
    snapshot, fuzzy-match tolerance, market scope, and hard-fail vs. warn-only before it's
    build-ready).
-8. **Free-tier Supabase pauses after ~7 days idle** ("Could not load cards", a real bug in
+7. **Free-tier Supabase pauses after ~7 days idle** ("Could not load cards", a real bug in
    `_ensure_all_cards`), never resolved -- and the current biweekly pipeline schedule
    (1st/15th) creates gaps up to ~15 days between writes, longer than the pause threshold.
    Worth checking whether this is silently affecting production right now, and deciding
