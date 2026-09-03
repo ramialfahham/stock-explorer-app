@@ -1,6 +1,19 @@
 # Review
 
-diff_sha256: ae58856ab6641f3d3289a487705c22d302f8aac0945caea5ee2f54c5e20dd09c
+diff_sha256: 822caeba565ed7bfbbf5395c7b4d484ba3f3e27c083023bb523d8af4c548b233
+
+**Post-push addendum**: MR !92's CI caught an `sqlfluff` `layout.long_lines` violation
+(10 lines over 120 chars) in the equity-guard `case when ... then ... end` expressions
+added to `int_stock__sector_benchmarks.sql` -- a local-CI check that should have been
+run before the first push and wasn't. Fixed by reformatting those 10 expressions across
+multiple lines (matching this file's own existing multi-line `case` convention in the
+`combined` CTE below); confirmed via `git diff` that only line breaks changed, no
+condition or calculation. Re-verified locally: `sqlfluff lint dbt_analytics/models
+dbt_analytics/tests` clean, full `dbt build` 125/125 (identical pass count to before the
+reformat), full `pytest` 482/482, `check_dbt_sql_structure.py`/`check_layer_contract.py`
+both clean. Not re-dispatched to analytics-engineer-reviewer as a fresh round --
+whitespace-only, mechanically verified, consistent with this task's established pattern
+for low-risk fixes late in review.
 
 This task went through multiple review rounds. Substance: round 1 caught a real
 correctness bug (sector-benchmark aggregates for `debt_to_equity`/`statement_roe_pct`
