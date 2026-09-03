@@ -112,7 +112,7 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
 
 # (metric, sector-median column, short direction) — derived from the catalogue.
 _DIRECTION_SHORT = {"higher_better": "higher", "lower_better": "lower", "neutral": "neutral"}
-# Every catalogued metric's direction, not just the 4 benchmarkable ones — backs
+# Every catalogued metric's direction, not just the 9 benchmarkable ones -- backs
 # metric_direction()/metric_gloss()'s universal "Higher/Lower is better." cue.
 _DIRECTION_BY_METRIC = {m["metric_id"]: _DIRECTION_SHORT.get(m["direction"], "neutral") for m in _METRICS}
 BENCHMARK_METRICS = tuple(
@@ -210,7 +210,7 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
     which way its own axis points. The example used to be forward P/E's "always read next
     to growth", which stopped being checkable when that metric was dropped;
     this one is a live catalogue row on purpose, so a reader can verify it). Applies whether or not the metric currently has a range mark; a metric
-    without one yet (not in the 4 benchmarked today) still gets the same plain cue.
+    without one (not in the 9 benchmarked today) still gets the same plain cue.
     Suppressed for net_debt_to_ebitda's value-aware "Net cash" branch and
     debt_to_equity's "Negative equity" branch -- both already state the actual
     situation directly, and appending "Lower is better." on top would imply a more
@@ -222,12 +222,14 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
     this app never teaches that concept. Kept anyway, and deliberately on EVERY metric
     rather than only the inverted ones -- a cue that appears on some metrics and not
     others makes its own absence ambiguous, which is worse than not having it. The bar
-    itself carries no direction (right is only "bigger"), so for the benchmarked inverted
-    metric (net_debt_to_ebitda) a beginner has no way to read the mark without this line --
-    and only 4 of the 13 catalogued metrics are benchmarkable at all, so for the other 9
-    (current_ratio_stmt, working_capital, net_cash and the rest) this cue is the ONLY
-    direction signal anywhere on the card face. (Counts changed when the three
-    price-carrying metrics were dropped; forward_pe used to be the second inverted one.) The
+    itself carries no direction (right is only "bigger"), so for the two benchmarked inverted
+    metrics (net_debt_to_ebitda, debt_to_equity) a beginner has no way to read the mark without
+    this line -- and only 9 of the 13 catalogued metrics are benchmarkable at all, so for the other 4
+    (pre-revenue's working_capital, net_cash, cash_runway_months, burn_rate_monthly) this cue
+    is the ONLY direction signal anywhere on the card face. (Counts changed when the three
+    price-carrying metrics were dropped, and again when the 5-metric benchmark expansion --
+    owner-approved follow-up to MR #22 -- made every operating/financial metric benchmarkable;
+    forward_pe used to be the second inverted one.) The
     clutter that prompted the question was addressed in presentation instead: the gloss
     is now a step larger and lighter than the range mark's own axis labels.
     """

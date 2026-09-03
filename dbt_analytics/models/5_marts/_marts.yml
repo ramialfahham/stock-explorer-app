@@ -256,6 +256,99 @@ models:
         description: >
           Sector 75th percentile for FCF margin (outlier-aware range-mark display clamp); null
           if peer count < 8.
+      - name: sector_median_debt_to_equity
+        description: >
+          Sector median benchmark for debt-to-equity, among peers with positive stockholders'
+          equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped); null
+          if peer count < 8.
+      - name: sector_min_debt_to_equity
+        description: >
+          Sector minimum for debt-to-equity among peers with positive stockholders' equity (card
+          range mark); null if peer count < 8.
+      - name: sector_max_debt_to_equity
+        description: >
+          Sector maximum for debt-to-equity among peers with positive stockholders' equity (card
+          range mark); null if peer count < 8.
+      - name: sector_q1_debt_to_equity
+        description: >
+          Sector 25th percentile for debt-to-equity among peers with positive stockholders' equity
+          (outlier-aware range-mark display clamp); null if peer count < 8.
+      - name: sector_q3_debt_to_equity
+        description: >
+          Sector 75th percentile for debt-to-equity among peers with positive stockholders' equity
+          (outlier-aware range-mark display clamp); null if peer count < 8.
+      - name: sector_median_current_ratio_stmt
+        description: >
+          Sector median benchmark for current ratio; null if peer count < 8.
+      - name: sector_min_current_ratio_stmt
+        description: >
+          Sector minimum for current ratio (card range mark); null if peer count < 8.
+      - name: sector_max_current_ratio_stmt
+        description: >
+          Sector maximum for current ratio (card range mark); null if peer count < 8.
+      - name: sector_q1_current_ratio_stmt
+        description: >
+          Sector 25th percentile for current ratio (outlier-aware range-mark display clamp); null
+          if peer count < 8.
+      - name: sector_q3_current_ratio_stmt
+        description: >
+          Sector 75th percentile for current ratio (outlier-aware range-mark display clamp); null
+          if peer count < 8.
+      - name: sector_median_statement_roe_pct
+        description: >
+          Sector median benchmark for return on equity, among peers with positive stockholders'
+          equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped); null
+          if peer count < 8.
+      - name: sector_min_statement_roe_pct
+        description: >
+          Sector minimum for return on equity among peers with positive stockholders' equity (card
+          range mark); null if peer count < 8.
+      - name: sector_max_statement_roe_pct
+        description: >
+          Sector maximum for return on equity among peers with positive stockholders' equity (card
+          range mark); null if peer count < 8.
+      - name: sector_q1_statement_roe_pct
+        description: >
+          Sector 25th percentile for return on equity among peers with positive stockholders'
+          equity (outlier-aware range-mark display clamp); null if peer count < 8.
+      - name: sector_q3_statement_roe_pct
+        description: >
+          Sector 75th percentile for return on equity among peers with positive stockholders'
+          equity (outlier-aware range-mark display clamp); null if peer count < 8.
+      - name: sector_median_net_margin_pct
+        description: >
+          Sector median benchmark for net margin; null if peer count < 8.
+      - name: sector_min_net_margin_pct
+        description: >
+          Sector minimum for net margin (card range mark); null if peer count < 8.
+      - name: sector_max_net_margin_pct
+        description: >
+          Sector maximum for net margin (card range mark); null if peer count < 8.
+      - name: sector_q1_net_margin_pct
+        description: >
+          Sector 25th percentile for net margin (outlier-aware range-mark display clamp); null
+          if peer count < 8.
+      - name: sector_q3_net_margin_pct
+        description: >
+          Sector 75th percentile for net margin (outlier-aware range-mark display clamp); null
+          if peer count < 8.
+      - name: sector_median_roa_pct
+        description: >
+          Sector median benchmark for return on assets; null if peer count < 8.
+      - name: sector_min_roa_pct
+        description: >
+          Sector minimum for return on assets (card range mark); null if peer count < 8.
+      - name: sector_max_roa_pct
+        description: >
+          Sector maximum for return on assets (card range mark); null if peer count < 8.
+      - name: sector_q1_roa_pct
+        description: >
+          Sector 25th percentile for return on assets (outlier-aware range-mark display clamp); null
+          if peer count < 8.
+      - name: sector_q3_roa_pct
+        description: >
+          Sector 75th percentile for return on assets (outlier-aware range-mark display clamp); null
+          if peer count < 8.
       - name: snapshot_date
         description: >
           Fundamentals as-of date exported with the card row.
