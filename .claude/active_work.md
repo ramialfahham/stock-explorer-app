@@ -12,38 +12,19 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
-## MR !87 OPEN, 2026-09-02: Outlier-aware metric-range scaling (Gemini feedback point 5)
-
-Status: **implemented (dbt + Supabase + frontend + tests), full pytest suite green (481
-passed), full dbt build/test green (123 passed), docs updated (`data_contract.md`,
-`ui/card_metric_cell.md`, `backlog/gemini_verdict_feedback.md`), em/en-dash swept, reviewed
-(scope-auditor PASS, equity-analyst-reviewer PASS, analytics-engineer-reviewer PASS,
-cto-reviewer PASS on retry after a transient API error killed the first attempt,
-data-engineer-reviewer PASS -- initially missed by dispatch since `*.sql` and `supabase/*`
-both match the new migration file and route to two different reviewers, caught by the commit
-gate before the first commit attempt -- full account in that branch's `.claude/task/review.md`),
-committed (2 commits: main change `c02887db` then review.md `090d9bc7` separately), pushed, MR
-open.** Branch `feat/outlier-aware-metric-range-scaling`, MR at
-https://gitlab.com/rami.al-fahham/stock-swipe-app/-/merge_requests/87. Pushed to the `gitlab`
-remote, not `origin`. Next concrete action: once merged, sync local `main` and delete the branch.
-
-Owner reviewed a mockup (a synthetic sector with one extreme outlier) before scoping and chose
-clamping the display range over log-scaling (rejected: not beginner friendly). The mechanism
-needed new backend data the mart didn't carry -- quartiles (`sector_q1_*`/`sector_q3_*`) per
-benchmarked metric -- making this a dbt + Supabase export change, not the "purely a display
-change" the backlog doc originally framed it as; that framing is corrected in this branch.
-`benchmark_range()` now clamps the displayed axis to a Tukey fence (`Q1 - 1.5*IQR` ..
-`Q3 + 1.5*IQR`, the standard box-plot convention, not an invented multiplier) instead of raw
-sector min/max; for a sector with no real outlier the fence is wider than the true range, so
-the clamp is a no-op. A card whose own value falls outside the clamped range gets its marker
-pinned to the edge with a small off-scale arrow; its raw value keeps rendering unchanged,
-completely unaffected. Three wording/style questions (`decisions_reserved` in the contract)
-were left open when the owner said "go ahead" without answering them -- implementation shipped
-using the safest non-committal default for each (unchanged "min"/"max" words, no tooltip, the
-mockup's arrow glyph), recorded as a contract amendment, not as an owner decision. This closes
-out the last untouched Gemini-feedback point from this session (point 2 was declined earlier);
-`docs/backlog/gemini_verdict_feedback.md` now has every one of the nine points addressed one
-way or another.
+## MR !87 MERGED, 2026-09-02: Outlier-aware metric-range scaling (Gemini feedback point 5) --
+`benchmark_range()` clamps the displayed axis to a Tukey fence (`Q1 - 1.5*IQR` .. `Q3 + 1.5*IQR`,
+the standard box-plot convention) instead of raw sector min/max, so one extreme peer no longer
+dominates every other card's marker in the same sector; a no-op when no real outlier exists. An
+off-scale card's marker pins to the edge with a small arrow, its raw value unaffected. Needed new
+dbt-computed quartile columns + a Supabase migration, not a frontend-only change as the backlog
+doc originally framed it -- corrected in this branch. Five reviewers required (one commit-gate
+catch: `data-engineer-reviewer` was initially missed) -- full account in that branch's
+`.claude/task/review.md`. Local `main` synced, branch deleted, remote-tracking ref pruned. **This
+closes out every one of the nine Gemini-feedback points from `docs/backlog/gemini_verdict_feedback.md`
+raised with the owner this session** (points 1, 6/8, and the ROE sibling bug shipped as fixes;
+3/4 shipped as the structured-output/hallucination-guard change; 5 shipped here; 9 and 2 both
+declined with documented reasoning) -- nothing outstanding on that backlog as of this entry.
 
 ## MR !85 MERGED, 2026-09-02: Decline early-stage classification review (Gemini feedback point 2)
 -- owner decision: neither move the pre-revenue classification threshold nor add an
@@ -51,8 +32,7 @@ early-stage carve-out to `_verdict_operating` for 4DMedical's -823.3% operating 
 existing 0.1%-of-market-cap threshold is grounded in a real degenerate case (Deep Yellow), and
 4DMedical isn't that failure mode -- moving it would be the same invented-number problem point 9
 was declined for. Reasoning in full in `docs/backlog/gemini_verdict_feedback.md`'s point 2 entry.
-Local `main` synced, branch deleted, remote-tracking ref pruned. This closes out every
-Gemini-feedback point raised with the owner this session except point 5, still open.
+Local `main` synced, branch deleted, remote-tracking ref pruned.
 
 ## MR !83 MERGED, 2026-09-02: Drop the Apple example from data_contract.md's liquidity-relief
 bullet -- follow-up to MR !81's own code-comment trim (same example existed in two places).
