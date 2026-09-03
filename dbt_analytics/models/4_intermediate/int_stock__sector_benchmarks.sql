@@ -31,15 +31,27 @@ sector_medians as (
         median(ebit_margin_pct) as sector_median_ebit_margin_pct,
         min(ebit_margin_pct) as sector_min_ebit_margin_pct,
         max(ebit_margin_pct) as sector_max_ebit_margin_pct,
+        -- Q1/Q3 (Gemini feedback point 5, docs/backlog/gemini_verdict_feedback.md): the display
+        -- range clamp needs quartiles alongside min/median/max. quantile_cont is the same
+        -- continuous-interpolation family median() already uses -- no new statistical convention
+        -- introduced, just two more percentiles of it.
+        quantile_cont(ebit_margin_pct, 0.25) as sector_q1_ebit_margin_pct,
+        quantile_cont(ebit_margin_pct, 0.75) as sector_q3_ebit_margin_pct,
         median(revenue_growth_yoy_pct) as sector_median_revenue_growth_yoy_pct,
         min(revenue_growth_yoy_pct) as sector_min_revenue_growth_yoy_pct,
         max(revenue_growth_yoy_pct) as sector_max_revenue_growth_yoy_pct,
+        quantile_cont(revenue_growth_yoy_pct, 0.25) as sector_q1_revenue_growth_yoy_pct,
+        quantile_cont(revenue_growth_yoy_pct, 0.75) as sector_q3_revenue_growth_yoy_pct,
         median(net_debt_to_ebitda) as sector_median_net_debt_to_ebitda,
         min(net_debt_to_ebitda) as sector_min_net_debt_to_ebitda,
         max(net_debt_to_ebitda) as sector_max_net_debt_to_ebitda,
+        quantile_cont(net_debt_to_ebitda, 0.25) as sector_q1_net_debt_to_ebitda,
+        quantile_cont(net_debt_to_ebitda, 0.75) as sector_q3_net_debt_to_ebitda,
         median(fcf_margin_pct) as sector_median_fcf_margin_pct,
         min(fcf_margin_pct) as sector_min_fcf_margin_pct,
-        max(fcf_margin_pct) as sector_max_fcf_margin_pct
+        max(fcf_margin_pct) as sector_max_fcf_margin_pct,
+        quantile_cont(fcf_margin_pct, 0.25) as sector_q1_fcf_margin_pct,
+        quantile_cont(fcf_margin_pct, 0.75) as sector_q3_fcf_margin_pct
     from eligible
     group by 1, 2
 ),
@@ -68,6 +80,12 @@ combined as (
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_max_ebit_margin_pct
         end as sector_max_ebit_margin_pct,
         case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q1_ebit_margin_pct
+        end as sector_q1_ebit_margin_pct,
+        case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q3_ebit_margin_pct
+        end as sector_q3_ebit_margin_pct,
+        case
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_median_revenue_growth_yoy_pct
         end as sector_median_revenue_growth_yoy_pct,
         case
@@ -76,6 +94,12 @@ combined as (
         case
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_max_revenue_growth_yoy_pct
         end as sector_max_revenue_growth_yoy_pct,
+        case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q1_revenue_growth_yoy_pct
+        end as sector_q1_revenue_growth_yoy_pct,
+        case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q3_revenue_growth_yoy_pct
+        end as sector_q3_revenue_growth_yoy_pct,
         case
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_median_net_debt_to_ebitda
         end as sector_median_net_debt_to_ebitda,
@@ -86,6 +110,12 @@ combined as (
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_max_net_debt_to_ebitda
         end as sector_max_net_debt_to_ebitda,
         case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q1_net_debt_to_ebitda
+        end as sector_q1_net_debt_to_ebitda,
+        case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q3_net_debt_to_ebitda
+        end as sector_q3_net_debt_to_ebitda,
+        case
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_median_fcf_margin_pct
         end as sector_median_fcf_margin_pct,
         case
@@ -93,7 +123,13 @@ combined as (
         end as sector_min_fcf_margin_pct,
         case
             when c.sector_peer_count >= {{ peer_threshold }} then m.sector_max_fcf_margin_pct
-        end as sector_max_fcf_margin_pct
+        end as sector_max_fcf_margin_pct,
+        case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q1_fcf_margin_pct
+        end as sector_q1_fcf_margin_pct,
+        case
+            when c.sector_peer_count >= {{ peer_threshold }} then m.sector_q3_fcf_margin_pct
+        end as sector_q3_fcf_margin_pct
     from sector_counts as c
     inner join sector_medians as m
         on c.market_code = m.market_code

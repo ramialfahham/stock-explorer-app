@@ -263,8 +263,9 @@ Computed per `(market_code, sector)` over **card-eligible** tickers in that mark
 | `sector_median_*` | Median for each benchmarked metric (4; forward_pe is no longer one) |
 | `sector_min_*` | Minimum for each benchmarked metric (card range mark) |
 | `sector_max_*` | Maximum for each benchmarked metric (card range mark) |
+| `sector_q1_*` / `sector_q3_*` | 25th/75th percentile for each benchmarked metric (outlier-aware range-mark display clamp, Gemini feedback point 5 -- see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s "Range mark mechanics" for how these feed the clamp) |
 
-**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max; UI omits benchmark line.
+**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; UI omits benchmark line.
 
 Benchmark availability does **not** affect `is_card_eligible`.
 
@@ -354,6 +355,14 @@ Grain: one row per `(market_code, ticker, snapshot_date)`.
 | `sector_max_net_debt_to_ebitda` | numeric | nullable |
 | `sector_min_fcf_margin_pct` | numeric | nullable |
 | `sector_max_fcf_margin_pct` | numeric | nullable |
+| `sector_q1_ebit_margin_pct` | numeric | nullable |
+| `sector_q3_ebit_margin_pct` | numeric | nullable |
+| `sector_q1_revenue_growth_yoy_pct` | numeric | nullable |
+| `sector_q3_revenue_growth_yoy_pct` | numeric | nullable |
+| `sector_q1_net_debt_to_ebitda` | numeric | nullable |
+| `sector_q3_net_debt_to_ebitda` | numeric | nullable |
+| `sector_q1_fcf_margin_pct` | numeric | nullable |
+| `sector_q3_fcf_margin_pct` | numeric | nullable |
 | `snapshot_date` | date | Fundamentals as-of date |
 | `exported_at` | timestamptz | |
 

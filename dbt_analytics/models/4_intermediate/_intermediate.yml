@@ -279,15 +279,23 @@ models:
                 and sector_median_ebit_margin_pct is null
                 and sector_min_ebit_margin_pct is null
                 and sector_max_ebit_margin_pct is null
+                and sector_q1_ebit_margin_pct is null
+                and sector_q3_ebit_margin_pct is null
                 and sector_median_revenue_growth_yoy_pct is null
                 and sector_min_revenue_growth_yoy_pct is null
                 and sector_max_revenue_growth_yoy_pct is null
+                and sector_q1_revenue_growth_yoy_pct is null
+                and sector_q3_revenue_growth_yoy_pct is null
                 and sector_median_net_debt_to_ebitda is null
                 and sector_min_net_debt_to_ebitda is null
                 and sector_max_net_debt_to_ebitda is null
+                and sector_q1_net_debt_to_ebitda is null
+                and sector_q3_net_debt_to_ebitda is null
                 and sector_median_fcf_margin_pct is null
                 and sector_min_fcf_margin_pct is null
                 and sector_max_fcf_margin_pct is null
+                and sector_q1_fcf_margin_pct is null
+                and sector_q3_fcf_margin_pct is null
               )
       - dbt_utils.expression_is_true:
           name: sector_benchmarks_min_le_median_le_max
@@ -295,14 +303,22 @@ models:
             expression: >-
               (sector_min_forward_pe is null or sector_min_forward_pe <= sector_median_forward_pe)
               and (sector_max_forward_pe is null or sector_median_forward_pe <= sector_max_forward_pe)
-              and (sector_min_ebit_margin_pct is null or sector_min_ebit_margin_pct <= sector_median_ebit_margin_pct)
-              and (sector_max_ebit_margin_pct is null or sector_median_ebit_margin_pct <= sector_max_ebit_margin_pct)
-              and (sector_min_revenue_growth_yoy_pct is null or sector_min_revenue_growth_yoy_pct <= sector_median_revenue_growth_yoy_pct)
-              and (sector_max_revenue_growth_yoy_pct is null or sector_median_revenue_growth_yoy_pct <= sector_max_revenue_growth_yoy_pct)
-              and (sector_min_net_debt_to_ebitda is null or sector_min_net_debt_to_ebitda <= sector_median_net_debt_to_ebitda)
-              and (sector_max_net_debt_to_ebitda is null or sector_median_net_debt_to_ebitda <= sector_max_net_debt_to_ebitda)
-              and (sector_min_fcf_margin_pct is null or sector_min_fcf_margin_pct <= sector_median_fcf_margin_pct)
-              and (sector_max_fcf_margin_pct is null or sector_median_fcf_margin_pct <= sector_max_fcf_margin_pct)
+              and (sector_min_ebit_margin_pct is null or sector_min_ebit_margin_pct <= coalesce(sector_q1_ebit_margin_pct, sector_median_ebit_margin_pct))
+              and (sector_q1_ebit_margin_pct is null or sector_q1_ebit_margin_pct <= sector_median_ebit_margin_pct)
+              and (sector_q3_ebit_margin_pct is null or sector_median_ebit_margin_pct <= sector_q3_ebit_margin_pct)
+              and (sector_max_ebit_margin_pct is null or coalesce(sector_q3_ebit_margin_pct, sector_median_ebit_margin_pct) <= sector_max_ebit_margin_pct)
+              and (sector_min_revenue_growth_yoy_pct is null or sector_min_revenue_growth_yoy_pct <= coalesce(sector_q1_revenue_growth_yoy_pct, sector_median_revenue_growth_yoy_pct))
+              and (sector_q1_revenue_growth_yoy_pct is null or sector_q1_revenue_growth_yoy_pct <= sector_median_revenue_growth_yoy_pct)
+              and (sector_q3_revenue_growth_yoy_pct is null or sector_median_revenue_growth_yoy_pct <= sector_q3_revenue_growth_yoy_pct)
+              and (sector_max_revenue_growth_yoy_pct is null or coalesce(sector_q3_revenue_growth_yoy_pct, sector_median_revenue_growth_yoy_pct) <= sector_max_revenue_growth_yoy_pct)
+              and (sector_min_net_debt_to_ebitda is null or sector_min_net_debt_to_ebitda <= coalesce(sector_q1_net_debt_to_ebitda, sector_median_net_debt_to_ebitda))
+              and (sector_q1_net_debt_to_ebitda is null or sector_q1_net_debt_to_ebitda <= sector_median_net_debt_to_ebitda)
+              and (sector_q3_net_debt_to_ebitda is null or sector_median_net_debt_to_ebitda <= sector_q3_net_debt_to_ebitda)
+              and (sector_max_net_debt_to_ebitda is null or coalesce(sector_q3_net_debt_to_ebitda, sector_median_net_debt_to_ebitda) <= sector_max_net_debt_to_ebitda)
+              and (sector_min_fcf_margin_pct is null or sector_min_fcf_margin_pct <= coalesce(sector_q1_fcf_margin_pct, sector_median_fcf_margin_pct))
+              and (sector_q1_fcf_margin_pct is null or sector_q1_fcf_margin_pct <= sector_median_fcf_margin_pct)
+              and (sector_q3_fcf_margin_pct is null or sector_median_fcf_margin_pct <= sector_q3_fcf_margin_pct)
+              and (sector_max_fcf_margin_pct is null or coalesce(sector_q3_fcf_margin_pct, sector_median_fcf_margin_pct) <= sector_max_fcf_margin_pct)
     columns:
       - name: market_code
         description: >
@@ -335,6 +351,15 @@ models:
       - name: sector_max_ebit_margin_pct
         description: >
           Maximum ebit_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_ebit_margin_pct
+        description: >
+          25th percentile (continuous interpolation, same family as the median above) of
+          ebit_margin_pct among eligible peers -- feeds the card range mark's outlier-aware
+          display clamp (Gemini feedback point 5). Null when sector_peer_count < 8.
+      - name: sector_q3_ebit_margin_pct
+        description: >
+          75th percentile (continuous interpolation) of ebit_margin_pct among eligible peers --
+          feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
       - name: sector_median_revenue_growth_yoy_pct
         description: >
           Median revenue_growth_yoy_pct among eligible peers. Null when sector_peer_count < 8.
@@ -344,6 +369,16 @@ models:
       - name: sector_max_revenue_growth_yoy_pct
         description: >
           Maximum revenue_growth_yoy_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_revenue_growth_yoy_pct
+        description: >
+          25th percentile (continuous interpolation) of revenue_growth_yoy_pct among eligible
+          peers -- feeds the card range mark's outlier-aware display clamp (Gemini feedback point
+          5). Null when sector_peer_count < 8.
+      - name: sector_q3_revenue_growth_yoy_pct
+        description: >
+          75th percentile (continuous interpolation) of revenue_growth_yoy_pct among eligible
+          peers -- feeds the card range mark's outlier-aware display clamp. Null when
+          sector_peer_count < 8.
       - name: sector_median_net_debt_to_ebitda
         description: >
           Median net_debt_to_ebitda among eligible peers. Null when sector_peer_count < 8.
@@ -353,6 +388,15 @@ models:
       - name: sector_max_net_debt_to_ebitda
         description: >
           Maximum net_debt_to_ebitda among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_net_debt_to_ebitda
+        description: >
+          25th percentile (continuous interpolation) of net_debt_to_ebitda among eligible peers --
+          feeds the card range mark's outlier-aware display clamp (Gemini feedback point 5). Null
+          when sector_peer_count < 8.
+      - name: sector_q3_net_debt_to_ebitda
+        description: >
+          75th percentile (continuous interpolation) of net_debt_to_ebitda among eligible peers --
+          feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
       - name: sector_median_fcf_margin_pct
         description: >
           Median fcf_margin_pct among eligible peers. Null when sector_peer_count < 8.
@@ -362,6 +406,15 @@ models:
       - name: sector_max_fcf_margin_pct
         description: >
           Maximum fcf_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+      - name: sector_q1_fcf_margin_pct
+        description: >
+          25th percentile (continuous interpolation) of fcf_margin_pct among eligible peers --
+          feeds the card range mark's outlier-aware display clamp (Gemini feedback point 5). Null
+          when sector_peer_count < 8.
+      - name: sector_q3_fcf_margin_pct
+        description: >
+          75th percentile (continuous interpolation) of fcf_margin_pct among eligible peers --
+          feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
 
 unit_tests:
   - name: card_metrics_eligible_when_all_inputs_present
@@ -846,6 +899,38 @@ unit_tests:
             # without dividing by zero (see test_benchmark_range_none_when_degenerate_min_equals_max).
             sector_min_ebit_margin_pct: 20.0,
             sector_max_ebit_margin_pct: 20.0,
+          }
+  - name: sector_benchmarks_computes_quartiles_with_real_spread
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # ebit_margin_pct evenly spaced 10..24 (step 2) across 8 peers, sorted by construction --
+          # Q1/Q3 hand-computed via linear interpolation (quantile_cont's own method, matching
+          # median()'s): h = (n-1)*p with n=8. Q1: h=7*0.25=1.75 -> a[1]+0.75*(a[2]-a[1])
+          # = 12+0.75*(14-12) = 13.5. Q3: h=7*0.75=5.25 -> a[5]+0.25*(a[6]-a[5])
+          # = 20+0.25*(22-20) = 20.5. Not derived from the SQL under test -- computed by hand
+          # against the standard linear-interpolation formula, per this doc's own anti-pattern
+          # warning against self-referential fixtures (docs/ui/card_metric_cell.md).
+          - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 10.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 12.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 14.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 16.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 18.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 22.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T8, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 24.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Industrials,
+            sector_peer_count: 8,
+            sector_min_ebit_margin_pct: 10.0,
+            sector_q1_ebit_margin_pct: 13.5,
+            sector_median_ebit_margin_pct: 17.0,
+            sector_q3_ebit_margin_pct: 20.5,
+            sector_max_ebit_margin_pct: 24.0,
           }
   - name: card_metrics_statement_metrics_computed
     model: int_stock__card_metrics

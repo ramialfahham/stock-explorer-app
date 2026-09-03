@@ -12,6 +12,37 @@ may not be seeing all of this. Needs an archival pass (move settled history into
 `docs/handover_2026-08-18.md`'s successor) before the next onboarding batch adds more. Not done
 in this session; flagging so it isn't lost.
 
+## Branch `feat/outlier-aware-metric-range-scaling` IN PROGRESS, 2026-09-02: Outlier-aware
+metric-range scaling (Gemini feedback point 5)
+
+Status: **implemented (dbt + Supabase + frontend + tests), full pytest suite green (481
+passed), full dbt build/test green (123 passed), docs updated (`data_contract.md`,
+`ui/card_metric_cell.md`, `backlog/gemini_verdict_feedback.md`), em/en-dash swept, reviewed
+(scope-auditor PASS, equity-analyst-reviewer PASS, analytics-engineer-reviewer PASS,
+cto-reviewer PASS on retry after a transient API error killed the first attempt -- full
+account in that branch's `.claude/task/review.md`). Not yet committed, not yet pushed.** Next
+concrete action: write `.claude/task/review.md`, commit (main change then review.md
+separately), then wait for the owner's explicit instruction to push -- push to the `gitlab`
+remote, not `origin`.
+
+Owner reviewed a mockup (a synthetic sector with one extreme outlier) before scoping and chose
+clamping the display range over log-scaling (rejected: not beginner friendly). The mechanism
+needed new backend data the mart didn't carry -- quartiles (`sector_q1_*`/`sector_q3_*`) per
+benchmarked metric -- making this a dbt + Supabase export change, not the "purely a display
+change" the backlog doc originally framed it as; that framing is corrected in this branch.
+`benchmark_range()` now clamps the displayed axis to a Tukey fence (`Q1 - 1.5*IQR` ..
+`Q3 + 1.5*IQR`, the standard box-plot convention, not an invented multiplier) instead of raw
+sector min/max; for a sector with no real outlier the fence is wider than the true range, so
+the clamp is a no-op. A card whose own value falls outside the clamped range gets its marker
+pinned to the edge with a small off-scale arrow; its raw value keeps rendering unchanged,
+completely unaffected. Three wording/style questions (`decisions_reserved` in the contract)
+were left open when the owner said "go ahead" without answering them -- implementation shipped
+using the safest non-committal default for each (unchanged "min"/"max" words, no tooltip, the
+mockup's arrow glyph), recorded as a contract amendment, not as an owner decision. This closes
+out the last untouched Gemini-feedback point from this session (point 2 was declined earlier);
+`docs/backlog/gemini_verdict_feedback.md` now has every one of the nine points addressed one
+way or another.
+
 ## MR !85 MERGED, 2026-09-02: Decline early-stage classification review (Gemini feedback point 2)
 -- owner decision: neither move the pre-revenue classification threshold nor add an
 early-stage carve-out to `_verdict_operating` for 4DMedical's -823.3% operating margin; the

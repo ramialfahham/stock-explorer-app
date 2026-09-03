@@ -73,6 +73,14 @@ EXPORT_COLUMNS = [
     "sector_max_net_debt_to_ebitda",
     "sector_min_fcf_margin_pct",
     "sector_max_fcf_margin_pct",
+    "sector_q1_ebit_margin_pct",
+    "sector_q3_ebit_margin_pct",
+    "sector_q1_revenue_growth_yoy_pct",
+    "sector_q3_revenue_growth_yoy_pct",
+    "sector_q1_net_debt_to_ebitda",
+    "sector_q3_net_debt_to_ebitda",
+    "sector_q1_fcf_margin_pct",
+    "sector_q3_fcf_margin_pct",
     "snapshot_date",
 ]
 

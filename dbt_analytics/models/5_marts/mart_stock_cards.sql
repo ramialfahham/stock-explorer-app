@@ -45,15 +45,23 @@ final as (
         b.sector_median_ebit_margin_pct,
         b.sector_min_ebit_margin_pct,
         b.sector_max_ebit_margin_pct,
+        b.sector_q1_ebit_margin_pct,
+        b.sector_q3_ebit_margin_pct,
         b.sector_median_revenue_growth_yoy_pct,
         b.sector_min_revenue_growth_yoy_pct,
         b.sector_max_revenue_growth_yoy_pct,
+        b.sector_q1_revenue_growth_yoy_pct,
+        b.sector_q3_revenue_growth_yoy_pct,
         b.sector_median_net_debt_to_ebitda,
         b.sector_min_net_debt_to_ebitda,
         b.sector_max_net_debt_to_ebitda,
+        b.sector_q1_net_debt_to_ebitda,
+        b.sector_q3_net_debt_to_ebitda,
         b.sector_median_fcf_margin_pct,
         b.sector_min_fcf_margin_pct,
         b.sector_max_fcf_margin_pct,
+        b.sector_q1_fcf_margin_pct,
+        b.sector_q3_fcf_margin_pct,
         m.snapshot_date
     from metrics as m
     left join benchmarks as b
