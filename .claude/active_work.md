@@ -168,10 +168,7 @@ each batch and nobody tracking it as of the last check.
 3. **The bank card's capital-adequacy blind spot** survives only as an LLM prompt instruction
    with no card-face caveat, so a card with a null `ai_read` warns nobody. Needs new bank-card
    copy (§6, owner content).
-4. **`frontend/browser_storage.py` has zero test coverage**, likely because it wraps a
-   Streamlit component awkward to test without a live session. Pre-existing gap, not
-   introduced by any specific branch.
-5. **Full Discover/Saved/Search user-flow simulation done 2026-09-03**, findings logged to
+4. **Full Discover/Saved/Search user-flow simulation done 2026-09-03**, findings logged to
    `docs/backlog/discover_saved_search_ux_findings.md` -- 4 confirmed, reproducible bugs (a
    stale Search selection resurfacing on an unrelated later query; the Search box's typed text
    and Discover's market/sector filter both silently reset on tab switch, two different
@@ -180,13 +177,13 @@ each batch and nobody tracking it as of the last check.
    pagination, same class of gap MR !70 fixed for Discover, not reproduced as felt lag at the
    17-save volume tested). No fixes chosen yet -- owner decisions needed, see that doc's "Open
    questions."
-6. Three of the seven backlog docs in `docs/backlog/` are genuinely open (the other four are
+5. Three of the seven backlog docs in `docs/backlog/` are genuinely open (the other four are
    closed/resolved -- see that directory): `discover_metric_filters_phase2.md` (a prior
    attempt was built and reverted; needs redesign against its own stated revisit criteria),
    `name_vs_yfinance_audit_guard.md` (needs owner decisions on live-fetch vs. cached snapshot,
    fuzzy-match tolerance, market scope, and hard-fail vs. warn-only before it's build-ready),
-   and the new `discover_saved_search_ux_findings.md` from item 5 above.
-7. **Free-tier Supabase pauses after ~7 days idle** ("Could not load cards", a real bug in
+   and the new `discover_saved_search_ux_findings.md` from item 4 above.
+6. **Free-tier Supabase pauses after ~7 days idle** ("Could not load cards", a real bug in
    `_ensure_all_cards`), never resolved -- and the current biweekly pipeline schedule
    (1st/15th) creates gaps up to ~15 days between writes, longer than the pause threshold.
    Worth checking whether this is silently affecting production right now, and deciding
