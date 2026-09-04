@@ -125,6 +125,9 @@ push -- run `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (and the re
 - **No em/en-dash on any line added to this repo, anywhere, any file** -- flagged repeatedly
   this session; use `--` instead, matching the convention already used throughout this repo's
   own prose.
+- **Repo hosting: GitLab-only while the GitHub account (`origin`) remains suspended.** Owner
+  confirmed 2026-09-04, explicitly conditional -- revisit only if that account is recovered, not
+  something to re-ask otherwise.
 
 ## Market coverage
 
@@ -171,15 +174,17 @@ each batch and nobody tracking it as of the last check.
 4. **`frontend/browser_storage.py` has zero test coverage**, likely because it wraps a
    Streamlit component awkward to test without a live session. Pre-existing gap, not
    introduced by any specific branch.
-5. **Full Discover/Saved/Search user-flow simulation done 2026-09-03**, findings logged to
-   `docs/backlog/discover_saved_search_ux_findings.md` -- 4 confirmed, reproducible bugs (a
-   stale Search selection resurfacing on an unrelated later query; the Search box's typed text
-   and Discover's market/sector filter both silently reset on tab switch, two different
-   mechanisms, one not yet root-caused; "Clear saved" is one click with no confirmation, no
-   undo, and also wipes skip history) plus one unconfirmed structural risk (Saved has no
-   pagination, same class of gap MR !70 fixed for Discover, not reproduced as felt lag at the
-   17-save volume tested). No fixes chosen yet -- owner decisions needed, see that doc's "Open
-   questions."
+5. **3 of 4 bugs from the Discover/Saved/Search UX findings fixed 2026-09-04**
+   (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
+   resurfacing on an unrelated later query, and the Search box / Discover filter both losing
+   their value on tab switch. Root cause, found live: a KEYED Streamlit widget's session_state
+   is evicted too when the widget isn't rendered for one script run, not just unkeyed ones as
+   first guessed -- the original doc's own candidate fix (add a bare `key=` to the Search box)
+   would not have worked. Fixed by making both widgets unkeyed and managing their durable value
+   as a plain session_state entry instead. Verified by hand against the real repro sequences in
+   a running dev server. Two items from that doc remain genuinely open, both needing an owner
+   product call first: "Clear saved" has no confirmation/undo, and Saved has no pagination
+   (unconfirmed as a felt problem at today's typical save counts).
 6. Three of the seven backlog docs in `docs/backlog/` are genuinely open (the other four are
    closed/resolved -- see that directory): `discover_metric_filters_phase2.md` (a prior
    attempt was built and reverted; needs redesign against its own stated revisit criteria),

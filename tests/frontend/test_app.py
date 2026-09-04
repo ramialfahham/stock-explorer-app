@@ -1,11 +1,15 @@
-"""Tests for app.py's pure HTML-building and Discover-pagination helpers."""
+"""Tests for app.py's pure HTML-building, Discover-pagination, and Search-state helpers."""
 
 from __future__ import annotations
+
+import pytest
+import streamlit as st
 
 from app import (
     DISCOVER_PAGE_SIZE,
     _discover_page_count,
     _discover_page_slice,
+    _sync_search_query,
     brand_header_html,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
@@ -84,3 +88,46 @@ def test_discover_page_slice_handles_an_empty_pool() -> None:
     page_items, page = _discover_page_slice([], 0)
     assert page == 0
     assert page_items == []
+
+
+# --- _sync_search_query: plain session_state bookkeeping, no Streamlit widget involved,
+# extracted from _render_search_tab specifically so this state-transition is unit-tested
+# directly rather than folded into the "Streamlit widget lifecycle, can't unit-test" exemption
+# that genuinely applies to the rest of that function's rendering.
+
+
+@pytest.fixture(autouse=True)
+def _clear_search_session_state():
+    st.session_state.clear()
+    yield
+    st.session_state.clear()
+
+
+def test_sync_search_query_first_call_persists_the_query() -> None:
+    _sync_search_query("Apple")
+    assert st.session_state["search_query"] == "Apple"
+
+
+def test_sync_search_query_unchanged_query_leaves_selection_alone() -> None:
+    st.session_state["search_query"] = "Apple"
+    st.session_state["search_selected"] = ("us_sp500", "AAPL")
+    _sync_search_query("Apple")
+    assert st.session_state["search_selected"] == ("us_sp500", "AAPL")
+
+
+def test_sync_search_query_changed_query_clears_a_pinned_selection() -> None:
+    """The regression this fix targets: searching "App" after Apple -> Microsoft must not
+    silently resurrect Apple's card just because "App" re-matches it as a substring."""
+    st.session_state["search_query"] = "Microsoft"
+    st.session_state["search_selected"] = ("us_sp500", "AAPL")
+    _sync_search_query("App")
+    assert st.session_state["search_query"] == "App"
+    assert st.session_state["search_selected"] is None
+
+
+def test_sync_search_query_clearing_the_box_also_clears_a_pinned_selection() -> None:
+    st.session_state["search_query"] = "Apple"
+    st.session_state["search_selected"] = ("us_sp500", "AAPL")
+    _sync_search_query("")
+    assert st.session_state["search_query"] == ""
+    assert st.session_state["search_selected"] is None
