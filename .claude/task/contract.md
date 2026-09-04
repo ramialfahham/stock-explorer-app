@@ -1,53 +1,72 @@
 # Task contract
 
-objective: Run the full Discover/Saved/Search user-flow simulation the owner requested
-  2026-08-31 ("find further UX inconsistencies beyond the ones already found and fixed") and log
-  the findings to the backlog. Investigation only -- no fixes chosen or shipped in this task; the
-  owner directed "log them to the backlog" after reviewing a summary of what was found.
+objective: Fix two stale, portfolio-facing inaccuracies found during the end-to-end
+  portfolio-readiness audit the owner requested 2026-09-04 ("one last audit -- end-to-end.
+  This repo has to be portfolio-ready"):
 
-  Method: started the local dev server and drove the app by hand (Browser pane), not just read
-  from code, across all three tabs -- Search's query/result/focus mechanics, Saved at volume (17
-  saved companies) including the destructive "Clear saved" action, and Discover's market/sector
-  filter across tab navigation. Four bugs confirmed reproducible by direct interaction; one
-  code-visible structural risk (Saved has no pagination, same class MR !70 fixed for Discover)
-  could not be confirmed as a felt problem at the volume tested and is recorded as unconfirmed,
-  not asserted as a live issue.
+  1. **README's live-demo link and Stack table both still named Streamlit Community Cloud**,
+     a deploy path this project no longer uses. `streamlit_app.py`'s own docstring and
+     `render.yaml` (`name: stock-explorer-app`) confirm the actual, currently-live deploy
+     target is Render (`https://stock-explorer-app.onrender.com`) -- this is a correction back
+     to the already-shipped, already-decided state (the Streamlit Cloud -> Render migration
+     itself is documented, settled history in `docs/handover_2026-08-18.md`), not a new
+     decision. Verified live: the URL resolves and serves the real app (1042 matching
+     companies, 35 pages) after Render's free-tier cold start.
+  2. **`docs/media/discover-card.png`, the README's hero screenshot, showed a stale UI
+     state** -- an old tagline, an old verdict-copy style, a "Forward P/E" metric that no
+     longer exists on the card, and framing that predates the current list-based "Back to
+     list" navigation. Replaced with a screenshot of the current, live Discover focused-card
+     view (Apple Inc., S&P 500), captured from the local dev server.
+
+  Method note on the screenshot (disclosed since it's not a plain single-pass capture):
+  Playwright isn't installed (adding it would be a new dependency for a docs-only task), so
+  the capture used `html2canvas` (CDN, not a repo dependency) driving the already-rendered
+  live DOM. html2canvas 1.4.1 could not rasterize two elements in the captured region: the
+  verdict badge's emoji dot (`🟡`) and its label rendered as an empty box, and a tall capture
+  triggered an internal tiling bug that duplicated content past a certain height. Both were
+  worked around rather than hidden: the capture was cropped to end right after the "Read
+  more" line (before the tiling seam), and the verdict badge's dot + "Mixed" label were
+  redrawn in the same position/size/color confirmed against a real (non-html2canvas) screen
+  capture of the same live element, so the patched pixels match what the app actually shows,
+  not an invented substitute.
 
 scope_paths:
-  - docs/backlog/discover_saved_search_ux_findings.md (new file)
-  - .claude/active_work.md
+  - README.md
+  - docs/media/discover-card.png
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none for this task -- it only records findings, matching
-  `docs/backlog/discover_list_performance.md`'s own precedent of separating "what was confirmed"
-  from "what the owner should decide," without picking a fix direction. Every open question this
-  investigation raised (fix direction for each bug, whether "Clear saved" needs a confirmation
-  step, whether to build Saved pagination proactively) is recorded as an explicit open question
-  in the new doc for the owner to answer later, not decided here.
+decisions_reserved: none for this task -- both fixes restore already-decided, already-shipped
+  state (the Render deploy target; the current live card UI) rather than introducing new
+  product/UX/copy. No new wording invented beyond naming the actual hosting platform and
+  swapping a stale image for a current one.
 
 done_when:
-  - `docs/backlog/discover_saved_search_ux_findings.md` created, following
-    `discover_list_performance.md`'s established template (Status / Summary / Context
-    confirmed-vs-hypothesis / Open questions / Candidate directions / Related).
-  - Every claimed bug cites the exact file/line(s) responsible, verified by direct code read,
-    not asserted from memory of the live-testing session alone.
-  - The Discover-filter-reset finding is recorded honestly as "behavior confirmed, mechanism not
-    yet confirmed" -- the file/line investigation ruled out the same-shaped explanation that fit
-    the Search-box bug (missing widget `key=`) rather than reusing it without checking, since the
-    filter selectboxes turned out to already have explicit keys.
-  - `.claude/active_work.md`'s open-items list updated: the "never done" simulation item replaced
-    with a short pointer to the new doc's findings, and the backlog-doc-count line updated to
-    include it.
+  - README.md's live-demo link and Stack table both name Render, not Streamlit Community
+    Cloud/streamlit.app.
+  - The Render URL verified live and reachable (checked directly in-browser this task).
+  - `git grep` for `streamlit\.app|streamlit community|streamlit cloud` (case-insensitive)
+    across tracked files shows matches only in historical `docs/handover_*.md` /
+    `docs/product_roadmap_*.md` archives describing the past migration -- none in README.md
+    or any other current-state doc. Those archive mentions are left untouched (this repo's
+    own "changelogs live in one place" convention -- history stays in the archives/git log,
+    not rewritten).
+  - `docs/media/discover-card.png` shows the current shipped UI: current tagline, current
+    verdict-badge style, current AI-written analysis copy, no Forward P/E, list-based
+    navigation. Method (html2canvas + the two workarounds above) disclosed above, not hidden.
+  - The `<img>` tag's existing alt text still accurately describes the new image (checked,
+    unchanged -- "A company snapshot" still fits).
   - No em dash or en dash on any added line.
   - `pytest`/`dbt build` untouched by this task (no code changed) -- not re-run.
 
 impact_map:
-  - Pure documentation addition. No `frontend/`, `dbt_analytics/`, `scripts/`, or `supabase/`
-    file touched -- nothing in this task changes app behavior, test coverage, or CI.
-  - Sets up (but does not itself decide) up to 3 follow-up tasks: the navigation-state-loss
-    fix(es), a possible "Clear saved" confirmation step, and a possible Saved-pagination fix --
-    each its own future task contract with its own `decisions_reserved` once the owner picks a
-    direction.
+  - Pure documentation/media correction. No `frontend/`, `dbt_analytics/`, `scripts/`, or
+    `supabase/` file touched -- nothing in this task changes app behavior, test coverage, or
+    CI. Per `.claude/review_routing.json`, neither `README.md` nor `docs/media/*.png` matches
+    any path-specific reviewer pattern -- scope-auditor (`always`) is the only required
+    reviewer for this diff.
+  - Does not touch the remaining portfolio-audit items (GitLab topics sync, project
+    description, avatar image, repo visibility) -- those are separate GitLab-settings changes
+    needing their own owner sign-off, out of scope for this file-level task.
 
 amendments: none.
