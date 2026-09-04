@@ -1,31 +1,30 @@
 # Review
 
-diff_sha256: d771ea4a14c6bb2adfe1dc5c3c8dfdcf8e22ea5dbb69e5ccebf73709d6eaf8e6
+diff_sha256: 12c88f636ea4b861fc1c03dbe0060665cb9a6f6e5349f8049c9fa541832ef60e
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Every file/line citation in `docs/backlog/discover_saved_search_ux_findings.md` checked
-  against actual source (`frontend/app.py`, `frontend/overflow_menu.py`,
-  `frontend/browser_storage.py`, `frontend/row_ui.py`) -- all ranges point to exactly the code
-  described, no drift, no paraphrase standing in for a real citation.
-- Independently re-investigated the Discover-filter bug's "mechanism not yet confirmed" hedge
-  rather than trusting it: confirmed both selectboxes really do carry explicit `key=` (so the
-  unkeyed-widget explanation genuinely doesn't apply), confirmed `EXPLORE_DEFAULTS_VERSION` is a
-  literal constant never reassigned elsewhere, and checked an adjacent reset-guard in the same
-  function that the doc didn't cite -- traced it and confirmed it isn't a plausible every-time
-  cause either. The hedge holds up as an honest unknown, not cover for a missed answer.
-- Two repo-wide absence-claims ("`search_selected` is never cleared", "no confirmation pattern
-  anywhere in this app") verified by grep, not trusted from prose.
-- Saved's missing pagination verified structurally: `_render_saved_tab` passes the full,
-  unsliced list to `row_ui.render_row_list`, unlike Discover's `_discover_page_slice`.
-- Doc follows `discover_list_performance.md`'s established template; stays inside
-  `decisions_reserved: none` (every fix direction is hedged as a candidate, not prescribed).
-- Zero em/en-dash on any added line (scanned programmatically).
-- `scope_paths` compliance: exactly the 3 contracted files touched, nothing else.
+- Render deploy-target claim verified live in-browser (not just static config), matching the
+  contract's own cited figures (1042 companies, 35 pages) exactly.
+- Stale-platform grep swept across all tracked files; confirmed zero README hits and confirmed
+  the historical handover/roadmap files carrying remaining hits are untouched by this diff
+  (`git status`/`git diff --staged --stat`).
+- Hand-patched verdict-badge pixels inspected at magnification for compositing artifacts; none
+  found.
+- Every added line in both README.md's and contract.md's diffs scanned programmatically (not
+  eyeballed) for actual U+2014/U+2013 characters; zero found, and the one pre-existing em dash
+  in the file confirmed to sit on an unchanged context line (the "recording below" blockquote
+  phrasing, pre-existing, out of this diff's scope).
+- scope_paths and review_routing.json pattern-matched against the exact staged file list; no
+  drift, no silently-skipped reviewer -- scope-auditor is genuinely the only one required.
+- Doc-sync hunt: confirmed no other doc in the repo still asserts "Forward P/E" as a current
+  card metric, so the new screenshot doesn't create a fresh contradiction elsewhere.
 
-Non-blocking observation, not a FAIL basis: `docs/backlog/gemini_verdict_feedback.md`'s own
-`**Status:**` header still literally reads "Backlog" despite being functionally closed per
-`.claude/active_work.md`'s own "Recent work" narrative -- pre-existing staleness this diff didn't
-introduce (only the leading backlog-doc count changed), not in this task's `scope_paths`, left
-alone rather than scope-creeping into a fix.
+Non-blocking observation, not a FAIL basis: the screenshot's capture-method disclosure (the
+html2canvas limitation and the two-glyph patch) lives only in `contract.md`, not anywhere a
+portfolio reader of the README itself would see it. Judged as acceptable -- this documents how
+a documentation image was produced, not a claim about the app's behavior, and this repo's own
+convention keeps that class of implementation detail in the task contract/git history rather
+than in reader-facing prose (matching how the benchmark-expansion sign-inversion guard's
+rationale lives in the SQL comment + contract.md, not restated in README/docs).
