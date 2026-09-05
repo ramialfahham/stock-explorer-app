@@ -78,6 +78,23 @@ line-length violation CI flagged that should have been checked locally before th
 push -- run `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (and the rest of
 `validate:full`'s local-equivalent commands) before pushing, not just `pytest`/`dbt build`.
 
+**Portfolio-readiness audit, in progress (2026-09-04).** Owner requested a full end-to-end
+audit ("this repo has to be portfolio-ready... someone who knows what they're talking about
+should say, 'this guy knows his stuff'"). First fixes, MR !97
+(`docs/portfolio-readme-accuracy-fixes`), pushed and pipeline-green, awaiting merge: README's
+live-demo link + Stack table corrected from Streamlit Community Cloud to Render (the actual,
+already-shipped deploy target, verified live); `docs/media/discover-card.png` refreshed to
+match the current UI (old screenshot showed a stale tagline, old verdict-copy style, and a
+"Forward P/E" metric no longer on the card). Remaining portfolio items not yet started: GitLab
+topics sync, project description, a custom link-preview/avatar image, and the repo-visibility
+decision (currently private -- topics/badges/README quality are all moot if nobody can view
+the repo, flagged as the single most consequential open item, owner's call).
+
+Both sibling branches this MR merges against are already in `main`, both merged 2026-09-05:
+MR !95 (`test/browser-storage-coverage` -- closed out the coverage gap that used to be its own
+Open item, no longer separately listed) and MR !96 (`fix/discover-search-nav-state-loss`, Open
+item 4 below).
+
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
 - **Metric-assignment matrix**: perspectives (valuation/profitability/growth/solvency/

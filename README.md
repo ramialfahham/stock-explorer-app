@@ -8,11 +8,11 @@ Learning tool, **not** investment advice; batch fundamentals, **not** real-time 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status: prototype](https://img.shields.io/badge/status-prototype-orange)
 
-**▶ Live demo (prototype):** https://stock-explorer.streamlit.app/
+**▶ Live demo (prototype):** https://stock-explorer-app.onrender.com
 
-> Work in progress. The demo runs on Streamlit Community Cloud's free tier, which
-> **sleeps when idle** — a cold visit may show a "waking up" screen for ~30s. The
-> recording below shows the interaction regardless.
+> Work in progress. The demo runs on Render's free tier, which **sleeps when idle** --
+> a cold visit can take up to a minute to wake up. The recording below shows the
+> interaction regardless.
 
 <img src="docs/media/discover-card.png" width="400" alt="A company snapshot — save it to your learning list or move on">
 
@@ -89,7 +89,7 @@ The reasoning and trade-offs behind the core — deeper context lives in
 | Ingestion | Python + yfinance |
 | Transform | dbt-core + dbt-duckdb (ephemeral DuckDB) |
 | Warehouse | Supabase (Postgres) |
-| Frontend | Streamlit Community Cloud (prototype — swappable) |
+| Frontend | Streamlit on Render (prototype -- swappable) |
 
 ## Project layout
 
