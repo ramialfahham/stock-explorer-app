@@ -1,117 +1,69 @@
 # Task contract
 
-objective: Fix 3 of the 4 confirmed bugs from `docs/backlog/discover_saved_search_ux_findings.md`
-  -- the ones with a clear, technical, no-owner-decision-needed fix. Agent-executable per the
-  owner's own split of today's open-issues list ("doesn't need you at all... I can just do
-  these and show you the result"). The 4th bug ("Clear saved" has no confirmation/undo) and the
-  unconfirmed Saved-pagination risk are NOT in this task -- both need an owner product call
-  first, per that doc's own "Open questions."
-
-  **Root cause, found live (not guessed):** instrumented `_init_state()` and
-  `_render_explore_filters()` with temporary debug prints, drove the actual dev server through
-  the exact repro sequence (set a Discover filter, switch to Saved, switch back), and confirmed
-  `explore_market` goes fully absent from `st.session_state` at the top of the very next run
-  after the widget wasn't rendered for one run -- not just invalid, gone. This holds even though
-  the selectbox already had an explicit `key="explore_market"`: Streamlit evicts a KEYED
-  widget's session_state entry too, whenever that widget isn't instantiated on the immediately
-  preceding run. The original backlog doc's own guess (missing `key=` explains the Search box;
-  the filter's cause was separately unconfirmed) was half right and half wrong -- the Search box
-  bug IS the same eviction mechanism, but adding a bare `key=` to it (the doc's own candidate
-  fix) would NOT have worked, since a keyed widget is evicted too. Debug instrumentation was
-  removed before this diff; none of it ships.
-
-  **The fix**, applied identically to both the Discover filter selectboxes and the Search
-  text_input: stop giving the widget a `key=` at all. Read/write the durable value as a plain
-  session_state entry instead (immune to Streamlit's widget-key lifecycle since nothing here is
-  tied to a widget's own key), and seed each render's `index=`/`value=` from it. The widget's
-  own return value (not a session_state lookup) is compared against the stored value to detect
-  a change.
-
-  **Separately**, `search_selected` (which card's snapshot the Search tab pins open) is now
-  cleared whenever the query text itself changes -- an unrelated, purely app-logic bug (a stale
-  variable never reset, nothing to do with Streamlit's widget lifecycle) that the same backlog
-  doc flagged as bug #1: searching a query that happens to re-match a previously-opened card's
-  name/ticker as a substring was silently resurrecting that old card with no click.
-
-  All three fixes verified working by hand against the actual repro sequences in a running dev
-  server (not just read as fixed): Discover filter set to ASX 200 survives a Saved-then-back
-  round trip; a typed Search query survives a Discover-then-back round trip; searching "App"
-  after Apple->Microsoft no longer resurrects Apple's snapshot.
-
-  **No new unit tests for the 2 widget-persistence fixes.** Both are fundamentally about
-  Streamlit's own widget-render lifecycle across script reruns, which this repo's existing
-  convention explicitly does NOT unit-test (`tests/frontend/test_app.py`'s own docstring: test
-  pure logic, not the Streamlit-calling render function) -- a plain pytest unit test can't
-  exercise "was this widget instantiated on the immediately preceding run" without either
-  Streamlit's heavier `AppTest` harness or refactoring the render functions themselves, both
-  bigger asks than this fix. Verified instead by direct, repeatable interaction against a
-  running dev server, matching `docs/backlog/discover_list_performance.md`'s own "confirmed by
-  direct measurement" precedent for claims about Streamlit's runtime behavior specifically.
-
-  **The `search_selected`-clearing fix IS unit-tested**, since it's plain session_state
-  bookkeeping with no Streamlit widget involved -- extracted into its own function
-  (`_sync_search_query`) and tested directly in `tests/frontend/test_app.py`, the same
-  `st.session_state`-standalone approach `test_browser_storage.py` already established this
-  session. **Amended mid-review**: the first version of this contract wrongly folded this fix
-  into the same "Streamlit lifecycle, can't unit-test" exemption as the other two, while its own
-  objective section (above) correctly called it "nothing to do with Streamlit's widget
-  lifecycle" -- a direct self-contradiction cto-reviewer's round-1 pass caught. Fixed by
-  extracting and testing it, not by re-arguing the exemption.
+objective: Close out backlog item 4 ("`frontend/browser_storage.py` has zero test coverage") --
+  one of the agent-executable items from today's open-issues list, no owner decision needed.
+  `browser_storage.py` wraps `streamlit_extras`'s `local_storage_manager`, a real custom
+  component that only responds inside a live browser session; that's why it had no coverage
+  while every other frontend module does. Fixed by faking the component (a small `_FakeManager`
+  test double controlling `.ready()`/`.get()`) and exercising `st.session_state` directly --
+  confirmed live that `st.session_state` works as a real dict-like object outside `streamlit
+  run` (a documented "bare mode" warning, not a failure), so no session_state mock was needed.
+  Matches this repo's own established convention of testing pure/session-state logic directly
+  rather than the Streamlit-calling render shell (see `test_app.py`'s discover-pagination
+  comment for the precedent this follows).
 
 scope_paths:
-  - frontend/app.py
-  - tests/frontend/test_app.py (new tests for the extracted `_sync_search_query`, added
-    mid-review per cto-reviewer's round-1 finding)
+  - tests/frontend/test_browser_storage.py (new file)
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
+  - frontend/app.py, tests/frontend/test_app.py (added by amendment -- merge pass-through
+    only, see below; never hand-edited on this branch)
 
-decisions_reserved: none for the 3 bugs fixed here -- pure technical fix, no product/wording
-  decision, no new mechanism (an unkeyed-widget-plus-manual-session-state pattern is a standard,
-  well-known Streamlit idiom for exactly this class of bug, not something invented for this
-  task). Separately, recording one small owner decision already made today outside this task's
-  own subject: repo hosting stays GitLab-only while the GitHub account remains suspended (the
-  `origin` remote), revisit only if that account is recovered -- added to
-  `.claude/active_work.md`'s Standing decisions since it came up today and the owner asked not
-  to be asked again.
+decisions_reserved: none -- this is pure test-coverage addition for existing, unchanged
+  behavior. No metric, copy, or product decision anywhere in scope.
 
 done_when:
-  - `frontend/app.py`: Discover's Market/Sector selectboxes and Search's text_input all
-    unkeyed, reading/writing their durable value as a plain session_state entry, seeded via
-    `index=`/`value=` each render. `search_selected`-clearing logic extracted into
-    `_sync_search_query(query)`, called from `_render_search_tab`.
-  - All three fixes verified by direct interaction against a running dev server, not just
-    inferred from the code: filter persists Discover->Saved->Discover; Search text persists
-    Discover->Search->Discover; a re-matching later query does not resurrect a stale selection.
-  - `_sync_search_query` unit-tested in `tests/frontend/test_app.py`: unchanged query leaves a
-    pinned selection alone; a changed query (including clearing the box entirely) clears it.
-    Verified the tests actually catch the regression, not just pass: temporarily stripped the
-    clearing logic (kept only the query-persist line), confirmed 2 of the 4 new tests fail,
-    restored from a backup, confirmed the full suite green again.
-  - Full `pytest` suite green (486 passed -- 482 plus the 4 new tests; this branch is cut from
-    `main`, which does not yet include the separate, not-yet-merged
-    `test/browser-storage-coverage` branch's 23 tests).
-  - `docs/backlog/discover_saved_search_ux_findings.md` is NOT edited in this task (a
-    docs-accuracy update reflecting these 3 fixes belongs to whoever next touches that doc for
-    the remaining 2 items, to avoid re-opening a separately-reviewed file for an unrelated
-    task) -- noted here so a reviewer doesn't expect it.
-  - `.claude/active_work.md`: this item closed out (moved from open-items framing to a short
-    "fixed" note or removed, per the established collapse-on-merge convention), plus the
-    GitLab-hosting decision recorded in Standing decisions.
+  - Every public function in `browser_storage.py` has at least one test:
+    `_parse_interactions` (pure -- every input shape: None, list, valid/invalid JSON string,
+    unexpected type), the pending-write queue (`_pending_store`/`_queue_storage_write`/
+    `_queue_interactions_write`), `get_interactions`/`storage_sync_pending` (including that
+    `get_interactions` returns a copy, not the live list), `append_interaction`/
+    `clear_interactions` (row shape, queued write, flags set, `st.rerun()` called), and
+    `ensure_interactions_loaded`'s full boot sequence: not-ready triggers exactly one rerun,
+    the boot flag prevents a second one, ready reads/parses/stores correctly,
+    `sync_pending` is set only when non-empty, and an already-loaded session returns the
+    cached value without re-reading the component. `_mount_manager`'s per-run-id caching also
+    covered (same run id reuses the instance, a new run id remounts).
+  - Tests prove the actual branch, not just "doesn't crash" -- e.g. the boot-rerun-guard test
+    asserts zero further `st.rerun()` calls once the flag is set, not just that the function
+    returns something.
+  - `pytest` full suite green (`505 passed`, up from 482 -- the 23 new tests, nothing else
+    regressed).
   - No em dash or en dash on any added line.
 
 impact_map:
-  - Purely additive-feeling UX fix: Discover's filter and Search's query box now behave the way
-    a reader would already assume they do (survive glancing at another tab). No visible change
-    to anyone who never left Discover/Search mid-session.
-  - No new dependency, no schema change, no CI change. `frontend/app.py` only.
-  - No verdict-computation or metric-definition change anywhere.
-  - Leaves 2 items from the same backlog doc open (Clear-saved confirmation, Saved pagination)
-    -- both still need an owner product call before any fix is scoped.
+  - Pure test addition. No production code in `frontend/browser_storage.py` (or anywhere else)
+    changed -- this task adds coverage for existing, unmodified behavior, nothing more.
+  - No CI, dbt, or Supabase surface touched.
 
-amendments: cto-reviewer's round-1 pass found the original contract's "no new tests" reasoning
-  self-contradicted itself (see the objective section above) and that the `search_selected` fix
-  is genuinely pure, testable logic this repo's own established convention already has a
-  pattern for. Fixed by extracting `_sync_search_query` and testing it directly, not by
-  re-arguing the exemption. The two widget-persistence fixes remain untested for the reasons
-  given, which cto-reviewer's round-1 pass did not dispute.
+amendments: scope-auditor's round-1 review correctly caught an out-of-scope edit: the
+  `.claude/active_work.md` diff had also rewritten an unrelated open item (the Supabase
+  free-tier pause risk) to "resolved," based on a live check done today but with no
+  corroborating artifact in the repo and no connection to this task's own objective/scope_paths.
+  Reverted that item back to its original text unchanged; the Supabase check itself was real
+  (a live query succeeded) but belongs in whichever task's handover update actually concerns it,
+  not bundled into a test-coverage task's contract. No other change.
+
+  2026-09-05 -- merging `main` into this branch. `main` advanced (MR !96,
+  `fix/discover-search-nav-state-loss`, merged) after this branch was cut. Brought `main` in
+  via `git merge` so this branch stays current before it merges. Conflicts confined to
+  `.claude/active_work.md`/`contract.md`/`review.md`; `frontend/app.py`/`tests/frontend/test_app.py`
+  arrive from `main` unmodified (confirmed `git diff main -- frontend/app.py
+  tests/frontend/test_app.py` empty -- this branch never hand-edited them). This merge uses the
+  exact same `commit_review_gate.py` fix, method, and reasoning as MR !97's identical situation
+  -- full account (a hook bug found and fixed: `_staged_diff()` now excludes
+  `.claude/task/review.md` from what it hashes, since a merge commit forces `review.md`'s own
+  conflict resolution into the same atomic commit as the substantive change, unlike a normal
+  task where the two-commit convention keeps them apart) is in
+  `docs/portfolio-readme-accuracy-fixes`'s `.claude/task/contract.md`, not repeated here.
