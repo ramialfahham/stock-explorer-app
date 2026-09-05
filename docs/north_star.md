@@ -141,6 +141,7 @@ one; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s 480px smoke checkl
 - Adds ticker to **Saved**.
 - Removes from scoped discover pool.
 - Entry point for headlines and external research (Yahoo Finance link on card footer).
+- Reversible: removing a company from Saved re-adds it to the scoped discover pool.
 
 ### Not now (Skip)
 

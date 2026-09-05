@@ -64,8 +64,14 @@ Headlines load automatically when the user opens a saved company (Yahoo Finance,
 │ Airbus · AIR.PA                             │  ← card identity (once)
 │ Industrials (8 companies)                   │
 │ … summary, metrics …                        │
+├─────────────────────────────────────────────┤
+│ Remove from saved                           │  ← plain in-flow button, below the card
 └─────────────────────────────────────────────┘
 ```
+
+**Remove from saved:** a single click, no confirmation (unlike the bulk "Clear saved" action
+in the "⋯" menu, which does confirm -- see `discover_header.md`). Removes just this one company
+and returns to the list; the ticker reappears in the scoped Discover pool.
 
 Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.md`](disclosure_pattern.md).
 

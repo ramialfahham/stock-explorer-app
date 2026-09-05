@@ -144,8 +144,27 @@ def render_overflow_menu(
         unsafe_allow_html=True,
     )
     st.markdown('<div class="ss-menu-actions-divider"></div>', unsafe_allow_html=True)
-    if st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
-        clear_interactions()
-        on_clear_saved()
+    if st.session_state.get("confirm_clear_saved"):
+        noun = "company" if saved_count == 1 else "companies"
+        st.markdown(
+            f"Clear all {saved_count} saved {noun}? This can't be undone.",
+        )
+        col_cancel, col_confirm = st.columns(2)
+        with col_cancel:
+            if st.button("Cancel", key="menu_clear_saved_cancel", use_container_width=True):
+                st.session_state["confirm_clear_saved"] = False
+                st.rerun()
+        with col_confirm:
+            if st.button(
+                "Clear all", key="menu_clear_saved_confirm", use_container_width=True
+            ):
+                # clear_interactions() ends with its own st.rerun(), which halts the rest
+                # of this script run -- so the flag reset and on_clear_saved() must run
+                # BEFORE calling it, not after, or they'd never execute.
+                st.session_state["confirm_clear_saved"] = False
+                on_clear_saved()
+                clear_interactions()
+    elif st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
+        st.session_state["confirm_clear_saved"] = True
         st.rerun()
     _render_about_data(cards=cards, counts=eligible_counts)

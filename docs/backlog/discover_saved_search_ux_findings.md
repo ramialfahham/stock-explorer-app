@@ -1,10 +1,18 @@
 # Discover / Saved / Search UX simulation findings
 
-**Status:** Open. Found 2026-09-03 during a full click-through simulation of Discover, Saved,
-and Search, requested by the owner 2026-08-31 ("a full user-flow simulation... to find further
-UX inconsistencies beyond the ones already found and fixed"). Four bugs confirmed by hand in a
+**Status:** All 4 confirmed bugs fixed. The three navigation-state bugs (Search stale
+selection, Search box text lost on tab switch, Discover filter reset on tab switch) were fixed
+2026-09-04 (`fix/discover-search-nav-state-loss`, merged into `main`) without editing this
+doc, per that task's own disclosed deferral. "Clear saved" confirmation was fixed 2026-09-05
+(`feat/saved-clear-confirm-remove`), which is the task that brought this doc's own status up
+to date. The one structural risk (Saved pagination) remains open, unconfirmed as a felt
+problem -- see Open questions.
+
+Found 2026-09-03 during a full click-through simulation of Discover, Saved, and Search,
+requested by the owner 2026-08-31 ("a full user-flow simulation... to find further UX
+inconsistencies beyond the ones already found and fixed"). Four bugs confirmed by hand in a
 running local instance (not just read from code), plus one structural risk that could not be
-fully reproduced at the volume tested. No fixes chosen or shipped yet.
+fully reproduced at the volume tested.
 
 ## Summary
 
@@ -89,24 +97,22 @@ pass.
 
 ## Open questions (owner decisions, not answered here)
 
-- **Fix direction for the two confirmed navigation-state bugs (Search box text, Discover
-  filter).** Once the Discover-filter mechanism is actually confirmed (see above), is the fix
-  "give both widgets an explicit `key=` backed by persistent session_state" (matching how the
-  filter selectboxes are *already* keyed, so this alone may not be sufficient), or something
-  else entirely depending on what the instrumented pass finds?
-- **Fix direction for the Search stale-selection bug.** The simplest fix is clearing
-  `search_selected` whenever `query` changes (e.g. resetting it inside `_render_search_tab` the
-  moment the current query no longer produces a match containing the previously-selected key,
-  or simply on every query change). Worth confirming this doesn't conflict with any intended
-  "keep the open card visible while refining a search" behavior -- nothing in
-  `docs/north_star.md`'s two-line Search description suggests that's intended, but it's the
-  kind of assumption worth a quick explicit check rather than silently deciding.
-- **Is "Clear saved" acceptable as-is, or does it need a confirmation step?** This is a product
-  risk call, not an engineering one -- how much does accidentally losing a curated saved list
-  matter for this app's actual usage pattern? A single-step "Are you sure?" dialog (Streamlit
-  has no native modal-confirm primitive; would need `st.session_state`-driven two-click pattern,
-  e.g. "Clear saved" → "Confirm clear" for a few seconds, or a checkbox-gated button) is a small,
-  contained UI change if the owner wants one.
+- ~~Fix direction for the two confirmed navigation-state bugs (Search box text, Discover
+  filter)~~ **Answered and shipped 2026-09-04**: both were the same root cause -- a Streamlit
+  widget's `session_state` entry is evicted whenever it isn't rendered on the immediately
+  preceding run, true even for an already-keyed widget. Fixed by making both unkeyed and
+  managing the durable value as a plain `session_state` entry instead. See
+  `fix/discover-search-nav-state-loss`'s own contract/review for the full mechanism.
+- ~~Fix direction for the Search stale-selection bug~~ **Answered and shipped 2026-09-04**:
+  `search_selected` is now cleared whenever the query text changes (`_sync_search_query`),
+  confirmed not to conflict with any intended "keep the card open while refining" behavior.
+- ~~Is "Clear saved" acceptable as-is, or does it need a confirmation step?~~ **Answered and
+  shipped 2026-09-05**: yes, needs one. Implemented as the two-click, in-place popover swap
+  candidate direction #2 below already sketched -- see this task's own contract/review for the
+  full account, including a related fix this task's planning turned up
+  (`frontend/explore_filters.py`'s separate "is this saved" copy had no concept of reversal,
+  which per-item removal -- a second, related feature added in the same task -- would have
+  exposed as a worse bug than the one being fixed).
 - **Does Saved need pagination now, or wait for evidence of real-world scale?** Unlike
   Discover's ~930-row catalogue (guaranteed large for every user), Saved's size is entirely
   user-curated -- most users may never approach a count where this matters. Worth deciding
@@ -116,13 +122,10 @@ pass.
 
 ## Candidate directions (not decisions, for owner discussion)
 
-1. **Navigation-state bugs (Search box, Discover filter, Search stale-selection):** likely one
-   contained engineering pass once the Discover-filter mechanism is confirmed, touching
-   `frontend/app.py` only. No new dependency or mechanism needed for any of the three.
-2. **"Clear saved" confirmation:** smallest version is a two-click confirm (button label
-   changes to "Confirm clear" for ~5 seconds or until another action, no new component needed).
-   A modal-style confirm would be more standard but is a heavier UI pattern this app doesn't use
-   anywhere else today.
+1. ~~Navigation-state bugs (Search box, Discover filter, Search stale-selection)~~ **Shipped
+   2026-09-04**, contained to `frontend/app.py` as predicted.
+2. ~~"Clear saved" confirmation~~ **Shipped 2026-09-05** as the two-click, no-new-component
+   version predicted here.
 3. **Saved pagination:** reuse `DISCOVER_PAGE_SIZE`'s exact mechanism
    (`frontend/app.py`/`frontend/row_ui.py`), likely a small, low-risk change given it's already
    proven in production for Discover -- mostly a question of whether it's worth doing now.

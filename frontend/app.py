@@ -29,6 +29,7 @@ from explore_filters import (
     filter_pool,
     filter_scope_summary,
     market_filter_options,
+    saved_keys_with_order,
     sectors_for_market,
 )
 from markets import eligible_counts_by_market, latest_snapshot_label
@@ -145,24 +146,13 @@ def _discover_page_slice(pool: list[dict], page: int) -> tuple[list[dict], int]:
 
 
 def _saved_count(interactions: list[dict]) -> int:
-    return sum(1 for row in interactions if row.get("action") == "save")
+    return len(saved_keys_with_order(interactions))
 
 
 def _saved_cards(client, interactions: list[dict]) -> list[dict]:
-    saved_keys = {
-        (i["market_code"], i["ticker"]) for i in interactions if i.get("action") == "save"
-    }
-    save_order: dict[tuple[str, str], str] = {}
-    for row in interactions:
-        if row.get("action") != "save":
-            continue
-        key = (row["market_code"], row["ticker"])
-        created = row.get("created_at") or ""
-        if key not in save_order or created >= save_order[key]:
-            save_order[key] = created
-
+    save_order = saved_keys_with_order(interactions)
     cards = _ensure_all_cards(client)
-    saved = [c for c in cards if (c["market_code"], c["ticker"]) in saved_keys]
+    saved = [c for c in cards if (c["market_code"], c["ticker"]) in save_order]
     saved.sort(
         key=lambda c: save_order.get((c["market_code"], c["ticker"]), ""),
         reverse=True,
@@ -453,6 +443,10 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
 
     render_saved_news(selected, widget_key_prefix="saved")
     render_stock_card(selected, widget_key_prefix="saved")
+    if st.button("Remove from saved", key="saved_remove_current", type="secondary"):
+        st.session_state["saved_focus_key"] = None
+        append_interaction(selected, "unsave")
+        st.rerun()
 
 
 def _select_search_row(card: dict) -> None:
