@@ -38,6 +38,8 @@ scope_paths:
   - .claude/active_work.md (added by amendment -- see below)
   - frontend/app.py, tests/frontend/test_app.py (added by amendment -- merge pass-through
     only, see below; never hand-edited on this branch)
+  - tests/frontend/test_browser_storage.py (added by amendment 2026-09-05 -- MR !95 merge
+    pass-through, new file, never hand-edited on this branch)
 
 decisions_reserved: none for this task -- both fixes restore already-decided, already-shipped
   state (the Render deploy target; the current live card UI) rather than introducing new
@@ -144,3 +146,16 @@ With the hook fixed, this merge commit proceeds through the NORMAL flow: `_stage
 `review_routing.json`'s `frontend/*` pattern, requiring a cto-reviewer verdict in addition to
 scope-auditor -- both re-run against this corrected state, not assumed from the original
 task's review.
+
+2026-09-05 (second round) -- `main` advanced again (MR !95, `test/browser-storage-coverage`,
+merged) while this branch was still open. Same situation as the first round, same resolution:
+merged `main` in again; the only conflicts were `.claude/active_work.md`/`contract.md`/
+`review.md`; `tests/frontend/test_browser_storage.py` (MR !95's actual substantive work)
+arrives as a clean, non-conflicting new file (this branch never touched it, confirmed by its
+absence from any conflict). `active_work.md`'s conflict resolved the same way as before:
+adopted `main`'s side wherever it described something now actually merged (dropped this
+branch's own stale "MR !95 ... not yet merged" line, since it now is), keeping this branch's
+own portfolio-audit paragraph up to date in the same edit. No new hook work needed -- the
+2026-09-05 (first round) fix already handles this cleanly. `tests/*` also matches
+`review_routing.json`, so cto-reviewer is required again alongside scope-auditor for this
+round's diff.

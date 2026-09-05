@@ -1,6 +1,6 @@
 # Review
 
-diff_sha256: 9885f5b581d469548786cd4980db13b5eb052c8cf6d023d27db297e21589d821
+diff_sha256: 0f4731cece4870cbd555d6f56cf373e4e00dbddae602a77382a321470b026356
 
 ## scope-auditor
 VERDICT: PASS
@@ -110,3 +110,53 @@ risks_checked:
   this review was running, both times matching.
 - Confirmed fail-open polarity unchanged (`main()`'s `try/except Exception: return 0` around
   `_gate()`) and confirmed no new dependency/CI/cost/mechanism was introduced by the fix.
+
+## Second merge round, 2026-09-05
+
+`main` advanced again (MR !95, `test/browser-storage-coverage`, merged) while this branch was
+still open. Same shape as the first round: merged `main` in; conflicts confined to
+`.claude/active_work.md`/`contract.md`/`review.md`; `tests/frontend/test_browser_storage.py`
+(MR !95's real work) arrives as a clean new file, no conflict, this branch never touched it.
+Full account in `contract.md`'s "2026-09-05 (second round)" amendment.
+
+## scope-auditor (round 2)
+First pass FAILED on one real finding: the new "Both sibling branches..." paragraph near the
+top of `.claude/active_work.md` cited Open Items by stale, pre-renumbering index -- this same
+diff deleted the old item 4 (browser-storage coverage, now resolved) and shifted the list
+(old 5->4, 6->5, 7->6), correctly updating the list's own internal "item 4 above"
+cross-reference in the same edit, but missing the top paragraph's two pointers (MR !95 credited
+with "Open item 4 below" when item 4 is actually MR !96's work; MR !96 credited with "Open item
+5" when item 5 is an unrelated backlog-docs item). Fixed: MR !95 now narrated without a number
+(its item was deleted, not renumbered), MR !96 correctly points at item 4.
+
+Re-check verdict:
+VERDICT: PASS
+risks_checked:
+- The paragraph's remaining numeric citation ("Open item 4 below" for MR !96) verified against
+  current item 4's actual content -- matches the nav-state-loss topic.
+- Exhaustive grep (multiple patterns, not just "item [0-9]") found only two numeric
+  cross-references in the whole file; both point at the correct current item after
+  renumbering, including the one at line 207 that had to be updated in this same fix.
+- Open items list confirmed 1-6, sequential, no gaps/duplicates, via two independent methods.
+- Staged diff hash independently recomputed and cross-checked against the live commit-gate
+  hook's own `--staged-hash` output -- identical.
+- Full Unicode dash scan on this file's diff -- zero em/en dashes.
+- Repo-wide check for renumbering fallout outside this file -- none; only hits are frozen
+  historical archives (`docs/handover_*.md`), not required to track live renumbering.
+
+## cto-reviewer (round 2)
+VERDICT: PASS
+risks_checked:
+- Merge-conflict scope claim verified against git's own record (`.git/MERGE_MSG`), not
+  narrative: conflicts confined to exactly the three shared scratch files.
+- `tests/frontend/test_browser_storage.py` confirmed byte-identical to `main` (`git diff main
+  --` empty) and confirmed to exist on `main` at matching line count, ruling out a
+  false-empty-diff; content skimmed, legitimate already-reviewed test code, no secrets.
+- `scope_paths` expansion and the `tests/*` -> cto-reviewer routing trigger both confirmed by
+  reading the actual files (`contract.md`, `review_routing.json`), not trusting prose.
+- Full Unicode-exact scan of the three text files' staged diff: zero em/en dashes.
+- No new dependency, hook, CI file, or secret-shaped string anywhere in this round's staged
+  diff; the hook fix this round relies on (review.md hash exclusion) confirmed still live in
+  `~/.claude/hooks/commit_review_gate.py`.
+- README.md, docs/media/discover-card.png, frontend/app.py, tests/frontend/test_app.py
+  confirmed absent from this round's staged diff (round-1 territory untouched).
