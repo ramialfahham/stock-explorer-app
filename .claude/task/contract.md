@@ -17,6 +17,8 @@ scope_paths:
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
+  - frontend/app.py, tests/frontend/test_app.py (added by amendment -- merge pass-through
+    only, see below; never hand-edited on this branch)
 
 decisions_reserved: none -- this is pure test-coverage addition for existing, unchanged
   behavior. No metric, copy, or product decision anywhere in scope.
@@ -52,3 +54,16 @@ amendments: scope-auditor's round-1 review correctly caught an out-of-scope edit
   Reverted that item back to its original text unchanged; the Supabase check itself was real
   (a live query succeeded) but belongs in whichever task's handover update actually concerns it,
   not bundled into a test-coverage task's contract. No other change.
+
+  2026-09-05 -- merging `main` into this branch. `main` advanced (MR !96,
+  `fix/discover-search-nav-state-loss`, merged) after this branch was cut. Brought `main` in
+  via `git merge` so this branch stays current before it merges. Conflicts confined to
+  `.claude/active_work.md`/`contract.md`/`review.md`; `frontend/app.py`/`tests/frontend/test_app.py`
+  arrive from `main` unmodified (confirmed `git diff main -- frontend/app.py
+  tests/frontend/test_app.py` empty -- this branch never hand-edited them). This merge uses the
+  exact same `commit_review_gate.py` fix, method, and reasoning as MR !97's identical situation
+  -- full account (a hook bug found and fixed: `_staged_diff()` now excludes
+  `.claude/task/review.md` from what it hashes, since a merge commit forces `review.md`'s own
+  conflict resolution into the same atomic commit as the substantive change, unlike a normal
+  task where the two-commit convention keeps them apart) is in
+  `docs/portfolio-readme-accuracy-fixes`'s `.claude/task/contract.md`, not repeated here.
