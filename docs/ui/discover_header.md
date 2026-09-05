@@ -80,7 +80,9 @@ Popover content order:
 
 1. **Right now** — tab-aware one-liner (`right_now_line`)
 2. **Tip** — Discover / Saved / Search hint
-3. Actions (clear saved)
+3. Actions (clear saved -- confirms in place before wiping the list: "Clear saved" swaps to a
+   "Clear all N saved companies? This can't be undone." message with Cancel/Clear-all buttons,
+   no second popover)
 4. **About the data** expander: refresh cadence (every two weeks), fundamentals-per-company gate, market breakdown; caption when `business_summary` export is missing
 
 ---

@@ -11,6 +11,7 @@ from explore_filters import (  # noqa: E402
     filter_pool,
     filter_scope_summary,
     market_filter_options,
+    saved_keys_with_order,
     walk_progress_line,
 )
 
@@ -132,6 +133,63 @@ def test_filter_pool_excludes_saved() -> None:
         sector=ALL_SECTORS,
     )
     assert [c["ticker"] for c in pool] == ["MSFT"]
+
+
+def test_filter_pool_reincludes_a_ticker_after_unsave() -> None:
+    """The bug this guards: filter_pool used to have its own separate 'is this saved' copy
+    with no concept of unsave, so removing a saved company from the Saved tab would leave it
+    excluded from Discover forever, with no way back in since Search has no Save action."""
+    cards = [_card("AAPL", "Technology"), _card("MSFT", "Technology")]
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t1"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "unsave", "created_at": "t2"},
+    ]
+    pool = filter_pool(
+        cards,
+        interactions,
+        market_code="us_sp500",
+        sector=ALL_SECTORS,
+    )
+    assert {c["ticker"] for c in pool} == {"AAPL", "MSFT"}
+
+
+def test_saved_keys_with_order_absent_when_never_saved() -> None:
+    assert saved_keys_with_order([]) == {}
+
+
+def test_saved_keys_with_order_present_after_a_single_save() -> None:
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t1"},
+    ]
+    assert saved_keys_with_order(interactions) == {("us_sp500", "AAPL"): "t1"}
+
+
+def test_saved_keys_with_order_absent_after_save_then_unsave() -> None:
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t1"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "unsave", "created_at": "t2"},
+    ]
+    assert saved_keys_with_order(interactions) == {}
+
+
+def test_saved_keys_with_order_present_with_second_timestamp_after_resave() -> None:
+    """Save, unsave, save again -- must key on the SECOND save's timestamp, not the first,
+    so a re-saved company sorts as freshly saved rather than retaining a stale position."""
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t1"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "unsave", "created_at": "t2"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t3"},
+    ]
+    assert saved_keys_with_order(interactions) == {("us_sp500", "AAPL"): "t3"}
+
+
+def test_saved_keys_with_order_absent_when_unsaved_without_ever_saving() -> None:
+    """An unsave with no prior save shouldn't crash or appear saved -- e.g. a stale/replayed
+    interaction row for a ticker this device never actually saved."""
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "unsave", "created_at": "t1"},
+    ]
+    assert saved_keys_with_order(interactions) == {}
 
 
 def test_dedupe_coalesces_summary_from_older_snapshot() -> None:

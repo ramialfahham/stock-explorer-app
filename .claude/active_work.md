@@ -80,8 +80,7 @@ push -- run `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (and the re
 
 **Portfolio-readiness audit, in progress (2026-09-04).** Owner requested a full end-to-end
 audit ("this repo has to be portfolio-ready... someone who knows what they're talking about
-should say, 'this guy knows his stuff'"). First fixes, MR !97
-(`docs/portfolio-readme-accuracy-fixes`), pushed and pipeline-green, awaiting merge: README's
+should say, 'this guy knows his stuff'"). First fixes, MR !97, merged 2026-09-05: README's
 live-demo link + Stack table corrected from Streamlit Community Cloud to Render (the actual,
 already-shipped deploy target, verified live); `docs/media/discover-card.png` refreshed to
 match the current UI (old screenshot showed a stale tagline, old verdict-copy style, and a
@@ -90,10 +89,31 @@ topics sync, project description, a custom link-preview/avatar image, and the re
 decision (currently private -- topics/badges/README quality are all moot if nobody can view
 the repo, flagged as the single most consequential open item, owner's call).
 
-Both sibling branches this MR merges against are already in `main`, both merged 2026-09-05:
-MR !95 (`test/browser-storage-coverage` -- closed out the coverage gap that used to be its own
-Open item, no longer separately listed) and MR !96 (`fix/discover-search-nav-state-loss`, Open
-item 4 below).
+All three sibling branches from this stretch of work are merged into `main` as of 2026-09-05:
+MR !95 (`test/browser-storage-coverage`), MR !96 (`fix/discover-search-nav-state-loss`, Open
+item 4 below), MR !97 (`docs/portfolio-readme-accuracy-fixes`, above).
+
+**Saved-tab confirm + per-item removal, in progress (2026-09-05), branch
+`feat/saved-clear-confirm-remove`.** Two owner-decided product fixes from a "what product work
+is left" review: "Clear saved" (the bulk wipe in the "⋯" menu) now confirms in place before
+acting (two-click, session-state-driven label swap -- no second nested popover, since
+`st.popover` shouldn't nest); a single saved company can now be removed on its own (previously
+only the all-or-nothing bulk clear existed). Planning turned up a real, scope-expanding bug
+before any code was written, escalated and approved: `frontend/explore_filters.py` had its own
+separate "is this saved" copy (no concept of reversal) feeding Discover's saved-exclusion
+filter -- shipping per-item removal without fixing it would have made a removed ticker vanish
+from Saved but stay excluded from Discover forever, with no way back in since Search has no
+Save action. Fixed by a single shared `saved_keys_with_order()` helper in
+`explore_filters.py` that both the Discover-pool filter and the Saved tab's own count/list now
+delegate to, so the two can never disagree again. A second real bug caught during plan
+validation, before shipping: `clear_interactions()` ends with its own `st.rerun()`, which halts
+the rest of the script run, so the confirm-flag reset had to be reordered to fire *before* that
+call, not after, or the confirm prompt would get stuck reopening with an impossible "Clear all
+0 saved companies?". Both bugs verified fixed by hand against the running dev server, not just
+reasoned about. Full account, review trail, and a scope-auditor correction round (2 stray em
+dashes, one file missing from `scope_paths`, a stale `_saved_keys_with_order` name, and
+strengthening the per-item-removal decision's owner-visibility trail) in this branch's own
+`.claude/task/contract.md`/`review.md`.
 
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
@@ -210,6 +230,12 @@ each batch and nobody tracking it as of the last check.
    (1st/15th) creates gaps up to ~15 days between writes, longer than the pause threshold.
    Worth checking whether this is silently affecting production right now, and deciding
    keep-alive vs. a paid tier.
+7. **`supabase/migrations/001_initial_schema.sql`'s `user_interactions.action` CHECK
+   constraint only allows `('save', 'skip')`**, stale as of 2026-09-05 against the app-level
+   introduction of a third action, `'unsave'` (per-item Saved removal). No live path writes to
+   this table today (`browser_storage.py` only ever touches browser localStorage), so nothing
+   is broken yet -- but whoever eventually builds the cross-device sync feature this table is
+   reserved for will need to widen the constraint first.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 
@@ -241,14 +267,22 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
 
 ## Context / operational notes
 
-- **Review mechanics**: the blocking review gate is `commit_review_gate.py`, wired
-  project-scoped in this repo's own `.claude/settings.json`. `diff_sha256` =
-  `sha256(git diff --staged --no-renames --no-abbrev)`, get it via
-  `commit_review_gate.py --staged-hash`. Reviewer agents are NOT registered as subagent_types
-  in this frontend -- dispatch them as `general-purpose` agents with the role `.md` inlined
-  (roles live in the `dbt-agent-kit` plugin's `agents/` dir, plus
+- **Review mechanics**: the blocking review gate is `commit_review_gate.py` (global,
+  `~/.claude/hooks/`, not tracked in this repo). `diff_sha256` =
+  `sha256(git diff --staged --no-renames --no-abbrev -- . ":(exclude).claude/task/review.md")`
+  -- `review.md`'s own bytes are excluded from what gets hashed (fixed 2026-09-05; a merge
+  commit forces `review.md`'s conflict resolution into the same atomic commit as the
+  substantive change, and no hash it holds can describe a diff that includes its own bytes --
+  full account in `docs/portfolio-readme-accuracy-fixes`'s MR !97 history). Get the live hash
+  via `commit_review_gate.py --staged-hash`. Reviewer agents are NOT registered as
+  subagent_types in this frontend -- dispatch them as `general-purpose` agents with the role
+  `.md` inlined (roles live in the `dbt-agent-kit` plugin's `agents/` dir, plus
   `.claude/agents/equity-analyst-reviewer.md`, the one role this repo keeps in its own tree).
-  `review.md` + this file are a separate, artifact-only commit after the reviewed one.
+  `review.md` + this file are STILL conventionally committed separately from the reviewed
+  change (keeps `git log` readable, one commit per concern), but this is no longer load-bearing
+  now that `review.md` is hash-excluded -- committing it alongside the change it describes
+  works fine too, and happens by accident sometimes (e.g. when `review.md` is staged to update
+  its hash and never unstaged before committing). Not worth guarding against.
 - **`review_routing.json` routes by staged PATH, not by what the change does** -- and two
   patterns can both match one file (e.g. `*.sql` -> analytics-engineer-reviewer AND
   `supabase/*` -> data-engineer-reviewer both match a Supabase migration file), requiring

@@ -114,12 +114,23 @@ def attach_assessments(
     return result
 
 
-def _saved_keys(interactions: list[dict[str, Any]]) -> set[tuple[str, str]]:
-    return {
-        _card_key(row)
-        for row in interactions
-        if row.get("action") == "save"
-    }
+def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
+    """Currently-saved (market_code, ticker) keys, each mapped to its latest save
+    timestamp. A key's most recent action (save or unsave) determines current state --
+    absent entirely if unsaved, or never saved. Shared with app.py's `_saved_count`/
+    `_saved_cards`, which is why this is public rather than the usual module-private
+    underscore convention -- it's the single source of truth for "is this saved" so
+    Discover's exclusion and the Saved tab's own list can never disagree."""
+    latest: dict[tuple[str, str], tuple[str, str]] = {}
+    for row in interactions:
+        action = row.get("action")
+        if action not in ("save", "unsave"):
+            continue
+        key = _card_key(row)
+        created = row.get("created_at") or ""
+        if key not in latest or created >= latest[key][0]:
+            latest[key] = (created, action)
+    return {key: created for key, (created, action) in latest.items() if action == "save"}
 
 
 def filter_pool(
@@ -130,7 +141,7 @@ def filter_pool(
     sector: str,
 ) -> list[dict[str, Any]]:
     """Return card-eligible rows in scope, excluding saved tickers."""
-    saved = _saved_keys(interactions)
+    saved = saved_keys_with_order(interactions)
     pool: list[dict[str, Any]] = []
     for card in cards:
         if not card.get("is_card_eligible"):
