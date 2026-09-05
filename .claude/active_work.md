@@ -90,9 +90,9 @@ description, a custom link-preview/avatar image, and the repo-visibility decisio
 private -- topics/badges/README quality are all moot if nobody can view the repo, flagged as
 the single most consequential open item, owner's call).
 
-Two unrelated branches are pushed and pipeline-green, awaiting merge (see Open items 4 and 5
-below for what each closes): `test/browser-storage-coverage` (MR !95) and
-`fix/discover-search-nav-state-loss` (MR !96).
+One unrelated branch is pushed and pipeline-green, awaiting merge (see Open item 4 below for
+what it closes): `test/browser-storage-coverage` (MR !95). `fix/discover-search-nav-state-loss`
+(MR !96, see Open item 5) merged 2026-09-04.
 
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
@@ -141,6 +141,9 @@ below for what each closes): `test/browser-storage-coverage` (MR !95) and
 - **No em/en-dash on any line added to this repo, anywhere, any file** -- flagged repeatedly
   this session; use `--` instead, matching the convention already used throughout this repo's
   own prose.
+- **Repo hosting: GitLab-only while the GitHub account (`origin`) remains suspended.** Owner
+  confirmed 2026-09-04, explicitly conditional -- revisit only if that account is recovered, not
+  something to re-ask otherwise.
 
 ## Market coverage
 
@@ -188,21 +191,17 @@ each batch and nobody tracking it as of the last check.
    Streamlit component awkward to test without a live session. Pre-existing gap, not
    introduced by any specific branch. **Fix pushed 2026-09-04 (MR !95, 23 tests, pipeline
    green), not yet merged** -- re-check this item once that MR lands.
-5. **Full Discover/Saved/Search user-flow simulation done 2026-09-03**, findings logged to
-   `docs/backlog/discover_saved_search_ux_findings.md` -- 4 confirmed, reproducible bugs (a
-   stale Search selection resurfacing on an unrelated later query; the Search box's typed text
-   and Discover's market/sector filter both silently reset on tab switch, two different
-   mechanisms, one not yet root-caused; "Clear saved" is one click with no confirmation, no
-   undo, and also wipes skip history) plus one unconfirmed structural risk (Saved has no
-   pagination, same class of gap MR !70 fixed for Discover, not reproduced as felt lag at the
-   17-save volume tested). No fixes chosen yet -- owner decisions needed, see that doc's "Open
-   questions." **Two of the four bugs (a stale Search selection resurfacing on an unrelated
-   later query; Discover's market/sector filter silently resetting on tab switch) have a fix
-   pushed 2026-09-04 (MR !96, pipeline green), not yet merged.** The Search-box reset (same
-   symptom, different mechanism -- a missing widget `key=`) is fixed by the same branch. The
-   other two (Clear-saved confirmation, Saved pagination) and the 3 content-decision items
-   (this item's own "Open questions", plus items 2 and 3 below) remain fully open, owner's
-   call.
+5. **3 of 4 bugs from the Discover/Saved/Search UX findings fixed 2026-09-04, merged**
+   (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
+   resurfacing on an unrelated later query, and the Search box / Discover filter both losing
+   their value on tab switch. Root cause, found live: a KEYED Streamlit widget's session_state
+   is evicted too when the widget isn't rendered for one script run, not just unkeyed ones as
+   first guessed -- the original doc's own candidate fix (add a bare `key=` to the Search box)
+   would not have worked. Fixed by making both widgets unkeyed and managing their durable value
+   as a plain session_state entry instead. Verified by hand against the real repro sequences in
+   a running dev server. Two items from that doc remain genuinely open, both needing an owner
+   product call first: "Clear saved" has no confirmation/undo, and Saved has no pagination
+   (unconfirmed as a felt problem at today's typical save counts).
 6. Three of the seven backlog docs in `docs/backlog/` are genuinely open (the other four are
    closed/resolved -- see that directory): `discover_metric_filters_phase2.md` (a prior
    attempt was built and reverted; needs redesign against its own stated revisit criteria),

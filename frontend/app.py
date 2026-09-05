@@ -60,6 +60,7 @@ def _init_state() -> None:
         "discover_focus_key": None,
         "saved_focus_key": None,
         "search_selected": None,
+        "search_query": "",
         "active_page": "Discover",
         "explore_market": default_market_filter(),
         "explore_sector": ALL_SECTORS,
@@ -263,6 +264,14 @@ def _on_filter_change() -> None:
 
 
 def _render_explore_filters(client) -> None:
+    """Market/sector selectboxes are deliberately unkeyed. A `key=`-bound widget's
+    session_state entry is evicted by Streamlit whenever the widget isn't instantiated on the
+    immediately preceding run -- true even with an explicit key, not just for unkeyed widgets --
+    and this popover's content only renders while on Discover (frontend/app.py's own
+    `if active == "Discover"` guard), so one glance at Saved or Search was silently wiping the
+    selection. Reading/writing the plain (non-widget) session_state value directly and seeding
+    each render's `index=` from it survives that eviction, since nothing here is tied to a
+    widget's own key lifecycle."""
     cards = _ensure_all_cards(client)
     market, sector = _explore_filters()
     summary = filter_scope_summary(market_code=market, sector=sector)
@@ -272,29 +281,36 @@ def _render_explore_filters(client) -> None:
         with st.popover("Filters"):
             market_labels = {code: label for code, label in market_filter_options(cards)}
             market_codes = [code for code, _ in market_filter_options(cards)]
-            if st.session_state.get("explore_market") not in market_codes:
-                st.session_state["explore_market"] = default_market_filter()
-            st.selectbox(
+            stored_market = st.session_state.get("explore_market", default_market_filter())
+            if stored_market not in market_codes:
+                stored_market = default_market_filter()
+            selected_market = st.selectbox(
                 "Market",
                 options=market_codes,
+                index=market_codes.index(stored_market),
                 format_func=lambda code: market_labels[code],
-                key="explore_market",
-                on_change=_on_filter_change,
             )
-            current_market = st.session_state.get("explore_market", default_market_filter())
+            if selected_market != stored_market:
+                st.session_state["explore_market"] = selected_market
+                _on_filter_change()
+                st.rerun()
             sector_options = [ALL_SECTORS] + sectors_for_market(
                 cards,
-                market_code=current_market,
+                market_code=selected_market,
             )
-            if st.session_state.get("explore_sector") not in sector_options:
-                st.session_state["explore_sector"] = ALL_SECTORS
-            st.selectbox(
+            stored_sector = st.session_state.get("explore_sector", ALL_SECTORS)
+            if stored_sector not in sector_options:
+                stored_sector = ALL_SECTORS
+            selected_sector = st.selectbox(
                 "Sector",
                 options=sector_options,
+                index=sector_options.index(stored_sector),
                 format_func=lambda value: "All sectors" if value == ALL_SECTORS else value,
-                key="explore_sector",
-                on_change=_on_filter_change,
             )
+            if selected_sector != stored_sector:
+                st.session_state["explore_sector"] = selected_sector
+                _on_filter_change()
+                st.rerun()
     with summary_col:
         st.markdown(
             f'<p class="ss-filter-summary">{html.escape(summary)}</p>',
@@ -443,12 +459,30 @@ def _select_search_row(card: dict) -> None:
     st.session_state["search_selected"] = _card_key(card)
 
 
+def _sync_search_query(query: str) -> None:
+    """Persist the query and, if it changed, clear any pinned selection -- plain
+    session_state bookkeeping, no Streamlit widget involved, so it's unit-tested directly
+    (test_app.py). A later query that happens to re-match an old selection's ticker/name as a
+    substring must not silently resurrect a card the reader never clicked for this query."""
+    stored_query = st.session_state.get("search_query", "")
+    if query != stored_query:
+        st.session_state["search_query"] = query
+        st.session_state["search_selected"] = None
+
+
 def _render_search_tab(client) -> None:
+    """Unkeyed for the same reason as `_render_explore_filters`'s market/sector
+    selectboxes -- this tab's content only renders while Search is the active tab, so a
+    `key=`-bound text_input would lose its typed text on every visit to Discover or Saved.
+    Reading/writing `search_query` as a plain session_state value and seeding `value=` from it
+    survives that."""
     query = st.text_input(
         "Search",
+        value=st.session_state.get("search_query", ""),
         placeholder="Ticker or company name",
         label_visibility="collapsed",
     ).strip()
+    _sync_search_query(query)
 
     if not query:
         return
