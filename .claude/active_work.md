@@ -12,29 +12,30 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-06)
 
-**MR !100, merged -- financial-type card capital-adequacy caveat, item 3 of the
-portfolio-readiness list** (from the 4-persona repo assessment). `frontend/card_copy.py`'s new
-`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant, rendered unconditionally on every financial-type
-card by `frontend/card_ui.py`'s `_health_block_html`, regardless of `ai_read` state. Went
-through 4 equity-analyst-reviewer rounds and 2 scope-auditor rounds before landing -- both
-real, evidenced findings each time, not reviewer noise: the caveat wording wrongly said "this
-bank" when the render gate covers the whole GICS Financial Services sector, then twice
-understated what the card shows by enumerating perspectives instead of stating only the one
-invariant fact. Full trail in that branch's `.claude/task/review.md` (not carried forward here
--- per-task files reset each cycle).
+**MR !100, merged** -- financial-type card capital-adequacy caveat (item 3). New
+`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant on every financial-type card regardless of
+`ai_read` state. Took 4 equity-analyst-reviewer + 2 scope-auditor rounds: caveat wording
+wrongly said "this bank" for the whole GICS Financial Services sector, then twice understated
+the card's shown metrics -- final wording states only the one invariant fact rather than
+enumerating card contents that can drift.
 
-**Process note for future sessions, not just that task: `commit_review_gate.py`'s verdict
-parser requires the literal token `VERDICT:` to start its own line** (`^VERDICT:` regex, no
-prefix text before it on that line) -- writing `Round 2 VERDICT: PASS` on one line parses as
-NO verdict at all, silently, and the gate blocks with a generic "no verdict for X" message that
-looks identical to never having run the reviewer. Multi-round `review.md` entries need earlier
-rounds written as prose ("Round 1 FAILED ...", no colon-token) and only the final, operative
-round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line. Sanity-check with
-`python -c "..."` calling the hook's own `_sections`/`_verdict` functions directly against
-`review.md` before relying on a commit attempt to tell you.
+**Gotcha for future sessions, from that task**: `commit_review_gate.py`'s verdict parser needs
+the literal token `VERDICT:` at the start of its own line -- `Round 2 VERDICT: PASS` parses as
+no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as prose, only the
+final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
-**MR !101 (pushed, awaiting merge) -- pipeline alerting + ingestion checkpoint, item 2 of the
-same portfolio-readiness list.** Two halves:
+**MR !101 (pushed, mergeable, awaiting owner merge) -- pipeline alerting + ingestion
+checkpoint, item 2 of the same portfolio-readiness list.** Landed after !100 already merged,
+so this branch's own edits to the shared per-task handover files
+(`.claude/active_work.md`/`contract.md`/`review.md`) genuinely conflicted with main -- resolved
+by merging `main` into this branch (`contract.md`/`review.md` kept this branch's own version;
+`active_work.md` manually combined both). `frontend/`/`docs/data_contract.md` files the merge
+carried in from !100 are verified byte-identical to what already passed their own review and
+is already live on `main` (`git diff main -- ...` confirmed empty) -- recorded as carryover
+determinations in `review.md` rather than a fresh cto-reviewer/equity-analyst-reviewer
+dispatch, an explicit owner decision on a scope-auditor escalation (`.claude/review_routing.json`
+has no carve-out for a merge commit carrying already-reviewed content, and re-interpreting a
+routing rule to a case it didn't cover is a §6 owner call, not an agent one). Two halves:
 
 - **Alerting**: zero new code, zero new dependency (owner's call, over a Slack/webhook
   alternative) -- GitLab's native "Pipeline emails" project integration.
