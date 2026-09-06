@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 
 from ingestion.registry import load_markets
 from ingestion.yfinance.ingest import ingest_market
@@ -29,6 +30,11 @@ def main(argv: list[str] | None = None) -> int:
         default=0.25,
         help="Pause between fundamental ticker requests (default 0.25; use 0 for smoke tests)",
     )
+    parser.add_argument(
+        "--force-refetch",
+        action="store_true",
+        help="Ignore any same-day raw parquet already on disk and refetch every ticker",
+    )
     args = parser.parse_args(argv)
 
     markets = load_markets(active_only=True)
@@ -44,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
         print("No active markets to ingest.", file=sys.stderr)
         return 1
 
+    start = time.monotonic()
     for market in markets:
         if market.source != "yfinance":
             print(f"Skipping {market.market_code}: unsupported source {market.source}")
@@ -54,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
             market,
             max_tickers=args.max_tickers,
             delay_seconds=args.delay_seconds,
+            force=args.force_refetch,
         )
         print(
             f"  constituents={stats['constituents']} "
@@ -61,8 +69,16 @@ def main(argv: list[str] | None = None) -> int:
             f"price_rows={stats['price_rows']} "
             f"fundamentals_rows={stats['fundamentals_rows']} "
             f"fundamentals_ok={stats['fundamentals_ok']} "
-            f"fundamentals_failed={stats['fundamentals_failed']}"
+            f"fundamentals_failed={stats['fundamentals_failed']} "
+            f"fundamentals_skipped={stats['fundamentals_skipped']}"
         )
+        # Observability only -- not a gate. Ingestion is ~37% of the scheduled job's
+        # total runtime (measured: ~24 of ~65 min against a 2h timeout), so stopping
+        # early here would not meaningfully protect the job's actual timeout risk; this
+        # just makes the trend visible in CI job logs across runs as more markets are
+        # added, which today nobody tracks.
+        elapsed_minutes = (time.monotonic() - start) / 60
+        print(f"  elapsed so far: {elapsed_minutes:.1f}m")
 
     return 0
 

@@ -1,144 +1,170 @@
 # Task contract
 
-objective: Close backlog item 3, "the bank card's capital-adequacy blind spot" (owner-flagged
-  in `.claude/active_work.md` and `docs/handover_2026-09-03.md`, item 3): financial-type
-  (bank) cards only carry the numbers this app can source (profitability and returns), never
-  balance-sheet safety or capital strength (CET1/Tier 1 -- unsourceable from yfinance, see
-  `docs/data_contract.md`'s "financial" verdict note). Today that limit survives only as an
-  instruction inside the LLM prompt (`scripts/assessment_rules.py`'s `READ_SYSTEM_PROMPT`,
-  "financial" company-type lens) -- CI pins the instruction's PRESENCE in the prompt text, but
-  nothing pins its presence in what the model actually writes, and when `ai_read` is absent
-  (pending, a per-card API failure, or a hallucination-guard reject) there is no caveat at
-  all. A beginner could read a green "Healthy" badge on a bank stock as "this bank is safe",
-  which the app has no way to actually assess.
+objective: Item 2 of the 5-item portfolio-readiness list (from the prior 4-persona repo
+  assessment): "alert on the scheduled pipeline job, checkpoint the ingestion loop." The
+  scheduled `data-pipeline` CI job refreshes all card data twice a month (1st/15th, 06:00 UTC,
+  unattended) and today has zero notification mechanism of any kind (confirmed by a full-file
+  read of `.gitlab-ci.yml` and a repo-wide grep for slack/webhook/notify/alert/email/smtp/
+  pagerduty -- every hit was an unrelated use of the same English word).
+  `docs/operations_guide.md`'s own "Monitoring (v1)" section admits the current plan is a
+  manual GitLab-UI spot-check. Because the schedule is infrequent, a failure can sit
+  undiscovered for up to ~14 days -- that is the live risk this closes, not an imminent
+  timeout: the one real scheduled run since all 9 markets went active (2026-09-01, pipeline
+  `2808154517`, confirmed live via `glab api`) succeeded in 65 minutes against the 2h timeout,
+  comfortable headroom.
 
-  This was surfaced to the owner directly (not assumed): explained in plain terms why
-  profitability and capital safety are different things for a bank specifically (a bank can
-  look profitable right up until it fails on capital adequacy -- the real-world SVB 2023
-  collapse was given as a concrete, non-hypothetical example), and why this is the one card
-  type where that gap is financially consequential, not just a documentation nicety. Owner
-  requested short, easy-to-understand wording and delegated the exact phrasing after that
-  context: **"These numbers show profitability only, not whether this bank holds enough
-  capital to stay safe."** -- owner-approved verbatim, not self-authored without sign-off
-  (§6: user-visible naming/wording is an owner call, every time; this repo's own
-  `VERDICT_FALLBACK_READ` comment in `frontend/card_copy.py` states the same rule for this
-  exact class of card copy). Superseded by the amendment below -- the final, shipped sentence
-  differs from this one.
+  Full plan, including the options considered and declined with reasons, is in
+  `C:\Users\Rami\.claude\plans\groovy-churning-scroll.md`, approved via `ExitPlanMode`. Two
+  judgment calls were put to the owner explicitly and answered (not decided unilaterally):
+  (1) alerting path -- GitLab's native "Pipeline emails" integration only (zero new dependency)
+  over adding a Slack/webhook step (would need a new external service + secret) -- owner chose
+  native only; (2) a finding from reading the real job's trace timestamps, that ingestion is
+  only ~24 of the 65 minutes (37%) and the actual dominant, unguarded cost is
+  `generate_assessments.py`'s AI-read step (~39 min, one Haiku call per changed card, no cap,
+  will grow with card count) -- outside "checkpoint the ingestion loop" as scoped -- owner
+  chose to flag it as a new backlog item rather than fold it into this task.
 
 scope_paths:
-  - frontend/card_copy.py (new constant, the owner-approved caveat text)
-  - frontend/card_ui.py (`_health_block_html`: render the caveat for financial-type cards)
-  - frontend/styles.py (a caption-style CSS rule for the new caveat's class)
-  - tests/frontend/test_card_ui.py (new tests)
-  - docs/data_contract.md (note the caveat now exists card-face, not just prompt-side)
-  - .claude/active_work.md (close out item 3)
+  - docs/operations_guide.md (Monitoring section rewrite; ingestion skip-if-fresh note)
+  - ingestion/yfinance/ingest.py (skip-if-fresh-today + incremental flush)
+  - ingestion/main.py (`--force-refetch` flag, observability-only elapsed-time print)
+  - tests/ingestion/test_ingest_resume.py (new)
+  - .claude/active_work.md (close out item 2; log the generate_assessments.py backlog item;
+    note the GitLab Pipeline-emails settings click-through as a pending owner action)
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none outstanding -- the product decision (does this need a caveat at all)
-  and the wording were both put to the owner and answered in this thread, not decided
-  unilaterally. One implementation-level choice, disclosed as agent-executable, not
-  product content: the caveat renders unconditionally for every financial-type card with a
-  known verdict token, regardless of whether `ai_read` is present or absent -- because the
-  LLM is only prompted, not required, to mention the limit in its own prose (confirmed by
-  reading `READ_SYSTEM_PROMPT` directly: it's a style instruction, not a schema-enforced
-  field), so relying on the model to say it every time would reintroduce exactly the gap this
-  task closes. This is a placement/reliability decision, not new user-visible wording beyond
-  what's already approved above.
+decisions_reserved: none outstanding -- both judgment calls above were put to the owner and
+  answered in-thread via `AskUserQuestion` during planning, not decided unilaterally. One
+  implementation-level choice, disclosed as agent-executable, not a product/scope decision:
+  the elapsed-time addition to `ingestion/main.py` is observability-only (a print after each
+  market), not a hard stop/gate -- downgraded from an earlier draft's "stop early on budget
+  exceeded" design after the real trace data showed ingestion isn't the phase actually at risk
+  of the 2h ceiling, so a gating mechanism there would be solving the wrong part of the
+  pipeline. Recorded in the plan file's "Explicitly declined" section.
 
 done_when:
-  - `frontend/card_copy.py`: new module-level constant holding the exact owner-approved
-    sentence, placed near `VERDICT_FALLBACK_READ` with a comment explaining why it exists and
-    that the wording is owner-authored (matching that constant's own existing comment
-    convention). No apostrophe, no em/en dash (same constraint `VERDICT_FALLBACK_READ`'s own
-    comment states, since `_esc()`'s HTML-entity-escaping breaks a literal-substring test
-    match on those characters) -- the approved wording already satisfies this, verify it
-    still does after any transcription.
-  - `frontend/card_ui.py`'s `_health_block_html`: the caveat renders inside the existing
-    `.ss-health-block` div, after the AI-read-or-fallback narrative, whenever
-    `card.get("company_type")` is `"financial"` and a known verdict token is present --
-    covering all three narrative states (AI read present; AI read absent with a fallback
-    line; AI read absent with no fallback, the current early-return branch). Never shown for
-    other company types.
-  - `frontend/styles.py`: new caption-style rule (matching the established
-    `--ss-caption-size`/`--ss-caption` pattern already used for other secondary/qualifying
-    card text, e.g. `.ss-metric-sources`, `.ss-benchmark-unavailable` -- not the same
-    equal-weight treatment `.ss-ai-read`/`.ss-verdict-fallback` deliberately share, since this
-    is a caveat about the card, not a piece of the narrative itself).
-  - `tests/frontend/test_card_ui.py`: new tests confirming the caveat appears for a
-    `financial`-type card in all three narrative states above, and confirming it does NOT
-    appear for `operating`/`pre_revenue`-type cards even with an identical verdict/ai_read
-    shape (the actual regression this task guards against -- a company-type check that
-    silently stops firing).
+  - `ingestion/yfinance/ingest.py`: `_fetch_fundamentals` and `_fetch_daily_prices` skip any
+    ticker/batch whose output already exists for that market and is marked fresh by a
+    same-UTC-day `.checkpoint` marker file (not the parquet's own mtime -- see amendments),
+    instead of unconditionally refetching; both flush (atomically, via `_atomic_write_parquet`)
+    periodically during their loop, not only once at the very end. Pending tickers/batches are
+    filtered before batching, not skipped per-batch, so an already-fetched ticker can never
+    re-enter a batch. A new `force: bool` parameter (threaded from `ingest_market`) bypasses
+    the freshness check entirely.
+    `ingest_market()` no longer writes parquet itself -- that responsibility moves into the two
+    fetch functions.
+  - `ingestion/main.py`: new `--force-refetch` CLI flag threaded through to `ingest_market()`;
+    a plain elapsed-time print after each market completes (observability only, no gating
+    behavior, no new exit code path).
+  - `tests/ingestion/test_ingest_resume.py`: covers (a) the flush happens during the loop, not
+    only at a never-reached end -- proven by simulating a real process death (`KeyboardInterrupt`,
+    not a plain `Exception`, since the existing per-ticker `except Exception` already swallows
+    those and would not exercise this path) partway through, and asserting the on-disk file has
+    exactly the rows fetched before that point; (b) a second call skips tickers/batches already
+    present in a fresh-today file and only fetches the new ones; (c) a file backdated to
+    yesterday is treated as stale and fully refetched; (d) `force=True` bypasses the skip even
+    with a fresh-today file present; (e) no duplicate rows when batch boundaries shift between
+    two same-day calls (the data-engineer-reviewer regression); (f) a same-day write from
+    another script with no checkpoint marker is not mistaken for a completed run (the
+    cto-reviewer regression); (g) `_atomic_write_parquet` leaves no temp file behind. Both
+    `_fetch_fundamentals` and `_fetch_daily_prices` covered.
+  - Mutation-tested: temporarily break the freshness check (e.g. always return "not fresh"),
+    confirm the skip-specific tests fail, restore, confirm green again.
   - Full `pytest` suite green.
-  - Mutation-tested: temporarily remove the company_type gate (always render, or never
-    render), confirm the new tests actually fail, restore, confirm green again.
-  - Manually verified against the running dev server: an actual financial-type card (e.g.
-    HSBC or a similar bank already in the deck) shows the caveat; an operating-type card does
-    not.
-  - `docs/data_contract.md`'s "financial" verdict note updated to mention the caveat is now
-    also shown card-face, not just instructed in the prompt.
-  - `.claude/active_work.md`: item 3 closed out.
+  - Manually verified: `python scripts/run_ingestion.py --market ch_smi --max-tickers 20
+    --delay-seconds 1`, interrupted with Ctrl+C partway through, re-run identically -- second
+    run's summary shows tickers skipped, finishes visibly faster, and
+    `storage/raw/ch_smi/yf_fundamentals.parquet` ends with exactly 20 rows. `dbt build` (or
+    `dbt parse`) against the result confirms the incrementally-written file is
+    schema-identical to a normal single-shot write.
+  - `docs/operations_guide.md`: "Monitoring (v1)" section rewritten with the exact GitLab
+    Pipeline-emails settings path, what it covers, and what it does not (the dead-man's-switch
+    gap -- the schedule silently never firing at all); a note added near the existing
+    "run per-market if a full run hits rate limits" guidance explaining the new skip-if-fresh
+    behavior and `--force-refetch`.
+  - `.claude/active_work.md`: item 2 closed out; the `generate_assessments.py` runtime finding
+    logged as a new, separate open item; the GitLab settings click-through noted as a pending
+    owner action (not verifiable as done from this environment).
   - No em dash or en dash on any added line.
 
 impact_map:
-  - User-visible change: financial-type cards gain one new line of card-face text. No
-    verdict/metric computation changes, no data contract change, no new dependency.
-  - `frontend/*` and `tests/*` both touched -- per `.claude/review_routing.json`, requires
-    cto-reviewer in addition to scope-auditor (`always`). `docs/data_contract.md` also routes
-    to equity-analyst-reviewer -- missed in the original impact_map, caught by the commit gate
-    itself refusing to commit without that verdict recorded.
+  - No user-visible change (ingestion/CI/ops-doc only, nothing in `frontend/`).
+  - `ingestion/*` touched -- per `.claude/review_routing.json`, requires data-engineer-reviewer.
+  - `tests/*` touched -- requires cto-reviewer.
+  - scope-auditor always.
 
 amendments:
-- scope-auditor (round 1) and cto-reviewer flagged the same fact --
-  `.claude/active_work.md` edited but not staged -- and reached opposite verdicts: cto-reviewer
-  read it as the session's established convention (`active_work.md`'s own "Review mechanics"
-  note: `review.md` + this file are "STILL conventionally committed separately... but this is
-  no longer load-bearing... committing it alongside the change it describes works fine too"),
-  scope-auditor read `scope_paths` literally and failed it as a gap. Resolved by taking the
-  documented "works fine too" option rather than re-litigating the convention: staged
-  `.claude/active_work.md` into this same commit. No code or wording changed.
-- equity-analyst-reviewer FAILED the owner-approved sentence itself, with evidence independently
-  verified before acting on it (not taken on trust): `company_type == "financial"` is the whole
-  GICS "Financial Services" sector (`docs/data_contract.md`'s classification note), not
-  depository banks -- confirmed against this app's own live S&P 500 constituent data, which
-  already includes Visa, Mastercard, BlackRock, Moody's, S&P Global, CME Group, ICE, Chubb,
-  Progressive, Allstate, Aon, Marsh McLennan, American Express, and Berkshire Hathaway under
-  that sector, none of which are banks. The approved sentence's "this bank" is a factual error
-  on all of their cards, and regresses from `scripts/assessment_rules.py`'s own already-shipped,
-  already-reviewed `READ_SYSTEM_PROMPT` wording ("this financial company's balance-sheet safety
-  or capital strength"), which a prior review already corrected away from the same bank-specific
-  over-reach (see that file's `_verdict_financial` comment). Second, smaller finding: financial
-  cards also render `revenue_growth_yoy_pct` (`applies_to = operating|financial`, catalogued
-  under `growth`, not `profitability`, confirmed in `metric_catalogue.csv`), so "profitability
-  only" undersold what the card shows. Both independently confirmed by reading the cited files
-  directly, not by trusting the reviewer's claim. Taken back to the owner rather than
-  self-corrected (§6): shown the evidence and a proposed fix mirroring the already-reviewed
-  `READ_SYSTEM_PROMPT` framing, owner chose the proposed fix as-is. Sentence at that point:
-  "These numbers show profitability and returns only, not whether this company holds enough
-  capital to stay safe." -- superseded again below, kept here only as the round-2 record.
-- A narrow round-3 re-check of that exact sentence (nothing else) FAILED it too, same root
-  defect class: `metric_catalogue.csv` shows financial-type cards render four metrics across
-  three `perspective` values (`profitability`: `net_margin_pct`; `returns`: `statement_roe_pct`,
-  `roa_pct`; `growth`: `revenue_growth_yoy_pct`) -- "profitability and returns only" still
-  omitted the growth metric, independently confirmed by querying the CSV directly. Taken back
-  to the owner again (§6) rather than patched to a 3-item list and risking a 4th miss later:
-  proposed dropping the enumeration entirely and stating only the one fact that's actually
-  invariant regardless of which metrics the catalogue carries for this company_type -- capital
-  adequacy is never assessed anywhere in this app (confirmed: no metric for any company_type
-  measures CET1/Tier 1 or bank-style regulatory capital adequacy; the closest general-leverage
-  metrics, `debt_to_equity` and `net_debt_to_ebitda`, are both `applies_to = operating` only and
-  explicitly marked meaningless for financials). Owner approved this fix as proposed. Final,
-  shipped sentence: **"These numbers do not show whether this company holds enough capital to
-  stay safe."** -- confirmed via a further narrow equity-analyst-reviewer re-check to make no
-  claim about card contents (so immune to future `metric_catalogue.csv` drift), and confirmed
-  its one claim (capital adequacy not assessed) holds unconditionally. This is the sentence
-  actually on disk in `frontend/card_copy.py`; both sentences quoted above are superseded.
-  "do not", not "don't" -- same no-apostrophe constraint as the others.
-- That same round-3 re-check also caught two staleness bugs of my own: `.claude/active_work.md`
-  still quoted the round-1 wording (fixed to quote the sentence actually shipped, and its item-3
-  heading corrected from "bank card's" to "financial-type card's" to match), and this
-  amendments section itself hadn't yet recorded the round-3 approval trail at the moment it was
-  checked (fixed by this entry). Both are documentation lag from iterating the wording twice
-  more after the round-2 entry was written, not a missing approval -- the round-3 approval
-  happened in the same conversation turn that produced this entry.
+- Round 1 of the three required reviewers found three real, evidenced defects, none a false
+  alarm -- full findings and fixes in `review.md`:
+  1. scope-auditor: 5 em dashes on added lines (4 in `docs/operations_guide.md`, 1 in the new
+     test file's module docstring), breaking `done_when`'s explicit rule. Root cause: the
+     em-dash scan run before staging piped `git diff` through a shell pipe into Python's
+     stdin, which silently mis-decodes on this machine (confirmed: Python's default
+     stdout/stdin encoding here is `cp1252`, not UTF-8) -- the scan reported "0 hits" on a
+     diff that actually had 5. Fixed both the 5 characters and the scanning method (write the
+     diff to a file first, `open(..., encoding="utf-8")` explicitly) -- re-scanned clean.
+  2. data-engineer-reviewer: `_fetch_daily_prices`'s per-batch skip (`if already_fetched and
+     all(t in already_fetched for t in batch_local)`) only skipped a batch when EVERY ticker
+     in it was already covered. A batch mixing already-fetched and pending tickers (batch
+     boundaries shift between two same-day runs whenever `--max-tickers` differs, or the
+     constituent list changes) redownloaded the WHOLE batch, appending a second row per
+     already-covered `(ticker, trading_date)` alongside `existing` -- would have failed
+     `stg_yf__daily_prices`'s `dbt_utils.unique_combination_of_columns` test in the real
+     pipeline. Fixed by filtering to `pending_tickers` before batching, not per-batch inside
+     the loop, so an already-fetched ticker can never re-enter a batch at all. New regression
+     test (`test_prices_no_duplicate_rows_when_batch_boundaries_shift`) added and
+     mutation-verified: reintroduced the old per-batch check, confirmed the new test fails,
+     restored, confirmed green.
+  3. data-engineer-reviewer: both `_flush()` functions wrote `.to_parquet(output_path, ...)`
+     directly -- a process kill mid-write could leave a truncated file whose mtime still reads
+     as today, so the next run would trust it as fresh and crash reading it back
+     (`pd.read_parquet` with no surrounding try/except), wedging every same-day retry until
+     manually deleted. A real robustness regression for exactly the interruption case this
+     feature exists to handle. Fixed with a shared `_atomic_write_parquet` helper (write to a
+     same-directory temp file, `os.replace()` onto the final path) -- atomic on both POSIX and
+     Windows, so `output_path` always holds either the last complete write or the new one,
+     never a partial one. New test (`test_atomic_write_leaves_no_temp_file_behind`).
+  All three independently re-verified after the fix, not just asserted: full `pytest` suite
+  green (525 passed), both bug fixes mutation-tested, live re-run against real `ch_smi` data
+  confirmed the skip path still works end to end, `dbt build` against the result passed all 8
+  staging-layer tests again. Narrow re-checks dispatched to all three reviewers against the
+  fixed code -- see `review.md`.
+- cto-reviewer's round 1 (dispatched in parallel with the above, against the same pre-fix
+  diff) independently found the same two data-engineer-reviewer defects -- strong convergent
+  confirmation both were real, not one reviewer's misreading -- plus one genuinely new risk:
+  `_is_fresh_today`'s file-mtime check has no protection against two OTHER in-repo scripts
+  that write these exact raw parquet paths for unrelated reasons with no coordination
+  (`scripts/seed_ci_raw_fixtures.py`, CI dbt fixtures; `scripts/backfill_fundamentals_parquet_schema.py`,
+  a schema backfill). Confirmed safe inside CI (separate ephemeral containers, only
+  `data-pipeline` runs real ingestion) but a real, undocumented local-dev collision: running
+  either script against a real market_code the same UTC day as real ingestion would make the
+  freshness check wrongly trust that script's write as a completed ingestion run. Fixed with a
+  dedicated `.checkpoint` marker file (same directory, same basename plus `.checkpoint`) that
+  only `_atomic_write_parquet` ever touches -- freshness is keyed on the marker's mtime, not
+  the parquet's own, so a same-day write from either other script leaves no marker and the
+  next real ingestion run correctly self-heals by fully refetching. New regression test
+  (`test_fundamentals_ignores_a_same_day_write_from_another_script`), mutation-verified:
+  reverted to mtime-based freshness, confirmed the new test fails (a fake fixture ticker
+  leaked into the fetched set), restored, confirmed green. One narrower residual case
+  documented, not silently claimed fixed: if one of those scripts overwrites the parquet file
+  itself AFTER a real ingestion run already wrote both the file and the marker the same day,
+  the marker still reads fresh even though the content is no longer what ingestion wrote -- an
+  unusual, deliberate action sequence, not a normal workflow; noted in the code comment, with
+  `--force-refetch` as the escape hatch if ever suspected.
+  Re-verified live against the real (pre-marker) `ch_smi` files on disk: first run correctly
+  treated them as not-fresh (no marker existed yet) and fully refetched -- self-healing, not a
+  crash -- second run correctly skipped using the new marker; `dbt build` passed all 8 tests
+  again.
+- cto-reviewer's round 2 re-check FAILED on one finding, narrower than the above: the
+  amendment two bullets up claimed the residual marker-collision case was "noted in the code
+  comment and `docs/operations_guide.md`" -- true for the code comment
+  (`_is_fresh_today`'s docstring), false for the ops guide, which only documented the forward
+  direction (another script writes first) and never mentioned the reverse one (real ingestion
+  writes first, another script overwrites the parquet later the same day, marker still reads
+  fresh) or tied `--force-refetch` to it specifically. A record-accuracy gap, not a code
+  defect -- the reviewer's own assessment agreed leaving the residual case unfixed (rather
+  than extending the marker protocol into two unrelated, out-of-scope operator scripts) is
+  sound; the finding was only that the disclosure trail overstated itself. Fixed by adding the
+  missing paragraph to `docs/operations_guide.md`'s "Run ingestion locally" section, naming
+  the exact scenario and pointing at `--force-refetch`.

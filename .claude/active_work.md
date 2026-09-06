@@ -12,32 +12,62 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-06)
 
-**MR !100 -- financial-type card capital-adequacy caveat, item 3 of the portfolio-grade
-prioritized list (see `docs/portfolio_grade_criteria.md` if present, or ask -- the list came
-from a 4-persona repo assessment in a prior session: Data Engineer, Analytics Engineer, AI
-Engineer, App Developer). Pushed, MR opened, awaiting owner merge -- next session should check
-`glab mr view 100` before assuming it's landed.**
+**MR !100, merged** -- financial-type card capital-adequacy caveat (item 3). New
+`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant on every financial-type card regardless of
+`ai_read` state. Took 4 equity-analyst-reviewer + 2 scope-auditor rounds: caveat wording
+wrongly said "this bank" for the whole GICS Financial Services sector, then twice understated
+the card's shown metrics -- final wording states only the one invariant fact rather than
+enumerating card contents that can drift.
 
-Implementation: `frontend/card_copy.py`'s new `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant,
-rendered unconditionally on every financial-type card by `frontend/card_ui.py`'s
-`_health_block_html`, regardless of `ai_read` state. Full detail in item 3 below and
-`.claude/task/contract.md`'s amendments (kept on this branch, not yet collapsed to the archive).
+**Gotcha for future sessions, from that task**: `commit_review_gate.py`'s verdict parser needs
+the literal token `VERDICT:` at the start of its own line -- `Round 2 VERDICT: PASS` parses as
+no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as prose, only the
+final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
-**Process note for future sessions, not just this task: `commit_review_gate.py`'s verdict
-parser requires the literal token `VERDICT:` to start its own line** (`^VERDICT:` regex, no
-prefix text before it on that line) -- writing `Round 2 VERDICT: PASS` on one line parses as
-NO verdict at all, silently, and the gate blocks with a generic "no verdict for X" message that
-looks identical to never having run the reviewer. Burned real time on this mid-task. Multi-round
-`review.md` entries need earlier rounds written as prose ("Round 1 FAILED ...", no colon-token)
-and only the final, operative round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
-Sanity-check with `python -c "..."` calling the hook's own `_sections`/`_verdict` functions
-directly against `review.md` before relying on a commit attempt to tell you.
+**MR !101 (pushed, mergeable, awaiting owner merge) -- pipeline alerting + ingestion
+checkpoint, item 2 of the same portfolio-readiness list.** Landed after !100 already merged,
+so this branch's own edits to the shared per-task handover files
+(`.claude/active_work.md`/`contract.md`/`review.md`) genuinely conflicted with main -- resolved
+by merging `main` into this branch (`contract.md`/`review.md` kept this branch's own version;
+`active_work.md` manually combined both). `frontend/`/`docs/data_contract.md` files the merge
+carried in from !100 are verified byte-identical to what already passed their own review and
+is already live on `main` (`git diff main -- ...` confirmed empty) -- recorded as carryover
+determinations in `review.md` rather than a fresh cto-reviewer/equity-analyst-reviewer
+dispatch, an explicit owner decision on a scope-auditor escalation (`.claude/review_routing.json`
+has no carve-out for a merge commit carrying already-reviewed content, and re-interpreting a
+routing rule to a case it didn't cover is a §6 owner call, not an agent one). Two halves:
 
-This task also went through 4 equity-analyst-reviewer rounds and 2 scope-auditor rounds before
-landing -- both real, evidenced findings each time (not reviewer noise): the caveat wording
-wrongly said "this bank" when the render gate covers the whole GICS Financial Services sector,
-then twice understated what the card shows by enumerating perspectives instead of stating only
-the one invariant fact. Full trail in `.claude/task/review.md` on that branch.
+- **Alerting**: zero new code, zero new dependency (owner's call, over a Slack/webhook
+  alternative) -- GitLab's native "Pipeline emails" project integration.
+  **Pending owner action, not verifiable as done from this environment**: GitLab Settings →
+  Integrations → **Pipeline emails** → your email → "Notify only broken pipelines" → branches
+  = `main` only. Documented in `docs/operations_guide.md`'s Monitoring section, including what
+  it doesn't catch (the schedule silently never firing at all -- a dead-man's-switch gap with
+  no zero-dependency fix).
+- **Checkpointing**: `ingestion/yfinance/ingest.py`'s `_fetch_fundamentals`/`_fetch_daily_prices`
+  now skip any ticker/batch already covered by a same-UTC-day `.checkpoint` marker file
+  instead of unconditionally refetching, and flush incrementally during the loop (every ticker
+  for fundamentals, every batch for prices) instead of only once at the very end -- a
+  crash/timeout mid-market now loses at most what's in flight, not the whole market, and a
+  same-day retry resumes instead of restarting. `--force-refetch` bypasses the skip.
+  Contained to `storage/raw/`'s own per-run persistence (that directory is gitignored and CI
+  containers are ephemeral between separate job runs, so this does not make a CI-retried run
+  resume across containers -- only within one run and for same-day local/manual retries; noted
+  as a real limit, not oversold). **Three review rounds caught real defects before this
+  shipped, not reviewer noise**: a batch-duplication bug (a same-day retry with shifted batch
+  boundaries would have written duplicate rows, failing dbt's uniqueness test), non-atomic
+  writes (a mid-flush crash could wedge every same-day retry on a corrupt file), and a
+  freshness check with no protection against two other scripts writing the same checkpointed
+  paths (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) -- the marker
+  file is the fix for that third one specifically. Verified live, not just unit-tested: ran
+  `run_ingestion.py --market ch_smi --max-tickers 20 --delay-seconds 1` end to end, re-ran
+  identically (fully skipped, same row counts, no data loss), `dbt build` against the result
+  passed all 8 staging-layer tests, both before and after every fix round.
+
+**Finding, not folded into MR !101 (owner's call):** pulling the real job trace (`2808154517`,
+the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute total (37%) -- the
+actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read step (~39 min, one
+Haiku call per changed card, no cap). Logged as a new open item below.
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
@@ -234,8 +264,8 @@ each batch and nobody tracking it as of the last check.
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
-3. **The financial-type card's capital-adequacy blind spot, fixed, MR !100 open (not yet
-   merged).** Previously survived only
+3. **The financial-type card's capital-adequacy blind spot, fixed and merged (MR !100).**
+   Previously survived only
    as an LLM prompt instruction with no card-face caveat, so a card with a null `ai_read`
    warned nobody. Fixed with a deterministic, owner-approved caveat ("These numbers do not
    show whether this company holds enough capital to stay safe.") that now shows on every
@@ -276,6 +306,14 @@ each batch and nobody tracking it as of the last check.
    this table today (`browser_storage.py` only ever touches browser localStorage), so nothing
    is broken yet -- but whoever eventually builds the cross-device sync feature this table is
    reserved for will need to widen the constraint first.
+8. **`generate_assessments.py`'s AI-read step is the scheduled pipeline's actual dominant,
+   ungoverned runtime cost** (~39 of ~65 minutes on the one measured 9-market run, 2026-09-01 --
+   found while working item 2, not folded into it, owner's call). One Claude Haiku call per
+   eligible card whose inputs changed, no cap. `run_ingestion.py`'s own share of the same run
+   was only ~24 minutes (37%) and now has a same-day skip-if-fresh checkpoint (see Recent work
+   above) -- this step doesn't, and is the more likely long-term driver toward the 2h CI
+   timeout as more markets are onboarded. Not designed here: needs its own look (a time budget,
+   a per-run cap, or similar) if/when it becomes the actual constraint.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 
