@@ -24,50 +24,25 @@ the literal token `VERDICT:` at the start of its own line -- `Round 2 VERDICT: P
 no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as prose, only the
 final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
-**MR !101 (pushed, mergeable, awaiting owner merge) -- pipeline alerting + ingestion
-checkpoint, item 2 of the same portfolio-readiness list.** Landed after !100 already merged,
-so this branch's own edits to the shared per-task handover files
-(`.claude/active_work.md`/`contract.md`/`review.md`) genuinely conflicted with main -- resolved
-by merging `main` into this branch (`contract.md`/`review.md` kept this branch's own version;
-`active_work.md` manually combined both). `frontend/`/`docs/data_contract.md` files the merge
-carried in from !100 are verified byte-identical to what already passed their own review and
-is already live on `main` (`git diff main -- ...` confirmed empty) -- recorded as carryover
-determinations in `review.md` rather than a fresh cto-reviewer/equity-analyst-reviewer
-dispatch, an explicit owner decision on a scope-auditor escalation (`.claude/review_routing.json`
-has no carve-out for a merge commit carrying already-reviewed content, and re-interpreting a
-routing rule to a case it didn't cover is a §6 owner call, not an agent one). Two halves:
+**MR !101, merged** -- scheduled-pipeline alerting + ingestion checkpoint (item 2). Alerting:
+GitLab's native "Pipeline emails" integration, zero new code/dependency -- **owner action
+still pending, not verifiable as done from here**: Settings → Integrations → Pipeline emails →
+your email → "Notify only broken pipelines" → branches = `main` only (documented in
+`docs/operations_guide.md`). Checkpointing: `ingestion/yfinance/ingest.py`'s fetch functions
+skip tickers/batches already in a same-day `.checkpoint` marker instead of refetching, flush
+incrementally, `--force-refetch` bypasses it. Three review rounds caught real defects: a
+batch-duplication bug, non-atomic writes, and a freshness check with no protection against two
+other scripts (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) writing
+the same paths -- the marker mechanism is the fix for that third one. Landing after !100 meant
+a real merge conflict on this file (both branches edited it); resolved by merging `main` in,
+and the `frontend/`/`docs/data_contract.md` files that merge carried along were verified
+byte-identical to already-reviewed, already-live content -- owner approved skipping a
+redundant cto-reviewer/equity-analyst-reviewer re-dispatch on them.
 
-- **Alerting**: zero new code, zero new dependency (owner's call, over a Slack/webhook
-  alternative) -- GitLab's native "Pipeline emails" project integration.
-  **Pending owner action, not verifiable as done from this environment**: GitLab Settings →
-  Integrations → **Pipeline emails** → your email → "Notify only broken pipelines" → branches
-  = `main` only. Documented in `docs/operations_guide.md`'s Monitoring section, including what
-  it doesn't catch (the schedule silently never firing at all -- a dead-man's-switch gap with
-  no zero-dependency fix).
-- **Checkpointing**: `ingestion/yfinance/ingest.py`'s `_fetch_fundamentals`/`_fetch_daily_prices`
-  now skip any ticker/batch already covered by a same-UTC-day `.checkpoint` marker file
-  instead of unconditionally refetching, and flush incrementally during the loop (every ticker
-  for fundamentals, every batch for prices) instead of only once at the very end -- a
-  crash/timeout mid-market now loses at most what's in flight, not the whole market, and a
-  same-day retry resumes instead of restarting. `--force-refetch` bypasses the skip.
-  Contained to `storage/raw/`'s own per-run persistence (that directory is gitignored and CI
-  containers are ephemeral between separate job runs, so this does not make a CI-retried run
-  resume across containers -- only within one run and for same-day local/manual retries; noted
-  as a real limit, not oversold). **Three review rounds caught real defects before this
-  shipped, not reviewer noise**: a batch-duplication bug (a same-day retry with shifted batch
-  boundaries would have written duplicate rows, failing dbt's uniqueness test), non-atomic
-  writes (a mid-flush crash could wedge every same-day retry on a corrupt file), and a
-  freshness check with no protection against two other scripts writing the same checkpointed
-  paths (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) -- the marker
-  file is the fix for that third one specifically. Verified live, not just unit-tested: ran
-  `run_ingestion.py --market ch_smi --max-tickers 20 --delay-seconds 1` end to end, re-ran
-  identically (fully skipped, same row counts, no data loss), `dbt build` against the result
-  passed all 8 staging-layer tests, both before and after every fix round.
-
-**Finding, not folded into MR !101 (owner's call):** pulling the real job trace (`2808154517`,
+**Finding, not folded into !101 (owner's call):** pulling the real job trace (`2808154517`,
 the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute total (37%) -- the
 actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read step (~39 min, one
-Haiku call per changed card, no cap). Logged as a new open item below.
+Haiku call per changed card, no cap). Logged as open item 8 below.
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
