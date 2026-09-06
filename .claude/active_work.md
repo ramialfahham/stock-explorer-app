@@ -10,6 +10,35 @@ the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WA
 flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
 back under cap by moving settled history into the new archive above._
 
+## Recent work (2026-09-06)
+
+**MR !100 -- financial-type card capital-adequacy caveat, item 3 of the portfolio-grade
+prioritized list (see `docs/portfolio_grade_criteria.md` if present, or ask -- the list came
+from a 4-persona repo assessment in a prior session: Data Engineer, Analytics Engineer, AI
+Engineer, App Developer). Pushed, MR opened, awaiting owner merge -- next session should check
+`glab mr view 100` before assuming it's landed.**
+
+Implementation: `frontend/card_copy.py`'s new `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant,
+rendered unconditionally on every financial-type card by `frontend/card_ui.py`'s
+`_health_block_html`, regardless of `ai_read` state. Full detail in item 3 below and
+`.claude/task/contract.md`'s amendments (kept on this branch, not yet collapsed to the archive).
+
+**Process note for future sessions, not just this task: `commit_review_gate.py`'s verdict
+parser requires the literal token `VERDICT:` to start its own line** (`^VERDICT:` regex, no
+prefix text before it on that line) -- writing `Round 2 VERDICT: PASS` on one line parses as
+NO verdict at all, silently, and the gate blocks with a generic "no verdict for X" message that
+looks identical to never having run the reviewer. Burned real time on this mid-task. Multi-round
+`review.md` entries need earlier rounds written as prose ("Round 1 FAILED ...", no colon-token)
+and only the final, operative round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
+Sanity-check with `python -c "..."` calling the hook's own `_sections`/`_verdict` functions
+directly against `review.md` before relying on a commit attempt to tell you.
+
+This task also went through 4 equity-analyst-reviewer rounds and 2 scope-auditor rounds before
+landing -- both real, evidenced findings each time (not reviewer noise): the caveat wording
+wrongly said "this bank" when the render gate covers the whole GICS Financial Services sector,
+then twice understated what the card shows by enumerating perspectives instead of stating only
+the one invariant fact. Full trail in `.claude/task/review.md` on that branch.
+
 ## Recent work (2026-09-01 to 2026-09-02)
 
 This session shipped every one of the nine Gemini-feedback points in
@@ -205,7 +234,8 @@ each batch and nobody tracking it as of the last check.
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
-3. **The financial-type card's capital-adequacy blind spot, fixed.** Previously survived only
+3. **The financial-type card's capital-adequacy blind spot, fixed, MR !100 open (not yet
+   merged).** Previously survived only
    as an LLM prompt instruction with no card-face caveat, so a card with a null `ai_read`
    warned nobody. Fixed with a deterministic, owner-approved caveat ("These numbers do not
    show whether this company holds enough capital to stay safe.") that now shows on every
