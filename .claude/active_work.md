@@ -208,17 +208,18 @@ each batch and nobody tracking it as of the last check.
 3. **The bank card's capital-adequacy blind spot** survives only as an LLM prompt instruction
    with no card-face caveat, so a card with a null `ai_read` warns nobody. Needs new bank-card
    copy (§6, owner content).
-4. **3 of 4 bugs from the Discover/Saved/Search UX findings fixed 2026-09-04, merged**
+4. **All 4 confirmed bugs from the Discover/Saved/Search UX findings fixed and merged**
    (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
    resurfacing on an unrelated later query, and the Search box / Discover filter both losing
-   their value on tab switch. Root cause, found live: a KEYED Streamlit widget's session_state
-   is evicted too when the widget isn't rendered for one script run, not just unkeyed ones as
-   first guessed -- the original doc's own candidate fix (add a bare `key=` to the Search box)
-   would not have worked. Fixed by making both widgets unkeyed and managing their durable value
-   as a plain session_state entry instead. Verified by hand against the real repro sequences in
-   a running dev server. Two items from that doc remain genuinely open, both needing an owner
-   product call first: "Clear saved" has no confirmation/undo, and Saved has no pagination
-   (unconfirmed as a felt problem at today's typical save counts).
+   their value on tab switch, fixed 2026-09-04 (root cause: a KEYED Streamlit widget's
+   session_state is evicted too when the widget isn't rendered for one script run, not just
+   unkeyed ones as first guessed -- the original doc's own candidate fix, a bare `key=` on the
+   Search box, would not have worked; fixed by making both widgets unkeyed and managing their
+   durable value as a plain session_state entry instead). "Clear saved" had no
+   confirmation/undo, fixed 2026-09-05 (in-place two-click popover swap; also added per-item
+   Saved removal, previously impossible). One item from that doc remains genuinely open, an
+   owner product call: Saved has no pagination (unconfirmed as a felt problem at today's
+   typical save counts).
 5. Three of the seven backlog docs in `docs/backlog/` are genuinely open (the other four are
    closed/resolved -- see that directory): `discover_metric_filters_phase2.md` (a prior
    attempt was built and reverted; needs redesign against its own stated revisit criteria),
