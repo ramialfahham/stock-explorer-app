@@ -12,8 +12,29 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-06)
 
+**MR !100, merged -- financial-type card capital-adequacy caveat, item 3 of the
+portfolio-readiness list** (from the 4-persona repo assessment). `frontend/card_copy.py`'s new
+`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant, rendered unconditionally on every financial-type
+card by `frontend/card_ui.py`'s `_health_block_html`, regardless of `ai_read` state. Went
+through 4 equity-analyst-reviewer rounds and 2 scope-auditor rounds before landing -- both
+real, evidenced findings each time, not reviewer noise: the caveat wording wrongly said "this
+bank" when the render gate covers the whole GICS Financial Services sector, then twice
+understated what the card shows by enumerating perspectives instead of stating only the one
+invariant fact. Full trail in that branch's `.claude/task/review.md` (not carried forward here
+-- per-task files reset each cycle).
+
+**Process note for future sessions, not just that task: `commit_review_gate.py`'s verdict
+parser requires the literal token `VERDICT:` to start its own line** (`^VERDICT:` regex, no
+prefix text before it on that line) -- writing `Round 2 VERDICT: PASS` on one line parses as
+NO verdict at all, silently, and the gate blocks with a generic "no verdict for X" message that
+looks identical to never having run the reviewer. Multi-round `review.md` entries need earlier
+rounds written as prose ("Round 1 FAILED ...", no colon-token) and only the final, operative
+round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line. Sanity-check with
+`python -c "..."` calling the hook's own `_sections`/`_verdict` functions directly against
+`review.md` before relying on a commit attempt to tell you.
+
 **MR !101 (pushed, awaiting merge) -- pipeline alerting + ingestion checkpoint, item 2 of the
-portfolio-readiness list (from the 4-persona repo assessment).** Two halves:
+same portfolio-readiness list.** Two halves:
 
 - **Alerting**: zero new code, zero new dependency (owner's call, over a Slack/webhook
   alternative) -- GitLab's native "Pipeline emails" project integration.
@@ -42,10 +63,10 @@ portfolio-readiness list (from the 4-persona repo assessment).** Two halves:
   identically (fully skipped, same row counts, no data loss), `dbt build` against the result
   passed all 8 staging-layer tests, both before and after every fix round.
 
-**Finding, not folded into this task (owner's call):** pulling the real job trace
-(`2808154517`, the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute
-total (37%) -- the actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read
-step (~39 min, one Haiku call per changed card, no cap). Logged as a new open item below.
+**Finding, not folded into MR !101 (owner's call):** pulling the real job trace (`2808154517`,
+the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute total (37%) -- the
+actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read step (~39 min, one
+Haiku call per changed card, no cap). Logged as a new open item below.
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
@@ -242,9 +263,19 @@ each batch and nobody tracking it as of the last check.
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
-3. **The bank card's capital-adequacy blind spot** survives only as an LLM prompt instruction
-   with no card-face caveat, so a card with a null `ai_read` warns nobody. Needs new bank-card
-   copy (§6, owner content).
+3. **The financial-type card's capital-adequacy blind spot, fixed and merged (MR !100).**
+   Previously survived only
+   as an LLM prompt instruction with no card-face caveat, so a card with a null `ai_read`
+   warned nobody. Fixed with a deterministic, owner-approved caveat ("These numbers do not
+   show whether this company holds enough capital to stay safe.") that now shows on every
+   financial-type card regardless of `ai_read` state, since the prompt only asks the model to
+   mention the limit, never guarantees it does (`frontend/card_copy.py`'s
+   `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by `frontend/card_ui.py`). Two review rounds
+   caught the wording overclaiming what it excludes ("this bank" -- `company_type ==
+   "financial"` is the whole GICS Financial Services sector, not banks; "profitability only" /
+   "profitability and returns only" -- the card also shows a growth metric) before landing on
+   this final form, which states only the one invariant fact rather than enumerating card
+   contents that can drift independently of this string.
 4. **All 4 confirmed bugs from the Discover/Saved/Search UX findings fixed and merged**
    (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
    resurfacing on an unrelated later query, and the Search box / Discover filter both losing

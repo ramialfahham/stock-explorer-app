@@ -1,6 +1,6 @@
 # Review
 
-diff_sha256: 670e5f73d71206f214264bff5a5e8a8e92bc71f4849ee3e58beec118d152f619
+diff_sha256: d3b3dcb502c8725b613bbc2f13f78b522a298c10e7f954a049a7e39b86b6a2a5
 
 ## scope-auditor
 Round 1 FAILED (five findings, all the same defect class)
@@ -42,6 +42,36 @@ risks_checked:
 - `ingest_market()` "no longer writes parquet itself" -- confirmed both old `.to_parquet()`
   calls are removed lines in the diff and absent from the current function (not just one of
   the two).
+
+Round 3 -- merge-commit review (`git merge main --no-ff` into this branch, after MR !100
+independently merged first). Verified the conflict resolution itself is correct and not lossy:
+compared the resolved `.claude/active_work.md` against both pre-merge tips (`git show
+HEAD:...`, `git show main:...`) and confirmed every substantive fact from both sides survived;
+confirmed `.claude/task/contract.md`/`review.md`'s `--ours` resolution is byte-identical to
+this branch's own pre-merge content (`git diff HEAD -- ...` empty, nothing leaked from main);
+confirmed the full staged set is exactly the 3 resolved files plus what the merge naturally
+carries from `main` (`docs/data_contract.md`, `frontend/card_copy.py`, `frontend/card_ui.py`,
+`frontend/styles.py`, `tests/frontend/test_card_ui.py`); zero em/en dash in the newly-written
+merge prose; full suite 529 passed. Also confirmed `git diff main -- frontend/ tests/frontend/
+docs/data_contract.md` is empty -- the files this merge routes to cto-reviewer/
+equity-analyst-reviewer are genuinely byte-identical to what already passed those reviewers'
+own independent cycles under MR !100 and is already live on `main`, not silently modified.
+
+Raised, not decided unilaterally: `.claude/review_routing.json` has no carve-out for a merge
+commit carrying byte-identical, already-reviewed, already-merged content -- re-interpreting the
+routing rule for this case is a §6 owner call (`.claude/working-agreement.md`: "reinterpreting
+or extending a rule to a case it didn't cover"), not something to resolve by analogy.
+VERDICT: ESCALATE
+questions:
+- Dispatch cto-reviewer/equity-analyst-reviewer fresh on the byte-identical carried-over files
+  anyway (matches routing literally, zero expected new findings, costs two agent rounds), or
+  record the identity-check as grounds to skip the fresh dispatch this one time (saves the
+  redundant cost, sets a precedent for agent-verified content-identity substituting for a
+  routing-required reviewer with no exception written into `review_routing.json` itself)?
+
+CPO ANSWER: skip the fresh dispatch, record the byte-identity verification as the reason --
+see cto-reviewer's round 4 and the new equity-analyst-reviewer section below, both written as
+explicit carryover determinations, not fresh reviews.
 
 ## cto-reviewer
 Round 1 FAILED (dispatched in parallel with scope-auditor/data-engineer-reviewer, against the
@@ -129,6 +159,35 @@ risks_checked:
   stdin-piped) across all added lines -- zero hits. Codepoint-checked the new paragraph's added
   lines specifically: every hyphen-like character is plain ASCII, matching the repo's
   double-hyphen convention.
+
+Round 4 -- merge-commit carryover, not a fresh review (see scope-auditor's merge-review round
+below for the full reasoning and the owner's decision). Merging `main` (carrying already-merged
+MR !100) into this branch put `frontend/card_copy.py`, `frontend/card_ui.py`,
+`frontend/styles.py`, and `tests/frontend/test_card_ui.py` into this commit's staged diff,
+which `.claude/review_routing.json` routes to cto-reviewer. `git diff main -- frontend/
+tests/frontend/` confirmed empty -- these four files are byte-identical to what MR !100's own
+independent cto-reviewer pass already approved and what is already live on `main`. No fresh
+dispatch: nothing to re-review that wasn't already reviewed under a different MR.
+VERDICT: PASS
+risks_checked:
+- Byte-identity to already-reviewed, already-merged content, not assumed: `git diff main --
+  frontend/ tests/frontend/` confirmed empty by scope-auditor's merge-review round, cross-
+  checked here.
+- This is a carryover determination, stated as such, not a claim that cto-reviewer freshly
+  re-read this code in this commit.
+
+## equity-analyst-reviewer
+Merge-commit carryover, not a fresh review -- same reasoning as cto-reviewer's round 4 above.
+`docs/data_contract.md` (routed to equity-analyst-reviewer) entered this commit's staged diff
+only via merging already-merged MR !100 into this branch. `git diff main -- docs/data_contract.md`
+confirmed empty -- byte-identical to what MR !100's own independent equity-analyst-reviewer
+pass (4 rounds) already approved and what is already live on `main`.
+VERDICT: PASS
+risks_checked:
+- Byte-identity to already-reviewed, already-merged content: `git diff main --
+  docs/data_contract.md` confirmed empty.
+- This is a carryover determination, stated as such, not a claim that equity-analyst-reviewer
+  freshly re-read this file's financial content in this commit.
 
 ## data-engineer-reviewer
 Round 1 FAILED (two findings)

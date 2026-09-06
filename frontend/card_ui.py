@@ -8,6 +8,8 @@ import streamlit as st
 
 from card_copy import (
     BENCHMARK_METRICS,
+    DEFAULT_COMPANY_TYPE,
+    FINANCIAL_CAPITAL_ADEQUACY_CAVEAT,
     MEDIAN_PRIMER,
     METRIC_ANALOGY,
     METRIC_LABELS,
@@ -272,8 +274,14 @@ def _health_block_html(card: dict) -> str:
     absent -- 5a always writes a verdict, but 5b's read can be pending, a per-card API failure,
     or a hallucination-guard reject (scripts/generate_assessments.py's validate_read_metrics).
     A bare badge with nothing else read as broken to a reader, not "not yet written" (owner
-    feedback, 2026-09-01); the fallback fills that gap under its own honest heading, never
+    feedback); the fallback fills that gap under its own honest heading, never
     BLOCK_LABEL_ASSESSMENT's "AI-written", which the fallback text is not.
+
+    A financial-type card (the whole GICS "Financial Services" sector, not banks specifically)
+    also always carries FINANCIAL_CAPITAL_ADEQUACY_CAVEAT, regardless
+    of which narrative state above applies -- the LLM is only prompted, never required, to
+    state this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT), so
+    relying on the model to say it every time would silently reintroduce the gap this closes.
     """
     token = health_verdict_token(card)
     if not token:
@@ -284,6 +292,11 @@ def _health_block_html(card: dict) -> str:
         f'<span class="ss-verdict-label">{_esc(VERDICT_BADGE_LABEL[token])}</span>'
         f"</p>"
     )
+    caveat_html = ""
+    if (card.get("company_type") or DEFAULT_COMPANY_TYPE) == "financial":
+        caveat_html = (
+            f'<p class="ss-financial-caveat">{_esc(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)}</p>'
+        )
     # The badge comes FIRST, above the label, and that ordering is load-bearing: the
     # verdict is decided by fixed rules in scripts/assessment_rules.py, never by the model
     # (see that file's header, docs/data_contract.md and docs/north_star.md, which all say
@@ -293,13 +306,13 @@ def _health_block_html(card: dict) -> str:
     if read:
         label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
         read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
-        return f'<div class="ss-health-block">{badge}{label}{read_html}</div>'
+        return f'<div class="ss-health-block">{badge}{label}{read_html}{caveat_html}</div>'
     fallback = VERDICT_FALLBACK_READ.get(token)
     if not fallback:
-        return f'<div class="ss-health-block">{badge}</div>'
+        return f'<div class="ss-health-block">{badge}{caveat_html}</div>'
     label = _block_label_html(BLOCK_LABEL_VERDICT_MEANING)
     fallback_html = f'<p class="ss-verdict-fallback">{_esc(fallback)}</p>'
-    return f'<div class="ss-health-block">{badge}{label}{fallback_html}</div>'
+    return f'<div class="ss-health-block">{badge}{label}{fallback_html}{caveat_html}</div>'
 
 
 def _metric_stack_with_groups(card: dict, cell_fn) -> str:

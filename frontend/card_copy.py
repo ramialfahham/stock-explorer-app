@@ -565,6 +565,27 @@ VERDICT_FALLBACK_READ = {
     "red": "Exhibits at least one severe financial vulnerability that impairs overall stability.",
 }
 
+# Shown on every "financial" company-type card (the whole GICS "Financial Services" sector --
+# banks, insurers, payment networks, asset managers, exchanges, ratings agencies -- not banks
+# specifically, see docs/data_contract.md's company_type classification), regardless of whether
+# ai_read is present -- the LLM is only prompted, never required, to state this limit in its own
+# prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT, "financial" company-type lens), so
+# relying on the model to say it every time would silently reintroduce the gap this exists to
+# close. Deliberately says "this company", not "this bank" -- mirrors READ_SYSTEM_PROMPT's own
+# already-reviewed "financial company" framing rather than the bank-specific framing an earlier
+# draft used, which was wrong for the non-bank share of this sector (equity-analyst-reviewer
+# finding). Deliberately states only what's MISSING, not an enumeration of what's shown --
+# an earlier draft said "profitability only" / "profitability and returns only" and was wrong
+# both times as soon as checked against metric_catalogue.csv's actual applies_to=financial set
+# (also includes a growth metric), because that set is data-driven and can change independently
+# of this string. Stating only the one invariant fact (capital adequacy is never assessed here)
+# can't go stale the same way. Owner-authored wording (§6), approved verbatim. Same constraint
+# as VERDICT_FALLBACK_READ above: no apostrophe, no em/en dash (_esc() escaping breaks a
+# literal-substring test match on those) -- "do not", not "don't".
+FINANCIAL_CAPITAL_ADEQUACY_CAVEAT = (
+    "These numbers do not show whether this company holds enough capital to stay safe."
+)
+
 
 def health_verdict_token(card: dict) -> str | None:
     """The card's health_verdict token if present and a known value, else None — a missing

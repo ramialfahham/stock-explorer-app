@@ -323,6 +323,16 @@ section[data-testid="stSidebar"] {
     margin: 0 0 0.28rem;
     line-height: 1.45;
 }
+/* .ss-financial-caveat (frontend/card_ui.py, financial-type cards only): a caveat about the
+   card, not part of the narrative itself, so it gets the muted caption treatment already used
+   for other secondary/qualifying card text (.ss-metric-sources, .ss-benchmark-unavailable),
+   not the equal-weight treatment .ss-ai-read/.ss-verdict-fallback deliberately share. */
+.ss-health-block .ss-financial-caveat {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0;
+    line-height: 1.35;
+}
 
 .ss-learn-section + .ss-learn-section {
     margin-top: 0.55rem;
