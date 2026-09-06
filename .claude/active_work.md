@@ -205,9 +205,18 @@ each batch and nobody tracking it as of the last check.
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
-3. **The bank card's capital-adequacy blind spot** survives only as an LLM prompt instruction
-   with no card-face caveat, so a card with a null `ai_read` warns nobody. Needs new bank-card
-   copy (§6, owner content).
+3. **The financial-type card's capital-adequacy blind spot, fixed.** Previously survived only
+   as an LLM prompt instruction with no card-face caveat, so a card with a null `ai_read`
+   warned nobody. Fixed with a deterministic, owner-approved caveat ("These numbers do not
+   show whether this company holds enough capital to stay safe.") that now shows on every
+   financial-type card regardless of `ai_read` state, since the prompt only asks the model to
+   mention the limit, never guarantees it does (`frontend/card_copy.py`'s
+   `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by `frontend/card_ui.py`). Two review rounds
+   caught the wording overclaiming what it excludes ("this bank" -- `company_type ==
+   "financial"` is the whole GICS Financial Services sector, not banks; "profitability only" /
+   "profitability and returns only" -- the card also shows a growth metric) before landing on
+   this final form, which states only the one invariant fact rather than enumerating card
+   contents that can drift independently of this string.
 4. **All 4 confirmed bugs from the Discover/Saved/Search UX findings fixed and merged**
    (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
    resurfacing on an unrelated later query, and the Search box / Discover filter both losing

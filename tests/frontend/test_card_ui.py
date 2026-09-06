@@ -7,6 +7,7 @@ from assessment_rules import VERDICT_MEANING  # noqa: E402
 from card_copy import (  # noqa: E402
     ALL_METRICS,
     BENCHMARK_METRICS,
+    FINANCIAL_CAPITAL_ADEQUACY_CAVEAT,
     VERDICT_BADGE_LABEL,
     VERDICT_FALLBACK_READ,
     _BY_ID,
@@ -537,6 +538,36 @@ def test_health_block_ignores_unrecognized_verdict_token() -> None:
     card["health_verdict"] = "unknown-future-token"
     card["ai_read"] = "some text"
     assert _health_block_html(card) == ""
+
+
+def test_health_block_shows_capital_adequacy_caveat_on_financial_card_with_ai_read() -> None:
+    card = _card_with_all_metrics("financial")
+    card["health_verdict"] = "green"
+    card["ai_read"] = "Turns sales into profit at a healthy rate."
+    html = _health_block_html(card)
+    assert "ss-financial-caveat" in html
+    assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in html
+
+
+def test_health_block_shows_capital_adequacy_caveat_on_financial_card_with_fallback() -> None:
+    card = _card_with_all_metrics("financial")
+    card["health_verdict"] = "yellow"
+    card["ai_read"] = None
+    html = _health_block_html(card)
+    assert "ss-financial-caveat" in html
+    assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in html
+
+
+def test_health_block_omits_capital_adequacy_caveat_on_non_financial_cards() -> None:
+    """The actual regression this guards: a company_type check that silently stops firing
+    would make every card show a bank-specific caveat, or no card ever show it again."""
+    for company_type in ("operating", "pre_revenue"):
+        card = _card_with_all_metrics(company_type)
+        card["health_verdict"] = "green"
+        card["ai_read"] = "Turns sales into profit at a healthy rate."
+        html = _health_block_html(card)
+        assert "ss-financial-caveat" not in html
+        assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT not in html
 
 
 def test_learn_panel_body_gives_each_metric_its_own_disclosure() -> None:
