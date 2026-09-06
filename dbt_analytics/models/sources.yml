@@ -14,6 +14,11 @@ sources:
       - name: yf_constituents
         description: >
           Constituent snapshot per market at ingest time; one row per ticker from seeds.
+        loaded_at_query: >
+          select max(ingested_at::timestamp) from {{ raw_parquet_union('yf_constituents.parquet') }}
+        freshness:
+          warn_after: {count: 20, period: day}
+          error_after: {count: 30, period: day}
         columns:
           - name: market_code
             description: Registry partition key.
@@ -31,6 +36,11 @@ sources:
       - name: yf_daily_prices
         description: >
           OHLCV price history per ticker and trade date from yfinance download.
+        loaded_at_query: >
+          select max(ingested_at::timestamp) from {{ raw_parquet_union('yf_daily_prices.parquet') }}
+        freshness:
+          warn_after: {count: 20, period: day}
+          error_after: {count: 30, period: day}
         columns:
           - name: market_code
             description: Registry partition key.
@@ -52,10 +62,17 @@ sources:
             description: Dividend component on the bar.
           - name: stock_splits
             description: Split factor on the bar.
+          - name: ingested_at
+            description: When this row's batch was fetched (one value per download call).
 
       - name: yf_fundamentals
         description: >
           Raw ticker.info and latest-annual statement fields per ticker snapshot.
+        loaded_at_query: >
+          select max(snapshot_date::timestamp) from {{ raw_parquet_union('yf_fundamentals.parquet') }}
+        freshness:
+          warn_after: {count: 20, period: day}
+          error_after: {count: 30, period: day}
         columns:
           - name: market_code
             description: Registry partition key.

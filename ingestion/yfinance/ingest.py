@@ -117,6 +117,24 @@ def _atomic_write_parquet(frame: pd.DataFrame, output_path: Path) -> None:
     )
 
 
+# Single source of truth for _normalize_price_frame's output shape AND for recognizing
+# whether an on-disk file predates a schema change (see _is_usable_checkpoint below) --
+# one list, not two copies that could drift apart.
+PRICE_COLUMNS = [
+    "market_code",
+    "ticker",
+    "trading_date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "dividends",
+    "stock_splits",
+    "ingested_at",
+]
+
+
 def _normalize_price_frame(frame: pd.DataFrame, market_code: str) -> pd.DataFrame:
     renamed = frame.rename(
         columns={
@@ -137,20 +155,18 @@ def _normalize_price_frame(frame: pd.DataFrame, market_code: str) -> pd.DataFram
         if optional not in renamed.columns:
             renamed[optional] = None
 
-    return renamed[
-        [
-            "market_code",
-            "ticker",
-            "trading_date",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "dividends",
-            "stock_splits",
-        ]
-    ]
+    return renamed[PRICE_COLUMNS]
+
+
+def _is_usable_checkpoint(existing: pd.DataFrame, expected_columns: list[str]) -> bool:
+    """True when `existing`'s columns exactly match what a fresh fetch produces today.
+    A same-day file can be "fresh" (per its marker) but still predate a schema change --
+    e.g. this task adding `ingested_at` to prices. Concatenating that file's rows against
+    newly-fetched rows with a different column set doesn't error; pandas outer-joins the
+    columns and silently fills the gap with NaN. Treating a schema-mismatched file as NOT
+    usable (falling back to a full refetch, the same as "not fresh") turns that silent
+    corruption into the ordinary, already-handled stale-checkpoint path instead."""
+    return set(existing.columns) == set(expected_columns)
 
 
 def _fetch_daily_prices(
@@ -166,8 +182,13 @@ def _fetch_daily_prices(
     existing: pd.DataFrame | None = None
     already_fetched: set[str] = set()
     if not force and _is_fresh_today(output_path):
-        existing = pd.read_parquet(output_path)
-        already_fetched = set(existing["ticker"].unique())
+        candidate = pd.read_parquet(output_path)
+        if _is_usable_checkpoint(candidate, PRICE_COLUMNS):
+            existing = candidate
+            already_fetched = set(existing["ticker"].unique())
+        # else: a fresh-today file that predates a schema change (e.g. a locally-run
+        # earlier-today fetch, before this code's ingested_at column existed) -- treated
+        # the same as not-fresh, below, rather than merged into a mismatched-schema file.
 
     # Filtered BEFORE batching, not skipped per-batch -- a batch that mixes already-fetched
     # and pending tickers must never redownload the already-fetched ones (that would append
@@ -225,9 +246,16 @@ def _fetch_daily_prices(
         if downloaded.empty:
             continue
 
+        # Stamped once per batch (one yfinance call = one fetch event), on the raw row
+        # data -- not inside _normalize_price_frame, which re-runs on every flush over
+        # all of `frames` accumulated so far and would overwrite an earlier batch's real
+        # fetch time with the latest flush's time instead.
+        fetch_time = datetime.now(timezone.utc).isoformat()
+
         if len(batch) == 1:
             single = downloaded.copy()
             single["ticker"] = batch_local[0]
+            single["ingested_at"] = fetch_time
             single = single.reset_index()
             frames.append(single)
         else:
@@ -236,6 +264,7 @@ def _fetch_daily_prices(
                     continue
                 part = downloaded[yf_ticker].copy()
                 part["ticker"] = local_ticker
+                part["ingested_at"] = fetch_time
                 part = part.reset_index()
                 frames.append(part)
 

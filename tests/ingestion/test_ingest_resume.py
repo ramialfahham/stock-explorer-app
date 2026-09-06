@@ -288,6 +288,80 @@ def test_prices_stale_file_is_fully_refetched(monkeypatch, tmp_path):
     assert sorted(calls) == ["AAA", "BBB"]
 
 
+def test_prices_ignores_a_fresh_today_file_with_an_old_schema(monkeypatch, tmp_path):
+    """Regression: a fresh-today checkpoint can still predate a schema change (this task
+    added `ingested_at` to prices) -- merging it with newly-fetched rows would silently
+    NaN-fill the old rows' missing column instead of erroring. Must be treated the same as
+    not-fresh: a full refetch, not a partial merge into a mismatched-schema file."""
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    output_path = output_dir / "yf_daily_prices.parquet"
+    output_path.parent.mkdir(parents=True)
+
+    old_schema_columns = [c for c in ingest_module.PRICE_COLUMNS if c != "ingested_at"]
+    old_schema_row = {c: "ZZZ" if c == "ticker" else 1.0 for c in old_schema_columns}
+    old_schema_row["market_code"] = MARKET.market_code
+    old_schema_row["trading_date"] = pd.Timestamp("2026-01-01").date()
+    pd.DataFrame([old_schema_row]).to_parquet(output_path, index=False)
+    # Marker content is never read back, only its own mtime -- writing it now makes it
+    # fresh-today, simulating a checkpoint that predates today's schema (the parquet has no
+    # ingested_at column) but still passes the freshness check on its marker alone.
+    ingest_module._checkpoint_marker_path(output_path).write_text("today", encoding="utf-8")
+
+    calls: list[str] = []
+
+    def _fake_download(tickers, **kwargs):
+        calls.extend(tickers)
+        return _fake_price_frame(tickers)
+
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+    monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
+    combined = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+
+    assert sorted(calls) == ["AAA", "BBB"]
+    assert "ZZZ" not in combined["ticker"].values
+    assert combined["ingested_at"].notna().all()
+
+
+def test_prices_ingested_at_is_not_overwritten_by_a_later_batchs_flush(monkeypatch, tmp_path):
+    """Regression: `ingested_at` is stamped once per fetch batch on the raw row data, not
+    inside `_normalize_price_frame` -- which reruns on every flush over ALL of `frames`
+    accumulated so far, not just the newest batch. If a future refactor moved the stamp
+    into `_normalize_price_frame` instead (a natural-looking place for it), the second
+    batch's flush would silently overwrite the first batch's already-flushed `ingested_at`
+    values with the later flush's own timestamp. Nothing else would catch this: dbt build
+    (schema/types unaffected), dbt source freshness (values would look fresher, not
+    staler), and no other test here inspects ingested_at across batch boundaries."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+    monkeypatch.setattr(
+        ingest_module.yf, "download", lambda tickers, **kwargs: _fake_price_frame(tickers)
+    )
+
+    base = datetime(2026, 9, 1, 12, 0, 0, tzinfo=timezone.utc)
+    call_count = {"n": 0}
+
+    class _FakeDatetime:
+        @staticmethod
+        def now(tz=None):
+            # Monotonically increasing, not a fixed count -- _atomic_write_parquet's
+            # own marker write also calls datetime.now() once per flush, so the real
+            # call count per batch is >1 and shouldn't be hardcoded here.
+            call_count["n"] += 1
+            return base + timedelta(minutes=call_count["n"])
+
+    monkeypatch.setattr(ingest_module, "datetime", _FakeDatetime)
+
+    combined = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
+
+    stamps = combined.set_index("ticker")["ingested_at"]
+    assert stamps["AAA"] == stamps["BBB"], "same batch must share one fetch_time"
+    assert stamps["CCC"] == stamps["DDD"], "same batch must share one fetch_time"
+    assert stamps["AAA"] < stamps["CCC"], (
+        "batch 1's stamp must predate batch 2's -- if the batch-2 flush had overwritten "
+        "it, the two would be equal instead"
+    )
+
+
 def test_prices_force_bypasses_skip(monkeypatch, tmp_path):
     _use_tmp_raw_dir(monkeypatch, tmp_path)
     monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)

@@ -293,6 +293,33 @@ Benchmark availability does **not** affect `is_card_eligible`.
 **Stale export policy:** if the scheduled pipeline run fails the completeness gate, **keep
 last good Supabase snapshot**; do not truncate to empty.
 
+**Checked by `dbt source freshness`** (`data-pipeline` job, before `dbt build`; also run in
+`validate:full` on every merge request, against CI fixture data, to catch a broken freshness
+query itself before it ever reaches production -- fixture data is always fresh, so that run
+proves the query still parses and references real columns, not that staleness detection
+works). All three raw tables covered, using each table's own real ingest timestamp
+(`ingested_at` on constituents and daily prices, `snapshot_date` on fundamentals -- daily
+prices gained an `ingested_at` column, stamped once per yfinance download batch, specifically
+so this check could cover it too). Warn at 20 days, error at 30 days -- sized against the real
+schedule's worst-case gap (up to 17 days in a long month), not the rounded "every two weeks"
+above.
+
+**Table-level, not per-market:** each `loaded_at_query` takes `MAX(...)` over the union of
+every active market's raw file, so this check passes as long as ANY one active market has a
+recent ingest timestamp, even if a specific other market's ingestion has been silently broken
+since before the current warn/error window. It catches "the whole pipeline stopped running,"
+not "one market's ingestion quietly broke while the rest kept going." Per-market freshness
+would need its own mechanism (e.g. a singular test grouping by `market_code`); not built here,
+an owner-level scope call if this gap is ever worth closing.
+
+**Local dev note:** a `storage/raw/` populated before daily prices gained `ingested_at` (i.e.
+from before this column existed) will fail `stg_yf__daily_prices`'s new `not_null` test on that
+column until re-ingested -- run ingestion fresh (or `--force-refetch`) for any market with
+old-schema price parquet before running `dbt build` locally. Not a risk in CI or production:
+`validate:full`'s fixtures always stamp `ingested_at`, and the scheduled pipeline job starts
+from an empty `storage/raw/` every run (no cache/artifacts across jobs), so this mixed-schema
+state can only arise in a local checkout that predates this change.
+
 ---
 
 ## Completeness gates
@@ -320,6 +347,14 @@ registry `ingest_active: true` entries (CI on every PR).
 ## Supabase export — `mart_stock_cards`
 
 Grain: one row per `(market_code, ticker, snapshot_date)`.
+
+**Schema is dbt-contract-enforced** (`config: {contract: {enforced: true}}` in
+`dbt_analytics/models/5_marts/_marts.yml`): `dbt build` fails if a column's name, type, or
+count drifts from what's declared there. This guarantees the DuckDB mart matches its own
+documented shape, on every merge request, before anything downstream ever sees a bad schema --
+it does not auto-sync `scripts/export_to_supabase.py`'s separate `EXPORT_COLUMNS` allowlist or
+the Postgres migration schema, which stay hand-maintained, separate surfaces the contract
+cannot see.
 
 | Column | Type | Notes |
 |--------|------|-------|

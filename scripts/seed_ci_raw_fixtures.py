@@ -191,6 +191,7 @@ def _write_market_fixtures(market_code: str) -> None:
                 "volume": 1_000_000,
                 "dividends": 0.0,
                 "stock_splits": 0.0,
+                "ingested_at": now,
             }
             for ticker in ALL_TICKERS
         ]
