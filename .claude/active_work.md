@@ -12,8 +12,8 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-06)
 
-**MR pending -- pipeline alerting + ingestion checkpoint, item 2 of the portfolio-readiness
-list (from the 4-persona repo assessment).** Two halves:
+**MR !101 (pushed, awaiting merge) -- pipeline alerting + ingestion checkpoint, item 2 of the
+portfolio-readiness list (from the 4-persona repo assessment).** Two halves:
 
 - **Alerting**: zero new code, zero new dependency (owner's call, over a Slack/webhook
   alternative) -- GitLab's native "Pipeline emails" project integration.
@@ -23,18 +23,24 @@ list (from the 4-persona repo assessment).** Two halves:
   it doesn't catch (the schedule silently never firing at all -- a dead-man's-switch gap with
   no zero-dependency fix).
 - **Checkpointing**: `ingestion/yfinance/ingest.py`'s `_fetch_fundamentals`/`_fetch_daily_prices`
-  now skip any ticker/batch already present in a same-UTC-day-fresh raw parquet instead of
-  unconditionally refetching, and flush incrementally during the loop (every ticker for
-  fundamentals, every batch for prices) instead of only once at the very end -- a
+  now skip any ticker/batch already covered by a same-UTC-day `.checkpoint` marker file
+  instead of unconditionally refetching, and flush incrementally during the loop (every ticker
+  for fundamentals, every batch for prices) instead of only once at the very end -- a
   crash/timeout mid-market now loses at most what's in flight, not the whole market, and a
   same-day retry resumes instead of restarting. `--force-refetch` bypasses the skip.
   Contained to `storage/raw/`'s own per-run persistence (that directory is gitignored and CI
   containers are ephemeral between separate job runs, so this does not make a CI-retried run
   resume across containers -- only within one run and for same-day local/manual retries; noted
-  as a real limit, not oversold). Verified live, not just unit-tested: ran
-  `run_ingestion.py --market ch_smi --max-tickers 20 --delay-seconds 1` end to end (~60s,
-  20/20 ok), re-ran identically (3.75s, 20/20 skipped, same row counts), `dbt build` against
-  the result passed all 8 staging-layer tests unchanged.
+  as a real limit, not oversold). **Three review rounds caught real defects before this
+  shipped, not reviewer noise**: a batch-duplication bug (a same-day retry with shifted batch
+  boundaries would have written duplicate rows, failing dbt's uniqueness test), non-atomic
+  writes (a mid-flush crash could wedge every same-day retry on a corrupt file), and a
+  freshness check with no protection against two other scripts writing the same checkpointed
+  paths (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) -- the marker
+  file is the fix for that third one specifically. Verified live, not just unit-tested: ran
+  `run_ingestion.py --market ch_smi --max-tickers 20 --delay-seconds 1` end to end, re-ran
+  identically (fully skipped, same row counts, no data loss), `dbt build` against the result
+  passed all 8 staging-layer tests, both before and after every fix round.
 
 **Finding, not folded into this task (owner's call):** pulling the real job trace
 (`2808154517`, the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute
