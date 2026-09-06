@@ -143,6 +143,22 @@ python scripts/run_ingestion.py                                     # all market
 Use `--delay-seconds` (default `0.25`) to reduce Yahoo 429 rate limits on fundamentals.
 Run per-market if a full run hits rate limits.
 
+A ticker already fetched into today's (UTC) raw parquet is skipped on a re-run, not
+refetched -- a re-run after a partial failure resumes rather than starting over, and a
+suspiciously-fast run after an earlier one the same day is this, not a bug. Add
+`--force-refetch` to ignore same-day cached output and refetch every ticker anyway. Freshness
+is tracked by a same-named `.checkpoint` file next to each raw parquet (gitignored along with
+the rest of `storage/raw/`), not the parquet's own timestamp -- other scripts that write these
+same paths (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) never touch
+it, so a same-day write from one of them, before real ingestion runs, can't be mistaken for a
+completed run.
+
+Not covered by the marker: running one of those scripts against a real market_code AFTER real
+ingestion already ran the same day. The marker still reads fresh (ingestion wrote it), but the
+parquet content is no longer what ingestion produced. This is a narrow, deliberate action
+sequence, not a normal workflow -- if data looks wrong and this ordering is suspected, use
+`--force-refetch` rather than trusting the checkpoint.
+
 ### Full local transform (when models exist)
 
 ```bash
@@ -180,7 +196,15 @@ Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migration
 
 ## Monitoring (v1)
 
-Until dashboards exist, rely on:
+**Pipeline failure email -- one-time setup (owner action):** GitLab Settings → Integrations →
+**Pipeline emails** → recipient = your email → check "Notify only broken pipelines" → branches
+to be notified = `main` only. This is pipeline-level, not job-level: a `supabase-migrate` or
+`validate:*` failure on `main` triggers the same email as a `data-pipeline` failure, not just
+this job specifically -- accepted imprecision for zero new dependency and zero code. It does
+**not** catch the schedule silently never firing at all (a dead-man's-switch gap -- nothing
+runs, so there's nothing to alert from); no zero-dependency fix exists for that today.
+
+Beyond the email, rely on:
 
 - GitLab CI pipeline status on `main`
 - Completeness script stdout (eligible counts per market)

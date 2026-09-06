@@ -10,6 +10,37 @@ the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WA
 flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
 back under cap by moving settled history into the new archive above._
 
+## Recent work (2026-09-06)
+
+**MR pending -- pipeline alerting + ingestion checkpoint, item 2 of the portfolio-readiness
+list (from the 4-persona repo assessment).** Two halves:
+
+- **Alerting**: zero new code, zero new dependency (owner's call, over a Slack/webhook
+  alternative) -- GitLab's native "Pipeline emails" project integration.
+  **Pending owner action, not verifiable as done from this environment**: GitLab Settings →
+  Integrations → **Pipeline emails** → your email → "Notify only broken pipelines" → branches
+  = `main` only. Documented in `docs/operations_guide.md`'s Monitoring section, including what
+  it doesn't catch (the schedule silently never firing at all -- a dead-man's-switch gap with
+  no zero-dependency fix).
+- **Checkpointing**: `ingestion/yfinance/ingest.py`'s `_fetch_fundamentals`/`_fetch_daily_prices`
+  now skip any ticker/batch already present in a same-UTC-day-fresh raw parquet instead of
+  unconditionally refetching, and flush incrementally during the loop (every ticker for
+  fundamentals, every batch for prices) instead of only once at the very end -- a
+  crash/timeout mid-market now loses at most what's in flight, not the whole market, and a
+  same-day retry resumes instead of restarting. `--force-refetch` bypasses the skip.
+  Contained to `storage/raw/`'s own per-run persistence (that directory is gitignored and CI
+  containers are ephemeral between separate job runs, so this does not make a CI-retried run
+  resume across containers -- only within one run and for same-day local/manual retries; noted
+  as a real limit, not oversold). Verified live, not just unit-tested: ran
+  `run_ingestion.py --market ch_smi --max-tickers 20 --delay-seconds 1` end to end (~60s,
+  20/20 ok), re-ran identically (3.75s, 20/20 skipped, same row counts), `dbt build` against
+  the result passed all 8 staging-layer tests unchanged.
+
+**Finding, not folded into this task (owner's call):** pulling the real job trace
+(`2808154517`, the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute
+total (37%) -- the actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read
+step (~39 min, one Haiku call per changed card, no cap). Logged as a new open item below.
+
 ## Recent work (2026-09-01 to 2026-09-02)
 
 This session shipped every one of the nine Gemini-feedback points in
@@ -237,6 +268,14 @@ each batch and nobody tracking it as of the last check.
    this table today (`browser_storage.py` only ever touches browser localStorage), so nothing
    is broken yet -- but whoever eventually builds the cross-device sync feature this table is
    reserved for will need to widen the constraint first.
+8. **`generate_assessments.py`'s AI-read step is the scheduled pipeline's actual dominant,
+   ungoverned runtime cost** (~39 of ~65 minutes on the one measured 9-market run, 2026-09-01 --
+   found while working item 2, not folded into it, owner's call). One Claude Haiku call per
+   eligible card whose inputs changed, no cap. `run_ingestion.py`'s own share of the same run
+   was only ~24 minutes (37%) and now has a same-day skip-if-fresh checkpoint (see Recent work
+   above) -- this step doesn't, and is the more likely long-term driver toward the 2h CI
+   timeout as more markets are onboarded. Not designed here: needs its own look (a time budget,
+   a per-run cap, or similar) if/when it becomes the actual constraint.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 
