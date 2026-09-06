@@ -1,147 +1,144 @@
 # Task contract
 
-objective: Two owner-decided Saved-tab fixes, from today's product-work review:
+objective: Close backlog item 3, "the bank card's capital-adequacy blind spot" (owner-flagged
+  in `.claude/active_work.md` and `docs/handover_2026-09-03.md`, item 3): financial-type
+  (bank) cards only carry the numbers this app can source (profitability and returns), never
+  balance-sheet safety or capital strength (CET1/Tier 1 -- unsourceable from yfinance, see
+  `docs/data_contract.md`'s "financial" verdict note). Today that limit survives only as an
+  instruction inside the LLM prompt (`scripts/assessment_rules.py`'s `READ_SYSTEM_PROMPT`,
+  "financial" company-type lens) -- CI pins the instruction's PRESENCE in the prompt text, but
+  nothing pins its presence in what the model actually writes, and when `ai_read` is absent
+  (pending, a per-card API failure, or a hallucination-guard reject) there is no caveat at
+  all. A beginner could read a green "Healthy" badge on a bank stock as "this bank is safe",
+  which the app has no way to actually assess.
 
-  1. **"Clear saved" (the bulk action in the "⋯" overflow menu) has no confirmation** -- one
-     click wipes every saved company (and skip history) with no undo. Owner chose: gate it
-     behind a popover-style confirmation (a candidate direction already sketched in
-     `docs/backlog/discover_saved_search_ux_findings.md`, not previously decided).
-  2. **There is no way to remove a single saved company** -- only the all-or-nothing bulk
-     clear. Owner chose: add per-item removal too, after being shown (via code, not assumed)
-     that no such affordance exists anywhere in the Saved tab today.
-
-  **A third finding changed the shape of this task, found during planning, not assumed:**
-  `frontend/explore_filters.py` has its own, independent copy of "which tickers are saved"
-  (`_saved_keys()`), used by `filter_pool()` to exclude saved tickers from the Discover pool --
-  a pairing `docs/north_star.md` documents explicitly ("Adds ticker to Saved. Removes from
-  scoped discover pool."). That copy has no concept of "unsave" reversing a save. Left unfixed,
-  shipping per-item removal alone would make things worse than today: a removed ticker would
-  vanish from Saved but stay excluded from Discover forever, and since Search has no Save
-  action, there would be no way to ever re-save it short of clearing the entire list. Fixing
-  this is a precondition for per-item removal being safe to ship, not optional scope creep --
-  escalated and shown to the owner before proceeding, not decided silently.
-
-  Both product decisions (add confirmation; add per-item removal) were made explicitly by the
-  owner in-thread. The engineering shape (where the shared logic lives, the exact tie-break,
-  the popover-nesting workaround, the ordering-bug fix below) was planned via this repo's
-  Explore -> Plan -> Confirm cycle: one Explore pass over the actual code (not assumed), one
-  Plan-agent validation pass that caught two real bugs before any code was written (see
-  `decisions_reserved` and the plan-validation findings folded into `done_when` below), then
-  owner sign-off on the written plan before implementation started.
+  This was surfaced to the owner directly (not assumed): explained in plain terms why
+  profitability and capital safety are different things for a bank specifically (a bank can
+  look profitable right up until it fails on capital adequacy -- the real-world SVB 2023
+  collapse was given as a concrete, non-hypothetical example), and why this is the one card
+  type where that gap is financially consequential, not just a documentation nicety. Owner
+  requested short, easy-to-understand wording and delegated the exact phrasing after that
+  context: **"These numbers show profitability only, not whether this bank holds enough
+  capital to stay safe."** -- owner-approved verbatim, not self-authored without sign-off
+  (§6: user-visible naming/wording is an owner call, every time; this repo's own
+  `VERDICT_FALLBACK_READ` comment in `frontend/card_copy.py` states the same rule for this
+  exact class of card copy). Superseded by the amendment below -- the final, shipped sentence
+  differs from this one.
 
 scope_paths:
-  - frontend/explore_filters.py (new shared helper, `filter_pool` fix, delete dead
-    `_saved_keys()`)
-  - frontend/app.py (`_saved_count`/`_saved_cards` delegate to the shared helper;
-    `_render_saved_tab` gets the "Remove from saved" button)
-  - frontend/overflow_menu.py (`render_overflow_menu`'s confirm-state logic + an ordering fix,
-    see below)
-  - tests/frontend/test_explore_filters.py (new tests)
-  - docs/ui/saved_list.md, docs/north_star.md, docs/ui/discover_header.md,
-    docs/backlog/discover_saved_search_ux_findings.md (doc updates)
-  - .claude/active_work.md
+  - frontend/card_copy.py (new constant, the owner-approved caveat text)
+  - frontend/card_ui.py (`_health_block_html`: render the caveat for financial-type cards)
+  - frontend/styles.py (a caption-style CSS rule for the new caveat's class)
+  - tests/frontend/test_card_ui.py (new tests)
+  - docs/data_contract.md (note the caveat now exists card-face, not just prompt-side)
+  - .claude/active_work.md (close out item 3)
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none outstanding -- both product decisions (confirmation step; per-item
-  removal) and the one scope-expanding technical finding (the `explore_filters.py` fix) were
-  put to the owner and approved before implementation began, not decided unilaterally.
-
-  Two smaller engineering choices, judged agent-executable (implementation-level, not
-  product/wording): no new "danger" button color for the destructive actions -- this app is
-  deliberately monochrome-plus-one-gold-accent (`docs/ui/design_system.md`'s "monochrome-only
-  constraint"; even the red verdict badge conveys severity via a color-less 🔴 emoji, never a
-  red CSS rule), so severity comes from copy alone, not a new color that would be the first of
-  its kind in this app.
-
-  The third -- no confirmation on the per-item removal -- is NOT self-classified by analogy:
-  it was written out explicitly as its own numbered section in the plan file
-  (`groovy-churning-scroll.md`, section 3, "No confirmation on this one: single item, and --
-  now that fix 1 is in place -- trivially re-saved from Discover if it was a mistake. This
-  reasoning only holds because of fix 1; it would not hold without it.") and the owner approved
-  that exact plan via `ExitPlanMode` before implementation began -- the owner read this specific
-  reasoning, not just the two headline product decisions, and signed off on it. Recorded here
-  because the plan file itself lives outside this repo's git history, so a cold reviewer has no
-  other way to see that trail.
+decisions_reserved: none outstanding -- the product decision (does this need a caveat at all)
+  and the wording were both put to the owner and answered in this thread, not decided
+  unilaterally. One implementation-level choice, disclosed as agent-executable, not
+  product content: the caveat renders unconditionally for every financial-type card with a
+  known verdict token, regardless of whether `ai_read` is present or absent -- because the
+  LLM is only prompted, not required, to mention the limit in its own prose (confirmed by
+  reading `READ_SYSTEM_PROMPT` directly: it's a style instruction, not a schema-enforced
+  field), so relying on the model to say it every time would reintroduce exactly the gap this
+  task closes. This is a placement/reliability decision, not new user-visible wording beyond
+  what's already approved above.
 
 done_when:
-  - `frontend/explore_filters.py`: new `saved_keys_with_order(interactions)` pure helper
-    (latest save/unsave action per `(market_code, ticker)` wins, `>=` tie-break matching the
-    tie-break `_saved_cards` already used for sort order); `filter_pool` calls it instead of
-    `_saved_keys()`; `_saved_keys()` deleted (confirmed dead, not just superseded).
-  - `frontend/app.py`: `_saved_count`/`_saved_cards` delegate to the shared helper instead of
-    their own inline "any save ever" logic. `_render_saved_tab`'s focused-card view gets a
-    plain in-flow "Remove from saved" button (`type="secondary"`, explicit key) below the card
-    -- matching "<- Back to list"'s existing plain treatment in this same view, not Discover's
-    fixed-to-viewport action bar (a different, unrelated treatment this view has never used).
-    Handler clears `saved_focus_key` in the same click (matching how "Not now" already clears
-    `discover_focus_key`), calls `append_interaction(selected, "unsave")` (same inline-call
-    convention "Not now" already uses, no new wrapper function), then `st.rerun()`.
-  - `frontend/overflow_menu.py`: `render_overflow_menu`'s "Clear saved" button gated behind
-    `st.session_state["confirm_clear_saved"]`. Armed state shows "Clear all {N} saved
-    compan{y/ies}? This can't be undone." (singular/plural handled the way `right_now_line`
-    already does, not hardcoded) plus Cancel/Clear-all buttons (`type="secondary"`, explicit
-    keys). **Ordering fix, found during plan validation, not optional:** `clear_interactions()`
-    already ends with its own internal `st.rerun()`, which halts the rest of the script run --
-    so the flag reset and `on_clear_saved()` must happen BEFORE calling `clear_interactions()`,
-    not after, or the confirm prompt gets stuck reading "Clear all 0 saved companies?" on next
-    open. Verified explicitly in manual testing below, not just reasoned about.
-  - `tests/frontend/test_explore_filters.py`: `saved_keys_with_order` covered for never
-    saved / saved once / saved-then-unsaved / saved-unsaved-saved-again (keyed on the second
-    save's timestamp, not the first) / unsaved-without-ever-saving. New `filter_pool`
-    regression test for save-then-unsave (ticker reappears in the pool) -- this is the test
-    that would have caught the `explore_filters.py` gap. Existing `test_filter_pool_excludes_saved`
-    passes unmodified.
-  - Mutation-tested: temporarily broke the `>=`/latest-wins logic, confirmed the new tests
-    fail, restored, confirmed green again.
+  - `frontend/card_copy.py`: new module-level constant holding the exact owner-approved
+    sentence, placed near `VERDICT_FALLBACK_READ` with a comment explaining why it exists and
+    that the wording is owner-authored (matching that constant's own existing comment
+    convention). No apostrophe, no em/en dash (same constraint `VERDICT_FALLBACK_READ`'s own
+    comment states, since `_esc()`'s HTML-entity-escaping breaks a literal-substring test
+    match on those characters) -- the approved wording already satisfies this, verify it
+    still does after any transcription.
+  - `frontend/card_ui.py`'s `_health_block_html`: the caveat renders inside the existing
+    `.ss-health-block` div, after the AI-read-or-fallback narrative, whenever
+    `card.get("company_type")` is `"financial"` and a known verdict token is present --
+    covering all three narrative states (AI read present; AI read absent with a fallback
+    line; AI read absent with no fallback, the current early-return branch). Never shown for
+    other company types.
+  - `frontend/styles.py`: new caption-style rule (matching the established
+    `--ss-caption-size`/`--ss-caption` pattern already used for other secondary/qualifying
+    card text, e.g. `.ss-metric-sources`, `.ss-benchmark-unavailable` -- not the same
+    equal-weight treatment `.ss-ai-read`/`.ss-verdict-fallback` deliberately share, since this
+    is a caveat about the card, not a piece of the narrative itself).
+  - `tests/frontend/test_card_ui.py`: new tests confirming the caveat appears for a
+    `financial`-type card in all three narrative states above, and confirming it does NOT
+    appear for `operating`/`pre_revenue`-type cards even with an identical verdict/ai_read
+    shape (the actual regression this task guards against -- a company-type check that
+    silently stops firing).
   - Full `pytest` suite green.
-  - Manually verified against the running dev server (Streamlit-widget logic isn't
-    unit-tested here, per this repo's own documented exemption): the confirm-step Cancel path
-    truly cancels; the Clear-all path truly clears AND reopening "⋯" afterward shows the
-    normal single button again, not a stuck "Clear all 0" prompt (the specific bug the
-    ordering fix prevents, checked explicitly); removing a saved company makes it reappear in
-    the Discover pool (the specific bug the `explore_filters.py` fix prevents, checked
-    explicitly); 0-saved and 1-saved copy both read grammatically.
-  - `docs/ui/saved_list.md`, `docs/north_star.md`,
-    `docs/backlog/discover_saved_search_ux_findings.md` updated per the plan.
+  - Mutation-tested: temporarily remove the company_type gate (always render, or never
+    render), confirm the new tests actually fail, restore, confirm green again.
+  - Manually verified against the running dev server: an actual financial-type card (e.g.
+    HSBC or a similar bank already in the deck) shows the caveat; an operating-type card does
+    not.
+  - `docs/data_contract.md`'s "financial" verdict note updated to mention the caveat is now
+    also shown card-face, not just instructed in the prompt.
+  - `.claude/active_work.md`: item 3 closed out.
   - No em dash or en dash on any added line.
 
 impact_map:
-  - Behavior change, not just docs/tests this time: the Discover pool's saved-exclusion logic
-    changes (previously permanent once saved, now correctly reversible), and the Saved tab
-    gains a new button and a two-state popover flow. Every existing user's stored interactions
-    contain zero `"unsave"` rows today, so behavior is unchanged until the first removal
-    happens -- backward compatible, no migration needed.
-  - `frontend/*` and `tests/*` both touched -- per `.claude/review_routing.json`, this requires
-    cto-reviewer in addition to scope-auditor (`always`).
-  - No new dependency, no schema/CI change, no new mechanism beyond the pure-function
-    extraction pattern this repo already uses repeatedly (e.g. `_sync_search_query`).
+  - User-visible change: financial-type cards gain one new line of card-face text. No
+    verdict/metric computation changes, no data contract change, no new dependency.
+  - `frontend/*` and `tests/*` both touched -- per `.claude/review_routing.json`, requires
+    cto-reviewer in addition to scope-auditor (`always`). `docs/data_contract.md` also routes
+    to equity-analyst-reviewer -- missed in the original impact_map, caught by the commit gate
+    itself refusing to commit without that verdict recorded.
 
 amendments:
-
-2026-09-05 -- scope-auditor's first pass FAILED on five findings; four addressed here, one
-disclosed as deliberately not addressed:
-
-1. Two added lines (`docs/ui/discover_header.md`, `docs/ui/saved_list.md`) contained a real
-   em dash despite the intent being `--` -- fixed. A repo-wide sweep restricted to added diff
-   lines only (not whole-file, which would false-positive on this repo's considerable
-   pre-existing em-dash use) confirmed no others.
-2. `docs/ui/discover_header.md` was edited but missing from `scope_paths` -- added above.
-3. This contract referred to the shared helper as `_saved_keys_with_order` (leading
-   underscore) throughout, a stale name from before it was made public -- corrected to
-   `saved_keys_with_order` everywhere in this file, matching what was actually implemented.
-4. `decisions_reserved`'s per-item-removal reasoning read as self-classified by analogy --
-   corrected above to cite the actual plan-mode approval trail, which a cold reviewer has no
-   way to see otherwise since the plan file lives outside this repo.
-
-Not addressed, disclosed instead: `.claude/active_work.md` showed zero change while listed in
-`scope_paths`. Fixed by actually updating it in this same commit (see below) rather than
-deferring -- unlike `review.md`, it has no structural reason to wait.
-
-A non-blocking note from the same review, tracked but not fixed here (out of this task's
-scope, no live path affected): `supabase/migrations/001_initial_schema.sql`'s
-`user_interactions.action` CHECK constraint still only allows `('save', 'skip')`, now stale
-against the app-level `'unsave'` action. Nothing in this codebase currently writes to that
-table (`browser_storage.py` only ever touches browser localStorage), so no live constraint
-violation exists today -- flagged in `.claude/active_work.md`'s Open items for whoever builds
-the deferred cross-device-sync feature that table is reserved for.
+- scope-auditor (round 1) and cto-reviewer flagged the same fact --
+  `.claude/active_work.md` edited but not staged -- and reached opposite verdicts: cto-reviewer
+  read it as the session's established convention (`active_work.md`'s own "Review mechanics"
+  note: `review.md` + this file are "STILL conventionally committed separately... but this is
+  no longer load-bearing... committing it alongside the change it describes works fine too"),
+  scope-auditor read `scope_paths` literally and failed it as a gap. Resolved by taking the
+  documented "works fine too" option rather than re-litigating the convention: staged
+  `.claude/active_work.md` into this same commit. No code or wording changed.
+- equity-analyst-reviewer FAILED the owner-approved sentence itself, with evidence independently
+  verified before acting on it (not taken on trust): `company_type == "financial"` is the whole
+  GICS "Financial Services" sector (`docs/data_contract.md`'s classification note), not
+  depository banks -- confirmed against this app's own live S&P 500 constituent data, which
+  already includes Visa, Mastercard, BlackRock, Moody's, S&P Global, CME Group, ICE, Chubb,
+  Progressive, Allstate, Aon, Marsh McLennan, American Express, and Berkshire Hathaway under
+  that sector, none of which are banks. The approved sentence's "this bank" is a factual error
+  on all of their cards, and regresses from `scripts/assessment_rules.py`'s own already-shipped,
+  already-reviewed `READ_SYSTEM_PROMPT` wording ("this financial company's balance-sheet safety
+  or capital strength"), which a prior review already corrected away from the same bank-specific
+  over-reach (see that file's `_verdict_financial` comment). Second, smaller finding: financial
+  cards also render `revenue_growth_yoy_pct` (`applies_to = operating|financial`, catalogued
+  under `growth`, not `profitability`, confirmed in `metric_catalogue.csv`), so "profitability
+  only" undersold what the card shows. Both independently confirmed by reading the cited files
+  directly, not by trusting the reviewer's claim. Taken back to the owner rather than
+  self-corrected (§6): shown the evidence and a proposed fix mirroring the already-reviewed
+  `READ_SYSTEM_PROMPT` framing, owner chose the proposed fix as-is. Sentence at that point:
+  "These numbers show profitability and returns only, not whether this company holds enough
+  capital to stay safe." -- superseded again below, kept here only as the round-2 record.
+- A narrow round-3 re-check of that exact sentence (nothing else) FAILED it too, same root
+  defect class: `metric_catalogue.csv` shows financial-type cards render four metrics across
+  three `perspective` values (`profitability`: `net_margin_pct`; `returns`: `statement_roe_pct`,
+  `roa_pct`; `growth`: `revenue_growth_yoy_pct`) -- "profitability and returns only" still
+  omitted the growth metric, independently confirmed by querying the CSV directly. Taken back
+  to the owner again (§6) rather than patched to a 3-item list and risking a 4th miss later:
+  proposed dropping the enumeration entirely and stating only the one fact that's actually
+  invariant regardless of which metrics the catalogue carries for this company_type -- capital
+  adequacy is never assessed anywhere in this app (confirmed: no metric for any company_type
+  measures CET1/Tier 1 or bank-style regulatory capital adequacy; the closest general-leverage
+  metrics, `debt_to_equity` and `net_debt_to_ebitda`, are both `applies_to = operating` only and
+  explicitly marked meaningless for financials). Owner approved this fix as proposed. Final,
+  shipped sentence: **"These numbers do not show whether this company holds enough capital to
+  stay safe."** -- confirmed via a further narrow equity-analyst-reviewer re-check to make no
+  claim about card contents (so immune to future `metric_catalogue.csv` drift), and confirmed
+  its one claim (capital adequacy not assessed) holds unconditionally. This is the sentence
+  actually on disk in `frontend/card_copy.py`; both sentences quoted above are superseded.
+  "do not", not "don't" -- same no-apostrophe constraint as the others.
+- That same round-3 re-check also caught two staleness bugs of my own: `.claude/active_work.md`
+  still quoted the round-1 wording (fixed to quote the sentence actually shipped, and its item-3
+  heading corrected from "bank card's" to "financial-type card's" to match), and this
+  amendments section itself hadn't yet recorded the round-3 approval trail at the moment it was
+  checked (fixed by this entry). Both are documentation lag from iterating the wording twice
+  more after the round-2 entry was written, not a missing approval -- the round-3 approval
+  happened in the same conversation turn that produced this entry.

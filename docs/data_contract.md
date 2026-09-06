@@ -500,6 +500,10 @@ Conservative — one serious weakness caps it:
   relief -- this is scoped to the one metric pair the feedback and the owner's decision named.
 - **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
   adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the bank verdict stays modest).
+  This limit is also shown card-face on every financial-type card, not just instructed in the
+  AI-read prompt (`frontend/card_copy.py`'s `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by
+  `frontend/card_ui.py`'s `_health_block_html` regardless of whether `ai_read` is present) --
+  the prompt only asks the model to mention it, never guarantees the model does.
 - **`revenue_growth_yoy_pct` — ONE-SIDED, on operating and financial cards**.
   Growth below `GROWTH_DECLINE_THRESHOLD_PCT` (0.0, any year-over-year decline, no tolerance
   band) **blocks green**. It can do nothing else: growth never earns green, and it never causes
