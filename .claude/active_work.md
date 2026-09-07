@@ -12,24 +12,15 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-07)
 
-**MR pending -- repo's first Streamlit `AppTest` end-to-end test,
-`tests/frontend/test_app_e2e.py`.** Covers the cross-tab Discover/Saved/Search flow (save,
-remove, search) unit tests structurally can't reach. Unlike item 3, no existing policy called
-for this -- new test infrastructure, not agreed work; `tests/README.md` documents what exists
-without asserting a future mandate.
-
-**Two of my own claims were wrong, both caught by reviewers, both fixed:** (1) claimed
-`git log --all -S"AppTest"` returns zero hits ever -- false, 5 commits exist, two explicitly
-declining AppTest for an unrelated, smaller bugfix (a real precedent, doesn't conflict with
-this task, but should've been engaged with, not erased). (2) hit an AppTest-only stale-widget
-`KeyError` (focusing two different cards in one session), claimed "confirmed, not a production
-bug" off one manual browser pass -- overclaimed; cto-reviewer traced Streamlit's own source and
-found the underlying condition is real, shared production code (with its own defensive
-`except KeyError: pass`, citing a known upstream issue) -- AppTest just lacks that same
-protection. The test's fix (seed interactions directly, skip the buggy path) stayed correct
-either way; the production-risk claim didn't, now stated as an open question.
-**Owner judgment call, not decided here: worth a tracked follow-up issue?** Full trace in this
-branch's own `contract.md`/`review.md`.
+**MR !104, merged** -- repo's first Streamlit `AppTest` end-to-end test,
+`tests/frontend/test_app_e2e.py`. Covers the cross-tab Discover/Saved/Search flow (save,
+remove, search) unit tests structurally can't reach -- new test infrastructure, not agreed
+work; `tests/README.md` documents what exists without asserting a future mandate. Two of my
+own claims were wrong, both caught by review and fixed: a false "AppTest never discussed in
+this repo" claim (it had been, in a narrower, non-conflicting decision), and an overclaimed
+"confirmed, not a production bug" verdict on an AppTest-only crash later traced into real,
+shared Streamlit code -- now open item 10 below. Full trace in MR !104's own
+`contract.md`/`review.md` history.
 
 ## Recent work (2026-09-06)
 
@@ -65,52 +56,14 @@ the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute tot
 actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read step (~39 min, one
 Haiku call per changed card, no cap). Logged as open item 8 below.
 
-**MR pending -- dbt model contract on `mart_stock_cards` + source freshness checks on all
-three raw sources, fully reviewed, ready to commit.** Fulfills an already-written,
-never-enacted standard (`docs/engineering_standards.md:223`). `_marts.yml`: `mart_stock_cards`
-gets `config: {contract: {enforced: true}}` plus `data_type:` on all 80 columns (real DuckDB
-types, confirmed via `DESCRIBE`, not guessed). `sources.yml`: all three tables get
-`loaded_at_query` (calling `{{ raw_parquet_union(filename) }}` directly, not a hand-rolled
-glob) + `freshness` (warn 20d/error 30d, sized against the schedule's real worst-case 17-day
-gap). `yf_daily_prices` gained a new `ingested_at` column (`ingestion/yfinance/ingest.py`,
-stamped once per fetch batch) specifically to make this possible.
-
-**Not the number I first called this** -- dropped "item 3 of the portfolio-readiness list"
-after scope-auditor caught it colliding with this file's own "item 3" (MR !100, above); the
-source 5-item list text no longer exists anywhere in this repo, so the number can't be verified.
-
-**Implementation surprise:** staging models never call `{{ source(...) }}` (a custom
-`raw_parquet_union` macro reads raw parquet directly), so `sources.yml` had no real backing
-relation for freshness to query -- worked around with `loaded_at_query` + an explicit
-`::timestamp` cast (dbt's freshness runner rejected the raw string/date types otherwise).
-
-**Five review rounds across four reviewers caught seven real gaps, all fixed:** (1)
-`loaded_at_query` had zero pre-merge verification -- added `dbt source freshness` to
-`validate:full` too (query-correctness only, fixtures are always fresh so can't test
-staleness). (2) the original query used an unscoped `*` glob -- switched to calling
-`raw_parquet_union` directly, inheriting its active-market scoping. (3) `decisions_reserved`
-wrongly cited MR !101 as already deciding not to add a fetch-timestamp column -- put back to me
-directly; I chose to add it. (4) a fresh-today checkpoint file can predate this task's own
-`ingested_at` column, and merging it via `pd.concat` would silently NaN-fill instead of
-erroring -- fixed with a `PRICE_COLUMNS` constant + `_is_usable_checkpoint()` guard, plus a
-`not_null` dbt test as defense-in-depth. (5) nothing tested that `ingested_at` is stamped once
-per batch and never overwritten by a later flush (`_normalize_price_frame` reruns over all
-accumulated batches on every flush) -- added a regression test with a fake monotonic clock.
-(6) data-engineer-reviewer (only actually dispatched after the commit gate caught that the
-task's own impact_map required it and I'd never run it -- process miss, not a review gap)
-found freshness is table-level, not per-market: `MAX()` over the union of all active markets
-means one market's ingestion silently breaking forever stays invisible as long as others keep
-refreshing (empirically confirmed by simulating a stuck market). (7) same reviewer found the
-new `not_null` test can fail against a local dev's pre-existing `storage/raw/` that predates
-the `ingested_at` column, until re-ingested -- confirmed CI/production-safe (fixtures always
-stamp it; the scheduled job starts from an empty `storage/raw/` every run), so this is a real
-but local-only gap. Both are disclosure fixes in `docs/data_contract.md`'s Freshness section,
-not new mechanisms; per-market freshness detection is flagged as an open item below, owner's
-call whether it's worth building. Every fix mutation-tested for real (broke the exact thing
-being guarded, confirmed the guard/test catches it, restored, confirmed clean); full
-round-by-round account in this branch's own `review.md`. 531 tests passing; full `dbt
-build`/`dbt source freshness` clean against both real data and a freshly-reseeded, fixture-only
-environment matching `validate:full` exactly.
+**MR !103, merged** -- dbt model contract on `mart_stock_cards` (`config: {contract: {enforced:
+true}}` + `data_type:` on all 80 columns) + `dbt source freshness` on all three raw sources
+(`loaded_at_query` via `raw_parquet_union`, warn 20d/error 30d). `yf_daily_prices` gained a new
+`ingested_at` column to make this possible. Five review rounds caught seven real gaps (a
+pre-merge-verification gap, an unscoped glob, a mis-cited prior decision, a schema-mismatch
+concat bug, a missing batch-isolation test, freshness being table- not per-market -- open item
+9 below, and a local-dev-only test gotcha), all fixed and mutation-tested. Full round-by-round
+account in MR !103's own `contract.md`/`review.md` history.
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
@@ -322,6 +275,19 @@ each batch and nobody tracking it as of the last check.
    `docs/data_contract.md`'s Freshness section. Building per-market detection (e.g. a singular
    test grouped by `market_code`) is a new mechanism -- owner's call whether the gap is worth
    closing.
+10. **Possible latent crash risk in a normal, everyday flow: opening two different stock
+    cards' "Understand these numbers" panel in one session** (found while building item 4's
+    AppTest coverage, 2026-09-07, MR !104). Reliably crashes under Streamlit's own `AppTest`
+    harness with a `KeyError` on the next script rerun; a single manual pass against the real
+    dev server did NOT reproduce a user-visible crash. cto-reviewer traced the crashing code
+    path (`session_state.py`'s `_compact_state`, called via `on_script_will_rerun` inside
+    `ScriptRunner._run_script`) into real, shared production code, which wraps this exact case
+    in `except KeyError: pass` citing a known upstream Streamlit issue (`streamlit/issues/7206`)
+    -- consistent with, but not proof of, one-off manual testing simply not having hit whatever
+    narrower condition still lets it through in a real session. Full technical trace in MR
+    !104's own `contract.md`/`review.md`. Owner's call: worth a tracked follow-up issue (e.g. a
+    few real, repeated manual passes; or reading the upstream issue for whether it's fully
+    closed) or leave as-is given production wasn't observed to crash.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 
