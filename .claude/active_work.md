@@ -10,6 +10,27 @@ the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WA
 flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
 back under cap by moving settled history into the new archive above._
 
+## Recent work (2026-09-07)
+
+**MR pending -- repo's first Streamlit `AppTest` end-to-end test,
+`tests/frontend/test_app_e2e.py`.** Covers the cross-tab Discover/Saved/Search flow (save,
+remove, search) unit tests structurally can't reach. Unlike item 3, no existing policy called
+for this -- new test infrastructure, not agreed work; `tests/README.md` documents what exists
+without asserting a future mandate.
+
+**Two of my own claims were wrong, both caught by reviewers, both fixed:** (1) claimed
+`git log --all -S"AppTest"` returns zero hits ever -- false, 5 commits exist, two explicitly
+declining AppTest for an unrelated, smaller bugfix (a real precedent, doesn't conflict with
+this task, but should've been engaged with, not erased). (2) hit an AppTest-only stale-widget
+`KeyError` (focusing two different cards in one session), claimed "confirmed, not a production
+bug" off one manual browser pass -- overclaimed; cto-reviewer traced Streamlit's own source and
+found the underlying condition is real, shared production code (with its own defensive
+`except KeyError: pass`, citing a known upstream issue) -- AppTest just lacks that same
+protection. The test's fix (seed interactions directly, skip the buggy path) stayed correct
+either way; the production-risk claim didn't, now stated as an open question.
+**Owner judgment call, not decided here: worth a tracked follow-up issue?** Full trace in this
+branch's own `contract.md`/`review.md`.
+
 ## Recent work (2026-09-06)
 
 **MR !100, merged** -- financial-type card capital-adequacy caveat (item 3). New
