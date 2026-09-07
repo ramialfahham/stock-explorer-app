@@ -13,7 +13,8 @@ renamed as (
         cast(close as double) as close,
         cast(volume as double) as volume,
         cast(dividends as double) as dividends,
-        cast(stock_splits as double) as stock_splits
+        cast(stock_splits as double) as stock_splits,
+        cast(ingested_at as varchar) as ingested_at
     from source_data
 )
 

@@ -169,6 +169,11 @@ validate:full:
       EOF
     - python scripts/seed_ci_raw_fixtures.py
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    # Fixture data is stamped with today's date/timestamp every run (seed_ci_raw_fixtures.py),
+    # so this can never catch real staleness here -- it exists to catch the `loaded_at_query`
+    # SQL itself breaking (a typo, a column renamed on the ingestion side without updating this
+    # string) before that first surfaces at the actual production schedule instead.
+    - dbt source freshness --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - dbt parse --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - python scripts/check_dbt_tests.py
     - cp profiles.yml.example profiles.yml
@@ -250,6 +255,7 @@ data-pipeline:
             threads: 4
       EOF
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
+    - dbt source freshness --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.db
     - python scripts/check_eligibility_baseline.py --duckdb-path storage/stock_data.db

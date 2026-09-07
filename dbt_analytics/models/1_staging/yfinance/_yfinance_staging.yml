@@ -94,6 +94,12 @@ models:
       - name: stock_splits
         description: >
           Split factor attributed to the bar by yfinance (often 0).
+      - name: ingested_at
+        description: >
+          ISO timestamp when this row's batch was fetched during ingestion; one value per
+          yfinance download call, not per row. Backs dbt source freshness on yf_daily_prices.
+        data_tests:
+          - not_null
 
   - name: stg_yf__fundamentals
     description: >

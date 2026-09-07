@@ -7,6 +7,9 @@ models:
       **Grain:** One row per (market_code, ticker, snapshot_date) where is_card_eligible.
       **Source:** int_stock__card_metrics left join int_stock__sector_benchmarks.
       **Used by:** export_to_supabase.py, Streamlit app.
+    config:
+      contract:
+        enforced: true
     meta:
       owner: data
       domain: stock_cards
@@ -48,121 +51,150 @@ models:
       - name: market_code
         description: >
           Registry partition key; Supabase FK to markets table.
+        data_type: varchar
         data_tests:
           - not_null
       - name: ticker
         description: >
           Provider symbol exported to Supabase.
+        data_type: varchar
         data_tests:
           - not_null
       - name: company_name
         description: >
           Company display name on the swipe card.
+        data_type: varchar
       - name: sector
         description: >
           Sector label for UI and benchmark join.
+        data_type: varchar
       - name: currency
         description: >
           Currency code for formatted metric display.
+        data_type: varchar
       - name: business_summary
         description: >
           Yahoo longBusinessSummary text for company context on the card; nullable.
+        data_type: varchar
       - name: company_founded_year
         description: >
           Yahoo founded year for card plain-summary prefix; nullable when Yahoo omits it.
+        data_type: bigint
       - name: forward_pe
         description: >
           Forward P/E (multiple). No longer catalogued — still computed and
           exported, no card renders it, and it no longer gates eligibility. See
           data_contract § card metrics.
+        data_type: double
       - name: ebit_margin_pct
         description: >
           Card metric 2 — operating margin percent (0–100 scale).
+        data_type: double
       - name: ebit_margin_basis
         description: >
           Period basis for ebit_margin_pct — ttm_quarterly or annual_latest.
+        data_type: varchar
       - name: revenue_growth_yoy_pct
         description: >
           Card metric 3 — revenue growth YoY percent (0–100 scale).
+        data_type: double
       - name: info_ebitda
         description: >
           Raw EBITDA, passed through so scripts/generate_assessments.py can give
           assessment_rules.py's verdict banding a way to detect when net_debt_to_ebitda's sign
           flipped from negative earnings rather than genuine net cash. Data-only -- not in the
           metric catalogue or the Supabase export.
+        data_type: double
       - name: net_debt_to_ebitda
         description: >
           Card metric 4 — net debt to EBITDA ratio.
+        data_type: double
       - name: stmt_free_cash_flow
         description: >
           Raw free cash flow, passed through so scripts/generate_assessments.py can give
           assessment_rules.py's current_ratio_stmt liquidity relief a real dollar basis (FCF
           against the working-capital shortfall) instead of fcf_margin_pct's revenue-scaled
           proxy. Data-only -- not in the metric catalogue or the Supabase export.
+        data_type: double
       - name: fcf_margin_pct
         description: >
           Card metric 5 — free cash flow margin percent (0–100 scale).
+        data_type: double
       - name: stmt_stockholders_equity
         description: >
           Raw shareholders' equity, passed through so scripts/generate_assessments.py can give
           assessment_rules.py's verdict banding a way to check equity's own sign directly rather
           than inferring it from debt_to_equity's sign, which is unreliable when total debt is
           exactly zero. Data-only -- not in the metric catalogue or the Supabase export.
+        data_type: double
       - name: debt_to_equity
         description: >
           Operating-card solvency metric — total debt / shareholders' equity (statement-based,
           nullable). Rendered per company_type; not part of is_card_eligible.
+        data_type: double
       - name: current_ratio_stmt
         description: >
           Operating-card liquidity metric — current assets / current liabilities (statement-based,
           nullable; null for financials). Rendered per company_type; not part of is_card_eligible.
+        data_type: double
       - name: statement_roe_pct
         description: >
           Returns metric — net income to common stockholders / shareholders' equity × 100
           (statement-based, period-end; nullable). On the operating and financial cards; required
           for financial-card eligibility.
+        data_type: double
       - name: price_to_tangible_book
         description: >
           Market cap / tangible book value (nullable). No longer catalogued —
           still computed and exported, no card renders it, not part of eligibility.
+        data_type: double
       - name: net_margin_pct
         description: >
           Financial-card profitability metric — net income / revenue × 100 (nullable). Required for
           financial-card eligibility.
+        data_type: double
       - name: roa_pct
         description: >
           Financial-card returns metric — net income / total assets × 100 (statement-based,
           period-end; nullable). Rendered for financials; not part of eligibility.
+        data_type: double
       - name: dividend_yield_pct
         description: >
           Financial-card income metric — Yahoo dividend yield, already in percent (nullable; null
           when no dividend). No longer catalogued; still computed and exported, not rendered, not part of eligibility.
+        data_type: double
       - name: net_cash_to_market_cap
         description: >
           Net cash (cash − debt) / market cap (nullable). Superseded by net_cash;
           still computed and exported, no longer catalogued and no longer part of eligibility.
+        data_type: double
       - name: net_cash
         description: >
           Pre-revenue-card cash metric — cash − total debt, a money amount in the company's
           reporting currency (nullable). Required for pre_revenue-card eligibility.
+        data_type: double
       - name: working_capital
         description: >
           Pre-revenue-card liquidity metric — current assets − current liabilities, a currency amount
           (nullable; null for banks). Rendered for pre_revenue; not part of eligibility.
+        data_type: double
       - name: cash_runway_months
         description: >
           Pre-revenue-card cash metric — months of cash left at the current burn (nullable; null when
           not burning). Rendered for pre_revenue; not part of eligibility.
+        data_type: double
       - name: burn_rate_monthly
         description: >
           Pre-revenue-card cash metric — average monthly cash burn, a currency amount (nullable; null
           when not burning). Rendered for pre_revenue; not part of eligibility.
+        data_type: double
       - name: is_card_eligible
         description: >
           Whether the company_type's required metrics are present (operating on a four-metric set;
           financial on statement_roe_pct + net_margin_pct; pre_revenue on net_cash). forward_pe left
           both sets along with the metric itself, which widens eligibility.
           Drives Discover pool inclusion.
+        data_type: boolean
         data_tests:
           - not_null
       - name: company_type
@@ -171,6 +203,7 @@ models:
           Always non-null (defaults to operating when revenue is a data gap). Drives which metrics
           the card renders per company type and selects the per-type eligibility branch behind
           is_card_eligible.
+        data_type: varchar
         data_tests:
           - not_null
           - accepted_values:
@@ -179,179 +212,229 @@ models:
       - name: sector_peer_count
         description: >
           Eligible peer count in sector; null when sector unknown or no benchmark row.
+        data_type: bigint
       - name: sector_median_forward_pe
         description: >
           Sector median benchmark for forward P/E; null if peer count < 8.
+        data_type: double
       - name: sector_min_forward_pe
         description: >
           Sector minimum for forward P/E; null if peer count < 8. No card renders this mark since forward_pe left the catalogue; the column is kept, unused.
+        data_type: double
       - name: sector_max_forward_pe
         description: >
           Sector maximum for forward P/E; null if peer count < 8. No card renders this mark since forward_pe left the catalogue; the column is kept, unused.
+        data_type: double
       - name: sector_median_ebit_margin_pct
         description: >
           Sector median benchmark for EBIT margin; null if peer count < 8.
+        data_type: double
       - name: sector_min_ebit_margin_pct
         description: >
           Sector minimum for EBIT margin (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_ebit_margin_pct
         description: >
           Sector maximum for EBIT margin (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_ebit_margin_pct
         description: >
           Sector 25th percentile for EBIT margin (outlier-aware range-mark display clamp,
           Gemini feedback point 5); null if peer count < 8.
+        data_type: double
       - name: sector_q3_ebit_margin_pct
         description: >
           Sector 75th percentile for EBIT margin (outlier-aware range-mark display clamp);
           null if peer count < 8.
+        data_type: double
       - name: sector_median_revenue_growth_yoy_pct
         description: >
           Sector median benchmark for revenue growth; null if peer count < 8.
+        data_type: double
       - name: sector_min_revenue_growth_yoy_pct
         description: >
           Sector minimum for revenue growth (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_revenue_growth_yoy_pct
         description: >
           Sector maximum for revenue growth (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_revenue_growth_yoy_pct
         description: >
           Sector 25th percentile for revenue growth (outlier-aware range-mark display clamp,
           Gemini feedback point 5); null if peer count < 8.
+        data_type: double
       - name: sector_q3_revenue_growth_yoy_pct
         description: >
           Sector 75th percentile for revenue growth (outlier-aware range-mark display clamp);
           null if peer count < 8.
+        data_type: double
       - name: sector_median_net_debt_to_ebitda
         description: >
           Sector median benchmark for leverage; null if peer count < 8.
+        data_type: double
       - name: sector_min_net_debt_to_ebitda
         description: >
           Sector minimum for leverage (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_net_debt_to_ebitda
         description: >
           Sector maximum for leverage (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_net_debt_to_ebitda
         description: >
           Sector 25th percentile for leverage (outlier-aware range-mark display clamp, Gemini
           feedback point 5); null if peer count < 8.
+        data_type: double
       - name: sector_q3_net_debt_to_ebitda
         description: >
           Sector 75th percentile for leverage (outlier-aware range-mark display clamp); null if
           peer count < 8.
+        data_type: double
       - name: sector_median_fcf_margin_pct
         description: >
           Sector median benchmark for FCF margin; null if peer count < 8.
+        data_type: double
       - name: sector_min_fcf_margin_pct
         description: >
           Sector minimum for FCF margin (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_fcf_margin_pct
         description: >
           Sector maximum for FCF margin (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_fcf_margin_pct
         description: >
           Sector 25th percentile for FCF margin (outlier-aware range-mark display clamp, Gemini
           feedback point 5); null if peer count < 8.
+        data_type: double
       - name: sector_q3_fcf_margin_pct
         description: >
           Sector 75th percentile for FCF margin (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: sector_median_debt_to_equity
         description: >
           Sector median benchmark for debt-to-equity, among peers with positive stockholders'
           equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped); null
           if peer count < 8.
+        data_type: double
       - name: sector_min_debt_to_equity
         description: >
           Sector minimum for debt-to-equity among peers with positive stockholders' equity (card
           range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_debt_to_equity
         description: >
           Sector maximum for debt-to-equity among peers with positive stockholders' equity (card
           range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_debt_to_equity
         description: >
           Sector 25th percentile for debt-to-equity among peers with positive stockholders' equity
           (outlier-aware range-mark display clamp); null if peer count < 8.
+        data_type: double
       - name: sector_q3_debt_to_equity
         description: >
           Sector 75th percentile for debt-to-equity among peers with positive stockholders' equity
           (outlier-aware range-mark display clamp); null if peer count < 8.
+        data_type: double
       - name: sector_median_current_ratio_stmt
         description: >
           Sector median benchmark for current ratio; null if peer count < 8.
+        data_type: double
       - name: sector_min_current_ratio_stmt
         description: >
           Sector minimum for current ratio (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_current_ratio_stmt
         description: >
           Sector maximum for current ratio (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_current_ratio_stmt
         description: >
           Sector 25th percentile for current ratio (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: sector_q3_current_ratio_stmt
         description: >
           Sector 75th percentile for current ratio (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: sector_median_statement_roe_pct
         description: >
           Sector median benchmark for return on equity, among peers with positive stockholders'
           equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped); null
           if peer count < 8.
+        data_type: double
       - name: sector_min_statement_roe_pct
         description: >
           Sector minimum for return on equity among peers with positive stockholders' equity (card
           range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_statement_roe_pct
         description: >
           Sector maximum for return on equity among peers with positive stockholders' equity (card
           range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_statement_roe_pct
         description: >
           Sector 25th percentile for return on equity among peers with positive stockholders'
           equity (outlier-aware range-mark display clamp); null if peer count < 8.
+        data_type: double
       - name: sector_q3_statement_roe_pct
         description: >
           Sector 75th percentile for return on equity among peers with positive stockholders'
           equity (outlier-aware range-mark display clamp); null if peer count < 8.
+        data_type: double
       - name: sector_median_net_margin_pct
         description: >
           Sector median benchmark for net margin; null if peer count < 8.
+        data_type: double
       - name: sector_min_net_margin_pct
         description: >
           Sector minimum for net margin (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_net_margin_pct
         description: >
           Sector maximum for net margin (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_net_margin_pct
         description: >
           Sector 25th percentile for net margin (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: sector_q3_net_margin_pct
         description: >
           Sector 75th percentile for net margin (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: sector_median_roa_pct
         description: >
           Sector median benchmark for return on assets; null if peer count < 8.
+        data_type: double
       - name: sector_min_roa_pct
         description: >
           Sector minimum for return on assets (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_max_roa_pct
         description: >
           Sector maximum for return on assets (card range mark); null if peer count < 8.
+        data_type: double
       - name: sector_q1_roa_pct
         description: >
           Sector 25th percentile for return on assets (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: sector_q3_roa_pct
         description: >
           Sector 75th percentile for return on assets (outlier-aware range-mark display clamp); null
           if peer count < 8.
+        data_type: double
       - name: snapshot_date
         description: >
           Fundamentals as-of date exported with the card row.
+        data_type: date
         data_tests:
           - not_null
 

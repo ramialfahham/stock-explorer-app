@@ -44,57 +44,60 @@ the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute tot
 actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read step (~39 min, one
 Haiku call per changed card, no cap). Logged as open item 8 below.
 
+**MR pending -- dbt model contract on `mart_stock_cards` + source freshness checks on all
+three raw sources, fully reviewed, ready to commit.** Fulfills an already-written,
+never-enacted standard (`docs/engineering_standards.md:223`). `_marts.yml`: `mart_stock_cards`
+gets `config: {contract: {enforced: true}}` plus `data_type:` on all 80 columns (real DuckDB
+types, confirmed via `DESCRIBE`, not guessed). `sources.yml`: all three tables get
+`loaded_at_query` (calling `{{ raw_parquet_union(filename) }}` directly, not a hand-rolled
+glob) + `freshness` (warn 20d/error 30d, sized against the schedule's real worst-case 17-day
+gap). `yf_daily_prices` gained a new `ingested_at` column (`ingestion/yfinance/ingest.py`,
+stamped once per fetch batch) specifically to make this possible.
+
+**Not the number I first called this** -- dropped "item 3 of the portfolio-readiness list"
+after scope-auditor caught it colliding with this file's own "item 3" (MR !100, above); the
+source 5-item list text no longer exists anywhere in this repo, so the number can't be verified.
+
+**Implementation surprise:** staging models never call `{{ source(...) }}` (a custom
+`raw_parquet_union` macro reads raw parquet directly), so `sources.yml` had no real backing
+relation for freshness to query -- worked around with `loaded_at_query` + an explicit
+`::timestamp` cast (dbt's freshness runner rejected the raw string/date types otherwise).
+
+**Five review rounds across four reviewers caught seven real gaps, all fixed:** (1)
+`loaded_at_query` had zero pre-merge verification -- added `dbt source freshness` to
+`validate:full` too (query-correctness only, fixtures are always fresh so can't test
+staleness). (2) the original query used an unscoped `*` glob -- switched to calling
+`raw_parquet_union` directly, inheriting its active-market scoping. (3) `decisions_reserved`
+wrongly cited MR !101 as already deciding not to add a fetch-timestamp column -- put back to me
+directly; I chose to add it. (4) a fresh-today checkpoint file can predate this task's own
+`ingested_at` column, and merging it via `pd.concat` would silently NaN-fill instead of
+erroring -- fixed with a `PRICE_COLUMNS` constant + `_is_usable_checkpoint()` guard, plus a
+`not_null` dbt test as defense-in-depth. (5) nothing tested that `ingested_at` is stamped once
+per batch and never overwritten by a later flush (`_normalize_price_frame` reruns over all
+accumulated batches on every flush) -- added a regression test with a fake monotonic clock.
+(6) data-engineer-reviewer (only actually dispatched after the commit gate caught that the
+task's own impact_map required it and I'd never run it -- process miss, not a review gap)
+found freshness is table-level, not per-market: `MAX()` over the union of all active markets
+means one market's ingestion silently breaking forever stays invisible as long as others keep
+refreshing (empirically confirmed by simulating a stuck market). (7) same reviewer found the
+new `not_null` test can fail against a local dev's pre-existing `storage/raw/` that predates
+the `ingested_at` column, until re-ingested -- confirmed CI/production-safe (fixtures always
+stamp it; the scheduled job starts from an empty `storage/raw/` every run), so this is a real
+but local-only gap. Both are disclosure fixes in `docs/data_contract.md`'s Freshness section,
+not new mechanisms; per-market freshness detection is flagged as an open item below, owner's
+call whether it's worth building. Every fix mutation-tested for real (broke the exact thing
+being guarded, confirmed the guard/test catches it, restored, confirmed clean); full
+round-by-round account in this branch's own `review.md`. 531 tests passing; full `dbt
+build`/`dbt source freshness` clean against both real data and a freshly-reseeded, fixture-only
+environment matching `validate:full` exactly.
+
 ## Recent work (2026-09-01 to 2026-09-02)
 
-This session shipped every one of the nine Gemini-feedback points in
-[`docs/backlog/gemini_verdict_feedback.md`](../docs/backlog/gemini_verdict_feedback.md) --
-that doc now has nothing outstanding. In order:
-
-- **MR !73 -- ratio sign-inversion guard (point 1).** `net_debt_to_ebitda`/`debt_to_equity`
-  now band `unknown`/`weak` instead of reading a sign-flipped ratio as good when a
-  denominator goes negative.
-- **MR !75 -- joint liquidity evaluation (points 6/8).** `current_ratio_stmt` gets relief
-  (bands `ok`, never `good`) when free cash flow covers the working-capital shortfall in
-  real dollars, not a revenue-scaled margin. Fixes Apple's card reading "Mixed".
-- **MR !77 -- statement_roe_pct sign-inversion guard**, sibling bug to !73, same mechanism.
-- **MR !79 -- declined sector/size threshold calibration (point 9).** Current fixed
-  thresholds already mirror standard financial conventions (credit-quality bands, textbook
-  liquidity ratios); sector-relative calibration would let a mediocre company in a weak
-  sector read green purely because its peers are worse. **Decision: do not calibrate.**
-- **MR !81 -- structured AI-read output + hallucination guard (points 3/4).** Claude Haiku's
-  read call forces tool-use; a numeric cross-check (`validate_read_metrics`) rejects any
-  cited number that doesn't match the card's own data, fails closed (no retry). Added a
-  deterministic one-line fallback ("What the verdict means") for when `ai_read` is absent,
-  which previously rendered as a bare badge and read as broken.
-- **MR !83 -- dropped a hardcoded-looking example** (a real company's exact figures baked
-  into a `docs/data_contract.md` bullet) after the same pattern in a code comment caused
-  Claude to misdescribe logic as "hard-coded" to the owner. **Standing rule: no concrete
-  real-world examples or version-history narrative in code comments or docs describing
-  current behavior -- state the rule and its rationale only.**
-- **MR !85 -- declined early-stage classification review (point 2).** 4DMedical's -823.3%
-  operating margin is an honest number for a genuinely early operating company, not the same
-  degenerate case (Deep Yellow) the 0.1%-of-market-cap `pre_revenue` threshold exists to
-  catch. Moving the threshold would be the same invented-number problem point 9 was declined
-  for.
-- **MR !87 -- outlier-aware metric-range scaling (point 5).** `benchmark_range()` clamps the
-  displayed axis to a Tukey fence (`Q1 - 1.5*IQR` .. `Q3 + 1.5*IQR`) instead of raw sector
-  min/max, so one extreme peer no longer dominates every other card's marker in the same
-  sector; a no-op when no real outlier exists. Needed new dbt-computed quartile columns
-  (`sector_q1_*`/`sector_q3_*`) + a Supabase migration, not a frontend-only change. **This
-  also resolves the "one ASX Energy stock distorts its whole sector's range mark" data-quality
-  issue flagged back in MR #24 (2026-08-30) as a dbt-layer fix, owner call** -- it shipped as
-  a display-layer fix instead, which fully addresses the symptom.
-
-Each of these went through the full review-routing cycle (scope-auditor always, plus
-cto-reviewer/analytics-engineer-reviewer/equity-analyst-reviewer/data-engineer-reviewer per
-path) as cold, blinded `general-purpose` agents reading the role `.md` inlined. Every branch
-followed: commit main change, commit `review.md` separately, push to `gitlab` (never
-`origin`, which points at a suspended GitHub account), open MR, wait for the owner to merge,
-then sync/delete/prune, then a trivial follow-up MR flipping this file's status line (direct
-commits to `main` are hook-blocked). Full round-by-round review trails, including three real
-FAILs this session (cto-reviewer catching two silent failure branches and a label-uniqueness
-gap on !81; scope-auditor catching scope creep on !83's "minimal trim" turning into a
-reword; a missing blank line on !85), are in `docs/handover_2026-09-03.md`.
+All nine Gemini-feedback points in
+[`docs/backlog/gemini_verdict_feedback.md`](../docs/backlog/gemini_verdict_feedback.md)
+shipped (MRs !73/!75/!77/!79/!81/!83/!85/!87; !79 declined sector-relative calibration,
+!85 declined moving the pre_revenue threshold) -- that doc now has nothing outstanding.
+Full account, including three real review FAILs, in `docs/handover_2026-09-03.md`.
 
 **MR !92 (2026-09-03) -- 5-metric benchmark expansion, merged.** Owner-approved follow-up to
 !22, not one of the nine Gemini points above (scoped down from an original "11-metric" idea
@@ -289,6 +292,15 @@ each batch and nobody tracking it as of the last check.
    above) -- this step doesn't, and is the more likely long-term driver toward the 2h CI
    timeout as more markets are onboarded. Not designed here: needs its own look (a time budget,
    a per-run cap, or similar) if/when it becomes the actual constraint.
+
+9. **`dbt source freshness` is table-level across all active markets, not per-market**
+   (found by data-engineer-reviewer while reviewing the dbt-contract-and-freshness task above,
+   2026-09-06). A single market's
+   ingestion silently breaking forever would never trip `error_after` as long as other markets
+   keep refreshing -- `MAX()` over the union hides it. Documented as a known limitation in
+   `docs/data_contract.md`'s Freshness section. Building per-market detection (e.g. a singular
+   test grouped by `market_code`) is a new mechanism -- owner's call whether the gap is worth
+   closing.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 
