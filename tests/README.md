@@ -10,6 +10,14 @@ without per-file path boilerplate.
 | `tests/frontend/` | Streamlit UI helpers/components (card copy & HTML, nav, filters, disclosure, live quote, saved news, …) | `frontend/*` modules | `pytest tests/frontend` |
 | `tests/tooling/` | CI gate scripts + the metric-layer contract (export-health, mart audit, `metric_catalogue` seed↔model↔frontend integrity) | `scripts/*` + the catalogue seed | `pytest tests/tooling` |
 
+One file in `tests/frontend/` is structurally different from the rest: `test_app_e2e.py` drives
+`frontend/app.py` end-to-end via `streamlit.testing.v1.AppTest` (a full script run, not a direct
+import) -- covering the cross-tab session_state flow (save a card, remove a saved card, search
+by ticker) that the directory's other direct-import tests can't reach, since they never
+instantiate a real script or session. Supabase, yfinance news, and browser localStorage are
+stubbed at their module boundary; everything else (interaction read/write, filtering,
+navigation) runs for real.
+
 ## What we test where (project-wide taxonomy)
 
 pytest covers **ingestion, frontend, and tooling**. The **transformation layer is tested in dbt,

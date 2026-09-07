@@ -1,0 +1,212 @@
+"""End-to-end AppTest coverage for frontend/app.py's three bottom-nav tabs.
+
+Drives the real script via streamlit.testing.v1.AppTest -- a full-script check, distinct from
+test_app.py's direct-import unit tests of app.py's pure helpers. This targets the cross-tab
+session_state flow (save a card, remove a saved card, search by ticker) that pure-function
+tests structurally cannot reach, since they never instantiate a real script or session.
+
+Three real I/O boundaries are stubbed at their module attribute (frontend/supabase_client.py,
+frontend/supabase_cards.py, frontend/saved_news.py); browser localStorage sync is faked the
+same way test_browser_storage.py already established -- a live browser never attaches under
+AppTest, so `local_storage_manager` never reports ready on its own.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import pytest
+from streamlit.testing.v1 import AppTest
+from streamlit.testing.v1.element_tree import Button
+
+import browser_storage
+import saved_news
+import supabase_cards
+import supabase_client
+
+APP_PATH = Path(__file__).resolve().parents[2] / "frontend" / "app.py"
+
+FIXTURE_CARDS: list[dict[str, Any]] = [
+    {
+        "market_code": "us_sp500",
+        "ticker": "ALFA",
+        "company_name": "Alpha Testing Corp",
+        "sector": "Technology",
+        "is_card_eligible": True,
+        "business_summary": "Alpha Testing Corp is a synthetic fixture used for AppTest coverage.",
+        "snapshot_date": "2026-08-01",
+        "currency": "USD",
+    },
+    {
+        "market_code": "us_sp500",
+        "ticker": "BETA",
+        "company_name": "Beta Sample Inc",
+        "sector": "Healthcare",
+        "is_card_eligible": True,
+        "business_summary": "Beta Sample Inc is a synthetic fixture used for AppTest coverage.",
+        "snapshot_date": "2026-08-01",
+        "currency": "USD",
+    },
+]
+
+
+def _fixture_cards() -> list[dict[str, Any]]:
+    return [dict(card) for card in FIXTURE_CARDS]
+
+
+class _FakeLocalStorage:
+    """Mirrors test_browser_storage.py's _FakeManager -- see that file's module docstring for
+    why: local_storage_manager is a real custom component that only responds inside a live
+    browser session, and AppTest never attaches one."""
+
+    def __init__(self, *, ready: bool = True, stored: Any = None) -> None:
+        self._ready = ready
+        self._stored = stored
+
+    def ready(self) -> bool:
+        return self._ready
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._stored if self._stored is not None else default
+
+
+def _assert_clean(at: AppTest) -> None:
+    """app.py's _load_cards() catches a Supabase fetch failure into st.error() rather than
+    raising -- a broken mock shows up as a quiet empty list, not a Python traceback. Assert
+    this after every .run(), not just that .run() didn't raise, so a mocking mistake points at
+    itself instead of surfacing as a confusing downstream "button not found"."""
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+
+
+def _row_button(at: AppTest, key: str) -> Button | None:
+    try:
+        return at.button(key=key)
+    except KeyError:
+        return None
+
+
+def _save_interaction(ticker: str, *, seconds: int) -> dict[str, Any]:
+    """Matches browser_storage.append_interaction's row shape exactly (market_code/ticker/
+    action/created_at) so it's indistinguishable from a real save once seeded. `seconds`
+    only needs to make created_at ordering distinct between rows; the actual value is never
+    asserted on."""
+    return {
+        "market_code": "us_sp500",
+        "ticker": ticker,
+        "action": "save",
+        "created_at": datetime(2026, 8, 1, tzinfo=timezone.utc)
+        .replace(second=seconds)
+        .isoformat(),
+    }
+
+
+@pytest.fixture
+def app_test(monkeypatch: pytest.MonkeyPatch) -> AppTest:
+    monkeypatch.setenv("SUPABASE_URL", "https://fixture.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "fixture-anon-key")
+    monkeypatch.setattr(
+        supabase_cards, "fetch_eligible_cards_with_assessments", lambda client: _fixture_cards()
+    )
+    monkeypatch.setattr(supabase_client, "get_anon_client", lambda: object())
+    monkeypatch.setattr(saved_news, "_fetch_news", lambda symbol: [])
+    monkeypatch.setattr(
+        browser_storage, "_mount_manager", lambda: _FakeLocalStorage(ready=True, stored=[])
+    )
+    return AppTest.from_file(str(APP_PATH), default_timeout=15)
+
+
+def test_discover_pool_shows_fixture_cards(app_test: AppTest) -> None:
+    at = app_test.run()
+    _assert_clean(at)
+    for card in FIXTURE_CARDS:
+        key = f"discover_row_{card['market_code']}::{card['ticker']}"
+        assert _row_button(at, key) is not None
+
+
+def test_save_card_from_discover_appears_in_saved(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    at = at.button(key="discover_save").click().run()
+    _assert_clean(at)
+
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
+
+
+def test_remove_from_saved_only_removes_that_card(app_test: AppTest) -> None:
+    """Regression-shaped by construction: two cards are saved so removal is proven to be
+    scoped to the selected one, not a blanket clear that happens to look right with only one
+    saved item.
+
+    Both "save" interactions are seeded directly onto session_state rather than driven by
+    clicking Discover's Save button on each card in turn. This is deliberate, not a shortcut:
+    focusing two DIFFERENT cards' full detail views in the same AppTest session (each renders
+    metric_school.py's "Understand these numbers" playground widgets, whose keys are ticker-
+    scoped -- frontend/metric_school.py's _key()) swaps the full set of active widget keys and
+    triggers a KeyError on the next .run(), from Streamlit's own widget-cleanup path
+    (streamlit/runtime/state/session_state.py's _compact_state, called by
+    SessionState.on_script_will_rerun, itself invoked inside ScriptRunner._run_script --
+    a method AppTest's LocalScriptRunner does not override, so it runs unmodified there too).
+
+    That underlying condition is real, shared production code, not an AppTest artifact --
+    Streamlit's own session_state.py wraps this exact cleanup path in `except KeyError: pass`,
+    citing a known upstream issue (streamlit/issues/7206) about stale widget metadata. A single
+    manual pass against a real dev server (real Supabase data, real browser: opened one card,
+    saved it, opened a different card, saved it, no crash, no server-log traceback) did NOT
+    reproduce a user-visible failure -- but that's consistent with, not proof against, the
+    mechanism being real: production's own defensive except-KeyError would silently swallow it
+    there, while AppTest's get_widget_states() (element_tree.py) reads widget state without the
+    same protection, turning a condition production tolerates into a hard test failure. One
+    unrepeated manual pass does not rule out a rarer or timing-sensitive path still causing a
+    real problem; this is flagged to the owner as an open question, not asserted as closed.
+
+    Seeding here is still the right fix for THIS test either way -- it sidesteps an AppTest-
+    harness gap (missing production's own defensive handling) while keeping the actual thing
+    under test -- does "Remove from saved" scope to just the selected card -- driven through
+    the real Saved-tab UI, unstubbed. Fixing metric_school.py's key scheme or Streamlit's own
+    upstream behavior is out of scope here regardless of how the open question resolves."""
+    at = app_test.run()
+    at.session_state["interactions"] = [
+        _save_interaction("ALFA", seconds=1),
+        _save_interaction("BETA", seconds=2),
+    ]
+    at.session_state["_interactions_storage_loaded"] = True
+    at = at.run()
+    _assert_clean(at)
+
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
+    assert _row_button(at, "saved_row_us_sp500::BETA") is not None
+
+    at = at.button(key="saved_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)  # exercises the saved-news yfinance stub too
+    at = at.button(key="saved_remove_current").click().run()
+    _assert_clean(at)
+
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is None
+    assert _row_button(at, "saved_row_us_sp500::BETA") is not None
+
+
+def test_search_by_ticker_finds_card(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
+    # The search box is the only st.text_input in the app, and deliberately unkeyed (see
+    # app.py's own docstring) -- addressed by index rather than key.
+    at = at.text_input[0].set_value("ALFA").run()
+    _assert_clean(at)
+    assert _row_button(at, "search_us_sp500_ALFA") is not None
+    assert _row_button(at, "search_us_sp500_BETA") is None
+
+
+def test_search_with_no_match_shows_warning(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
+    at = at.text_input[0].set_value("nonexistent-zzz").run()
+    _assert_clean(at)
+    assert len(at.warning) == 1
+    assert "nonexistent-zzz" in at.warning[0].value

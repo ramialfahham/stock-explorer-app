@@ -1,250 +1,158 @@
 # Task contract
 
-objective: Add a dbt model contract on `mart_stock_cards` plus source freshness checks on all
-  three raw yfinance tables. Fulfills an already-written, never-enacted standard
-  (`docs/engineering_standards.md:223`: "Apply model contracts for stable `marts` outputs once
-  schemas stabilise" -- zero use of `contract:`/`data_type:`/`freshness:` anywhere in
-  `dbt_analytics/` today, confirmed by repo-wide grep).
+objective: Add the repo's first Streamlit `AppTest`-based end-to-end test, covering
+  `frontend/app.py`'s cross-tab Discover/Saved/Search flow (save a card, remove a saved card,
+  search by ticker) -- a class of bug the existing pure-function unit tests structurally
+  cannot reach, since they never instantiate the real script or a real session.
 
-  Note on numbering: earlier framing of this task called it "item 3 of the 5-item
-  portfolio-readiness list." scope-auditor caught that this collides with `.claude/active_work.md`'s
-  existing use of "item 3" for the already-merged MR !100, and that the source 5-item list text
-  no longer exists anywhere in the repo (lost in an earlier archival/compaction pass, confirmed
-  by repo-wide grep for "4-persona"/"5-item" -- zero hits). Dropped the number entirely rather
-  than assert one that can't be verified; this contract and the handover both now describe the
-  task by content only.
+  Referred to loosely as "item 4" of an earlier 5-item portfolio-readiness list, but that
+  number is not asserted here: the list's own source text is confirmed permanently lost from
+  this repo (repo-wide grep for "4-persona"/"5-item": zero hits). The prior task in this same
+  loose sequence (item 3, MR !103) already proved once that a remembered number from this list
+  can be wrong. This contract describes the task by content only.
 
-  The gap this closes: `scripts/export_to_supabase.py` selects via a hardcoded 79-column
-  allowlist with no per-column validation -- a renamed column crashes it loudly, a type-changed
-  column is invisible to it entirely. None of the three content gates
-  (`check_pipeline_completeness.py`, `check_eligibility_baseline.py`, `check_export_health.py`)
-  check schema shape, only row counts/fill rates. Postgres (via `supabase/migrations/`) is an
-  implicit, late contract, but it's never exercised in the MR-gated `validate:full` job -- only
-  in `data-pipeline` (schedule/manual only). `dbt build` runs before all three content gates
-  and the export step, and runs on every MR -- a `contract: {enforced: true}` violation fails
-  `dbt build` itself, catching schema-shape regressions in CI before they ever reach
-  production.
+  Correction (scope-auditor round 1 caught this): an earlier draft of this objective also
+  claimed `git log --all -S"AppTest"` returns zero hits "ever," offered as supporting evidence
+  that AppTest has never been discussed in this repo. That claim was false -- never re-verified
+  against the actual command myself before writing it, carried over unchecked from an earlier
+  exploration pass in this session. The real history: `git log --all -S"AppTest"` returns 5
+  commits (`702bfb62`, `0bb8997c`, `4986cd61`, `3d2c7c99`, `c77d6d48`), all already in this
+  branch's own ancestry. Two of them (`702bfb62`, its `0bb8997c` review record) directly discuss
+  AppTest: that task -- two small Streamlit widget-persistence bugfixes -- explicitly considered
+  and declined it, reasoning "a plain pytest unit test can't exercise [this] without either
+  Streamlit's heavier `AppTest` harness or refactoring the render functions themselves, both
+  bigger asks than this fix," verified instead by direct interaction against a running dev
+  server. Read in full, not just cited: that was a proportionality judgment for one small,
+  unrelated fix, not a repo-wide rejection of AppTest as a mechanism -- it does not conflict
+  with this task, which is a dedicated, owner-approved (via `ExitPlanMode`) decision to build
+  AppTest coverage as its own infrastructure, not something bolted onto an unrelated change.
+  Stated plainly because burying a real, on-point precedent instead of engaging with it would
+  be the same disclosure failure the immediately-prior task (item 3) was caught on.
 
-  Full plan, including the dbt-source-code-level verification of contract requirements (traced
-  directly against the installed dbt-core 1.11.11/dbt-duckdb 1.10.1, not assumed from general
-  knowledge) and the schema-stability check done before proceeding, is in
-  `C:\Users\Rami\.claude\plans\groovy-churning-scroll.md`, approved via `ExitPlanMode`. The plan
-  originally scoped freshness to 2 of 3 sources; the amendments below record why and how that
-  changed to all 3, after review.
-
-  A load-bearing architecture fact found during planning, not assumed: this project's staging
-  models never call `{{ source(...) }}` -- they read raw parquet through a custom
-  `raw_parquet_union` macro. `sources.yml`'s three tables are pure documentation today with no
-  real backing relation (confirmed: zero `source(` calls anywhere in `dbt_analytics/models/`).
-  A bare `loaded_at_field` freshness config would fail at runtime with "relation does not
-  exist" -- worked around with `loaded_at_query` (a first-class dbt config for exactly this
-  case), which directly calls `{{ raw_parquet_union(filename) }}` itself (not a hand-rolled
-  glob) so freshness inherits the exact same active-market scoping the rest of the project
-  already uses, with no parallel implementation to drift out of sync.
+  Unlike item 3 (which enacted a standard `docs/engineering_standards.md:223` had already
+  written down and never acted on), **no existing policy calls for end-to-end frontend
+  testing** -- today's stated frontend test policy (`tests/README.md`,
+  `docs/engineering_standards.md` §3) is unit-level only, by explicit design (existing
+  `tests/frontend/*` tests extract pure helpers specifically to avoid touching real Streamlit
+  widget rendering; `test_app.py`'s own comment states full-script rendering is currently a
+  deliberate unit-test exemption). This task establishes new test infrastructure, not agreed
+  work being completed. Full reasoning, technical verification (row-button key patterns traced
+  directly in `app.py`, AppTest's actual execution model traced in Streamlit's own
+  `script_runner.py`/`local_script_runner.py`/`element_tree.py`), and the concrete mocking
+  strategy are in the approved plan: `C:\Users\Rami\.claude\plans\groovy-churning-scroll.md`.
 
 scope_paths:
-  - dbt_analytics/models/5_marts/_marts.yml (contract config + 80 data_type additions)
-  - dbt_analytics/models/sources.yml (loaded_at_query + freshness for all 3 tables)
-  - dbt_analytics/models/1_staging/yfinance/stg_yf__daily_prices.sql (pass through the new
-    ingested_at column)
-  - dbt_analytics/models/1_staging/yfinance/_yfinance_staging.yml (document it)
-  - ingestion/yfinance/ingest.py (stamp ingested_at on daily-price rows, once per fetched batch)
-  - scripts/seed_ci_raw_fixtures.py (stamp the same column on CI price fixtures, or
-    validate:full's new freshness step would fail in a genuinely clean CI run)
-  - .gitlab-ci.yml (dbt source freshness in both data-pipeline and validate:full)
-  - docs/data_contract.md (contract-enforcement note + freshness-scope note)
+  - tests/frontend/test_app_e2e.py (new -- the AppTest suite itself)
+  - tests/README.md (new paragraph documenting what this file covers and why it's structurally
+    distinct from the rest of tests/frontend/)
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none outstanding now -- one entry below WAS a live decision put to the
-  owner mid-task after scope-auditor caught it being mis-cited as already-settled (see
-  amendments). Two remaining implementation-level choices, disclosed as agent-executable, not
-  product content: (1) freshness thresholds (20-day warn / 30-day error, same for all three
-  sources) are a technical default reasoned from the real schedule's worst-case gap (17 days in
-  a long month), not a business/product number; (2) `ingested_at` on daily prices is stamped
-  once per yfinance download batch (one API call), not once per row or once per market-run --
-  matches the actual granularity of a "fetch event" and avoids re-stamping already-flushed rows
-  on a later flush within the same run (a real bug avoided by stamping at batch-fetch time, not
-  inside the already-existing `_normalize_price_frame`, which re-runs on every flush over all
-  accumulated rows).
+decisions_reserved: none outstanding. Two implementation-level choices, disclosed as
+  agent-executable, not product content: (1) which 5 flows get coverage (Discover pool render,
+  save-then-appears-in-Saved, scoped remove-from-Saved, search-finds-ticker,
+  search-no-match-warning) -- chosen because they're the cross-tab session_state interactions
+  unit tests structurally can't reach, not a product decision; (2) `frontend/app.py` is the
+  AppTest target, not `streamlit_app.py` -- a technical choice (traced in Streamlit's own
+  `script_runner.py` that the AppTest target is always freshly re-executed as `__main__` on
+  every `.run()`), not a design tradeoff needing sign-off. NOT deciding, and explicitly out of
+  scope: whether AppTest coverage becomes a required pattern for future frontend work going
+  forward -- that would be a repo-wide testing-policy mandate, a bigger call than this task
+  makes; `tests/README.md`'s new paragraph documents what exists, without asserting a mandate.
 
 done_when:
-  - `dbt_analytics/models/5_marts/_marts.yml`: `mart_stock_cards` gets a `config: {contract:
-    {enforced: true}}` block; all 80 existing `columns:` entries get `data_type:` matching the
-    real DuckDB types (confirmed via `DESCRIBE marts.mart_stock_cards` against an actual
-    build). Existing tests (5 column-level, 4 model-level) untouched. No new `constraints:`
-    blocks (would duplicate existing `not_null` test coverage in a different mechanism, out of
-    scope for "add a model contract").
-  - `dbt_analytics/models/sources.yml`: all three tables (`yf_constituents`, `yf_fundamentals`,
-    `yf_daily_prices`) get `loaded_at_query` (calling `{{ raw_parquet_union(...) }}` directly,
-    not a hand-rolled glob) and a `freshness: {warn_after: 20 days, error_after: 30 days}`
-    block.
-  - `ingestion/yfinance/ingest.py`: daily-price rows get a new `ingested_at` column, stamped
-    once per fetch batch. `stg_yf__daily_prices.sql`/`_yfinance_staging.yml` pass it through
-    and document it. `scripts/seed_ci_raw_fixtures.py`'s price fixtures get it too.
-  - `.gitlab-ci.yml`: `dbt source freshness` added to `data-pipeline` (between `dbt deps` and
-    `dbt build`, real staleness detection against real data) AND `validate:full` (between `dbt
-    deps` and `dbt parse`, query-correctness verification against CI fixtures only -- fixture
-    data is always fresh, so this can never test staleness detection, only that the query
-    itself still parses and references real columns before a break would otherwise first
-    surface at the live production schedule).
-  - Contract mutation-tested: temporarily break one column's `data_type`, confirm `dbt build
-    --select mart_stock_cards` fails with dbt's contract-mismatch error shape specifically
-    (not a generic error), restore, confirm clean build again.
-  - Freshness mutation-tested twice: (a) an absurd `error_after` reports ERROR STALE and exits
-    non-zero (checked via file redirect, not a `| tail` pipe, which reports the pipe's own exit
-    code); (b) a typo'd/renamed column in a `loaded_at_query` fails with a clear DuckDB Binder
-    Error, against BOTH real data and CI fixture data, proving the new `validate:full` step
-    would actually catch this class of break pre-merge, not just log something and pass.
-  - Verified against a genuinely clean, all-fixture environment (storage/raw/ fully cleared and
-    reseeded), not just a locally-contaminated one -- an earlier verification pass appeared to
-    pass only because leftover real local data was masking a real gap in the fixture seeder.
-  - Full real `data-pipeline`-equivalent sequence sanity-checked locally against real raw
-    parquet, including the real, production-relevant mixed-schema case (one market fetched
-    with the new ingested_at column, others still on the pre-change schema) -- confirms
-    `raw_parquet_union`'s `union all by name` tolerates the column appearing on some markets
-    and not others without erroring, which is exactly the transitional state production will be
-    in immediately after this deploys.
-  - `docs/data_contract.md`: contract-enforcement note near the existing `## Supabase export
-    -- mart_stock_cards` section; freshness-scope note (now all three sources, why, and that
-    validate:full's copy of the check is query-correctness-only) near the existing
-    `## Freshness` section.
-  - `.claude/active_work.md`: item closed out, without an unverifiable item number.
-  - No em dash or en dash on any added line.
+  - `tests/frontend/test_app_e2e.py` exists with 5 passing tests (discover-renders,
+    save-appears-in-saved, scoped-remove, search-finds, search-no-match), each driving the real
+    app via `AppTest.from_file("frontend/app.py")`, not a direct-import shortcut.
+  - Three real I/O boundaries stubbed at their actual call site (verified against source, not
+    assumed): Supabase (`supabase_cards.fetch_eligible_cards_with_assessments`,
+    `supabase_client.get_anon_client`, plus `SUPABASE_URL`/`SUPABASE_ANON_KEY` env vars),
+    yfinance news (`saved_news._fetch_news` -- found only by grepping for network calls, not
+    part of the obvious Supabase surface), and browser localStorage (reusing
+    `test_browser_storage.py`'s existing `_FakeManager`/`_mount_manager` pattern, not inventing
+    a new one).
+  - `pytest tests/frontend/test_app_e2e.py -v`: 5/5 pass, standalone.
+  - `pytest tests/ -q`: full suite passes, confirming no cross-file conflicts (each `AppTest()`
+    instance owns its own fresh session by construction -- verified for real, not assumed).
+  - At least one assertion mutation-tested for real: break the thing a test is supposed to
+    catch (e.g. make saved-removal not scope to the selected card), confirm the corresponding
+    test fails with the expected symptom, restore, confirm green again.
+  - `tests/README.md` documents the new file's coverage and its structural difference from the
+    rest of `tests/frontend/` (full-script simulation vs. direct-import pure-helper tests).
+  - No em/en-dash on any added line (file-based UTF-8-explicit scan, not stdin).
+  - Review cycle: scope-auditor + cto-reviewer (both required per `.claude/review_routing.json`
+    -- `tests/*` routes to cto-reviewer; no dbt/.sql/ingestion/data_contract files touched, so
+    no analytics-engineer-reviewer/data-engineer-reviewer/equity-analyst-reviewer needed).
 
 impact_map:
-  - No user-visible change (dbt config + CI + docs + ingestion internals only, nothing in
-    `frontend/`).
-  - `dbt_analytics/models/5_marts/_marts.yml` and `sources.yml` -- per
-    `.claude/review_routing.json` (`dbt_analytics/*.yml` -> analytics-engineer-reviewer),
-    requires analytics-engineer-reviewer.
-  - `ingestion/*` touched -- requires data-engineer-reviewer.
-  - `.gitlab-ci.yml` touched -- requires cto-reviewer.
-  - `docs/data_contract.md` touched -- requires equity-analyst-reviewer.
+  - No user-visible change, no production code touched (test infrastructure only).
+  - No dbt/ingestion/Supabase files touched -- `analytics-engineer-reviewer`,
+    `data-engineer-reviewer`, `equity-analyst-reviewer` are NOT required this time (routing
+    checked directly, not assumed carried over from the last task).
+  - `tests/*` touched -> requires cto-reviewer per `.claude/review_routing.json:12`.
   - scope-auditor always.
 
 amendments:
-- cto-reviewer (round 1) found a real gap: the new `loaded_at_query` SQL was genuinely new
-  executable logic with zero pre-merge verification anywhere -- not `validate:full`
-  (deliberately excluded at the time), not sqlfluff (lints `.sql` files, not YAML-embedded
-  query strings), not `dbt parse`/`dbt build` (freshness queries only execute under the
-  dedicated freshness runner), not any pytest test. A future break (a typo, an ingestion-side
-  column rename) would first surface at the live 1st/15th production schedule and abort the
-  whole job before `dbt build`/export/assessments ever ran. Fixed by adding
-  `dbt source freshness` to `validate:full` too, scoped explicitly as a query-correctness check
-  (not a staleness-detection one, which fixtures can't meaningfully exercise). Mutation-tested
-  against the exact scenario described: typo'd a column name, confirmed the new `validate:full`
-  step fails immediately with a clear Binder Error and non-zero exit, restored, confirmed clean.
-- analytics-engineer-reviewer (round 1, dispatched in parallel, independently found the same
-  core gap -- convergent confirmation) also found a second, distinct issue: the original
-  `loaded_at_query`s used a hand-rolled `*` glob (`{{ var("raw_path") }}/*/filename.parquet`),
-  unscoped to `active_market_codes`, unlike `raw_parquet_union`'s explicit per-active-market
-  loop -- a real, if latent, divergence (a deactivated market's frozen directory would silently
-  join the freshness signal). Fixed by calling `{{ raw_parquet_union(filename) }}` directly
-  inside `loaded_at_query` instead of re-deriving a parallel glob -- confirmed via the actual
-  compiled SQL that this expands to the identical per-active-market UNION ALL the staging
-  models already use, not a wildcard.
-- scope-auditor (round 1) found two disclosure problems, both fixed by owning the reasoning
-  honestly rather than borrowing authority that wasn't there:
-  1. `decisions_reserved` cited MR !101 as an "already-documented decision" not to add a
-     fetch-timestamp column to `yf_daily_prices`. Verified false: MR !101's own scope (an
-     ingestion-side `.checkpoint` sidecar FILE for same-day refetch skipping) never touched
-     `yf_daily_prices`'s schema or dbt source freshness, which didn't exist before this task --
-     citing it misclassified a live decision as an already-settled one. Put to the owner
-     directly instead: leave `yf_daily_prices` uncovered by freshness (a documented gap), or
-     add an `ingested_at` column now to close it. Owner chose to add the column -- see the
-     scope_paths/done_when expansion above; this is why freshness now covers all three sources,
-     not two.
-  2. This task's "item 3" label collided with an already-used number -- see the objective's
-     "Note on numbering" above.
+- During implementation, `test_remove_from_saved_only_removes_that_card` (the two-cards-saved,
+  remove-one-scoped test) hit a `KeyError` on the second of two different-card focus-then-save
+  cycles. Isolated the exact trigger empirically (single-card focus+save is fine regardless of
+  how many runs follow; two DIFFERENT cards' focus+save cycles is what triggers it). Test fixed
+  by seeding both "save" interactions directly onto `session_state` (matching
+  `append_interaction`'s exact row shape) instead of driving both saves through Discover's UI,
+  while still exercising the actual thing under test -- "Remove from saved" scoping -- through
+  real Saved-tab UI clicks, unstubbed. No production file touched or needed changing.
 
-  Both rounds of fixes above were re-verified together, not independently: full local
-  `data-pipeline`- and `validate:full`-equivalent sequences re-run end to end after all
-  changes landed, against both real data and a freshly-cleared, genuinely clean fixture
-  environment (see done_when). Narrow re-checks dispatched to all four reviewers against the
-  fully updated diff -- see review.md.
-- cto-reviewer (round 2) found a real gap in the round-1 fix itself: a fresh-today
-  `.checkpoint`-marked parquet file can predate this task's own `ingested_at` column addition
-  (e.g. a locally-run fetch from earlier the same day, before this code existed). Merging that
-  file's rows with newly-fetched rows via `pd.concat` doesn't error on the mismatched columns --
-  it silently outer-joins and NaN-fills the gap, and nothing (no dbt test, no freshness check,
-  since `MAX()` ignores NULLs) would ever catch it. Fixed with a `PRICE_COLUMNS` constant (single
-  source of truth for both `_normalize_price_frame`'s output and the new guard) and
-  `_is_usable_checkpoint()`, which treats a same-day file with the wrong column set as NOT
-  usable -- falling back to a full refetch, the same already-handled path as a stale checkpoint,
-  instead of a mismatched-schema merge. Added a `not_null` test on
-  `stg_yf__daily_prices.ingested_at` as defense-in-depth. Mutation-tested: reverted the guard,
-  confirmed the new regression test fails with the exact NaN-fill symptom (a row that should have
-  been excluded shows up in the combined frame), restored, confirmed clean.
-- analytics-engineer-reviewer (round 2) found a second real gap, independent of cto-reviewer's:
-  `ingested_at` has a non-obvious correctness property (stamped once per fetch batch, never
-  recomputed on a later flush -- `_normalize_price_frame` reruns over ALL accumulated `frames` on
-  every flush, so recomputing the stamp there would let a later batch's flush silently overwrite
-  an earlier batch's already-flushed timestamp with its own, later one) that no test asserted.
-  Existing multi-batch/multi-flush tests never inspected `ingested_at` at all. Fixed with a new
-  regression test that fakes a monotonically-increasing clock across two batches and asserts
-  each batch's rows keep their own batch's timestamp after the second batch's flush. Mutation-
-  tested: moved the stamp into `_normalize_price_frame` (the exact regression described), confirmed
-  the new test fails because both batches collapse to the identical, later timestamp, restored,
-  confirmed clean.
-
-  Both fixes re-verified together: full pytest (531 passed, up from 529), targeted and full
-  `dbt build`/`dbt source freshness` against real local data (all pass, including the new
-  `not_null` test against real data spanning a mixed old/new schema across markets) AND against a
-  freshly-cleared, freshly-reseeded fixture-only environment (also all pass -- confirms the new
-  `not_null` test is CI-safe under `validate:full`'s fixture data). sqlfluff and all four
-  `check_*.py` gate scripts re-run clean. Em/en-dash scan re-run on the diff against HEAD
-  (explicit UTF-8 file read, not stdin): 0 hits.
-
-  Note on a stale reviewer notification: a `scope-auditor` task completion arrived mid-round-3-
-  prep reporting the same two findings already resolved in round 1/round 2 above. Verified this
-  was a delayed echo of the original round-1 dispatch, not a fresh check against current state --
-  its cited line numbers for `decisions_reserved` (47-49) point at `scope_paths` entries in the
-  current file, not `decisions_reserved`, which no longer starts near those lines after this
-  round's amendments grew the file. No action taken; not a new finding.
-- **Process miss, caught by the commit gate, not by me**: this contract's own `impact_map`
-  correctly stated `ingestion/*` touched requires data-engineer-reviewer, but that reviewer was
-  never actually dispatched across any round of this task -- the commit gate blocked the first
-  commit attempt on exactly this. Dispatched as a full, cold, round-1 review (not a narrow
-  re-check, since it was genuinely this reviewer's first look) once caught.
-
-  data-engineer-reviewer (round 1) FAILED with two findings, both real, both verified
-  empirically:
-  1. `dbt source freshness`'s `loaded_at_query` takes `MAX()` over the union of ALL active
-     markets, so the check passes as long as ANY one market has a recent timestamp -- a single
-     market's ingestion silently breaking forever (a real, anticipated failure mode; the batch
-     loop already has retry/rate-limit handling for partial failures) would never trip
-     `error_after` as long as other markets keep refreshing. Confirmed by simulating a stuck
-     market (dropped `ingested_at` from one real market's parquet, left the other 8 fresh) and
-     observing `dbt source freshness` still PASS. `docs/data_contract.md` asserted "All three
-     raw tables covered" with no caveat that this means table-level, not per-market.
-  2. The new `not_null` test on `ingested_at` can fail against a local dev's pre-existing
-     `storage/raw/` that predates this column, until re-ingested -- confirmed empirically
-     (reproduced the exact `dbt build` failure, restored, confirmed clean). Confirmed
-     NOT a CI or production risk: `validate:full`'s fixtures always stamp `ingested_at`
-     unconditionally, and the scheduled `data-pipeline` job starts from an empty `storage/raw/`
-     every run (docker executor, no cache/artifacts across jobs) -- this mixed-schema state can
-     only arise in a local checkout that predates this change.
-
-  Resolution: both are disclosure fixes, not new mechanisms -- added two paragraphs to
-  `docs/data_contract.md`'s Freshness section (table-level-not-per-market caveat; a local-dev
-  note on re-ingesting pre-existing `storage/raw/` before `dbt build`). Per-market freshness
-  detection would be a new mechanism (e.g. a singular test grouped by `market_code`) -- flagged
-  as a new open item in `.claude/active_work.md` rather than built here; owner's call whether
-  it's worth it. Did not weaken the `not_null` test to `severity: warn` to route around the
-  local-dev finding -- that would blunt the actual defense-in-depth it exists for in CI/production
-  to avoid a one-time local inconvenience.
-
-  Round 2 (re-check of the two disclosure fixes only) FAILED: the new open item 9's
-  provenance note in `active_work.md` reintroduced the exact "item 3" label collision
-  scope-auditor already caught and this task deliberately dropped everywhere else in this file
-  -- ironic self-repeat of the earlier finding. Fixed by dropping the reference, describing the
-  task by content instead, same pattern already used elsewhere in this file. Round 3 (narrow
-  re-check of the one-line fix) PASSED.
-
-  Separately: after adding the two `docs/data_contract.md` disclosure paragraphs above,
-  recognized (before the commit gate had to, this time) that equity-analyst-reviewer's existing
-  round-2 PASS on this same file's Freshness section predates those two new paragraphs --
-  required per routing (`docs/data_contract.md` touched), not yet re-checked against the new
-  content. Dispatched a narrow round 3; see review.md.
+  What this crash actually is, corrected after cto-reviewer's round-1 finding (see below): an
+  initial pass here claimed, after one manual browser test, that this was "confirmed... not a
+  production bug." That was overclaimed. cto-reviewer traced the real mechanism: `AppTest`'s
+  `LocalScriptRunner` subclasses Streamlit's own production `ScriptRunner` unmodified, and the
+  cleanup path that raises this `KeyError` (`session_state.py`'s `_compact_state`) is real,
+  shared production code -- which itself wraps this exact case in `except KeyError: pass`,
+  citing a known upstream Streamlit issue (`streamlit/issues/7206`) about stale widget
+  metadata. The underlying condition (viewing two different cards' metric-playground panels
+  swaps the full active widget-key set) is real and not AppTest-specific; what IS AppTest-
+  specific is that `element_tree.py`'s `get_widget_states()` reads widget state without
+  production's own defensive swallowing, turning a condition production silently tolerates
+  into a hard test failure. One manual pass not reproducing a visible crash is consistent with
+  this (production swallows it) but doesn't rule out a rarer or timing-sensitive path still
+  causing a real problem. Corrected the test's own docstring to state this accurately instead
+  of the overclaimed version. Flagging to the owner as a genuinely open question, not a closed
+  one -- worth a tracked follow-up if it's worth someone's time, not something to silently drop
+  or unilaterally file an issue for.
+- Mutation-tested the scoping assertion for real: changed `saved_remove_current`'s handler to
+  call `clear_interactions()` instead of `append_interaction(selected, "unsave")`, confirmed
+  the test fails with the exact predicted symptom (`assert None is not None` on the BETA row
+  check -- both cards wiped instead of just the selected one), restored `frontend/app.py` from
+  a backup, confirmed `git diff --stat frontend/app.py` shows zero diff (untouched, as
+  scope_paths requires) and the full suite (536 tests) passes again.
+- scope-auditor (round 1) FAILED: this contract's objective originally claimed
+  `git log --all -S"AppTest"` returns "zero hits, ever," carried over unverified from an
+  earlier exploration pass in this session rather than re-checked before being asserted here.
+  False -- 5 real commits, two of which (`702bfb62`, `0bb8997c`) explicitly discuss AppTest.
+  Corrected above, in the objective, with the real history and why it doesn't conflict with
+  this task. Same disclosure-accuracy class as item 3's MR !101 mis-citation.
+- cto-reviewer (round 1) FAILED: the "not a production bug" overclaim above. Also flagged,
+  separately, that they accidentally edited `frontend/app.py` while independently re-verifying
+  the mutation-test claim, self-caught it, reverted, and confirmed clean -- verified
+  independently here too (`git status`/`git diff HEAD --stat` after their round showed exactly
+  the 4 expected files, `frontend/app.py` not among them).
+- cto-reviewer (round 2) FAILED: the round-1 fix itself introduced a new, unverified mechanism
+  claim -- the test docstring's corrected version stated `_compact_state` is "called from the
+  same `ScriptRunner.on_script_finished` that `LocalScriptRunner` subclasses unmodified." Wrong
+  on both parts, per cto-reviewer's direct source trace: `_compact_state` is only called from
+  `SessionState.on_script_will_rerun` (not `on_script_finished`, a different method entirely),
+  and `LocalScriptRunner` DOES override `_on_script_finished` with its own copy -- the method
+  it actually inherits unmodified (`ScriptRunner._run_script`, which calls
+  `on_script_will_rerun`) was never named. The same defect class round 1 caught (an asserted
+  mechanism not traced against source), relocated into the fix meant to correct it.
+  Independently re-verified against the installed Streamlit 1.57.0 source myself (grepped
+  `_compact_state`/`on_script_will_rerun`/`_on_script_finished` across `session_state.py`,
+  `script_runner.py`, `local_script_runner.py`; confirmed `_run_script` is absent from
+  `LocalScriptRunner`'s override list, so it is inherited unmodified). Corrected the docstring
+  to the verified chain: `_compact_state` <- `SessionState.on_script_will_rerun` <-
+  `ScriptRunner._run_script` (not overridden by `LocalScriptRunner`). `contract.md`'s own
+  amendments were not affected -- cto-reviewer confirmed this file already used the same
+  general, defensible phrasing as their round-1 finding, not the specific wrong claim.
+- All three fixes re-verified together: full suite re-run (536 passed), em/en-dash re-scanned on
+  the diff against HEAD (0 hits), `git status` confirms scope_paths still exactly matched.
