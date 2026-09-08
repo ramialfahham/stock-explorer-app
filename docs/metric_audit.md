@@ -52,6 +52,7 @@ Offline mode (`--offline`, the CI smoke) reports only the `mart_*`, `snapshot_ag
 | Rev growth YoY | ABNB ~17.9% matches Yahoo quarterly YoY | Keep `info_revenue_growth`; relabel as quarter in UI PR | Labels PR |
 | Net debt / EBITDA | ABNB −3.62 plausible (net cash / EBITDA) | Keep info-based formula | — |
 | FCF margin | ABNB ~38% aligns with annual stmt / info trailing | Keep annual statement formula; label already says (annual) | — |
+| Dividend yield | Added to the comparison set, not from an audit finding | Compare it here too, so the set matches what the scale guard covers; the real guard is `assert_percent_scale_passthroughs.sql`, since this script cannot detect a settled flip | Scale-guard PR |
 
 ## Fail on drift (optional)
 

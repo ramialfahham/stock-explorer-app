@@ -72,7 +72,7 @@ Metrics are ordered by **analytical relevance** (valuation → profitability →
 | `info_ev_to_ebitda` | `enterpriseToEbitda` | `ev_to_ebitda` (data-only) |
 | `info_free_cashflow` | `freeCashflow` | `fcf_yield_pct` numerator (data-only) |
 | `info_market_cap` | `marketCap` | `fcf_yield_pct` denominator (data-only) |
-| `info_dividend_yield` | `dividendYield` | Dividend yield, already in percent — e.g. 0.94 = 0.94% (data-only) |
+| `info_dividend_yield` | `dividendYield` | Dividend yield, USUALLY already in percent (0.94 = 0.94%), but some rows arrive fraction-scale: issue #10 (data-only) |
 | `info_payout_ratio` | `payoutRatio` | Payout ratio, decimal (data-only) |
 | `info_sector` | `sector` | Sector grouping / benchmarks |
 | `info_currency` | `currency` | Export display |
@@ -184,7 +184,10 @@ data-only intermediates (the info-scalar duplicates, `interest_coverage`, `compu
 - `net_margin_pct` = `stmt_net_income / stmt_total_revenue * 100`.
 - `roa_pct` = `stmt_net_income / stmt_total_assets * 100` (total net income over total assets; leverage-neutral).
 - `statement_roe_pct` = `stmt_net_income_common / stmt_stockholders_equity * 100` (common income over common equity — both exclude minority interest; coexists with the info-scalar `roe_pct`).
-- `dividend_yield_pct` = `info_dividend_yield` (Yahoo `dividendYield`, already in percent — e.g. 0.94 = 0.94%; no ×100). **No longer catalogued** — computed and stored, but no card renders it.
+- `dividend_yield_pct` = `info_dividend_yield` (Yahoo `dividendYield`, no x100). Yahoo returns this as a
+  percent for MOST rows (0.94 = 0.94%) but not all: production holds fraction-scale rows too, so do not
+  treat the passthrough as unconditionally safe. See issue #10. **No longer catalogued**: computed and
+  stored, but no card renders it.
 - `net_cash` = `stmt_cash_and_equivalents - stmt_total_debt` (a money amount in the company's reporting currency). Pre-revenue card metric; replaced `net_cash_to_market_cap` because that ratio divided by market cap and therefore moved with the share price, which a twice-monthly pipeline cannot keep current.
 - `computed_fcf` = `stmt_operating_cash_flow + stmt_capital_expenditure` (capex negative; a transparent FCF distinct from `stmt_free_cash_flow` / `info_free_cashflow`; the burn basis for cash runway).
 - `cash_runway_months` = `stmt_cash_and_equivalents / (-computed_fcf) * 12` when `computed_fcf < 0` (null when not burning).
@@ -319,6 +322,94 @@ old-schema price parquet before running `dbt build` locally. Not a risk in CI or
 `validate:full`'s fixtures always stamp `ingested_at`, and the scheduled pipeline job starts
 from an empty `storage/raw/` every run (no cache/artifacts across jobs), so this mixed-schema
 state can only arise in a local checkout that predates this change.
+
+---
+
+## Percent-scale passthrough guard
+
+Three metrics pass a Yahoo `info` scalar through with a fixed multiplier, so their correctness
+depends entirely on the provider's units staying put:
+
+| Metric | Source scalar | Yahoo unit today | Model | A units flip makes it |
+|--------|---------------|------------------|-------|-----------------------|
+| `dividend_yield_pct` | `dividendYield` | percent | passthrough | **100x smaller** |
+| `revenue_growth_yoy_pct` | `revenueGrowth` | fraction | x100 | **100x larger** |
+| `roe_pct` | `returnOnEquity` | fraction | x100 | **100x larger** |
+
+**The direction differs, which is why the guard is two-sided.** A percent source can only break
+downward and a fraction source can only break upward; a one-sided floor would have been blind to
+two of the three.
+
+`dbt_analytics/tests/assert_percent_scale_passthroughs.sql` asserts the shape of each
+distribution per market on `int_stock__card_metrics`, comparing the median absolute value
+against a band:
+
+| Metric | Band | Observed market medians, lowest to highest | Binding flip case against the band |
+|--------|------|-------------------------------------------|------------------------------------|
+| `dividend_yield_pct` | 0.5 to 50 | 1.81 (`us_sp500`) to 3.53 (`au_asx200`) | down to 0.035 (`au_asx200`), 14x below the floor |
+| `revenue_growth_yoy_pct` | 1.0 to 100 | 4.50 (`fr_cac40`) to 12.00 (`jp_nikkei225`) | up to 450 (`fr_cac40`), 4.5x above the ceiling |
+| `roe_pct` | 1.0 to 200 | proxy only: 9.31 to 23.72 | up to 931 (`jp_nikkei225`), 4.7x above the ceiling |
+
+The flip column states the BINDING case: the market whose post-flip median lands nearest its
+bound, which is where detection is weakest. Which market that is depends on the direction, and
+the two are opposites. A percent source breaks DOWNWARD toward a floor, so dividing by 100
+leaves the HIGHEST market nearest the floor (`au_asx200` 3.53 -> 0.035, only 14x clear, against
+`us_sp500`'s 28x). A fraction source breaks UPWARD toward a ceiling, so multiplying by 100
+leaves the LOWEST market nearest the ceiling (`fr_cac40` 4.50 -> 450, 4.5x clear, against
+`jp_nikkei225`'s 12x). Quoting the other extreme in either case overstates the margin.
+
+**What the observed figures are measured on.** They come from the exported Supabase mart, which
+is eligible-only (`mart_stock_cards.sql` filters `where m.is_card_eligible`). The test reads
+`int_stock__card_metrics`, a superset that also carries ineligible tickers.
+
+The direction of that difference is NOT established. The ineligible population is precisely
+what the export leaves behind, so no measurement of it exists here, and nothing in the repo
+characterises its distribution. The margins above are what was measured on the eligible subset;
+how closely they describe the tested population is unknown.
+
+They were also measured on a population KNOWN to be contaminated, and for `dividend_yield_pct`
+only: the mis-scaled rows of issue #10 are ~100x too small and sit at the bottom of that one
+distribution. Nothing establishes contamination in `revenue_growth_yoy_pct` or `roe_pct`, whose
+binding side is the ceiling in any case.
+
+It cuts two ways, and the two must not be conflated. Contamination LOWERS the observed median.
+That INFLATES the flip-detection margins quoted in the table above, because a lower median
+divides to a lower post-flip value and so sits further below the floor: the 14x is marginally
+optimistic (a clean median of 3.60 would give 13.9x). It simultaneously lowers the current
+headroom between the median and the floor, which is the conservative direction. Neither effect
+is material at these magnitudes.
+
+The material risk is attribution. If the mis-scaled share grows, this guard eventually fires on
+contamination while the tables above point whoever is debugging it at a provider units change.
+
+`roe_pct` is not exported at all, so its band is set from `statement_roe_pct` as the closest
+available proxy: pooled median absolute value 13.37, per-market medians 9.31 (`jp_nikkei225`) to
+23.72 (`ch_smi`). The per-market range is what the band is derived from, since the test groups
+by market. Stated rather than glossed, because the margins are the whole justification for the
+bands.
+
+**Population is payers only.** The test counts rows where the value is non-null and non-zero, so
+"median" here means the median across companies that actually pay a dividend or report the
+metric, not across all constituents. A dividend-suspension wave removes rows rather than
+depressing the median.
+
+**Why the median of the absolute value.** `revenue_growth_yoy_pct` and `roe_pct` are signed (14%
+and 10% of rows are negative), so a signed median understates scale and would fall in a
+recession, failing on correct data.
+
+**Why per market.** A single market ingesting post-flip is caught. A pooled median is a majority
+vote and would stay quiet until more than half the universe had flipped.
+
+**The sample floor is 5** populated rows per market per metric. Below that a median cannot
+support the assertion, so the guard stays silent rather than failing on thin data. In the
+exported mart at the latest snapshot the smallest market, `ch_smi`, had 20 eligible rows and all
+20 carried a dividend; CI fixtures give 6 per market. Both clear the floor, so the guard is
+exercised rather than skipped in either environment.
+
+**What this does NOT cover.** A metric going entirely null -- a provider dropping or renaming a
+field, likelier than a units change -- passes having asserted nothing; that is a coverage
+assertion, and the project has no `accepted_range` or fill-rate tests anywhere. Nor does a
+market-median guard see per-row mixed units, which production currently has (issue #10).
 
 ---
 

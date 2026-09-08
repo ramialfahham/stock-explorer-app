@@ -185,9 +185,10 @@ models:
           the info-scalar roe_pct. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
       - name: dividend_yield_pct
         description: >
-          Dividend yield percent: info_dividend_yield passthrough — Yahoo dividendYield is already in
-          percent (e.g. 0.94 = 0.94%), so no ×100. Data-only — not in eligibility, the metric
-          catalogue, or the Supabase export yet.
+          Dividend yield percent: info_dividend_yield passthrough, no x100. Yahoo returns this as a
+          percent for MOST rows (0.94 = 0.94%) but not all; production holds fraction-scale rows too,
+          so the passthrough is not unconditionally safe (issue #10). Exported and stored, but no card
+          renders it: not in eligibility and not in the metric catalogue.
       - name: computed_fcf
         description: >
           Transparent free cash flow: stmt_operating_cash_flow + stmt_capital_expenditure (capex is
@@ -1337,10 +1338,7 @@ unit_tests:
         - {market_code: us_sp500, ticker: BANKOK, company_type: financial, is_card_eligible: true}
         - {market_code: us_sp500, ticker: BANKNO, company_type: financial, is_card_eligible: false}
   - name: card_metrics_dividend_yield_pct_percent_passthrough
-    # Scale guard (carry-in): Yahoo dividendYield is ALREADY a percent (0.94 = 0.94%), so
-    # dividend_yield_pct passes it through 1:1 with no x100. This pins the transform; a stray x100
-    # surfaces here. (A live yfinance revert to a fraction is caught by audit_mart_vs_yfinance,
-    # which now compares dividend_yield_pct as a mart metric.)
+    # Mocked input pins the transform only; live scale: dbt_analytics/tests/assert_percent_scale_passthroughs.sql.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')

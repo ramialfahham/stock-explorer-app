@@ -12,28 +12,58 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-08)
 
+**Pipeline engineering audit -- filed as issue #9, findings posted as a comment there.** Three
+parallel passes (dbt, export boundary, ingestion+frontend) against the repo's own standards.
+Headline: the dbt project and ingestion are genuinely good; almost every real defect sits where
+no CI gate reaches -- the export boundary, the frontend, and prose-only standards. **Read the
+issue before starting any cleanup work**; it is the only complete record.
+
+Four findings can produce wrong data or a failed run: a half-failed export silently mixes two
+snapshots (no transaction, no retry, and the stale-export policy has no case for it); a Yahoo
+outlier overflows one of eleven undocumented `numeric(10,4)` caps and aborts the batch; price
+ingestion failures print a warning and vanish, so freshness reads green while a third of the
+universe lost prices; and the `dividendYield` scale guard did not exist. The last is fixed
+below. Also open: the learn panel re-implements four metric formulas in Python against a stated
+invariant, and the AI read and the card face disagree on labels and units.
+
+**Branch `fix/dividend-yield-scale-guard`, in progress** -- percent-scale guard for all three
+passthrough metrics (`dividend_yield_pct`, `revenue_growth_yoy_pct`, `roe_pct`).
+`dbt_analytics/tests/assert_percent_scale_passthroughs.sql` asserts the median absolute value
+per market against a TWO-SIDED band; bands, margins and the known holes are in
+`docs/data_contract.md`'s "Percent-scale passthrough guard" section. **The direction differs per
+metric and this is the trap**: `dividendYield` arrives as a percent so a flip makes it 100x
+smaller, while `revenueGrowth` and `returnOnEquity` arrive as fractions and are multiplied by
+100, so a flip makes them 100x LARGER. A one-sided floor was blind to two of three, including
+the only user-visible one. Mutation-verified in both directions, per metric, per market: 6
+cases, 6 caught. The review cycle ran long and is worth knowing about: the SQL was settled
+and independently mutation-verified early, and almost every later round found a false claim in
+the prose describing it, several introduced by the previous round's fix.
+
+**Issue #10, filed, not fixed**: production holds `dividendYield` in MIXED units right now --
+AvalonBay (0.0387) and Equity Residential (0.0426) are REITs yielding ~4%, i.e. fraction-scale
+rows in a percent-scale column. This qualifies the repo's recorded "dividendYield is a PERCENT"
+decision to "usually". Nothing user-visible is wrong (the field is data-only) and a per-market
+median guard structurally cannot see per-row mixed units.
+
+**Still unguarded, same class:** nothing asserts a fill rate anywhere, so a provider DROPPING a
+field (likelier than changing its units) passes every guard silently. The project has no
+`accepted_range` tests at all.
+
+
 **MR !111, merged** -- first-visit load time. Every NEW visitor paid a full deck download
-before anything rendered (all 4,683 eligible rows at `select=*` plus all `card_assessments`,
-~78% discarded by dedupe, cached in `st.session_state` = per browser session). Fixed with a
-12-column deck, no assessments join on the deck, per-card hydration (`fetch_card_detail`), and
-`@st.cache_data` shared across sessions: **18.38 MB / 7 round trips / 7.80s -> 1.46 MB / 6 /
-1.87s**, plus ~0.61s per card opened. Render was never the cause (0.42s TTFB).
+before anything rendered (4,683 rows at `select=*`, ~78% discarded by dedupe, cached per
+browser session). Fixed with a 12-column deck, per-card hydration, and `@st.cache_data` shared
+across sessions: **18.38 MB / 7 round trips / 7.80s -> 1.46 MB / 6 / 1.87s**. Render was never
+the cause. Took five review rounds, mostly on false claims in my own prose; two real bugs
+caught (a cache guard that could only spin, and an export diagnostic that failed open on the
+42703 it exists to announce). Detail in that MR's `contract.md`/`review.md`.
 
-Five review rounds. The code was clean by round 3; rounds 4-5 went on false claims in my own
-prose (two wrong test counts, two unsupported causation statements, and a wrong belief that a
-`st.popover` body is lazy -- it is not, which is why the cold path is 6 round trips, not 5).
-Reviewers caught two real bugs: a cache guard that cleared `session_state` but not the shared
-cache, so it could only spin rather than recover; and an export diagnostic that failed open on
-the exact 42703 schema error it exists to announce. Full account in that MR's
-`contract.md`/`review.md`.
-
-**Still the owner's call, unmade**: the delivered numbers miss the approved plan's own
-estimate (~150-250 KB over 1-2 round trips, sized against the ~1,039 deduped rows; the deck
-still fetches all 4,683 and dedupes client-side). Closing it is the reserved `DISTINCT ON`
-view -- needs a migration plus a grant plus a `coalesce` to preserve the `business_summary`
-backfill. Also unconfirmed: the 30-minute deck TTL (`_DECK_TTL_SECONDS`), shipped inside the
-plan's approved 15-60 min band, which is what keeps traffic querying Supabase inside its
-idle-pause window.
+**Still the owner's call, unmade**: the result misses the approved plan's own estimate
+(~150-250 KB over 1-2 round trips) because the deck still fetches all 4,683 rows and dedupes
+client-side. Closing it is the reserved `DISTINCT ON` view (migration + grant + a `coalesce` to
+keep the `business_summary` backfill). Also unconfirmed: the 30-minute `_DECK_TTL_SECONDS`,
+shipped inside the plan's approved 15-60 min band, which is what keeps traffic querying
+Supabase inside its idle-pause window.
 
 **Read before touching the frontend fetch path**: `DECK_COLUMNS` is the cold path's entire
 cost. Adding a column there is paid by every visitor; adding one to the card face is paid by
@@ -64,17 +94,14 @@ no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as 
 final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
 **MR !101, merged** -- scheduled-pipeline alerting + same-day ingestion checkpoint
-(`ingestion/yfinance/ingest.py`, `--force-refetch` bypasses). **The alerting route it
-documented did not work** and sat unchecked until 2026-09-08: the owner reported the GitLab
-"Pipeline emails" project integration is not in this project's Settings -> Integrations list
-(the API can only confirm it was never configured, not that it is unavailable). Failed-pipeline
-email is now live via GitLab's built-in per-user notifications instead (bell -> Custom ->
-Failed pipeline); see `docs/operations_guide.md`.
+(`ingestion/yfinance/ingest.py`, `--force-refetch` bypasses). **The alerting route it documented
+did not work** and sat unchecked until 2026-09-08; failed-pipeline email is now live via
+GitLab's built-in per-user notifications (bell -> Custom -> Failed pipeline). See
+`docs/operations_guide.md`.
 
 **Finding, not folded into !101 (owner's call):** the 2026-09-01 job trace showed ingestion is
-only ~24 of the ~65-minute total (37%) -- the dominant, ungoverned cost is
-`generate_assessments.py`'s AI-read step (~39 min, one Haiku call per changed card, no cap).
-Open item 8 below.
+only ~24 of the ~65-minute total -- the dominant, ungoverned cost is `generate_assessments.py`'s
+AI-read step (~39 min, one Haiku call per changed card, no cap). Open item 8 below.
 
 **MR !103, merged** -- dbt model contract on `mart_stock_cards` (enforced, `data_type:` on all
 80 columns) + `dbt source freshness` on all three raw sources (warn 20d/error 30d).
