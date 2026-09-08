@@ -122,8 +122,13 @@ should say, 'this guy knows his stuff'"). First fixes, MR !97, merged 2026-09-05
 live-demo link + Stack table corrected from Streamlit Community Cloud to Render (the actual,
 already-shipped deploy target, verified live); `docs/media/discover-card.png` refreshed to
 match the current UI (old screenshot showed a stale tagline, old verdict-copy style, and a
-"Forward P/E" metric no longer on the card). Remaining portfolio items not yet started: GitLab
-topics sync, project description, a custom link-preview/avatar image.
+"Forward P/E" metric no longer on the card). **GitLab topics + project description done
+2026-09-08**: topics set via `polish-repo`'s `sync-topics.py` (language detection plus a new
+curated entry for this repo -- `streamlit`, `dbt`, `duckdb`, `supabase`, `postgresql`,
+`yfinance`, `data-engineering`, `python`); description rewritten (owner-approved wording) to
+drop an em dash and a stale "(migrated from GitHub)" aside the old one carried. Remaining
+portfolio items not yet started: a custom link-preview/avatar image (GitLab: the project
+avatar, not a separate social-preview setting).
 
 **Owner decision on repo visibility (2026-09-08): go public once the repo is portfolio-grade,
 not before.** Sequencing, not a standing block -- the repo stays private through the remaining
