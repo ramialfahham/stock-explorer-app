@@ -1,158 +1,302 @@
 # Task contract
 
-objective: Add the repo's first Streamlit `AppTest`-based end-to-end test, covering
-  `frontend/app.py`'s cross-tab Discover/Saved/Search flow (save a card, remove a saved card,
-  search by ticker) -- a class of bug the existing pure-function unit tests structurally
-  cannot reach, since they never instantiate the real script or a real session.
+objective: Add a deterministic (non-LLM) style/rule guard for AI-generated card reads --
+  `find_read_style_violations()` in `scripts/assessment_rules.py`, checking a subset of
+  `READ_SYSTEM_PROMPT`'s own stated rules that a plain string/regex check can enforce without
+  semantic judgment. Wired into `scripts/generate_assessments.py`'s `_generate_read`, alongside
+  the existing hallucination guard (`validate_read_metrics`), same fail-closed treatment.
 
-  Referred to loosely as "item 4" of an earlier 5-item portfolio-readiness list, but that
-  number is not asserted here: the list's own source text is confirmed permanently lost from
-  this repo (repo-wide grep for "4-persona"/"5-item": zero hits). The prior task in this same
-  loose sequence (item 3, MR !103) already proved once that a remembered number from this list
-  can be wrong. This contract describes the task by content only.
+  Loosely "item 5" of an earlier, now-lost 5-item portfolio-readiness list -- my own bare
+  one-line summary ("a periodic AI-output-quality eval") is the only trace of it anywhere; two
+  prior tasks in this same loose sequence already showed a remembered number/description from
+  that list can be wrong or unverifiable. Investigated what that summary could concretely mean:
+  no fuller description exists anywhere in the repo or its git history (confirmed via targeted
+  `git log --all -S` searches for "golden", "hallucination", "periodic AI", "AI-output-quality",
+  "golden set", "ground truth", "LLM-judge" -- nothing beyond the summary). This repo's Claude
+  API usage has zero cost governance today (no cap, no spend log -- already flagged, unaddressed,
+  in `.claude/active_work.md`'s own open item 8), and a real periodic/scheduled sampling eval
+  would add new recurring Claude spend and new CI/schedule infrastructure on top of that already-
+  flagged problem -- a new mechanism plus a cost/schedule decision, both squarely
+  `.claude/working-agreement.md` §6 (owner-only). Put to the owner directly (via `AskUserQuestion`,
+  then confirmed again after an initial answer was dismissed): chose the cheaper, lower-regret
+  shape -- extend the existing generation-time guard, zero new Claude spend, zero new
+  infrastructure, same established fail-closed pattern already in place and already reviewed.
 
-  Correction (scope-auditor round 1 caught this): an earlier draft of this objective also
-  claimed `git log --all -S"AppTest"` returns zero hits "ever," offered as supporting evidence
-  that AppTest has never been discussed in this repo. That claim was false -- never re-verified
-  against the actual command myself before writing it, carried over unchecked from an earlier
-  exploration pass in this session. The real history: `git log --all -S"AppTest"` returns 5
-  commits (`702bfb62`, `0bb8997c`, `4986cd61`, `3d2c7c99`, `c77d6d48`), all already in this
-  branch's own ancestry. Two of them (`702bfb62`, its `0bb8997c` review record) directly discuss
-  AppTest: that task -- two small Streamlit widget-persistence bugfixes -- explicitly considered
-  and declined it, reasoning "a plain pytest unit test can't exercise [this] without either
-  Streamlit's heavier `AppTest` harness or refactoring the render functions themselves, both
-  bigger asks than this fix," verified instead by direct interaction against a running dev
-  server. Read in full, not just cited: that was a proportionality judgment for one small,
-  unrelated fix, not a repo-wide rejection of AppTest as a mechanism -- it does not conflict
-  with this task, which is a dedicated, owner-approved (via `ExitPlanMode`) decision to build
-  AppTest coverage as its own infrastructure, not something bolted onto an unrelated change.
-  Stated plainly because burying a real, on-point precedent instead of engaging with it would
-  be the same disclosure failure the immediately-prior task (item 3) was caught on.
-
-  Unlike item 3 (which enacted a standard `docs/engineering_standards.md:223` had already
-  written down and never acted on), **no existing policy calls for end-to-end frontend
-  testing** -- today's stated frontend test policy (`tests/README.md`,
-  `docs/engineering_standards.md` §3) is unit-level only, by explicit design (existing
-  `tests/frontend/*` tests extract pure helpers specifically to avoid touching real Streamlit
-  widget rendering; `test_app.py`'s own comment states full-script rendering is currently a
-  deliberate unit-test exemption). This task establishes new test infrastructure, not agreed
-  work being completed. Full reasoning, technical verification (row-button key patterns traced
-  directly in `app.py`, AppTest's actual execution model traced in Streamlit's own
-  `script_runner.py`/`local_script_runner.py`/`element_tree.py`), and the concrete mocking
-  strategy are in the approved plan: `C:\Users\Rami\.claude\plans\groovy-churning-scroll.md`.
+  Full technical design (exact regex patterns, false-positive reasoning for each rule, the
+  em-dash in-memory-vs-file-scan distinction, the dry-run analysis) verified against source and
+  approved via `ExitPlanMode`: `C:\Users\Rami\.claude\plans\groovy-churning-scroll.md`.
 
 scope_paths:
-  - tests/frontend/test_app_e2e.py (new -- the AppTest suite itself)
-  - tests/README.md (new paragraph documenting what this file covers and why it's structurally
-    distinct from the rest of tests/frontend/)
+  - scripts/assessment_rules.py (new find_read_style_violations function)
+  - scripts/generate_assessments.py (wiring into _generate_read)
+  - tests/tooling/test_assessment_rules.py (new test section)
+  - tests/tooling/test_generate_assessments.py (fixture updates + new wiring tests)
+  - docs/data_contract.md (scope-auditor round-1 doc-sync finding: the ai_read-absent
+    enumeration needed a 4th reason added -- see amendments)
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none outstanding. Two implementation-level choices, disclosed as
-  agent-executable, not product content: (1) which 5 flows get coverage (Discover pool render,
-  save-then-appears-in-Saved, scoped remove-from-Saved, search-finds-ticker,
-  search-no-match-warning) -- chosen because they're the cross-tab session_state interactions
-  unit tests structurally can't reach, not a product decision; (2) `frontend/app.py` is the
-  AppTest target, not `streamlit_app.py` -- a technical choice (traced in Streamlit's own
-  `script_runner.py` that the AppTest target is always freshly re-executed as `__main__` on
-  every `.run()`), not a design tradeoff needing sign-off. NOT deciding, and explicitly out of
-  scope: whether AppTest coverage becomes a required pattern for future frontend work going
-  forward -- that would be a repo-wide testing-policy mandate, a bigger call than this task
-  makes; `tests/README.md`'s new paragraph documents what exists, without asserting a mandate.
+decisions_reserved: none outstanding -- the cost/mechanism decision (build this at all, and in
+  this cheaper shape rather than a periodic LLM-judge) was put to the owner directly before any
+  implementation, per §6. Remaining choices are implementation-level, disclosed as
+  agent-executable, not product content: (1) which 6 of `READ_SYSTEM_PROMPT`'s rules are
+  checkable deterministically (see plan's "Deliberately excluded" list for the ones left out and
+  why -- a technical tractability judgment, not a product/wording call); (2) exact regex
+  patterns and false-positive mitigations (word-boundary anchoring, hold/avoid scoped to
+  share/stock, emoji ranges excluding currency symbols) -- engineering precision choices with
+  documented reasoning, not new user-facing behavior (the prompt's rules are unchanged; this
+  only adds enforcement of a subset already agreed and shipped).
 
 done_when:
-  - `tests/frontend/test_app_e2e.py` exists with 5 passing tests (discover-renders,
-    save-appears-in-saved, scoped-remove, search-finds, search-no-match), each driving the real
-    app via `AppTest.from_file("frontend/app.py")`, not a direct-import shortcut.
-  - Three real I/O boundaries stubbed at their actual call site (verified against source, not
-    assumed): Supabase (`supabase_cards.fetch_eligible_cards_with_assessments`,
-    `supabase_client.get_anon_client`, plus `SUPABASE_URL`/`SUPABASE_ANON_KEY` env vars),
-    yfinance news (`saved_news._fetch_news` -- found only by grepping for network calls, not
-    part of the obvious Supabase surface), and browser localStorage (reusing
-    `test_browser_storage.py`'s existing `_FakeManager`/`_mount_manager` pattern, not inventing
-    a new one).
-  - `pytest tests/frontend/test_app_e2e.py -v`: 5/5 pass, standalone.
-  - `pytest tests/ -q`: full suite passes, confirming no cross-file conflicts (each `AppTest()`
-    instance owns its own fresh session by construction -- verified for real, not assumed).
-  - At least one assertion mutation-tested for real: break the thing a test is supposed to
-    catch (e.g. make saved-removal not scope to the selected card), confirm the corresponding
-    test fails with the expected symptom, restore, confirm green again.
-  - `tests/README.md` documents the new file's coverage and its structural difference from the
-    rest of `tests/frontend/` (full-script simulation vs. direct-import pure-helper tests).
-  - No em/en-dash on any added line (file-based UTF-8-explicit scan, not stdin).
-  - Review cycle: scope-auditor + cto-reviewer (both required per `.claude/review_routing.json`
-    -- `tests/*` routes to cto-reviewer; no dbt/.sql/ingestion/data_contract files touched, so
-    no analytics-engineer-reviewer/data-engineer-reviewer/equity-analyst-reviewer needed).
+  - `find_read_style_violations(read: str) -> list[str]` exists in `scripts/assessment_rules.py`,
+    checking: em/en-dash, exclamation marks, emoji, investment-advice language (buy/sell/cheap/
+    expensive/worth it/price, hold/avoid anchored to share/stock), the prompt's own named AI-tell
+    phrases ("not just X, but Y", "it's worth noting", "it's important to remember"), "this
+    year"/"over the year" about growth, and ending on the verdict's meaning ("on these
+    figures"/"on these numbers").
+  - Wired into `_generate_read` (`scripts/generate_assessments.py`) immediately after the
+    existing `validate_read_metrics` check, same fail-closed `return None, None`, stderr message
+    naming every violated rule.
+  - `--dry-run` unaffected (confirmed: returns before `_generate_read` is ever reachable, so
+    inherits the existing guard's exemption for the identical reason -- no code change needed
+    there, verified not assumed).
+  - Five existing tests in `tests/tooling/test_generate_assessments.py` whose placeholder
+    fixture text doesn't end with a verdict-meaning phrase updated to real closing text
+    (mechanical fixture fix, not a design change) -- confirmed exactly which five by reading the
+    file directly before implementing, not guessed.
+  - New tests in `tests/tooling/test_assessment_rules.py`: one violating + one clean example per
+    rule (the clean side proves precision, not just presence), plus the specific false-positive
+    cases the design is built to avoid (ordinary hyphens, currency symbols/degree sign, sales/
+    seller, "holds cash"/"avoid a cash squeeze", "not just X" without a later "but", both figures/
+    numbers endings), plus a multi-violation read asserting every violation is reported.
+  - New tests in `tests/tooling/test_generate_assessments.py`: style-violating read rejected
+    (fails closed, correct stderr), style-clean read accepted, and a mutation-style wiring proof
+    (monkeypatch the check to always pass, confirm a violating read now succeeds -- proving the
+    call site actually depends on the real check, matching this file's own existing
+    `test_operating_statement_roe_call_site_is_actually_wired` pattern).
+  - `pytest tests/tooling/... -v` then full `pytest tests/ -q`: all green, no regressions.
+  - Manual mutation check: comment out the new `if style_violations:` block, confirm the
+    rejection test fails with the expected symptom, restore, confirm green again.
+  - No em/en-dash on any added line OUTSIDE the 5 deliberate exceptions this task's own subject
+    matter requires: the `_EM_DASH`/`_EN_DASH` constants in `find_read_style_violations` itself
+    (a dash detector must hold the literal characters it detects, the same way a banned-words
+    list must contain the banned words) and 3 test fixture strings constructing a read that
+    actually contains one, to prove the detector catches it. Scanned (file-based UTF-8-explicit,
+    not stdin) and confirmed exactly these 5 hits, each independently byte-verified via
+    `hex(ord(ch))` against a standalone script (not a shell one-liner -- an earlier attempt to
+    switch these to Unicode escape-sequence form via a `python -c` shell round-trip actually
+    corrupted the file into literal U+FFFD replacement characters, caught immediately by a
+    follow-up `hex(ord())` check before it was ever staged; reverted via Edit, re-verified
+    clean).
+  - Review cycle: scope-auditor + cto-reviewer + equity-analyst-reviewer. Originally scoped as
+    scope-auditor + cto-reviewer only (no dbt/ingestion/frontend/data_contract files touched at
+    the time) -- scope-auditor's own round-1 finding added `docs/data_contract.md` to
+    scope_paths, which `.claude/review_routing.json` routes to equity-analyst-reviewer; added
+    once discovered, not assumed away.
 
 impact_map:
-  - No user-visible change, no production code touched (test infrastructure only).
-  - No dbt/ingestion/Supabase files touched -- `analytics-engineer-reviewer`,
-    `data-engineer-reviewer`, `equity-analyst-reviewer` are NOT required this time (routing
-    checked directly, not assumed carried over from the last task).
-  - `tests/*` touched -> requires cto-reviewer per `.claude/review_routing.json:12`.
+  - No user-visible change to the app itself. Changes which already-generated reads pass the
+    existing accept/reject gate -- a read that violates one of these 6 rules now gets rejected
+    (falls back to the existing deterministic `VERDICT_FALLBACK_READ` line) instead of being
+    stored; a compliant read is unaffected either way.
+  - `scripts/*` touched -> requires cto-reviewer per `.claude/review_routing.json`.
+  - `docs/data_contract.md` touched -> requires equity-analyst-reviewer per
+    `.claude/review_routing.json:26` (added after scope-auditor's round-1 finding; see
+    scope_paths/amendments).
   - scope-auditor always.
+  - No CI/schedule/dependency change -- confirmed no new job, no new Claude spend, no new
+    infrastructure (the whole point of the chosen approach over the declined alternative).
 
 amendments:
-- During implementation, `test_remove_from_saved_only_removes_that_card` (the two-cards-saved,
-  remove-one-scoped test) hit a `KeyError` on the second of two different-card focus-then-save
-  cycles. Isolated the exact trigger empirically (single-card focus+save is fine regardless of
-  how many runs follow; two DIFFERENT cards' focus+save cycles is what triggers it). Test fixed
-  by seeding both "save" interactions directly onto `session_state` (matching
-  `append_interaction`'s exact row shape) instead of driving both saves through Discover's UI,
-  while still exercising the actual thing under test -- "Remove from saved" scoping -- through
-  real Saved-tab UI clicks, unstubbed. No production file touched or needed changing.
+- scope-auditor (round 1) FAILED (two findings):
+  1. `docs/data_contract.md` enumerates a closed set of reasons `ai_read` can be absent (a
+     brand-new card, a per-card API failure, or a hallucination-guard reject) -- this diff adds
+     a fourth (style-guard reject) to the exact same function without updating that
+     enumeration, a real doc-sync gap the file wasn't in scope_paths to catch. Fixed: added a
+     paragraph describing the new guard right before the enumeration, and added the fourth
+     reason to the list itself. `docs/data_contract.md` added to scope_paths;
+     equity-analyst-reviewer added to the required review cycle (see scope_paths/impact_map
+     above).
+  2. done_when's own em-dash-scan claim ("confirmed exactly these 5 hits... No accidental dash
+     anywhere else in the diff") was itself false: a 6th, undisclosed em dash was sitting inside
+     this same contract.md, in the sentence describing the earlier dash-corruption incident
+     (ironic given the subject) -- a real, if minor, instance of the exact rule this task's own
+     guard exists to help enforce. Fixed: reworded the sentence to avoid needing the character
+     at all; independently re-verified via the same `hex(ord(ch))` byte-level method (not
+     visual inspection, which is what let this slip through the first time -- the terminal's
+     own rendering of these characters is unreliable, confirmed separately during
+     implementation, see below) -- 0 hits now in this file.
 
-  What this crash actually is, corrected after cto-reviewer's round-1 finding (see below): an
-  initial pass here claimed, after one manual browser test, that this was "confirmed... not a
-  production bug." That was overclaimed. cto-reviewer traced the real mechanism: `AppTest`'s
-  `LocalScriptRunner` subclasses Streamlit's own production `ScriptRunner` unmodified, and the
-  cleanup path that raises this `KeyError` (`session_state.py`'s `_compact_state`) is real,
-  shared production code -- which itself wraps this exact case in `except KeyError: pass`,
-  citing a known upstream Streamlit issue (`streamlit/issues/7206`) about stale widget
-  metadata. The underlying condition (viewing two different cards' metric-playground panels
-  swaps the full active widget-key set) is real and not AppTest-specific; what IS AppTest-
-  specific is that `element_tree.py`'s `get_widget_states()` reads widget state without
-  production's own defensive swallowing, turning a condition production silently tolerates
-  into a hard test failure. One manual pass not reproducing a visible crash is consistent with
-  this (production swallows it) but doesn't rule out a rarer or timing-sensitive path still
-  causing a real problem. Corrected the test's own docstring to state this accurately instead
-  of the overclaimed version. Flagging to the owner as a genuinely open question, not a closed
-  one -- worth a tracked follow-up if it's worth someone's time, not something to silently drop
-  or unilaterally file an issue for.
-- Mutation-tested the scoping assertion for real: changed `saved_remove_current`'s handler to
-  call `clear_interactions()` instead of `append_interaction(selected, "unsave")`, confirmed
-  the test fails with the exact predicted symptom (`assert None is not None` on the BETA row
-  check -- both cards wiped instead of just the selected one), restored `frontend/app.py` from
-  a backup, confirmed `git diff --stat frontend/app.py` shows zero diff (untouched, as
-  scope_paths requires) and the full suite (536 tests) passes again.
-- scope-auditor (round 1) FAILED: this contract's objective originally claimed
-  `git log --all -S"AppTest"` returns "zero hits, ever," carried over unverified from an
-  earlier exploration pass in this session rather than re-checked before being asserted here.
-  False -- 5 real commits, two of which (`702bfb62`, `0bb8997c`) explicitly discuss AppTest.
-  Corrected above, in the objective, with the real history and why it doesn't conflict with
-  this task. Same disclosure-accuracy class as item 3's MR !101 mis-citation.
-- cto-reviewer (round 1) FAILED: the "not a production bug" overclaim above. Also flagged,
-  separately, that they accidentally edited `frontend/app.py` while independently re-verifying
-  the mutation-test claim, self-caught it, reverted, and confirmed clean -- verified
-  independently here too (`git status`/`git diff HEAD --stat` after their round showed exactly
-  the 4 expected files, `frontend/app.py` not among them).
-- cto-reviewer (round 2) FAILED: the round-1 fix itself introduced a new, unverified mechanism
-  claim -- the test docstring's corrected version stated `_compact_state` is "called from the
-  same `ScriptRunner.on_script_finished` that `LocalScriptRunner` subclasses unmodified." Wrong
-  on both parts, per cto-reviewer's direct source trace: `_compact_state` is only called from
-  `SessionState.on_script_will_rerun` (not `on_script_finished`, a different method entirely),
-  and `LocalScriptRunner` DOES override `_on_script_finished` with its own copy -- the method
-  it actually inherits unmodified (`ScriptRunner._run_script`, which calls
-  `on_script_will_rerun`) was never named. The same defect class round 1 caught (an asserted
-  mechanism not traced against source), relocated into the fix meant to correct it.
-  Independently re-verified against the installed Streamlit 1.57.0 source myself (grepped
-  `_compact_state`/`on_script_will_rerun`/`_on_script_finished` across `session_state.py`,
-  `script_runner.py`, `local_script_runner.py`; confirmed `_run_script` is absent from
-  `LocalScriptRunner`'s override list, so it is inherited unmodified). Corrected the docstring
-  to the verified chain: `_compact_state` <- `SessionState.on_script_will_rerun` <-
-  `ScriptRunner._run_script` (not overridden by `LocalScriptRunner`). `contract.md`'s own
-  amendments were not affected -- cto-reviewer confirmed this file already used the same
-  general, defensible phrasing as their round-1 finding, not the specific wrong claim.
-- All three fixes re-verified together: full suite re-run (536 passed), em/en-dash re-scanned on
-  the diff against HEAD (0 hits), `git status` confirms scope_paths still exactly matched.
+  Also confirmed clean by scope-auditor round 1: diff scope otherwise conformant;
+  working-agreement.md §6 and active_work.md's open item 8 citations verified accurate; every
+  rule `find_read_style_violations` checks traced to real, verbatim `READ_SYSTEM_PROMPT` text;
+  the 5-fixture-fix claim empirically correct; full suite 569/569.
+
+  Two smaller, non-blocking accuracy gaps also noted, not fixed (correctly assessed as
+  not independently FAIL-worthy, recorded for completeness): a second, undisclosed
+  test using non-compliant placeholder text (`test_attach_reads_rejects_a_read_citing_a_number_
+  that_does_not_match`, shielded from the style check by an earlier rejection, so harmless) and
+  one comment (`assessment_rules.py`) whose justifying example doesn't actually demonstrate what
+  it claims (`"about"` doesn't contain `"but"` as a substring either way -- the regex itself is
+  correct, just the comment's illustration is imprecise). Left as-is: true nitpicks, not
+  disclosure or correctness problems.
+
+  Separate note on the terminal-rendering discovery, relevant to why the 6th em-dash wasn't
+  caught by my own visual re-reads during implementation: this session independently confirmed
+  that this machine's Bash tool output pipeline renders U+2014/U+2013 as the Unicode
+  replacement-character glyph on the terminal even when the underlying file bytes are completely
+  correct (verified via `hex(ord(ch))` against a standalone script, not a shell one-liner, after
+  an earlier scare where the same rendering artifact was initially mistaken for real file
+  corruption). The reverse risk -- a real em-dash rendering as if it were ordinary prose, easy to
+  miss on a visual read -- is exactly what happened here. The file-based, explicit-UTF-8,
+  `hex(ord())`-verified scan is the only fully reliable method on this machine; a visual
+  re-read of prose, even carefully done, is not sufficient on its own going forward.
+
+- **Process incident, mid-review**: while cto-reviewer's round 1 was still running (dispatched
+  in parallel with scope-auditor against the same diff), scope-auditor's findings above were
+  fixed and re-staged, including the `docs/data_contract.md` edit. cto-reviewer's own review
+  process ran a git operation against the shared working tree that reverted that concurrent
+  edit -- confirmed independently on this end too: `git status`/`git diff --cached` showed
+  `docs/data_contract.md` completely absent (byte-identical to HEAD) partway through cto-
+  reviewer's run, before it had finished. cto-reviewer caught this itself (cross-read
+  `review.md`'s recorded resolution, restored the edit, re-staged, confirmed byte-identical to
+  the pre-revert state) and disclosed it plainly in its own report. Independently re-verified
+  the restoration afterward, matching cto-reviewer's account exactly. No content was lost;
+  logged as a new memory (`concurrent-agent-file-race`) since this is a real, previously-
+  undocumented risk class for this session's established pattern of dispatching reviewer agents
+  with full write access into the same, non-isolated working tree.
+
+- cto-reviewer (round 1) FAILED (three findings, all real regex false-positive bugs, each
+  empirically confirmed by the reviewer constructing and running an actual counter-example, not
+  just reasoned about):
+  1. `_NOT_JUST_RE`/`_BUT_WORD_RE`'s "but" search had no clause/sentence bound (searched from
+     "not just" to the end of the whole string) -- misfired on a read using "not just X" in one
+     sentence and an ordinary, unrelated contrastive "but" in a later one (a yellow-verdict card
+     contrasting a weak axis against a strong one is exactly this shape). Also directly
+     contradicted this contract's own earlier, incorrect assessment of the identical code
+     (scope-auditor round 1's "the regex itself is correct, just the comment's illustration is
+     imprecise" -- wrong; there was a real functional bug independent of the comment).
+  2. `_GROWTH_PERIOD_RE` matched "this year"/"over the year" anywhere in the read, not scoped to
+     a growth statement -- broader than the prompt's actual rule ("do not write 'this
+     year'... about it", where "it" = growth specifically). Misfired on a read discussing free
+     cash flow, never growth.
+  3. `_ADVICE_WORD_RE` matched "cheap"/"expensive"/"price"/"worth it" as bare words with no
+     share/stock anchoring, unlike the adjacent, deliberately-anchored hold/avoid pattern --
+     misfired rejecting a legitimate leverage/debt-cost explanation ("expensive to service").
+
+  Each of these silently degrades a genuinely compliant card to the deterministic fallback line
+  -- the highest-stakes failure mode for this guard, and (per cto-reviewer's own observation)
+  indirectly increases repeat Claude API calls too, since a rejected read never gets stored and
+  the card retries every future pipeline run -- undermining the "zero new Claude spend"
+  rationale for choosing this approach over a periodic LLM-judge in the first place.
+
+  Resolution, all three fixed together:
+  1. Combined into one bounded regex, `_NOT_JUST_BUT_RE = r"\bnot just\b[^.!?]*\bbut\b"` -- "but"
+     must now appear in the SAME sentence as "not just", not merely somewhere later in the text.
+  2. Scoped to same-sentence proximity with a growth word (growth/grew/grown/growing), checked
+     per-sentence (`re.split(r"[.!?]+", read)`) rather than a single directional regex, since the
+     growth word can legitimately come before OR after the period phrase.
+  3. Split the old `_ADVICE_WORD_RE` into `_ADVICE_ACTION_RE` (buy/sell/price -- kept bare-word,
+     no legitimate non-advice use exists in this app's vocabulary) and merged cheap/expensive/
+     worth-it into the SAME anchored pattern hold/avoid already used (now `_ADVICE_VALUE_SHARE_RE`),
+     since all five share the identical false-positive risk and the identical fix.
+
+  New regression tests added for each: a same-sentence-vs-later-sentence "but" pair, both
+  orderings of the growth-word/period-phrase proximity plus a not-about-growth clean case, and a
+  combined anchored-value-word parametrized test (merging the old separate hold/avoid test) plus
+  an expanded benign-use clean example directly reusing cto-reviewer's own leverage-cost
+  counter-example. All three fixes re-verified together: full suite re-run (573 passed, up from
+  569), em-dash re-scanned (still exactly 5 legitimate hits, standalone-script method).
+
+  Also confirmed clean by cto-reviewer round 1: wiring correctness (call order, fail-closed
+  shape, stderr message completeness); the `--dry-run` claim (verified directly against
+  `main()`); the 5 fixture edits are purely additive, each still asserting the same property it
+  always did; the mutation-style wiring proof is meaningful, not vacuous; emoji ranges/currency-
+  symbol exclusion/verdict-ending presence-not-suffix limitation all correct/adequately
+  disclosed; no `.gitlab-ci.yml` change; no secrets; no new dependency (`re` is stdlib).
+
+  Round 2 (re-check of the three regex fixes only, nothing else in scope) FAILED with two more
+  real bugs, BOTH introduced by the round-1 fixes themselves, both empirically confirmed by
+  cto-reviewer constructing and running actual counter-examples:
+  1. The growth-period per-sentence check's `re.split(r"[.!?]+", read)` also splits on the "."
+     inside every percentage this app renders (`f"{v:.1f}%"`, always one decimal) -- a real
+     sentence with a figure sitting between its growth word and period phrase (e.g. "Revenue
+     grew 24.0% this year") gets cut into two fragments, neither containing both patterns, so
+     the violation is silently missed. The file's own comment elsewhere already names this exact
+     hazard for why "2-3 sentences" was deliberately not checked -- walked into anyway here.
+  2. The merged `_ADVICE_VALUE_SHARE_RE` doesn't distinguish "share" as the security from
+     "share" as "a portion of X" -- on-topic, system-prompt-encouraged vocabulary
+     (`READ_METRIC_BRIEF`'s own margin gloss literally says "share of sales kept as... operating
+     profit"; the existing `_CLEAN_READ` fixture already uses "a solid share of every sale").
+     "market share" is a separate, similarly legitimate collision. Confirmed with 5 constructions,
+     all legitimate, all incorrectly rejected.
+
+  What held (not re-broken): `_NOT_JUST_BUT_RE`'s sentence bound -- stress-tested with
+  semicolon/colon separators and word-boundary collisions, all held or are unrealistic edge
+  cases for Haiku's punctuated prose.
+
+  While fixing finding 1, proactively checked whether the SAME root cause (naively treating any
+  "." as a sentence boundary) also affected the two OTHER proximity-bounded checks that use an
+  identical `[^.!?]`-based mechanism, rather than assuming the fix was isolated to the one
+  reported instance. Confirmed empirically, real bug in both, previously unreported: a decimal
+  figure sitting inside the `_NOT_JUST_BUT_RE`/`_ADVICE_VALUE_SHARE_RE` proximity window also
+  silently defeats both checks, for the identical reason. Fixed as one root-cause change rather
+  than three separate patches: a shared `_SENTENCE_GAP` pattern
+  (`r"(?:[^.!?]|(?<=\d)\.(?=\d))"`) that tolerates a decimal point without treating it as a
+  sentence end, used by both proximity-bounded regexes; a parallel `_SENTENCE_BOUNDARY_RE`
+  (`r"(?<!\d)\.(?!\d)|[!?]+"`) for the growth-period check's `.split()`, with the identical
+  decimal-tolerance logic expressed as a split pattern instead of an inline alternation.
+
+  Finding 2 fixed with two lookaround exclusions on `_ADVICE_VALUE_SHARE_RE`: `(?<!market )`
+  before the share/stock alternation (excludes "market share"), `(?!\s+of\b)` after it (excludes
+  "share of X"). Deliberately NOT extended to "stock": no card metric describes inventory/
+  stock-levels, so no equivalent collision is known to exist there, and adding an unproven
+  exclusion would be guessing at a problem rather than fixing a confirmed one.
+
+  8 new regression tests added (5 parametrized share-as-portion/market-share clean cases directly
+  reusing cto-reviewer's own counter-examples, one decimal-figure case for each of the three
+  affected checks). Mutation-tested the shared `_SENTENCE_GAP` fix specifically: reverted it to
+  the pre-fix bare character class, confirmed the two regression tests using it fail with the
+  exact predicted symptom while the growth-period test (a separate mechanism) correctly stayed
+  green, restored, confirmed clean (581 passed, up from 573). Em-dash re-scanned after these
+  fixes: still exactly 5 legitimate hits (standalone-script method).
+
+  equity-analyst-reviewer (round 1, on the new `docs/data_contract.md` paragraph, first look)
+  PASSED -- see review.md for the full risks-checked account.
+
+  Round 3 (re-check of the two round-2 fixes only, nothing else in scope) FAILED with two MORE
+  real bugs, both introduced by round 2's own fix, both empirically demonstrated:
+  1. `_SENTENCE_BOUNDARY_RE`'s decimal-tolerance had inverted lookaround logic: `(?<!\d)\.(?!\d)`
+     requires BOTH sides digit-free to count as a sentence end -- the correct test is an OR of
+     the two negations, not an AND (a period is a decimal point only when BOTH sides are digits;
+     it is a real sentence end whenever EITHER side is not a digit). The bug: a whole-number-
+     then-period ("...ratio of 1.50. This year..." or "...$400. This year...", both real shapes
+     this app's own metric/money formatters produce) wrongly failed to split, merging two
+     unrelated sentences into one fragment -- a FALSE POSITIVE growth/"this year" violation on a
+     compliant read. `_SENTENCE_GAP` (the sibling pattern from the same round-2 fix) got the
+     equivalent logic right; only the independently-written split pattern had it backwards.
+  2. `_ADVICE_VALUE_SHARE_RE`'s `(?<!market )`/`(?!\s+of\b)` exclusions sat OUTSIDE the
+     `(?:share|shares|stock|stocks)` alternation, so they applied to all four words uniformly --
+     directly contradicting the adjacent comment's explicit claim ("Neither exclusion touches
+     'stock'") and regressing round 1's correct behavior ("hold/avoid the stock of X" went from
+     caught to silently missed). Contributing cause: zero test coverage of "stock" as the anchor
+     noun anywhere in the test file, including all 5 round-2 portion-language tests -- this
+     branch had never had a positive-catch test, which is how the leak survived two rounds.
+
+  What held: the originally-reported round-2 bugs are genuinely fixed (8 regression tests all
+  pass; `_SENTENCE_GAP` itself mutation-tested via Edit, confirmed correct); full suite 581/581
+  before and after; em-dash scan clean, 5 legitimate hits, no 6th.
+
+  Resolution: fixed the OR/AND inversion (`_SENTENCE_BOUNDARY_RE = r"(?<!\d)\.|\.(?!\d)|[!?]+"`
+  -- the alternation form of the OR, since a single lookaround can't express it directly).
+  Nested the share/stock exclusions inside the share/shares branch specifically
+  (`r"\b(?:(?<!market )(?:share|shares)\b(?!\s+of\b)|(?:stock|stocks)\b)"`), so "stock"/"stocks"
+  match unconditionally again, matching the comment's own (now-true) claim. 7 new regression
+  tests added: 4 parametrized hold/holding/avoid/avoiding-the-stock-of-X cases, one hold-market-
+  stock case, and 2 parametrized whole-number-then-period cases using the reviewer's own exact
+  counter-examples. Mutation-tested the OR/AND fix specifically: reverted to the inverted
+  version, confirmed both parametrized cases fail with the exact predicted symptom, restored,
+  confirmed clean (588 passed, up from 581).
+
+  Round 4 (re-check of these two fixes only, nothing else in scope): see review.md.

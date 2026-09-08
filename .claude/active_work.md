@@ -10,6 +10,33 @@ the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WA
 flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
 back under cap by moving settled history into the new archive above._
 
+## Recent work (2026-09-08)
+
+**MR pending -- deterministic style/rule guard for AI-generated card reads,
+`find_read_style_violations()` in `scripts/assessment_rules.py`.** Extends the existing
+hallucination guard (`validate_read_metrics`) with a sibling check over 6 of
+`READ_SYSTEM_PROMPT`'s own rules (dashes, exclamation/emoji, investment-advice language, named
+AI-tell phrases, growth-period phrasing, verdict-ending) via regex/string matching -- zero new
+Claude spend, zero new infrastructure. Chose this over a periodic LLM-judge eval specifically
+because Claude API cost here is already ungoverned (open item 8) and a full LLM-judge was
+already declined once on cost grounds (`docs/data_contract.md`); put to me directly before
+building anything, since cost/mechanism are owner-only calls.
+
+**A real, useful lesson in how hard "add a regex, don't add a new bug" actually is:** four
+consecutive cto-reviewer rounds, each catching a genuine, distinct bug in the PREVIOUS round's
+own fix -- round 1: three false positives in the original design (an unbounded "but" search, an
+unscoped growth-period phrase, unanchored cheap/expensive/price/worth-it). Round 2's fix for
+those introduced two more (a sentence-splitter that broke on the "." in every percentage this
+app renders, and a share/stock anchoring exclusion that swallowed legitimate "share of X"/
+"market share" vocabulary). Round 3's fix for THOSE introduced two more still (inverted OR/AND
+lookaround logic in the decimal-tolerant sentence boundary, and the share/stock exclusion
+leaking onto "stock" despite the code's own comment claiming otherwise -- caught only because
+the "stock" branch had zero test coverage until then). Round 4 came back genuinely clean after
+16 more adversarial counter-examples. Every fix mutation-tested for real at every round. Full
+round-by-round account, including a mid-review concurrent-edit-race incident (a reviewer's own
+git operation reverted an unrelated concurrent edit, self-caught and disclosed by the reviewer,
+logged as a new session memory) in this branch's own `contract.md`/`review.md`.
+
 ## Recent work (2026-09-07)
 
 **MR !104, merged** -- repo's first Streamlit `AppTest` end-to-end test,
