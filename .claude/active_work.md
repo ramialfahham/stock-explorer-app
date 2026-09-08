@@ -123,9 +123,13 @@ live-demo link + Stack table corrected from Streamlit Community Cloud to Render 
 already-shipped deploy target, verified live); `docs/media/discover-card.png` refreshed to
 match the current UI (old screenshot showed a stale tagline, old verdict-copy style, and a
 "Forward P/E" metric no longer on the card). Remaining portfolio items not yet started: GitLab
-topics sync, project description, a custom link-preview/avatar image, and the repo-visibility
-decision (currently private -- topics/badges/README quality are all moot if nobody can view
-the repo, flagged as the single most consequential open item, owner's call).
+topics sync, project description, a custom link-preview/avatar image.
+
+**Owner decision on repo visibility (2026-09-08): go public once the repo is portfolio-grade,
+not before.** Sequencing, not a standing block -- the repo stays private through the remaining
+polish work (topics/description/link-preview image, and whatever else "portfolio-grade" turns
+out to need) and flips public as the last step, not a precondition to start on the rest. Don't
+treat visibility as something to decide independently of that polish work finishing.
 
 All three sibling branches from this stretch of work are merged into `main` as of 2026-09-05:
 MR !95 (`test/browser-storage-coverage`), MR !96 (`fix/discover-search-nav-state-loss`, Open
