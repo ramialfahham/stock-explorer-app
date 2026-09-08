@@ -196,15 +196,62 @@ Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migration
 
 ## Monitoring (v1)
 
-**Pipeline failure email -- one-time setup (owner action):** GitLab Settings → Integrations →
-**Pipeline emails** → recipient = your email → check "Notify only broken pipelines" → branches
-to be notified = `main` only. This is pipeline-level, not job-level: a `supabase-migrate` or
-`validate:*` failure on `main` triggers the same email as a `data-pipeline` failure, not just
-this job specifically -- accepted imprecision for zero new dependency and zero code. It does
-**not** catch the schedule silently never firing at all (a dead-man's-switch gap -- nothing
-runs, so there's nothing to alert from); no zero-dependency fix exists for that today.
+**Pipeline failure email -- DONE.** Set via GitLab's built-in per-user notifications, not the
+"Pipeline emails" project integration this guide previously described. The owner reported that
+integration is not in the project's Settings → Integrations list (2026-09-08). The API is
+consistent with that but does not prove it: `GET /integrations` returns only ACTIVATED
+integrations (`[]` here) and the per-integration endpoint 404s for anything never configured,
+so the API evidence establishes only that it was never set up -- which the old instruction
+already admitted, having sat here as an unchecked pending action. The route that works: the
+project's
+notification dropdown (bell icon) → **Custom** → tick **Failed pipeline** (and **Fixed
+pipeline**), reachable also at <https://gitlab.com/-/profile/notifications>.
 
-Beyond the email, rely on:
+Being per-user, it emails the account that set it rather than a configured recipient list --
+for a solo project, the same outcome, but a second maintainer would have to set their own. It
+is pipeline-level, not job-level: a `supabase-migrate` or `validate:*` failure on `main`
+triggers the same email as a `data-pipeline` failure. It does **not** catch the schedule
+silently never firing at all (a dead-man's-switch gap -- nothing runs, so there is nothing to
+alert from); no zero-dependency fix exists for that today.
+
+### Keep-alive monitors (UptimeRobot)
+
+**Two monitors, and both are needed -- they cover different things that sleep independently.**
+
+| Monitor | URL | Covers |
+|---|---|---|
+| App | `stock-explorer-app.onrender.com`, HTTP, 5 min | Render's free tier sleeps the web service after ~15 min idle |
+| Database | `<SUPABASE_URL>/rest/v1/mart_stock_cards?select=ticker&limit=1&apikey=<publishable key>`, HTTP | Supabase's free tier pauses the project after ~7 days with no activity; any interval well under 7 days suffices |
+
+**The app monitor does not keep the database awake, and this is not obvious.** A plain HTTP
+request to a Streamlit app returns only the static page shell; Streamlit runs the app script
+(and therefore any Supabase query) when a browser opens a websocket, which a monitor never
+does. Verified 2026-09-08: the response body contains no card data at all. So an app-only
+ping leaves the database entirely uncovered, which was the state until the second monitor was
+added that day.
+
+The database monitor's configured check interval was not captured when it was set up; only
+the requirement above (well under 7 days) is known.
+
+**Not yet observed working.** The database monitor was added 2026-09-08 and its effect cannot
+show up for ~7 days. To verify: check that the Supabase project still serves a REST request
+more than 7 days after the last pipeline write (writes land on the 1st and 15th), without
+anyone having visited the app in between.
+
+The database URL carries the `sb_publishable_` key as a query parameter. That is acceptable
+because the key is publishable by design and because `mart_stock_cards` has row-level security
+with a select-only policy for `anon` (`supabase/migrations/001_initial_schema.sql`,
+`011_grant_roles.sql`). Note it is NOT acceptable on the grounds that the key already reaches
+browsers -- it does not: Streamlit builds the Supabase client server-side
+(`frontend/supabase_client.py`), so the key never leaves the server. Putting it in a monitor
+URL genuinely widens where it exists. What makes that acceptable is primarily that the key is
+publishable by design; the select-only `anon` policy limits what it can do against the REST
+API specifically, and is not the control on every surface the key reaches. The `sb_secret_`
+key must never be used here. Supabase's `/auth/v1/health` endpoint
+was tried first to avoid a key in the URL and returns 401 without one, so it would read as
+permanently down.
+
+Beyond the email and the monitors, rely on:
 
 - GitLab CI pipeline status on `main`
 - Completeness script stdout (eligible counts per market)
