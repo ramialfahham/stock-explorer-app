@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -727,3 +728,210 @@ def validate_read_metrics(row: Mapping[str, Any], referenced_metrics: list[Any])
         if label not in renderings or claimed != renderings[label]:
             return False
     return True
+
+
+# --- Slice 5b: deterministic style/rule guard (subset of READ_SYSTEM_PROMPT, no LLM judge) ----
+# Complements validate_read_metrics (the numeric hallucination guard) with a SEPARATE guard over
+# STYLE: a deliberately partial subset of READ_SYSTEM_PROMPT's own rules that a plain string/regex
+# check can enforce without semantic judgment. Rules needing real language understanding -- the
+# currency-phrasing paragraph (needs per-card context about which currency is expected), "don't
+# blame the verdict on positive growth" (needs causal-attribution understanding, not just keyword
+# proximity), "2-3 sentences" (stated in the intro, not a bulleted Rule, and sentence-splitting
+# next to "24.0%"-style decimals is its own hazard), and three-item-list-used-for-rhythm detection
+# (the "for rhythm" part is a judgment about INTENT, not structure) -- are NOT checked here and
+# stay covered only by the prompt itself, exactly as before this guard existed. A miss on one of
+# those is not a regression: it is the same status quo every rule below did not previously change.
+#
+# Every check below is a presence/absence check over the read's own text, nothing else -- no
+# access to the row, the verdict, or any other card context, so a violation can never depend on
+# information the read itself does not contain.
+
+_EM_DASH = "—"
+_EN_DASH = "–"
+
+# Emoji ranges only -- NOT "any non-ASCII character", which would misfire on this app's own
+# currency symbols (GBP/JPY/EUR signs) and a degree sign. The four ranges below cover the large
+# majority of emoji actually in use (faces, hands, hearts, animals, food, activity, travel,
+# objects, the misc-symbols/dingbats/star block, and flag letters) without reaching into Latin-1
+# Supplement or the Currency Symbols block, both far outside these ranges. Not exhaustive of every
+# emoji-capable code point in Unicode -- a miss there has the same "covered only by the prompt
+# itself" status as the excluded semantic rules above, not a false claim of completeness.
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"  # pictographs, emoticons, transport/map, supplemental symbols, extended-A
+    "\U00002600-\U000027BF"  # misc symbols + dingbats
+    "\U00002B00-\U00002BFF"  # misc symbols and arrows (e.g. star)
+    "\U0001F1E6-\U0001F1FF"  # regional indicator letters (flag emoji)
+    "\U0000FE0F"  # variation selector-16 (emoji presentation)
+    "]"
+)
+
+# A "same sentence" gap that does NOT treat a decimal point as a sentence boundary -- cto-
+# reviewer's round-2 finding: a plain `[^.!?]` character class (or `re.split(r"[.!?]+", ...)`)
+# breaks on the "." inside every percentage this app renders (f"{v:.1f}%", always one decimal),
+# so a real violation with a figure sitting between its two halves (e.g. "not just a 24.0%
+# margin story, but a debt story too") was silently missed -- the read/write mirror of the exact
+# hazard already named elsewhere in this file for why "2-3 sentences" isn't checked at all.
+# Matches any non-terminator character, OR a "." specifically sandwiched between two digits (a
+# decimal point, not a sentence end).
+_SENTENCE_GAP = r"(?:[^.!?]|(?<=\d)\.(?=\d))"
+
+# Word-boundary matches so "buyback", "seller", "sales" never trip these -- none of those are
+# the banned action. "buy"/"sell"/"price" have no legitimate non-advice use in this app's own
+# vocabulary: a read never discusses the company buying or selling something else, and no card
+# metric carries a share price any more (every price-carrying metric was dropped from the
+# catalogue -- see the module docstring). A bare "price" match also catches "target price"/
+# "share price", not only one worked phrasing. These stay bare-word matches, unlike the group
+# below.
+_ADVICE_ACTION_RE = re.compile(
+    r"\b(?:buy|buys|buying|sell|sells|selling|price)\b",
+    re.IGNORECASE,
+)
+
+# "cheap", "expensive", "worth it", "hold", and "avoid" are deliberately NOT bare-word matches:
+# each has an ordinary, non-advice use this app's own vocabulary invites -- "expensive to
+# service" (a debt/financing cost), "cheap financing", "strong reserves help it hold steady", "a
+# large cash cushion helps it avoid a shortfall" all describe the company's own finances, not a
+# recommendation, and none is a rule violation (cto-reviewer's round-1 finding: a bare
+# "expensive" match rejected a legitimate leverage-cost explanation -- fixed by anchoring it the
+# same way hold/avoid already were, rather than leaving it as the one unanchored exception).
+# Anchoring to "share(s)"/"stock(s)" within the same clause keeps every one of these aimed at the
+# literal banned claim about the SHARE ("the share is cheap", "avoid the share", "hold the
+# stock") instead of the ordinary English word. This trades recall for precision: a violation
+# phrased without "share"/"stock" nearby (e.g. "best to hold for now") is not caught here and
+# stays covered only by the prompt itself, same as the excluded semantic rules above.
+#
+# "share"/"shares" excludes two further, real collisions (cto-reviewer's round-2 finding,
+# confirmed against actual prompt-encouraged vocabulary): "share OF X" is a portion, not the
+# security -- READ_METRIC_BRIEF's own margin gloss says "share of sales kept as... profit", and
+# the existing _CLEAN_READ fixture already uses "a solid share of every sale" -- so "share"
+# immediately followed by "of" is excluded. "MARKET share" is a similar, unrelated business
+# term (a portion of a market) -- excluded via a lookbehind. Neither exclusion touches "stock":
+# no card metric describes inventory/stock-levels, so no equivalent collision is known to exist
+# there, and adding an unproven exclusion would be guessing at a problem, not fixing one.
+#
+# The two exclusions are nested INSIDE the share/shares branch specifically (cto-reviewer's
+# round-3 finding): an earlier version put `(?<!market )`/`(?!\s+of\b)` OUTSIDE the whole
+# `(?:share|shares|stock|stocks)` alternation, so they silently applied to "stock"/"stocks" too
+# -- directly contradicting this comment's own claim and regressing round 1's correct behavior
+# ("hold/avoid the stock of X" went from caught to silently missed). Zero test coverage of
+# "stock" as the anchor noun let this survive two review rounds; both branches now have their
+# own dedicated tests.
+_ADVICE_VALUE_SHARE_RE = re.compile(
+    rf"\b(?:cheap|expensive|worth it|hold|holding|avoid|avoiding)\b{_SENTENCE_GAP}{{0,25}}"
+    r"\b(?:(?<!market )(?:share|shares)\b(?!\s+of\b)|(?:stock|stocks)\b)",
+    re.IGNORECASE,
+)
+
+# Straight or curly apostrophe -- Haiku may emit either; a straight-quote-only literal would
+# silently miss the curly form.
+_APOSTROPHE = "['’]"
+_WORTH_NOTING_RE = re.compile(rf"\bit{_APOSTROPHE}s worth noting\b", re.IGNORECASE)
+_IMPORTANT_REMEMBER_RE = re.compile(rf"\bit{_APOSTROPHE}s important to remember\b", re.IGNORECASE)
+# "but" must appear in the SAME sentence as "not just" (_SENTENCE_GAP* stops at a real sentence
+# boundary, not just anywhere later in the read, but tolerates a decimal figure in between --
+# cto-reviewer's round-1 finding: the original two-part check, search the whole rest of the
+# string for "but" with no bound, misfired on a read using "not just X" in one sentence and an
+# ordinary, unrelated contrastive "but" in a later one, e.g. a yellow-verdict card contrasting a
+# weak axis against a strong one). Word-boundary on "but" so "about"/"contributes" never count.
+_NOT_JUST_BUT_RE = re.compile(rf"\bnot just\b{_SENTENCE_GAP}*\bbut\b", re.IGNORECASE)
+
+# Scoped to the SAME sentence as a growth word (growth/grew/grown/growing), in either order --
+# cto-reviewer's round-1 finding: the original bare phrase match fired on "this year"/"over the
+# year" describing anything (e.g. free cash flow), not just growth, contradicting the prompt's
+# own narrower rule ("do not write 'this year'... about it", where "it" = growth specifically).
+# Checked per-sentence (see find_read_style_violations) rather than a single proximity-bounded
+# regex, since the growth word can legitimately come before OR after the period phrase ("this
+# year, revenue grew" vs "revenue grew this year").
+_GROWTH_WORD_RE = re.compile(r"\b(?:growth|grew|grown|growing)\b", re.IGNORECASE)
+_GROWTH_PERIOD_RE = re.compile(r"\b(?:this year|over the year)\b", re.IGNORECASE)
+
+# Splits on a real sentence terminator only -- NOT the "." inside a decimal figure -- cto-
+# reviewer's round-2 finding: the original `re.split(r"[.!?]+", read)` also split on the "."
+# inside every percentage this app renders (f"{v:.1f}%", always one decimal), so a sentence with
+# a figure sitting between its growth word and period phrase (e.g. "Revenue grew 24.0% this
+# year") was silently cut into two fragments, neither containing both patterns, and the real
+# violation was missed. `!`/`?` never appear inside a number, so they still split
+# unconditionally.
+#
+# A period is a decimal point only when digits sit on BOTH sides ("1.50"); it is a real sentence
+# end whenever EITHER side is not a digit -- an OR of the two negations, not an AND (cto-
+# reviewer's round-3 finding: an earlier version wrote `(?<!\d)\.(?!\d)`, requiring BOTH sides
+# digit-free, which wrongly treats a whole-number-then-period as non-terminal, e.g. "...ratio of
+# 1.50. This year..." or "...$400. This year..." -- both real shapes this app's own metric/money
+# formatters produce -- silently merged two unrelated sentences into one fragment, causing a
+# FALSE positive on the growth-period check). `(?<!\d)\.|\.(?!\d)` is that OR, expressed as
+# alternation since a single lookaround assertion can't express it directly.
+_SENTENCE_BOUNDARY_RE = re.compile(r"(?<!\d)\.|\.(?!\d)|[!?]+")
+
+# The prompt gives these as WORKED EXAMPLES ("e.g. ..."), not mandatory verbatim text, and the
+# yellow example itself swaps "figures" for "numbers" ("a mixed financial picture on these
+# numbers") to show the two are interchangeable -- so both must be accepted. This only checks that
+# ONE of the two anchor phrases appears somewhere in the text, not that it is truly the final
+# clause, and not that the surrounding words say the RIGHT health/fragility word for the verdict's
+# actual color -- this function is never given the verdict, only the read text, and matching
+# arbitrary healthy/mixed/fragile synonymy is exactly the semantic judgment this guard avoids. Of
+# the checks here, this is the least certain: the prompt's own "e.g." means a compliant read is
+# free to close with the same meaning in different words, which this check would not recognize.
+_VERDICT_ENDING_RE = re.compile(r"\bon these (?:figures|numbers)\b", re.IGNORECASE)
+
+
+def find_read_style_violations(read: str) -> list[str]:
+    """Deterministic, code-checkable SUBSET of READ_SYSTEM_PROMPT's own rules -- a style/rule
+    guard, not a hallucination guard (that is validate_read_metrics, above). Returns one
+    human-readable description per violated rule found; an empty list means none of the checks
+    below fired (NOT a claim that the read is fully prompt-compliant -- only that this specific,
+    deliberately partial subset passed).
+
+    Checks every rule independently and collects every violation found, rather than stopping at
+    the first, so the caller can report all of them at once.
+    """
+    violations: list[str] = []
+
+    if _EM_DASH in read or _EN_DASH in read:
+        found = [name for ch, name in ((_EM_DASH, "em dash"), (_EN_DASH, "en dash")) if ch in read]
+        violations.append(f"{' and '.join(found)} used as punctuation (rule: no em dash or en dash)")
+
+    if "!" in read:
+        violations.append("exclamation mark used (rule: no exclamation marks)")
+
+    if _EMOJI_RE.search(read):
+        violations.append("emoji character used (rule: no emoji)")
+
+    m = _ADVICE_ACTION_RE.search(read)
+    if m:
+        violations.append(
+            f'investment-advice language used: "{m.group(0)}" '
+            "(rule: never say buy/sell, or predict the price)"
+        )
+
+    m = _ADVICE_VALUE_SHARE_RE.search(read)
+    if m:
+        violations.append(
+            f'investment-advice phrase used: "{m.group(0)}" '
+            "(rule: never say the share is cheap/expensive/worth it, or to hold or avoid it)"
+        )
+
+    if _NOT_JUST_BUT_RE.search(read):
+        violations.append('"not just X, but Y" construction used (rule: avoid the usual AI tells)')
+
+    if _WORTH_NOTING_RE.search(read):
+        violations.append("\"it's worth noting\" used (rule: avoid the usual AI tells)")
+
+    if _IMPORTANT_REMEMBER_RE.search(read):
+        violations.append("\"it's important to remember\" used (rule: avoid the usual AI tells)")
+
+    for sentence in _SENTENCE_BOUNDARY_RE.split(read):
+        if _GROWTH_PERIOD_RE.search(sentence) and _GROWTH_WORD_RE.search(sentence):
+            violations.append(
+                '"this year" or "over the year" used about growth '
+                "(rule: revenue growth is one quarter's change, never a full year's)"
+            )
+            break
+
+    if not _VERDICT_ENDING_RE.search(read):
+        violations.append(
+            'does not end on the verdict\'s meaning (no "on these figures"/"on these numbers")'
+        )
+
+    return violations

@@ -120,7 +120,7 @@ class _FakeMessage:
 
 
 class _FakeMessages:
-    def __init__(self, text: str = "A steady read.", model: str = "claude-haiku-4-5",
+    def __init__(self, text: str = "A steady read on these figures.", model: str = "claude-haiku-4-5",
                  fail_calls: set[int] = frozenset(),
                  referenced_metrics: list | None = None,
                  content: list | None = None,
@@ -225,31 +225,31 @@ def test_attach_reads_carries_forward_unchanged() -> None:
 def test_attach_reads_regenerates_on_hash_change() -> None:
     rec = _base_record(input_hash="h2")
     existing = {("us_sp500", "OPX"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"}}
-    client = _FakeAnthropic(text="fresh read")
+    client = _FakeAnthropic(text="fresh read, financially healthy on these figures.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, existing, client)
     assert summary["generated"] == 1
-    assert rec["ai_read"] == "fresh read"
+    assert rec["ai_read"] == "fresh read, financially healthy on these figures."
     assert len(client.messages.calls) == 1
 
 
 def test_attach_reads_regenerates_when_stored_read_null() -> None:
     rec = _base_record(input_hash="h1")
     existing = {("us_sp500", "OPX"): {"input_hash": "h1", "ai_read": None, "read_model": None}}
-    client = _FakeAnthropic(text="filled in")
+    client = _FakeAnthropic(text="filled in, financially healthy on these figures.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, existing, client)
     assert summary["generated"] == 1
-    assert rec["ai_read"] == "filled in"
+    assert rec["ai_read"] == "filled in, financially healthy on these figures."
 
 
 def test_attach_reads_isolates_a_failed_card() -> None:
     a = _base_record(ticker="AAA")
     b = _base_record(ticker="BBB")
     rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
-    client = _FakeAnthropic(text="ok read", fail_calls={0})  # first card's call raises
+    client = _FakeAnthropic(text="ok read on these figures.", fail_calls={0})  # first card's call raises
     summary = gen.attach_reads([a, b], rows, {}, client)
     assert summary == {"generated": 1, "carried": 0, "failed": 1}
-    assert "ai_read" not in a          # failed card left null (retries next run)
-    assert b["ai_read"] == "ok read"   # the batch kept going
+    assert "ai_read" not in a                     # failed card left null (retries next run)
+    assert b["ai_read"] == "ok read on these figures."   # the batch kept going
 
 
 def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> None:
@@ -269,12 +269,51 @@ def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> No
 def test_attach_reads_accepts_a_read_citing_a_number_that_matches() -> None:
     rec = _base_record()
     client = _FakeAnthropic(
-        text="Operating margin looks strong.",
+        text="Operating margin looks strong, financially healthy on these figures.",
         referenced_metrics=[{"label": "Operating margin", "value_as_shown": "24.0%"}],  # correct
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "failed": 0}
-    assert rec["ai_read"] == "Operating margin looks strong."
+    assert rec["ai_read"] == "Operating margin looks strong, financially healthy on these figures."
+
+
+def test_attach_reads_rejects_a_style_violation(capsys) -> None:
+    """The style guard's own reason to exist: text that fails find_read_style_violations is
+    treated exactly like a hallucination-guard rejection -- fails closed, same "failed" count,
+    same self-healing path, no separate return-value shape."""
+    rec = _base_record()
+    client = _FakeAnthropic(text="This is a great buy right now!")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+    err = capsys.readouterr().err
+    assert "style" in err.lower()
+    assert "exclamation" in err.lower() or "investment-advice" in err.lower()
+
+
+def test_attach_reads_accepts_a_style_clean_read() -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(
+        text="Operating margin is strong and debt is low, financially healthy on these figures."
+    )
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert rec["ai_read"] is not None
+
+
+def test_attach_reads_style_check_call_site_is_actually_wired(monkeypatch) -> None:
+    """Mutation-style proof, matching test_operating_statement_roe_call_site_is_actually_wired
+    in test_assessment_rules.py: neutralize find_read_style_violations at its _generate_read
+    call site and confirm a style-violating-but-metric-clean read now SUCCEEDS. If this test
+    passed even with the real check wired, that would prove nothing about the call site -- the
+    point is that neutralizing it changes the outcome, so test_attach_reads_rejects_a_style_
+    violation above is proven to depend on the real call site, not some other guard."""
+    monkeypatch.setattr(gen, "find_read_style_violations", lambda read: [])
+    rec = _base_record()
+    client = _FakeAnthropic(text="This is a great buy right now!")  # style-dirty, metric-clean
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert rec["ai_read"] == "This is a great buy right now!"
 
 
 def test_attach_reads_rejects_a_response_with_no_tool_use_block(capsys) -> None:
@@ -337,12 +376,14 @@ def test_main_with_anthropic_key_attaches_reads(tmp_path: Path, monkeypatch) -> 
     fake_sb = _FakeSupabase(existing=[])  # nothing stored -> every card regenerates
     monkeypatch.setattr(gen, "create_client", lambda url, key: fake_sb)
     monkeypatch.setattr(
-        gen.anthropic, "Anthropic", lambda *a, **k: _FakeAnthropic(text="A steady read.")
+        gen.anthropic,
+        "Anthropic",
+        lambda *a, **k: _FakeAnthropic(text="A steady read, financially healthy on these figures."),
     )
 
     assert gen.main(["--duckdb-path", str(db)]) == 0
     upserted = [rec for batch in fake_sb.upserts for rec in batch]
     assert upserted
     for rec in upserted:
-        assert rec["ai_read"] == "A steady read."
+        assert rec["ai_read"] == "A steady read, financially healthy on these figures."
         assert rec["read_model"] == "claude-haiku-4-5"

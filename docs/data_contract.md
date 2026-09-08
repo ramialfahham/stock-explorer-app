@@ -458,8 +458,18 @@ card's data, not an unsupported qualitative claim that cites no wrong number (an
 pass would catch that too, at roughly double the cost; not built here). Any mismatch, unknown
 label, or malformed tool response fails exactly like an API exception already does: `ai_read` /
 `read_model` stay absent, and the existing regenerate-on-`input_hash`-change path picks the card
-up again next run. No retry, no separate failure state. When `ai_read` is absent (a brand-new
-card, a per-card API failure, or a hallucination-guard reject), the card shows a deterministic,
+up again next run. No retry, no separate failure state.
+
+A deterministic style guard (`find_read_style_violations`, same file) runs after the numeric
+guard and checks a subset of the system prompt's own rules that a plain string/regex check can
+enforce without semantic judgment: no em/en-dash, no exclamation marks or emoji, no
+investment-advice language, none of the prompt's own named AI-tell phrases, no "this
+year"/"over the year" about growth, and the read must end on the verdict's meaning. Any
+violation fails exactly the same way the numeric guard does -- fail closed, self-heals next
+`input_hash` change, no retry.
+
+When `ai_read` is absent (a brand-new card, a per-card API failure, a hallucination-guard
+reject, or a style-guard reject), the card shows a deterministic,
 non-AI one-line summary under its own "What the verdict means" heading instead of the AI-written
 read (`frontend/card_copy.py`'s `VERDICT_FALLBACK_READ`), never AI-attributed, phrased as a
 general summary rather than a description of the rules below since neither the decisive-vs-

@@ -1,137 +1,225 @@
 # Review
 
-diff_sha256: 3d9f7a9a72d07f83b1375e379c913903c938047d0693aa412f60889718c21dd3
+diff_sha256: 371fa336f8fba3cdb3fd0c05177157211f4697d2848974fdd01fd9b9798451aa
 
 ## scope-auditor
-Round 1 FAILED (one finding)
-- The contract's objective claimed `git log --all -S"AppTest"` returns "zero hits, ever,"
-  carried over unverified from an earlier exploration pass in this session rather than
-  re-checked before being asserted. False: the command returns 5 real commits, two of which
-  (`702bfb62`, `0bb8997c`) explicitly discuss AppTest -- a prior task (two small Streamlit
-  widget-persistence bugfixes) considered and declined it as disproportionate for that fix's
-  scope, verifying instead by direct dev-server interaction. Read in full, that decision
-  doesn't conflict with this task (a dedicated, owner-approved decision to build AppTest
-  coverage as its own infrastructure), but the false "zero hits, ever" claim erased a real,
-  on-point precedent instead of engaging with it. Same disclosure-accuracy class as item 3's
-  MR !101 mis-citation.
+Round 1 FAILED (two findings)
+- `docs/data_contract.md` enumerates a closed set of reasons `ai_read` can be absent (a
+  brand-new card, a per-card API failure, or a hallucination-guard reject) -- this diff adds a
+  fourth (style-guard reject) to the exact same function without updating that enumeration, a
+  real doc-sync gap the file wasn't in scope_paths to catch.
+- `done_when`'s own em-dash-scan claim ("confirmed exactly these 5 hits... No accidental dash
+  anywhere else in the diff") was itself false: a 6th, undisclosed em dash was sitting inside
+  `contract.md` itself, in the sentence describing the earlier dash-corruption incident.
 
-Everything else verified clean: staged diff matches scope_paths exactly (`.claude/active_work.md`
-correctly not yet touched); all button/widget key claims traced directly against `app.py`/
-`row_ui.py`/`nav_pages.py`; `_FakeLocalStorage` and the seeded interaction row shape confirmed
-to match `test_browser_storage.py`/`browser_storage.py` exactly; 5/5 tests pass standalone,
-536/536 full suite; all 5 tests have discriminating assertions, not tautologies;
-`tests/README.md`'s new paragraph is purely descriptive, asserts no future mandate; review
-routing (scope-auditor + cto-reviewer only) confirmed correct against `.claude/
-review_routing.json`; em/en-dash scan (file-based, explicit UTF-8): 0 hits.
+Also confirmed clean by this round: diff scope otherwise conformant; working-agreement.md §6
+and active_work.md's open item 8 citations verified accurate; every rule
+`find_read_style_violations` checks traced to real, verbatim `READ_SYSTEM_PROMPT` text; the
+5-fixture-fix claim empirically correct; full suite 569/569. Two smaller, non-blocking accuracy
+gaps also noted (a second undisclosed test using non-compliant placeholder text, harmless since
+it's shielded by an earlier rejection; one comment whose justifying example doesn't quite
+demonstrate what it claims) -- not fixed, correctly assessed as true nitpicks, not disclosure or
+correctness problems.
 
-Resolution: corrected the objective with the real `git log` history, quoted the actual prior
-decision's reasoning, and explained plainly why it doesn't conflict with this task rather than
-erasing it. See `contract.md`'s amendments.
+Resolution: added a paragraph describing the new style guard to `docs/data_contract.md` right
+before the enumeration, and added the fourth reason to the enumeration itself.
+`docs/data_contract.md` added to scope_paths; equity-analyst-reviewer added to the required
+review cycle. Reworded the sentence containing the undisclosed em dash to avoid needing the
+character at all (rather than trying to "fix" it via escape sequences again -- see the note
+below on why); independently re-verified via `hex(ord(ch))` against a standalone `.py` file,
+0 hits now in that file, 5 hits total across the whole diff, all in the disclosed, legitimate
+locations.
 
-Round 2 (re-check of the corrected objective only, nothing else in scope):
+Note on how the 6th em dash slipped past a visual re-read during implementation: this session
+separately confirmed that this machine's Bash tool output pipeline renders U+2014/U+2013 as the
+Unicode replacement-character glyph even when the underlying file bytes are completely correct
+(discovered when a `python -c` shell one-liner's `repr()` output showed `"�"` for a line
+that was actually fine, nearly triggering an unnecessary "fix" that would have caused real
+corruption). The reverse risk -- a real em dash rendering as if it were ordinary prose on a
+visual read -- is what let this one through. Every dash-scan in this task from this point on
+uses a standalone `.py` file (not a shell one-liner) and reports `hex(ord(ch))`, never the raw
+character or `repr()` of a line containing it.
+
+Round 2 (re-check of the two fixes only, nothing else in scope):
 VERDICT: PASS
 risks_checked:
-- Re-ran `git log --all -S"AppTest"` independently: exact same 5 hashes cited, confirming the
-  history claim is complete, not cherry-picked.
-- Read `702bfb62` and `0bb8997c` in full (not just the quoted fragment): the quote is
-  verbatim-accurate, `0bb8997c` is genuinely that fix's own review record, and both are
-  explicitly scoped to one small bugfix's proportionality -- the "narrow, non-conflicting"
-  characterization holds against the primary source, not spin.
-- Cross-checked `test_app_e2e.py`/`tests/README.md` against round 1's specific factual claims:
-  all match; the only prose change is the disclosed cto-reviewer docstring fix.
-- `git status --short` confirms the staged file set is exactly scope_paths minus the
-  still-pending `active_work.md` -- no extra file swept in by either correction.
-- Process note, not folded into the verdict: `.claude/task/review_input.patch` on disk is
-  stale debris from the prior (item 3) task -- gitignored, untracked, no impact on this
-  review or anything committed. Left alone, out of scope to clean up here.
+- Doc-sync accuracy of the new style-guard paragraph and the 4-reason `ai_read`-absent
+  enumeration -- verified line-by-line against the live `find_read_style_violations` function
+  (all 10 individual checks map to the doc's prose) and against `generate_assessments.py`'s
+  actual absence-producing control flow (brand-new / API failure / hallucination-guard reject /
+  style-guard reject are 4 real, distinct paths), not just against the doc's own prose.
+- Undisclosed em-dash/en-dash fully removed from `contract.md` -- verified with two independent
+  programmatic scans (UTF-8 text-mode per-line, and a raw UTF-8 byte-sequence scan across the
+  whole file), both from standalone `.py` files, neither piped through a command's stdin; both
+  found zero.
+- `scope_paths`/review-cycle citation accuracy -- cross-checked the claimed
+  `review_routing.json:26` entry against the actual file content; exact match.
+- No scope regression since round 1 -- `git status --porcelain`/`git diff --cached --stat` both
+  confirm exactly the expected 7 staged files.
 
 ## cto-reviewer
-Round 1 FAILED (one finding)
-- The test docstring and contract both claimed, after a single manual dev-server pass with no
-  crash observed, that the AppTest stale-widget `KeyError` was "confirmed... not a production
-  bug." Overclaimed. Independently traced the real mechanism: `AppTest`'s `LocalScriptRunner`
-  subclasses Streamlit's own production `ScriptRunner` unmodified; the cleanup path raising
-  this `KeyError` (`session_state.py`'s `_compact_state`) is real, shared production code --
-  which itself wraps this exact case in `except KeyError: pass`, citing a known upstream
-  Streamlit issue (`streamlit/issues/7206`) about stale widget metadata. The underlying
-  condition (viewing two different cards' metric-playground panels swaps the active widget-key
-  set) is real, not AppTest-specific; what's AppTest-specific is that `element_tree.py`'s
-  `get_widget_states()` reads widget state without production's own defensive swallowing,
-  turning a condition production tolerates silently into a hard test failure. One manual pass
-  not reproducing a crash is consistent with this, not proof against a rarer path still being
-  a real problem in production.
+Round 1 FAILED (three findings, all real regex false-positive bugs, each empirically confirmed
+by the reviewer constructing and running an actual counter-example)
+- `_NOT_JUST_RE`/`_BUT_WORD_RE`'s "but" search had no clause/sentence bound (searched from "not
+  just" to the end of the whole string) -- misfired on a read using "not just X" in one sentence
+  and an ordinary, unrelated contrastive "but" in a later one. Also directly contradicted
+  scope-auditor round 1's incorrect assessment of the identical code ("the regex itself is
+  correct, just the comment's illustration is imprecise" -- wrong).
+- `_GROWTH_PERIOD_RE` matched "this year"/"over the year" anywhere in the read, not scoped to a
+  growth statement -- broader than the prompt's actual rule. Misfired on a read discussing free
+  cash flow, never growth.
+- `_ADVICE_WORD_RE` matched "cheap"/"expensive"/"price"/"worth it" as bare words with no
+  share/stock anchoring, unlike the adjacent, deliberately-anchored hold/avoid pattern --
+  misfired rejecting a legitimate leverage/debt-cost explanation ("expensive to service").
 
-Also confirmed clean, independently verified: CI/operational risk (no new job needed, `AppTest`
-needs no browser/display, dependency claim verified true against `requirements.txt`); runtime
-cost measured directly (5 tests in ~11s, full suite in ~19s -- noted as a new cost precedent,
-not blocking); all four mocking boundaries verified correct against source, not trusted from
-comments; `_assert_clean`'s reasoning verified sound against `_load_cards()`'s actual
-exception-to-`st.error()` handling; all button/widget keys verified 1:1 against `app.py`; scope
-confirmed via `git diff HEAD --stat` (only the 4 expected files); no secrets, no CI-authority
-file touched; em/en-dash scan: 0 hits.
+Process note, disclosed by the reviewer itself: mid-review, it initially mistook a concurrent
+`docs/data_contract.md` fix (scope-auditor's own resolution landing while cto-reviewer was still
+running) for an unexplained mutation, reverted and unstaged it, then caught its own error by
+cross-reading `review.md`, restored the edit, and re-staged it -- confirmed byte-identical to
+the pre-revert state, both by the reviewer and independently on this end afterward. See
+contract.md's amendments for the full account and the new `concurrent-agent-file-race` memory
+this prompted.
 
-Procedural note: while independently re-verifying the mutation-test claim, accidentally edited
-`frontend/app.py`, self-caught it (blocked by the auto-mode classifier before the follow-up
-pytest call), reverted immediately via `Edit`, and confirmed clean via `git status`/`git diff
-HEAD --stat`. Independently re-verified this claim afterward: confirmed exactly the 4 expected
-files staged, `frontend/app.py` not among them.
+Also confirmed clean by this round: wiring correctness; the `--dry-run` claim (verified directly
+against `main()`); the 5 fixture edits are purely additive; the mutation-style wiring proof is
+meaningful, not vacuous; emoji ranges/currency-symbol exclusion/verdict-ending limitation all
+correct/adequately disclosed; no `.gitlab-ci.yml` change; no secrets; no new dependency; full
+suite 569/569 (pre-fix count); em-dash scan clean (5 legitimate hits, independently re-verified
+after scope-auditor's own fix).
 
-Resolution: corrected the test docstring and contract's amendments to state the mechanism
-accurately (real, shared, production-tolerated condition; AppTest-specific only in that it
-lacks the same defensive swallowing) instead of the overclaimed "not a production bug." Flagged
-to the owner as a genuinely open question in the final chat report, not silently closed and not
-unilaterally turned into a tracked issue.
+Resolution, all three fixed together: combined "not just"/"but" into one sentence-bounded regex;
+scoped the growth-period check to same-sentence proximity with a growth word, checked either
+order; split the advice-word check into an unanchored group (buy/sell/price -- no legitimate
+non-advice use) and merged cheap/expensive/worth-it into the same share/stock-anchored pattern
+hold/avoid already used. New regression tests added for each (a same-sentence-vs-later-sentence
+"but" pair, both growth-word/period-phrase orderings plus a not-about-growth clean case, a
+combined anchored-value-word parametrized test, an expanded benign-use example directly reusing
+the reviewer's own counter-example). Mutation-tested the "not just/but" fix specifically:
+reverted the sentence bound, confirmed the new regression test fails with the exact predicted
+symptom, restored, confirmed clean (573 passed, up from 569). Em-dash re-scanned after all three
+fixes: still exactly 5 legitimate hits.
 
-Round 2 (re-check of the corrected docstring/amendments only, nothing else in scope) FAILED
-(one finding):
-- The round-1 fix itself introduced a new, unverified mechanism claim: the corrected docstring
-  stated `_compact_state` is "called from the same `ScriptRunner.on_script_finished` that
-  `LocalScriptRunner` subclasses unmodified." Wrong on both parts, checked against the
-  installed Streamlit 1.57.0 source: `_compact_state`'s only call site is
-  `SessionState.on_script_will_rerun` (session_state.py:641), invoked from
-  `ScriptRunner._run_script`'s closure (script_runner.py:638) -- gated on
-  `rerun_data.widget_states is not None`, at the start of the NEXT run.
-  `on_script_finished` is a different `SessionState` method entirely (no call to
-  `_compact_state` anywhere in that path), reached via `ScriptRunner._on_script_finished`
-  (script_runner.py:749) -- which `LocalScriptRunner` does NOT inherit unmodified, it
-  redefines its own copy (local_script_runner.py:154). The method that actually IS inherited
-  unmodified and relevant here (`_run_script`) wasn't named at all. Confirmed contract.md's
-  own amendments were NOT affected -- they already used the same general, defensible phrasing
-  as this reviewer's round-1 finding, not the specific wrong claim.
+Round 2 (re-check of the three regex fixes only, nothing else in scope) FAILED (two findings,
+both introduced by round-1's own fixes, both empirically confirmed with actual counter-examples)
+- The growth-period per-sentence check's `re.split(r"[.!?]+", read)` also splits on the "."
+  inside every percentage this app renders (`f"{v:.1f}%"`), so a real sentence with a figure
+  between its growth word and period phrase gets cut into two fragments, neither containing
+  both patterns -- violation silently missed. Named as the exact hazard the file's own comment
+  already flags elsewhere (why "2-3 sentences" isn't checked), walked into anyway.
+- The merged `_ADVICE_VALUE_SHARE_RE` doesn't distinguish "share" as the security from "share
+  of X" (a portion -- on-topic, prompt-encouraged vocabulary per `READ_METRIC_BRIEF`'s own
+  margin gloss) or "market share" (an unrelated business term). Confirmed with 5 constructions,
+  all legitimate, all incorrectly rejected.
 
-  Also confirmed clean in this round: open-question framing landed correctly, not overshot
-  (hedges both directions, never asserts "this IS a production bug" either); the
-  `except KeyError: pass` / issue-7206 citation itself is accurate (verified against
-  session_state.py:440-451, comment cites the URL verbatim); the procedural note about the
-  accidental `frontend/app.py` edit is accurately recorded in both `review.md` and
-  `contract.md`, cross-verified against current repo state (all empty diffs); nothing else in
-  the diff changed beyond the two named corrections.
+What held: `_NOT_JUST_BUT_RE`'s sentence bound -- stress-tested with semicolon/colon separators
+and word-boundary collisions, held or unrealistic for Haiku's punctuated prose. Full suite
+573/573 (pre-fix count, matches claim). Mutation test (fix 1 from round 1, per explicit request):
+reverted the sentence bound via Edit, confirmed the regression test failed with the predicted
+symptom, restored via Edit, verified narrowly scoped to `scripts/assessment_rules.py` only (per
+the concurrent-edit-race lesson from this reviewer's own round 1). Em-dash scan: exactly 5 hits,
+same legitimate locations, no 6th/undisclosed hit.
 
-Resolution: corrected the docstring to the verified chain -- `_compact_state` <-
-`SessionState.on_script_will_rerun` <- `ScriptRunner._run_script` (a method `LocalScriptRunner`
-does not override, so it runs unmodified there too). Independently re-verified the exact same
-way before writing the fix: grepped `_compact_state`/`on_script_will_rerun`/
-`_on_script_finished` across all three files, confirmed `_run_script` is absent from
-`LocalScriptRunner`'s override list.
+Resolution: while fixing finding 1, proactively checked whether the same root cause (naive `.`
+as sentence boundary) also affected the two OTHER proximity-bounded checks sharing the identical
+`[^.!?]`-based mechanism -- confirmed empirically, real bug in both, previously unreported.
+Fixed as one root-cause change: a shared `_SENTENCE_GAP` pattern tolerating a decimal point
+without treating it as a sentence end (used by `_NOT_JUST_BUT_RE` and `_ADVICE_VALUE_SHARE_RE`),
+and a parallel `_SENTENCE_BOUNDARY_RE` split pattern with the identical decimal-tolerance logic
+for the growth-period check. Finding 2 fixed with two lookaround exclusions (`(?<!market )`,
+`(?!\s+of\b)`) on `_ADVICE_VALUE_SHARE_RE`, deliberately not extended to "stock" (no known,
+demonstrated collision there -- not guessing at an unproven problem). 8 new regression tests
+added, including the decimal-figure case for all three affected checks. Mutation-tested the
+shared `_SENTENCE_GAP` fix: reverted to the bare character class, confirmed the two tests using
+it failed with the predicted symptom while the independently-implemented growth-period test
+correctly stayed green, restored, confirmed clean (581 passed, up from 573).
 
-Round 3 (re-check of the corrected mechanism chain only) -- re-derived fresh from installed
-source rather than trusting the round-2 writeup, since this was the third round on the same
-claim:
+Round 3 (re-check of these two fixes only, nothing else in scope) FAILED (two more real bugs,
+both introduced by round 2's own fix, both empirically demonstrated)
+- `_SENTENCE_BOUNDARY_RE`'s decimal tolerance had inverted lookaround logic
+  (`(?<!\d)\.(?!\d)`, an AND of negations, when the correct test is an OR): a whole-number-then-
+  period ("...ratio of 1.50. This year..." / "...$400. This year...", both real shapes this
+  app's own metric/money formatters produce) wrongly failed to split, merging two unrelated
+  sentences into one fragment -- a FALSE POSITIVE on a compliant read. `_SENTENCE_GAP` (the
+  sibling pattern from the same fix) got the equivalent logic right; only the independently-
+  written split pattern had it backwards.
+- `_ADVICE_VALUE_SHARE_RE`'s `(?<!market )`/`(?!\s+of\b)` exclusions sat outside the whole
+  share/stock alternation, applying to all four words uniformly -- directly contradicting the
+  adjacent comment's explicit claim and regressing round 1's correct behavior ("hold/avoid the
+  stock of X" went from caught to silently missed). Contributing cause: zero test coverage of
+  "stock" as the anchor noun anywhere in the test file -- this branch had never had a positive-
+  catch test.
+
+What held: the originally-reported round-2 bugs are genuinely fixed (8 regression tests pass;
+`_SENTENCE_GAP` mutation-tested via Edit, confirmed correct). Full suite 581/581 before and
+after. Em-dash scan: exactly 5 hits, same legitimate locations, no 6th/undisclosed hit.
+
+Resolution: fixed the OR/AND inversion (alternation form,
+`r"(?<!\d)\.|\.(?!\d)|[!?]+"`). Nested the share/stock exclusions inside the share/shares
+branch specifically, so stock/stocks match unconditionally again. 7 new regression tests added
+(4 parametrized hold/holding/avoid/avoiding-the-stock-of-X, one hold-market-stock, 2
+parametrized whole-number-then-period cases using the reviewer's own exact counter-examples).
+Mutation-tested the OR/AND fix: reverted to the inverted version, confirmed both parametrized
+cases fail with the predicted symptom, restored, confirmed clean (588 passed, up from 581).
+
+Round 4 (re-check of these two fixes only, nothing else in scope) -- genuinely adversarial
+re-test given the 3-rounds-of-self-inflicted-bugs track record, not a rubber stamp:
 VERDICT: PASS
 risks_checked:
-- `_compact_state`'s call graph: repo-wide grep across the installed `streamlit` package shows
-  exactly one call site (`session_state.py:641`), inside `SessionState.on_script_will_rerun`
-  (633-643) -- the docstring's "called by" claim is exhaustively true, not just spot-checked.
-- `on_script_will_rerun` really executes inside `ScriptRunner._run_script`: the call
-  (`script_runner.py:638`) sits inside closure `code_to_exec` (626), and that closure is
-  actually invoked at line 705 -- both within `_run_script`'s body (470-748) -- not just
-  lexically nested without a real call.
-- `LocalScriptRunner`'s complete override surface (8 methods, grepped fresh) excludes
-  `_run_script`, confirming it truly runs unmodified under AppTest; installed version
-  independently confirmed as 1.57.0, matching what the claim is checked against.
-- Diff scope confined to the 4 expected files; the corrected sentence appears exactly once;
-  every other mention of this mechanism in the diff is consistent historical narrative, not a
-  live contradicting claim.
+- `_SENTENCE_BOUNDARY_RE`'s OR-of-negations fix: 8 new adversarial cases (multiple whole
+  numbers/decimals stacked back-to-back, a true violation landing after a whole-number split,
+  growth-word/period-phrase correctly not bridged across an intervening whole-number sentence,
+  no over-split of "24.0%"'s own internal decimal, whole numbers at both text edges, mixed
+  `!`/`?` terminators) all held. Mutation-tested by reverting to the round-3 AND-bug via Edit: 3
+  cases failed with exactly the predicted symptom, confirming real discriminating power;
+  restored, byte-identical.
+- `_ADVICE_VALUE_SHARE_RE`'s nested-branch fix: 8 new adversarial cases (uppercase "STOCK OF"
+  still caught, uppercase/title-case "MARKET SHARE" still excluded, plural "shares of" also
+  excluded, a branch-ordering/backtracking stress case, word-boundary stress against
+  "stockpile"/"restock" substrings) all held. Mutation-tested by reverting to the round-2
+  un-nested form: exactly the 2 cases targeting the leak failed with the predicted symptom,
+  restored, byte-identical.
+- The comment's claim that "stock" has no known share-of/market-share-style collision: checked
+  empirically against this app's actual vocabulary (`metric_catalogue.csv`, `READ_SYSTEM_PROMPT`,
+  `READ_METRIC_BRIEF`) rather than trusted -- only hits were "stockholders equity" (where `\b`
+  after "stock" correctly fails to match) and the prompt's own "stock-learning app" self-
+  description (instruction text, not something the LLM has cause to echo). No real collision
+  found; round 3's claim stands.
+- Full suite: 588/588, matching the claimed count, re-run again after mutation testing to rule
+  out residual state.
+- Em-dash scan: exactly 5 hits, same legitimate locations as every prior round, no 6th.
+- Working-tree integrity: confirmed byte-identical to staged after this round's own Edit-based
+  mutation testing -- no repeat of the round-1 concurrent-edit-race incident.
 
-All required reviewers now PASS against the current, fully-staged diff: scope-auditor round 2,
-cto-reviewer round 3.
+**All four required reviewers now PASS against the current, fully-staged diff**: scope-auditor
+round 2, cto-reviewer round 4, equity-analyst-reviewer round 1.
+
+## equity-analyst-reviewer
+Round 1 (first look, required after scope-auditor round 1 added docs/data_contract.md to
+scope):
+VERDICT: PASS
+risks_checked:
+- Rule-category accuracy: every one of the 10 `violations.append()` call sites in
+  `find_read_style_violations` cross-checked against the new doc paragraph's list and against
+  `READ_SYSTEM_PROMPT`'s own near-verbatim wording -- every listed category real and traceable,
+  nothing invented, nothing omitted. The doc's own "checks a subset... without semantic
+  judgment" hedge matches the code docstring's disclosed partial-subset framing almost word for
+  word -- no overclaim of completeness.
+- Fail-closed/ordering claim verified directly against `_generate_read`: the style check runs
+  immediately after the metric guard, identical `return None, None` path, identical
+  self-healing consumption downstream.
+- 4-reason enumeration traced against every `return None, None` in `_generate_read` -- accurate
+  and complete for what this diff changes.
+- ASCII-dash convention: independently re-scanned (standalone script, explicit UTF-8,
+  `hex(ord(ch))` reporting only) both the new paragraph specifically and the full diff's added
+  lines -- zero hits in the new prose, exactly 5 hits total diff-wide, all in the disclosed,
+  legitimate locations, independently reproduced rather than trusted.
+- Register/voice: new paragraph matches the surrounding ~150 lines' established dense,
+  identifier-heavy technical style, including deliberately echoing the immediately preceding
+  paragraph's own sentence construction.
+
+Two non-blocking observations, not fixed (correctly assessed as true nitpicks, matching this
+task's established bar for what rises to a finding): the guard function's home file
+(`scripts/assessment_rules.py`) isn't named directly in this section's cross-reference ("same
+file" -- accurate but requires the reader to trace it, low severity given the audience); the
+doc groups exclamation-marks and emoji into one prose clause where done_when lists them
+separately (cosmetic only, both remain independently-checked code paths either way).

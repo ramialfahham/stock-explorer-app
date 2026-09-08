@@ -35,6 +35,7 @@ from assessment_rules import (
     build_read_messages,
     compute_input_hash,
     compute_verdict,
+    find_read_style_violations,
     validate_read_metrics,
 )
 
@@ -171,9 +172,11 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
 
     Forces tool-use (READ_TOOL_SCHEMA) so the model returns the read alongside the exact
     metrics it cited, then checks those against the card's own numbers (validate_read_metrics)
-    before accepting the read -- a malformed response, an empty read, or any citation that
-    doesn't match the data is treated the same as an API failure: fail closed, self-heals next
-    run via the existing regenerate-on-input-hash-change path. No retry.
+    and against a deterministic subset of the prompt's own style rules
+    (find_read_style_violations) before accepting the read -- a malformed response, an empty
+    read, an unverifiable citation, or a style-rule violation is treated the same as an API
+    failure: fail closed, self-heals next run via the existing regenerate-on-input-hash-change
+    path. No retry.
     """
     system, user = build_read_messages(row, verdict)
     try:
@@ -216,6 +219,14 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     if not validate_read_metrics(row, referenced):
         print(
             f"  read REJECTED (unverifiable metric) for "
+            f"{row.get('market_code')}/{row.get('ticker')}",
+            file=sys.stderr,
+        )
+        return None, None
+    style_violations = find_read_style_violations(text)
+    if style_violations:
+        print(
+            f"  read REJECTED (style: {'; '.join(style_violations)}) for "
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )

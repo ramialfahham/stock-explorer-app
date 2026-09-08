@@ -1084,3 +1084,283 @@ def test_currency_symbol_maps_are_mirrors() -> None:
         "scripts/assessment_rules.py and frontend/card_copy.py disagree on currency symbols: "
         f"{rules._CURRENCY_SYMBOLS} vs {face}"
     )
+
+
+# --- Slice 5b: deterministic style/rule guard (find_read_style_violations) -----------------
+# A SEPARATE, deliberately partial guard from validate_read_metrics above. Each rule gets a
+# violating example AND a clean, similarly-shaped example that must NOT trip it -- the clean
+# side is what proves a check is precise rather than trigger-happy; a test fed only violating
+# input can't tell a real guard from one that always returns non-empty.
+
+_CLEAN_READ = (
+    "Operating margin sits at 24.0%, showing the company keeps a solid share of every sale as "
+    "profit, and it carries little debt relative to earnings. Free cash flow is comfortably "
+    "positive too, so this looks financially healthy on these figures."
+)
+
+
+def test_find_read_style_violations_accepts_a_realistic_clean_read() -> None:
+    assert rules.find_read_style_violations(_CLEAN_READ) == []
+
+
+def test_find_read_style_violations_catches_em_dash() -> None:
+    dirty = _CLEAN_READ.replace(", showing", " — showing")
+    assert any("dash" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_catches_en_dash() -> None:
+    dirty = _CLEAN_READ.replace(", showing", " – showing")
+    assert any("dash" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_allows_ordinary_hyphens_in_compound_words() -> None:
+    # "Hyphens inside ordinary compound words are fine" -- plain ASCII hyphen U+002D must not
+    # be confused with U+2014/U+2013.
+    clean = "This is a well-run, cash-generating business, financially healthy on these figures."
+    assert rules.find_read_style_violations(clean) == []
+
+
+def test_find_read_style_violations_catches_exclamation_mark() -> None:
+    dirty = _CLEAN_READ.replace(".", "!", 1)
+    assert any("exclamation" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_catches_emoji() -> None:
+    dirty = _CLEAN_READ + " \U0001F680"  # rocket
+    assert any("emoji" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_ignores_currency_symbols_and_degree_sign() -> None:
+    # The exact false positive the emoji check must not make: currency symbols and a degree
+    # sign are not emoji, and this app's own money amounts carry GBP/JPY/EUR signs on every
+    # non-USD card.
+    clean = (
+        "Working capital is a healthy £2.1B cushion, roughly 20° above its usual "
+        "range, financially healthy on these figures."
+    )
+    assert rules.find_read_style_violations(clean) == []
+
+
+@pytest.mark.parametrize("word", ["buy", "buying", "sell", "selling", "price"])
+def test_find_read_style_violations_catches_unanchored_advice_action_words(word: str) -> None:
+    # buy/sell/price have no legitimate non-advice use in this app's own vocabulary, so these
+    # stay bare-word matches -- no share/stock context needed to trigger.
+    dirty = f"This might be a good time to {word}, financially healthy on these figures."
+    violations = rules.find_read_style_violations(dirty)
+    assert any("investment-advice language" in v for v in violations), (word, violations)
+
+
+def test_find_read_style_violations_allows_benign_uses_of_advice_adjacent_words() -> None:
+    # The exact false positives the word-boundary/anchoring design exists to avoid: "sales" is
+    # a different word from "sell"; "expensive"/"cheap" describe financing cost, not the share;
+    # neither "hold" nor "avoid" is anchored to share/stock here. This is cto-reviewer's own
+    # round-1 counter-example (a legitimate leverage/debt-cost explanation), now fixed by
+    # anchoring cheap/expensive/worth it the same way hold/avoid already were.
+    clean = (
+        "Net margin shows the share of sales kept as profit, and the company holds more cash "
+        "than debt, which helps it avoid a cash squeeze and hold steady through a weak quarter. "
+        "Heavy borrowing means debt could become expensive to service if earnings slip, though "
+        "cheap financing has kept costs manageable so far, a mixed financial picture on these "
+        "figures."
+    )
+    assert rules.find_read_style_violations(clean) == []
+
+
+@pytest.mark.parametrize(
+    "word", ["cheap", "expensive", "worth it", "hold", "holding", "avoid", "avoiding"]
+)
+def test_find_read_style_violations_catches_advice_value_words_anchored_to_the_share(
+    word: str,
+) -> None:
+    dirty = f"Investors may want to {word} the share, financially healthy on these figures."
+    violations = rules.find_read_style_violations(dirty)
+    assert any("investment-advice phrase" in v for v in violations), (word, violations)
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "cheap, keeping its share of profit",
+        "hold a strong share of revenue",
+        "avoid letting its share of costs rise",
+        "expensive to defend market share",
+        "hold its market share",
+    ],
+)
+def test_find_read_style_violations_allows_share_as_a_portion_not_the_security(
+    phrase: str,
+) -> None:
+    # cto-reviewer's round-2 finding: "share of X" (a portion, e.g. READ_METRIC_BRIEF's own
+    # margin gloss "share of sales kept as... profit") and "market share" (an unrelated business
+    # term) are both real, prompt-encouraged vocabulary that the anchored advice-value check must
+    # not confuse with a claim about the security.
+    clean = f"The company can {phrase}, financially healthy on these figures."
+    violations = rules.find_read_style_violations(clean)
+    assert not any("investment-advice phrase" in v for v in violations), (phrase, violations)
+
+
+@pytest.mark.parametrize("word", ["hold", "holding", "avoid", "avoiding"])
+def test_find_read_style_violations_catches_advice_value_words_anchored_to_the_stock(
+    word: str,
+) -> None:
+    # cto-reviewer's round-3 finding: an earlier version of the "share of X"/"market share"
+    # exclusions leaked onto "stock"/"stocks" too, silently un-catching "hold/avoid the stock of
+    # X" -- a regression from round 1's correct, unqualified behavior. "stock" has no known
+    # portion-language collision (unlike "share"), so it must stay caught unconditionally,
+    # including when followed by "of" or preceded by "market".
+    dirty = f"Investors may want to {word} the stock of this company, financially healthy on these figures."
+    violations = rules.find_read_style_violations(dirty)
+    assert any("investment-advice phrase" in v for v in violations), (word, violations)
+
+
+def test_find_read_style_violations_catches_hold_or_avoid_market_stock() -> None:
+    # "market stock" has no established portion-language meaning the way "market share" does,
+    # so unlike _allows_share_as_a_portion_not_the_security above, this must still be caught.
+    dirty = "Investors may want to hold market stock, financially healthy on these figures."
+    violations = rules.find_read_style_violations(dirty)
+    assert any("investment-advice phrase" in v for v in violations), violations
+
+
+def test_find_read_style_violations_catches_not_just_but_with_a_decimal_figure_in_between() -> None:
+    # cto-reviewer's round-2 finding: a plain [^.!?] bound also breaks on the "." inside every
+    # percentage this app renders, silently missing a real violation with a figure sitting
+    # between its two halves.
+    dirty = (
+        "This is not just a 24.0% margin story, but a debt story too, "
+        "financially healthy on these figures."
+    )
+    assert any("not just" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_catches_advice_value_share_with_a_decimal_figure_in_between() -> None:
+    dirty = "Investors may want to hold the 24.0% margin share, financially healthy on these figures."
+    violations = rules.find_read_style_violations(dirty)
+    assert any("investment-advice phrase" in v for v in violations), violations
+
+
+def test_find_read_style_violations_catches_not_just_but_construction() -> None:
+    dirty = (
+        "This is not just a story about margins, but also one about discipline, "
+        "financially healthy on these figures."
+    )
+    assert any("not just" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_allows_not_just_without_a_following_but() -> None:
+    # "not just" alone, with no "but" anywhere after it, is not the banned construction. Also
+    # proves the "but" check is word-boundary, not substring: "about" contains "b-u-t" but is
+    # not the word "but", so this must not accidentally match on tokens like that either.
+    clean = "Profitability here is not just adequate, it is strong, financially healthy on these figures."
+    violations = rules.find_read_style_violations(clean)
+    assert not any("not just" in v for v in violations)
+
+
+def test_find_read_style_violations_allows_not_just_with_an_unrelated_later_but() -> None:
+    # cto-reviewer's round-1 finding: "not just X" with no "but" in the SAME sentence, followed
+    # by an ordinary, unrelated contrastive "but" in a LATER sentence, is not the banned
+    # construction -- ends up as exactly the shape a yellow-verdict card contrasting a weak axis
+    # against a strong one would naturally use.
+    clean = (
+        "Profitability here is not just adequate, it is strong across every margin the company "
+        "reports. Growth slowed this quarter, but cash generation remains excellent and debt "
+        "stays low, financially healthy on these figures."
+    )
+    violations = rules.find_read_style_violations(clean)
+    assert not any("not just" in v for v in violations), violations
+
+
+def test_find_read_style_violations_catches_its_worth_noting() -> None:
+    dirty = "It's worth noting that leverage is low, financially healthy on these figures."
+    assert any("worth noting" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_catches_its_worth_noting_with_a_curly_apostrophe() -> None:
+    # Haiku may emit a curly apostrophe (’); a straight-quote-only match would miss it.
+    dirty = "It’s worth noting that leverage is low, financially healthy on these figures."
+    assert any("worth noting" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_catches_its_important_to_remember() -> None:
+    dirty = "It's important to remember this is educational, financially healthy on these figures."
+    assert any("important to remember" in v for v in rules.find_read_style_violations(dirty))
+
+
+@pytest.mark.parametrize("phrase", ["this year", "over the year"])
+def test_find_read_style_violations_catches_growth_period_phrasing(phrase: str) -> None:
+    dirty = f"Revenue grew {phrase}, financially healthy on these figures."
+    assert any('"this year"' in v for v in rules.find_read_style_violations(dirty))
+
+
+@pytest.mark.parametrize("phrase", ["this year", "over the year"])
+def test_find_read_style_violations_catches_growth_period_phrasing_word_before_period(
+    phrase: str,
+) -> None:
+    # The growth word can legitimately come before OR after the period phrase -- both orders
+    # must be caught.
+    dirty = f"{phrase.capitalize()}, revenue grew steadily, financially healthy on these figures."
+    assert any('"this year"' in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_catches_growth_period_phrasing_across_a_decimal_figure() -> None:
+    # cto-reviewer's round-2 finding: re.split(r"[.!?]+", ...) also splits on the "." inside
+    # every percentage this app renders, cutting a real violation into two fragments that each
+    # lack one half of the pair -- silently missed. Checked in both word orders.
+    for dirty in (
+        "Revenue grew 24.0% this year, financially healthy on these figures.",
+        "This year, revenue grew 24.0%, financially healthy on these figures.",
+    ):
+        assert any('"this year"' in v for v in rules.find_read_style_violations(dirty)), dirty
+
+
+@pytest.mark.parametrize(
+    "clean",
+    [
+        # cto-reviewer's round-3 finding: an earlier _SENTENCE_BOUNDARY_RE required digit-free
+        # on BOTH sides of a period to count as a sentence end (an AND, not the correct OR of
+        # negations), so a whole-number-then-period -- a real shape this app's own metric/money
+        # formatters produce -- wrongly failed to split, merging two unrelated sentences into
+        # one fragment and producing a false-positive growth/"this year" violation.
+        "Growth reflects a debt to equity ratio of 1.50. This year the company opened new "
+        "offices in another country, a mixed financial picture on these figures.",
+        "The cash burn shows real growth of concern at $400. This year the office relocated to "
+        "a smaller space, a mixed financial picture on these figures.",
+    ],
+)
+def test_find_read_style_violations_allows_growth_and_this_year_in_separate_sentences_after_a_whole_number(
+    clean: str,
+) -> None:
+    violations = rules.find_read_style_violations(clean)
+    assert not any('"this year"' in v for v in violations), violations
+
+
+def test_find_read_style_violations_allows_this_year_when_not_about_growth() -> None:
+    # cto-reviewer's round-1 finding: the prompt's rule is specifically about growth ("do not
+    # write 'this year'... about it", where "it" = growth) -- a read that uses "this year" about
+    # something else entirely (e.g. free cash flow) is not the banned construction.
+    clean = (
+        "This year, free cash flow stayed comfortably positive and debt remains low, "
+        "financially healthy on these figures."
+    )
+    violations = rules.find_read_style_violations(clean)
+    assert not any('"this year"' in v for v in violations), violations
+
+
+def test_find_read_style_violations_catches_a_missing_verdict_ending() -> None:
+    dirty = "Operating margin is strong and debt is low."
+    assert any("does not end on the verdict" in v for v in rules.find_read_style_violations(dirty))
+
+
+def test_find_read_style_violations_accepts_the_on_these_numbers_variant() -> None:
+    # The prompt's own yellow example swaps "figures" for "numbers" -- both must pass.
+    clean = "Margins are mixed and leverage is manageable, a mixed financial picture on these numbers."
+    assert rules.find_read_style_violations(clean) == []
+
+
+def test_find_read_style_violations_reports_every_violation_found_not_just_the_first() -> None:
+    dirty = "Sounds cheap! Definitely a buy — not just cheap, but a bargain."
+    violations = rules.find_read_style_violations(dirty)
+    assert len(violations) >= 4, violations
+    assert any("dash" in v for v in violations)
+    assert any("exclamation" in v for v in violations)
+    assert any("investment-advice language" in v for v in violations)
+    assert any("does not end on the verdict" in v for v in violations)
