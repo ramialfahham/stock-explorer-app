@@ -72,7 +72,11 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 this table. That gap predates the France work and is left rather than backfilled here, so
 the omission is not mistaken for an error in the migration sequence.
 
-After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives company descriptions. Hard refresh or a new browser session reloads `all_cards` from Supabase.
+After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives
+company descriptions. The app holds its deck in an in-process cache shared by all browser
+sessions, with a 30-minute TTL, so neither a hard refresh nor a new browser session is enough
+to pull a fresh export before that window elapses. Restarting the Streamlit process clears it
+immediately.
 
 ---
 

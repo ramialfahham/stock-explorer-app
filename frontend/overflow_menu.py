@@ -11,7 +11,7 @@ import streamlit as st
 
 from browser_storage import clear_interactions
 from card_copy import format_snapshot_date
-from explore_filters import ALL_MARKETS, ALL_SECTORS, cards_lack_business_summary
+from explore_filters import ALL_MARKETS, ALL_SECTORS
 from markets import (
     discover_pool_summary,
     eligible_breakdown_lines,
@@ -101,7 +101,9 @@ def menu_context_html(*, active_tab: str, saved_count: int) -> str:
     )
 
 
-def _render_about_data(*, cards: list[dict[str, Any]], counts: dict[str, int]) -> None:
+def _render_about_data(
+    *, cards: list[dict[str, Any]], counts: dict[str, int], descriptions_missing: bool
+) -> None:
     with st.expander("About the data", expanded=False):
         snapshot = latest_snapshot_label(cards)
         if snapshot:
@@ -123,7 +125,7 @@ def _render_about_data(*, cards: list[dict[str, Any]], counts: dict[str, int]) -
             if lines:
                 breakdown = " · ".join(lines)
                 st.caption(breakdown)
-        if cards_lack_business_summary(cards):
+        if descriptions_missing:
             st.caption(
                 "Company descriptions are missing from this export — run the "
                 "pipeline after migration 004 and re-export mart_stock_cards."
@@ -137,6 +139,7 @@ def render_overflow_menu(
     cards: list[dict[str, Any]],
     eligible_counts: dict[str, int],
     on_clear_saved: Callable[[], None],
+    descriptions_missing: bool = False,
 ) -> None:
     """Render popover body: context, actions, and optional data expander."""
     st.markdown(
@@ -167,4 +170,6 @@ def render_overflow_menu(
     elif st.button("Clear saved", key="menu_clear_saved", use_container_width=True):
         st.session_state["confirm_clear_saved"] = True
         st.rerun()
-    _render_about_data(cards=cards, counts=eligible_counts)
+    _render_about_data(
+        cards=cards, counts=eligible_counts, descriptions_missing=descriptions_missing
+    )

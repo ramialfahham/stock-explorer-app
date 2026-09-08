@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 import streamlit as st
 
+import app as app_module
 from app import (
     DISCOVER_PAGE_SIZE,
     _discover_page_count,
@@ -13,6 +14,7 @@ from app import (
     brand_header_html,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
+from supabase_cards import DECK_COLUMNS
 
 
 def test_brand_header_html_includes_the_disclaimer() -> None:
@@ -131,3 +133,105 @@ def test_sync_search_query_clearing_the_box_also_clears_a_pinned_selection() -> 
     _sync_search_query("")
     assert st.session_state["search_query"] == ""
     assert st.session_state["search_selected"] is None
+
+
+# --- _ensure_all_cards cache invalidation (perf/first-visit-card-load) ---
+# The deck is fetched once and reused. The guard that decides "this cached deck is the wrong
+# shape, refetch" used to look for `business_summary`, which the deck deliberately no longer
+# carries -- left as it was, it would have fired on every rerun and made the cache a no-op,
+# which is the exact cost this task exists to remove. These two tests pin both directions.
+
+
+def _slim_deck_row(**overrides) -> dict:
+    row = {column: None for column in DECK_COLUMNS}
+    row.update({"market_code": "us_sp500", "ticker": "AAPL", "is_card_eligible": True})
+    row.update(overrides)
+    return row
+
+
+def _counting_fetch(deck: list[dict], calls: list[int]):
+    """Patched BELOW app.py's @st.cache_data wrapper, at `app_module.fetch_deck` (the name
+    app.py bound at import), so these tests run against the real cache. Patching
+    `_cached_deck` itself would replace exactly the layer whose invalidation is under test."""
+
+    def _fetch(_client) -> list[dict]:
+        calls.append(1)
+        return list(deck)
+
+    return _fetch
+
+
+@pytest.fixture
+def clean_caches():
+    """A finalizer, not a trailing call: st.cache_data is global and constant-keyed here, so a
+    failing assertion would otherwise leak a populated deck into every later test."""
+    st.cache_data.clear()
+    st.session_state.clear()
+    yield
+    st.cache_data.clear()
+    st.session_state.clear()
+
+
+def test_ensure_all_cards_fetches_a_slim_deck_only_once(
+    monkeypatch: pytest.MonkeyPatch, clean_caches: None
+) -> None:
+    """Mutation-verified: reverting deck_rows_lack_columns to the old
+    `any("business_summary" not in card ...)` check makes this fail with 3 fetches instead of
+    1. (Adding a column to DECK_COLUMNS would NOT catch it -- _slim_deck_row derives its keys
+    from DECK_COLUMNS, so the row grows with it.)"""
+    calls: list[int] = []
+    monkeypatch.setattr(app_module, "fetch_deck", _counting_fetch([_slim_deck_row()], calls))
+
+    client = object()
+    app_module._ensure_all_cards(client)
+    app_module._ensure_all_cards(client)
+    app_module._ensure_all_cards(client)
+
+    assert len(calls) == 1
+
+
+def test_ensure_all_cards_clears_the_shared_cache_not_just_session_state(
+    monkeypatch: pytest.MonkeyPatch, clean_caches: None
+) -> None:
+    """The stale shape lives in BOTH the session_state copy and the cross-session cache.
+    Dropping only session_state re-reads the same rows out of the cache and trips the guard
+    again on the next rerun -- a spin, not a recovery. Mutation check: remove
+    `_cached_deck.clear()` from _ensure_all_cards and the second fetch never happens."""
+    calls: list[int] = []
+    monkeypatch.setattr(app_module, "fetch_deck", _counting_fetch([_slim_deck_row()], calls))
+
+    client = object()
+    app_module._ensure_all_cards(client)
+    assert len(calls) == 1
+
+    st.session_state["all_cards"] = [{"market_code": "us_sp500", "ticker": "AAPL"}]
+    app_module._ensure_all_cards(client)
+
+    assert len(calls) == 2
+
+
+def test_descriptions_missing_reports_true_on_a_pre_004_schema(
+    monkeypatch: pytest.MonkeyPatch, clean_caches: None
+) -> None:
+    """An export predating migration 004 has no `business_summary` column, so the probe raises
+    42703. That IS the state the overflow-menu caption announces -- swallowing it into False
+    made the diagnostic fail open on the one failure it exists to report."""
+
+    class _ApiError(Exception):
+        code = "42703"
+
+    def _raise(_client):
+        raise _ApiError("column mart_stock_cards.business_summary does not exist")
+
+    monkeypatch.setattr(app_module, "export_lacks_business_summary", _raise)
+    assert app_module._descriptions_missing(object()) is True
+
+
+def test_descriptions_missing_stays_quiet_on_a_transient_failure(
+    monkeypatch: pytest.MonkeyPatch, clean_caches: None
+) -> None:
+    def _raise(_client):
+        raise TimeoutError("connection reset")
+
+    monkeypatch.setattr(app_module, "export_lacks_business_summary", _raise)
+    assert app_module._descriptions_missing(object()) is False

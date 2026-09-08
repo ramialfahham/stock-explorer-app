@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from markets import MARKET_DISPLAY_NAMES, market_display_name
@@ -212,12 +213,23 @@ def walk_meta_line(
     return f"{position} of {total} in {market_label}"
 
 
-def cards_lack_business_summary(cards: list[dict[str, Any]]) -> bool:
-    """True when export/schema has no usable company descriptions."""
-    eligible = [c for c in cards if c.get("is_card_eligible")]
-    if not eligible:
+def deck_rows_lack_columns(
+    cards: list[dict[str, Any]], columns: Iterable[str]
+) -> bool:
+    """True when a held deck row is missing a column the current code reads.
+
+    A cheap shape invariant, not a cross-deploy guard: both the deck cache and session_state
+    are in-process (`@st.cache_data` defaults to `persist=None`), so a redeploy drops both and
+    the reachable case is narrow -- a long-lived session holding rows from before an in-place
+    change to what the list paths read. Callers must clear the deck CACHE as well as
+    session_state when this fires, or the same rows come straight back (see app.py's
+    `_ensure_all_cards`).
+
+    This replaces an earlier `business_summary`-specific version: that column is deliberately
+    no longer in the deck (66% of the mart payload, read only by the card face), so the old
+    check would have fired on every run and re-fetched forever.
+    """
+    if not cards:
         return False
-    if any("business_summary" not in c for c in eligible):
-        return True
-    filled = sum(1 for c in eligible if str(c.get("business_summary") or "").strip())
-    return filled == 0
+    required = set(columns)
+    return any(not required.issubset(card) for card in cards)
