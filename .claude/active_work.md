@@ -52,18 +52,16 @@ field (likelier than changing its units) passes every guard silently. The projec
 
 **MR !111, merged** -- first-visit load time. Every NEW visitor paid a full deck download
 before anything rendered (4,683 rows at `select=*`, ~78% discarded by dedupe, cached per
-browser session). Fixed with a 12-column deck, per-card hydration, and `@st.cache_data` shared
+browser session). Fixed with a 12-column deck, per-card hydration and `@st.cache_data` shared
 across sessions: **18.38 MB / 7 round trips / 7.80s -> 1.46 MB / 6 / 1.87s**. Render was never
-the cause. Took five review rounds, mostly on false claims in my own prose; two real bugs
-caught (a cache guard that could only spin, and an export diagnostic that failed open on the
-42703 it exists to announce). Detail in that MR's `contract.md`/`review.md`.
+the cause.
 
-**Still the owner's call, unmade**: the result misses the approved plan's own estimate
-(~150-250 KB over 1-2 round trips) because the deck still fetches all 4,683 rows and dedupes
-client-side. Closing it is the reserved `DISTINCT ON` view (migration + grant + a `coalesce` to
-keep the `business_summary` backfill). Also unconfirmed: the 30-minute `_DECK_TTL_SECONDS`,
-shipped inside the plan's approved 15-60 min band, which is what keeps traffic querying
-Supabase inside its idle-pause window.
+**Still the owner's call, unmade**: the result misses the plan's own estimate (~150-250 KB over
+1-2 round trips) because the deck still fetches all 4,683 rows and dedupes client-side. Closing
+it is the reserved `DISTINCT ON` view (migration + grant + a `coalesce` to keep the
+`business_summary` backfill). Also unconfirmed: the 30-minute `_DECK_TTL_SECONDS`, inside the
+plan's approved 15-60 min band, which keeps traffic querying Supabase inside its idle-pause
+window.
 
 **Read before touching the frontend fetch path**: `DECK_COLUMNS` is the cold path's entire
 cost. Adding a column there is paid by every visitor; adding one to the card face is paid by
@@ -76,37 +74,25 @@ covers every field the list paths read, and names three exclusions it must not r
 four cto-reviewer rounds, each catching a real bug in the previous round's own fix. Detail in
 that MR's `contract.md`/`review.md`.
 
-## Recent work (2026-09-07)
+## Recent work (2026-09-06 to 2026-09-07)
 
-**MR !104, merged** -- repo's first Streamlit `AppTest` end-to-end test,
-`tests/frontend/test_app_e2e.py`, covering the cross-tab Discover/Saved/Search flow. Review
-caught two wrong claims of mine; the second became open item 10 below.
+All merged; detail lives in each MR's own `contract.md`/`review.md`. **!104** repo's first
+Streamlit `AppTest` end-to-end test (`tests/frontend/test_app_e2e.py`); review caught two wrong
+claims of mine, the second became open item 10. **!100** financial-card capital-adequacy caveat.
+**!101** scheduled-pipeline alerting + same-day ingestion checkpoint; the alerting route it
+documented did not work and sat unchecked until 2026-09-08, now live via GitLab's per-user
+notifications (bell -> Custom -> Failed pipeline), see `docs/operations_guide.md`. **!103** dbt
+model contract on `mart_stock_cards` + `dbt source freshness` on all three raw sources; its
+table-level-not-per-market freshness limitation became open item 9.
 
-## Recent work (2026-09-06)
+**Gotcha for future sessions**: `commit_review_gate.py`'s verdict parser needs the literal token
+`VERDICT:` at the start of its own line -- `Round 2 VERDICT: PASS` parses as no verdict at all,
+silently. Multi-round `review.md`: earlier rounds as prose, only the final round's verdict as a
+bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
-**MR !100, merged** -- financial-type card capital-adequacy caveat (item 3):
-`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` on every financial-type card regardless of `ai_read`
-state. 4 equity-analyst + 2 scope-auditor rounds on wording alone.
-
-**Gotcha for future sessions, from that task**: `commit_review_gate.py`'s verdict parser needs
-the literal token `VERDICT:` at the start of its own line -- `Round 2 VERDICT: PASS` parses as
-no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as prose, only the
-final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
-
-**MR !101, merged** -- scheduled-pipeline alerting + same-day ingestion checkpoint
-(`ingestion/yfinance/ingest.py`, `--force-refetch` bypasses). **The alerting route it documented
-did not work** and sat unchecked until 2026-09-08; failed-pipeline email is now live via
-GitLab's built-in per-user notifications (bell -> Custom -> Failed pipeline). See
-`docs/operations_guide.md`.
-
-**Finding, not folded into !101 (owner's call):** the 2026-09-01 job trace showed ingestion is
-only ~24 of the ~65-minute total -- the dominant, ungoverned cost is `generate_assessments.py`'s
-AI-read step (~39 min, one Haiku call per changed card, no cap). Open item 8 below.
-
-**MR !103, merged** -- dbt model contract on `mart_stock_cards` (enforced, `data_type:` on all
-80 columns) + `dbt source freshness` on all three raw sources (warn 20d/error 30d).
-`yf_daily_prices` gained `ingested_at`. Five review rounds caught seven real gaps; the
-table-level-not-per-market freshness limitation became open item 9 below.
+**Finding, still open (owner's call):** the 2026-09-01 job trace showed ingestion is only ~24 of
+the ~65-minute total. The dominant, ungoverned cost is `generate_assessments.py`'s AI-read step
+(~39 min, one Haiku call per changed card, no cap). Open item 8 below.
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
