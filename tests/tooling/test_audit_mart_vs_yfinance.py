@@ -26,11 +26,11 @@ def _make_mart_duckdb(path: Path) -> None:
     con.execute(f"create table marts.mart_stock_cards ({defs})")
     con.execute(
         "insert into marts.mart_stock_cards values "
-        "('us_sp500','AAA','Co A','Technology','2026-06-01','A summary',20.0,25.0,8.0,0.5,10.0,true)"
+        "('us_sp500','AAA','Co A','Technology','2026-06-01','A summary',20.0,25.0,8.0,0.5,10.0,2.5,true)"
     )
     con.execute(
         "insert into marts.mart_stock_cards values "
-        "('us_sp500','BBB','Co B','Energy','2026-06-01','',18.0,15.0,5.0,1.2,9.0,true)"
+        "('us_sp500','BBB','Co B','Energy','2026-06-01','',18.0,15.0,5.0,1.2,9.0,4.1,true)"
     )
     con.close()
 

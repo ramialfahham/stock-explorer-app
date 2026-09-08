@@ -49,6 +49,7 @@ MART_COLUMNS = (
     "revenue_growth_yoy_pct",
     "net_debt_to_ebitda",
     "fcf_margin_pct",
+    "dividend_yield_pct",
     "is_card_eligible",
 )
 METRIC_KEYS = (
@@ -57,6 +58,7 @@ METRIC_KEYS = (
     "revenue_growth_yoy_pct",
     "net_debt_to_ebitda",
     "fcf_margin_pct",
+    "dividend_yield_pct",
 )
 
 # Raw fundamentals parquet schema (must match dbt sources.yml yf_fundamentals).

@@ -241,7 +241,9 @@ def _write_market_fixtures(market_code: str) -> None:
                 "stmt_interest_expense": 500_000_000.0,
                 "stmt_net_income": 6_000_000_000.0,
                 "stmt_net_income_common": 6_000_000_000.0,
-                "info_dividend_yield": 0.02,
+                # Percent-scale, like the bank fixture below; reverting to a fraction
+                # fails assert_percent_scale_passthroughs, not anything naming this line.
+                "info_dividend_yield": 2.0,
                 "info_payout_ratio": 0.30,
                 **TTM_QUARTER_FIXTURE,
             }
