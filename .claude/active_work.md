@@ -182,10 +182,13 @@ the running dev server. Full account in this MR's own `contract.md`/`review.md`.
 - **Metric definitions**: statement ROE = common income / common equity; ROA = net income /
   total assets from statements; `cash_runway` = cash / FCF-burn in months. New computed
   columns coexist with info-scalar equivalents, never replace them silently.
-- **yfinance `dividendYield` is a PERCENT, not a fraction** (0.94 = 0.94%, verified live).
-  `payoutRatio`/`returnOnEquity`/`returnOnAssets` ARE fractions. A future yfinance version
-  reverting this would ship a silent 100x error -- there's a persisted scale-regression guard
-  for it.
+- **yfinance `dividendYield` is USUALLY a percent, not a fraction** (0.94 = 0.94%).
+  `payoutRatio`/`returnOnEquity`/`returnOnAssets` ARE fractions. This entry used to say
+  "is a PERCENT ... verified live" flatly; that is qualified as of 2026-09-08, because
+  production holds fraction-scale rows too (AvalonBay 0.0387, Equity Residential 0.0426, both
+  REITs yielding ~4%). Issue #10. A wholesale revert would ship a silent 100x error and IS
+  guarded (`assert_percent_scale_passthroughs.sql`, two-sided, per market); per-row mixed units
+  are NOT, and a median-based guard structurally cannot see them.
 - **Filter every future metric suggestion through**: sourceable from yfinance? legible to a
   true beginner? An external review (Gemini) proposed CET1/Tier1/LCR/NIM/ROIC/ARR/NRR/TAM --
   all rejected as unsourceable and/or too advanced. Only ROA survived both filters.
