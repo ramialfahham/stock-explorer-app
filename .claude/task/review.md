@@ -1,225 +1,126 @@
 # Review
 
-diff_sha256: 371fa336f8fba3cdb3fd0c05177157211f4697d2848974fdd01fd9b9798451aa
+diff_sha256: fb85701f25fd6a88be39d9d246256f935a1f8719939d3e9a755766f2481bc97c
+
+Five rounds. Both required reviewers (scope-auditor by `always`, cto-reviewer by `frontend/*`
+and `tests/*`) ran cold and read-only against the staged diff each round. Earlier rounds are
+prose below; only each section's final round carries a bare verdict line.
+
+## Measured result (contract `done_when`)
+
+Against live production Supabase, same script both ways:
+
+| | Round trips | Payload | Time |
+|---|---|---|---|
+| Before (`select=*` deck + assessments) | 7 | 18.38 MB | 7.80s |
+| After (slim deck) | 5, plus 1 export probe = **6** | 1.46 MB | 1.87s |
+| After, per card opened | 2 | ~4 KB | 0.61s |
+
+12.6x payload cut, 4.2x faster on the deck fetch. The larger real-world win is not in this
+table: 18 MB of JSON is no longer parsed and deduped in Python on a free-tier shared-CPU
+Render instance for every first-time visitor.
+
+**This misses the approved plan's own estimate** (~150-250 KB over 1-2 round trips); see the
+contract's DELIVERY SHORTFALL amendment. Not claimed and not measured: browser first-paint
+timing from a fresh incognito session, which an earlier `done_when` draft promised.
+Verification of the rendered result was a manual end-to-end pass against the running dev
+server (card face with `ai_read`, verdict, `business_summary`, sector range marks; Saved with
+headlines; Search by name), plus 604 automated tests.
 
 ## scope-auditor
-Round 1 FAILED (two findings)
-- `docs/data_contract.md` enumerates a closed set of reasons `ai_read` can be absent (a
-  brand-new card, a per-card API failure, or a hallucination-guard reject) -- this diff adds a
-  fourth (style-guard reject) to the exact same function without updating that enumeration, a
-  real doc-sync gap the file wasn't in scope_paths to catch.
-- `done_when`'s own em-dash-scan claim ("confirmed exactly these 5 hits... No accidental dash
-  anywhere else in the diff") was itself false: a 6th, undisclosed em dash was sitting inside
-  `contract.md` itself, in the sentence describing the earlier dash-corruption incident.
 
-Also confirmed clean by this round: diff scope otherwise conformant; working-agreement.md §6
-and active_work.md's open item 8 citations verified accurate; every rule
-`find_read_style_violations` checks traced to real, verbatim `READ_SYSTEM_PROMPT` text; the
-5-fixture-fix claim empirically correct; full suite 569/569. Two smaller, non-blocking accuracy
-gaps also noted (a second undisclosed test using non-compliant placeholder text, harmless since
-it's shielded by an earlier rejection; one comment whose justifying example doesn't quite
-demonstrate what it claims) -- not fixed, correctly assessed as true nitpicks, not disclosure or
-correctness problems.
+Round 1 returned FAIL on six findings: `docs/supabase_setup.md` told operators a hard refresh
+reloads the deck, which the cross-session cache made false; the contract justified the export
+probe as costing nothing on the cold path, which a `st.popover`'s eager body makes untrue; the
+30-minute TTL shipped against a `decisions_reserved` entry with no recorded answer;
+`.claude/active_work.md` was in scope but unmodified; `done_when` promised first-paint numbers
+that did not exist anywhere; and a backlog doc described the old fetch path in the present
+tense. All six fixed. The TTL was resolved by citing the approved plan's own 15-60 minute
+band as the recorded authority, which the reviewer then verified independently against the
+plan file rather than accepting the citation.
 
-Resolution: added a paragraph describing the new style guard to `docs/data_contract.md` right
-before the enumeration, and added the fourth reason to the enumeration itself.
-`docs/data_contract.md` added to scope_paths; equity-analyst-reviewer added to the required
-review cycle. Reworded the sentence containing the undisclosed em dash to avoid needing the
-character at all (rather than trying to "fix" it via escape sequences again -- see the note
-below on why); independently re-verified via `hex(ord(ch))` against a standalone `.py` file,
-0 hits now in that file, 5 hits total across the whole diff, all in the disclosed, legitimate
-locations.
+Round 2 passed, with two advisories: the handover had 809 bytes of headroom under its
+32,000-byte cap, and the delivered numbers miss the approved plan's estimate. Both acted on.
 
-Note on how the 6th em dash slipped past a visual re-read during implementation: this session
-separately confirmed that this machine's Bash tool output pipeline renders U+2014/U+2013 as the
-Unicode replacement-character glyph even when the underlying file bytes are completely correct
-(discovered when a `python -c` shell one-liner's `repr()` output showed `"�"` for a line
-that was actually fine, nearly triggering an unnecessary "fix" that would have caused real
-corruption). The reverse risk -- a real em dash rendering as if it were ordinary prose on a
-visual read -- is what let this one through. Every dash-scan in this task from this point on
-uses a standalone `.py` file (not a shell one-liner) and reports `hex(ord(ch))`, never the raw
-character or `repr()` of a line containing it.
+Round 3 returned FAIL on three: an unverified causation claim at `active_work.md:17` ("the
+UptimeRobot ping keeps it warm", contradicting open item 6's own "nobody has confirmed which
+URL the ping targets"); a stale test count; and a contract with no round-2 amendment, leaving
+the delivery shortfall disclosed only in the handover and not in the artifact that travels
+with the MR. All three fixed.
 
-Round 2 (re-check of the two fixes only, nothing else in scope):
+Round 4 passed, flagging as non-blocking that open item 6's heading still asserted the
+causation its body qualified. Fixed rather than shipped, which is what round 5 confirms.
+
+Round 5 proved the single-line delta by reconstruction rather than assertion: it recovered the
+round-4 staged blob from the object store, rebuilt that round's diff through a separate index,
+and matched the round-4 hash byte-for-byte.
+
 VERDICT: PASS
 risks_checked:
-- Doc-sync accuracy of the new style-guard paragraph and the 4-reason `ai_read`-absent
-  enumeration -- verified line-by-line against the live `find_read_style_violations` function
-  (all 10 individual checks map to the doc's prose) and against `generate_assessments.py`'s
-  actual absence-producing control flow (brand-new / API failure / hallucination-guard reject /
-  style-guard reject are 4 real, distinct paths), not just against the doc's own prose.
-- Undisclosed em-dash/en-dash fully removed from `contract.md` -- verified with two independent
-  programmatic scans (UTF-8 text-mode per-line, and a raw UTF-8 byte-sequence scan across the
-  whole file), both from standalone `.py` files, neither piped through a command's stdin; both
-  found zero.
-- `scope_paths`/review-cycle citation accuracy -- cross-checked the claimed
-  `review_routing.json:26` entry against the actual file content; exact match.
-- No scope regression since round 1 -- `git status --porcelain`/`git diff --cached --stat` both
-  confirm exactly the expected 7 staged files.
+- Scope: all 12 staged paths inside `scope_paths`, including the three added by amendment
+  (`frontend/overflow_menu.py` after it proved to be a second consumer of the renamed guard,
+  and the two docs the change made stale).
+- No em/en/figure dash on any added line, scanned from a file with explicit UTF-8 decoding
+  rather than through Python stdin, which mis-decodes silently on this machine.
+- `.claude/active_work.md` at 30,427 bytes, under the 32,000-byte SessionStart injection cap,
+  with the `VERDICT:` parser gotcha and the pending owner action for GitLab pipeline emails
+  both confirmed to have survived the collapse of merged history.
+- No §6 owner-only decision taken unilaterally: caption copy byte-identical, `_hydrate` reuses
+  an existing error string, the load spinner deferred because its text would be new copy, and
+  retiring the redundant export caption left to the owner.
+- `is_undefined_column_error` judged ordinary error handling inside an approved change, not a
+  new mechanism: it restores pre-branch behaviour rather than creating any.
 
 ## cto-reviewer
-Round 1 FAILED (three findings, all real regex false-positive bugs, each empirically confirmed
-by the reviewer constructing and running an actual counter-example)
-- `_NOT_JUST_RE`/`_BUT_WORD_RE`'s "but" search had no clause/sentence bound (searched from "not
-  just" to the end of the whole string) -- misfired on a read using "not just X" in one sentence
-  and an ordinary, unrelated contrastive "but" in a later one. Also directly contradicted
-  scope-auditor round 1's incorrect assessment of the identical code ("the regex itself is
-  correct, just the comment's illustration is imprecise" -- wrong).
-- `_GROWTH_PERIOD_RE` matched "this year"/"over the year" anywhere in the read, not scoped to a
-  growth statement -- broader than the prompt's actual rule. Misfired on a read discussing free
-  cash flow, never growth.
-- `_ADVICE_WORD_RE` matched "cheap"/"expensive"/"price"/"worth it" as bare words with no
-  share/stock anchoring, unlike the adjacent, deliberately-anchored hold/avoid pattern --
-  misfired rejecting a legitimate leverage/debt-cost explanation ("expensive to service").
 
-Process note, disclosed by the reviewer itself: mid-review, it initially mistook a concurrent
-`docs/data_contract.md` fix (scope-auditor's own resolution landing while cto-reviewer was still
-running) for an unexplained mutation, reverted and unstaged it, then caught its own error by
-cross-reading `review.md`, restored the edit, and re-staged it -- confirmed byte-identical to
-the pre-revert state, both by the reviewer and independently on this end afterward. See
-contract.md's amendments for the full account and the new `concurrent-agent-file-race` memory
-this prompted.
+Round 1 returned FAIL on four. The serious one: `deck_rows_lack_columns` could not invalidate
+the cache it guarded, because `_ensure_all_cards` cleared only `session_state` while
+`_cached_deck.clear()` was never called, so firing the guard produced an unrecoverable spin
+rather than a recovery; and its docstring's premise that the cache "outlives a deploy" is
+false for `persist=None`. Also: no test pinned `DECK_COLUMNS` against the fields the list
+paths actually read, and the fixture derived its keys from `DECK_COLUMNS`, making the suite
+self-referential; the export probe cached a swallowed exception as "no problem" for a full TTL
+window; and a new user-visible error string had been added while the contract reserves
+user-visible copy. All four fixed.
 
-Also confirmed clean by this round: wiring correctness; the `--dry-run` claim (verified directly
-against `main()`); the 5 fixture edits are purely additive; the mutation-style wiring proof is
-meaningful, not vacuous; emoji ranges/currency-symbol exclusion/verdict-ending limitation all
-correct/adequately disclosed; no `.gitlab-ci.yml` change; no secrets; no new dependency; full
-suite 569/569 (pre-fix count); em-dash scan clean (5 legitimate hits, independently re-verified
-after scope-auditor's own fix).
+Round 2 returned FAIL on three more. The real bug: `_descriptions_missing` swallowed every
+exception into `False`, including PostgREST's 42703 for a missing `business_summary` column,
+which is exactly the pre-migration-004 state the overflow menu's caption exists to announce.
+The guard failed open on its own trigger. Fixed with `is_undefined_column_error()`. Also two
+false numbers of mine: the cold-path round-trip headline said 5 when the eagerly-computed
+popover probe makes it 6, and a handover claim that the ping reaches Supabase "because the
+card fetch is uncached per request" was true before this branch and false after it.
 
-Resolution, all three fixed together: combined "not just"/"but" into one sentence-bounded regex;
-scoped the growth-period check to same-sentence proximity with a growth word, checked either
-order; split the advice-word check into an unanchored group (buy/sell/price -- no legitimate
-non-advice use) and merged cheap/expensive/worth-it into the same share/stock-anchored pattern
-hold/avoid already used. New regression tests added for each (a same-sentence-vs-later-sentence
-"but" pair, both growth-word/period-phrase orderings plus a not-about-growth clean case, a
-combined anchored-value-word parametrized test, an expanded benign-use example directly reusing
-the reviewer's own counter-example). Mutation-tested the "not just/but" fix specifically:
-reverted the sentence bound, confirmed the new regression test fails with the exact predicted
-symptom, restored, confirmed clean (573 passed, up from 569). Em-dash re-scanned after all three
-fixes: still exactly 5 legitimate hits.
+Round 3 confirmed all seven prior findings closed, verified the 42703 detection against the
+installed `postgrest` 2.30.0 rather than assuming its error shape, independently
+mutation-verified the `_cached_deck.clear()` test, and confirmed from
+`streamlit/runtime/caching/cache_utils.py` that a raised exception is genuinely never cached.
+It returned FAIL on one thing: a test count corrected from one wrong number to another.
+Fixed by deriving it from the suite instead of typing it.
 
-Round 2 (re-check of the three regex fixes only, nothing else in scope) FAILED (two findings,
-both introduced by round-1's own fixes, both empirically confirmed with actual counter-examples)
-- The growth-period per-sentence check's `re.split(r"[.!?]+", read)` also splits on the "."
-  inside every percentage this app renders (`f"{v:.1f}%"`), so a real sentence with a figure
-  between its growth word and period phrase gets cut into two fragments, neither containing
-  both patterns -- violation silently missed. Named as the exact hazard the file's own comment
-  already flags elsewhere (why "2-3 sentences" isn't checked), walked into anyway.
-- The merged `_ADVICE_VALUE_SHARE_RE` doesn't distinguish "share" as the security from "share
-  of X" (a portion -- on-topic, prompt-encouraged vocabulary per `READ_METRIC_BRIEF`'s own
-  margin gloss) or "market share" (an unrelated business term). Confirmed with 5 constructions,
-  all legitimate, all incorrectly rejected.
+Rounds 4 and 5 passed. Round 5 proved no code moved since round 3 by reconstructing round 4's
+staged diff from the recovered blob and matching its sha256 exactly.
 
-What held: `_NOT_JUST_BUT_RE`'s sentence bound -- stress-tested with semicolon/colon separators
-and word-boundary collisions, held or unrealistic for Haiku's punctuated prose. Full suite
-573/573 (pre-fix count, matches claim). Mutation test (fix 1 from round 1, per explicit request):
-reverted the sentence bound via Edit, confirmed the regression test failed with the predicted
-symptom, restored via Edit, verified narrowly scoped to `scripts/assessment_rules.py` only (per
-the concurrent-edit-race lesson from this reviewer's own round 1). Em-dash scan: exactly 5 hits,
-same legitimate locations, no 6th/undisclosed hit.
-
-Resolution: while fixing finding 1, proactively checked whether the same root cause (naive `.`
-as sentence boundary) also affected the two OTHER proximity-bounded checks sharing the identical
-`[^.!?]`-based mechanism -- confirmed empirically, real bug in both, previously unreported.
-Fixed as one root-cause change: a shared `_SENTENCE_GAP` pattern tolerating a decimal point
-without treating it as a sentence end (used by `_NOT_JUST_BUT_RE` and `_ADVICE_VALUE_SHARE_RE`),
-and a parallel `_SENTENCE_BOUNDARY_RE` split pattern with the identical decimal-tolerance logic
-for the growth-period check. Finding 2 fixed with two lookaround exclusions (`(?<!market )`,
-`(?!\s+of\b)`) on `_ADVICE_VALUE_SHARE_RE`, deliberately not extended to "stock" (no known,
-demonstrated collision there -- not guessing at an unproven problem). 8 new regression tests
-added, including the decimal-figure case for all three affected checks. Mutation-tested the
-shared `_SENTENCE_GAP` fix: reverted to the bare character class, confirmed the two tests using
-it failed with the predicted symptom while the independently-implemented growth-period test
-correctly stayed green, restored, confirmed clean (581 passed, up from 573).
-
-Round 3 (re-check of these two fixes only, nothing else in scope) FAILED (two more real bugs,
-both introduced by round 2's own fix, both empirically demonstrated)
-- `_SENTENCE_BOUNDARY_RE`'s decimal tolerance had inverted lookaround logic
-  (`(?<!\d)\.(?!\d)`, an AND of negations, when the correct test is an OR): a whole-number-then-
-  period ("...ratio of 1.50. This year..." / "...$400. This year...", both real shapes this
-  app's own metric/money formatters produce) wrongly failed to split, merging two unrelated
-  sentences into one fragment -- a FALSE POSITIVE on a compliant read. `_SENTENCE_GAP` (the
-  sibling pattern from the same fix) got the equivalent logic right; only the independently-
-  written split pattern had it backwards.
-- `_ADVICE_VALUE_SHARE_RE`'s `(?<!market )`/`(?!\s+of\b)` exclusions sat outside the whole
-  share/stock alternation, applying to all four words uniformly -- directly contradicting the
-  adjacent comment's explicit claim and regressing round 1's correct behavior ("hold/avoid the
-  stock of X" went from caught to silently missed). Contributing cause: zero test coverage of
-  "stock" as the anchor noun anywhere in the test file -- this branch had never had a positive-
-  catch test.
-
-What held: the originally-reported round-2 bugs are genuinely fixed (8 regression tests pass;
-`_SENTENCE_GAP` mutation-tested via Edit, confirmed correct). Full suite 581/581 before and
-after. Em-dash scan: exactly 5 hits, same legitimate locations, no 6th/undisclosed hit.
-
-Resolution: fixed the OR/AND inversion (alternation form,
-`r"(?<!\d)\.|\.(?!\d)|[!?]+"`). Nested the share/stock exclusions inside the share/shares
-branch specifically, so stock/stocks match unconditionally again. 7 new regression tests added
-(4 parametrized hold/holding/avoid/avoiding-the-stock-of-X, one hold-market-stock, 2
-parametrized whole-number-then-period cases using the reviewer's own exact counter-examples).
-Mutation-tested the OR/AND fix: reverted to the inverted version, confirmed both parametrized
-cases fail with the predicted symptom, restored, confirmed clean (588 passed, up from 581).
-
-Round 4 (re-check of these two fixes only, nothing else in scope) -- genuinely adversarial
-re-test given the 3-rounds-of-self-inflicted-bugs track record, not a rubber stamp:
 VERDICT: PASS
 risks_checked:
-- `_SENTENCE_BOUNDARY_RE`'s OR-of-negations fix: 8 new adversarial cases (multiple whole
-  numbers/decimals stacked back-to-back, a true violation landing after a whole-number split,
-  growth-word/period-phrase correctly not bridged across an intervening whole-number sentence,
-  no over-split of "24.0%"'s own internal decimal, whole numbers at both text edges, mixed
-  `!`/`?` terminators) all held. Mutation-tested by reverting to the round-3 AND-bug via Edit: 3
-  cases failed with exactly the predicted symptom, confirming real discriminating power;
-  restored, byte-identical.
-- `_ADVICE_VALUE_SHARE_RE`'s nested-branch fix: 8 new adversarial cases (uppercase "STOCK OF"
-  still caught, uppercase/title-case "MARKET SHARE" still excluded, plural "shares of" also
-  excluded, a branch-ordering/backtracking stress case, word-boundary stress against
-  "stockpile"/"restock" substrings) all held. Mutation-tested by reverting to the round-2
-  un-nested form: exactly the 2 cases targeting the leak failed with the predicted symptom,
-  restored, byte-identical.
-- The comment's claim that "stock" has no known share-of/market-share-style collision: checked
-  empirically against this app's actual vocabulary (`metric_catalogue.csv`, `READ_SYSTEM_PROMPT`,
-  `READ_METRIC_BRIEF`) rather than trusted -- only hits were "stockholders equity" (where `\b`
-  after "stock" correctly fails to match) and the prompt's own "stock-learning app" self-
-  description (instruction text, not something the LLM has cause to echo). No real collision
-  found; round 3's claim stands.
-- Full suite: 588/588, matching the claimed count, re-run again after mutation testing to rule
-  out residual state.
-- Em-dash scan: exactly 5 hits, same legitimate locations as every prior round, no 6th.
-- Working-tree integrity: confirmed byte-identical to staged after this round's own Edit-based
-  mutation testing -- no repeat of the round-1 concurrent-edit-race incident.
-
-**All four required reviewers now PASS against the current, fully-staged diff**: scope-auditor
-round 2, cto-reviewer round 4, equity-analyst-reviewer round 1.
-
-## equity-analyst-reviewer
-Round 1 (first look, required after scope-auditor round 1 added docs/data_contract.md to
-scope):
-VERDICT: PASS
-risks_checked:
-- Rule-category accuracy: every one of the 10 `violations.append()` call sites in
-  `find_read_style_violations` cross-checked against the new doc paragraph's list and against
-  `READ_SYSTEM_PROMPT`'s own near-verbatim wording -- every listed category real and traceable,
-  nothing invented, nothing omitted. The doc's own "checks a subset... without semantic
-  judgment" hedge matches the code docstring's disclosed partial-subset framing almost word for
-  word -- no overclaim of completeness.
-- Fail-closed/ordering claim verified directly against `_generate_read`: the style check runs
-  immediately after the metric guard, identical `return None, None` path, identical
-  self-healing consumption downstream.
-- 4-reason enumeration traced against every `return None, None` in `_generate_read` -- accurate
-  and complete for what this diff changes.
-- ASCII-dash convention: independently re-scanned (standalone script, explicit UTF-8,
-  `hex(ord(ch))` reporting only) both the new paragraph specifically and the full diff's added
-  lines -- zero hits in the new prose, exactly 5 hits total diff-wide, all in the disclosed,
-  legitimate locations, independently reproduced rather than trusted.
-- Register/voice: new paragraph matches the surrounding ~150 lines' established dense,
-  identifier-heavy technical style, including deliberately echoing the immediately preceding
-  paragraph's own sentence construction.
-
-Two non-blocking observations, not fixed (correctly assessed as true nitpicks, matching this
-task's established bar for what rises to a finding): the guard function's home file
-(`scripts/assessment_rules.py`) isn't named directly in this section's cross-reference ("same
-file" -- accurate but requires the reader to trace it, low severity given the audience); the
-doc groups exclamation-marks and emoji into one prose clause where done_when lists them
-separately (cosmetic only, both remain independently-checked code paths either way).
+- Column completeness: every field read by `filter_pool`, `sectors_for_market`,
+  `eligible_counts_by_market`, `latest_snapshot_label`, `saved_row_subtitle`,
+  `lead_metric_for_row`, `metric_label`, `format_metric_value`, `row_ui` and app.py's
+  title/sort lambdas independently traced against `DECK_COLUMNS`. Nothing read is unfetched.
+  `health_verdict`/`ai_read` are read only by `card_ui.py`, which always receives a hydrated
+  row, so dropping the assessments join from the deck causes no list-row regression.
+- Cache safety: constant key is correct here because the deck is public market data; user
+  interactions stay in browser storage and never enter the cached payload. A raised exception
+  is not stored, so a transient failure retries rather than persisting for a TTL window.
+- `_hydrate`'s slim-row fallback actually renders: no direct `card["..."]` indexing exists in
+  `card_ui.py`, `card_copy.py` or `saved_news.py`, so a failed detail fetch degrades.
+- Both mutation checks re-verified independently by the reviewer, not accepted from the
+  builder: removing `_cached_deck.clear()` drops the second fetch, and reverting the guard to
+  its old `business_summary` form produces 3 fetches where the shipped code produces 1.
+- Two disclosed behaviour differences in the rescoped export check (empty eligible set now
+  answers "missing"; whitespace-only summaries count as present), both left unfixed on the
+  grounds that detecting them costs a cold-path round trip for states that already render
+  correctly, and `scripts/check_export_health.py` gates fill at source.
+- Platform surface: no new dependency, CI job, hook, service, secret or schedule change; only
+  `typing.Callable` newly imported, from stdlib. `_paginate` is a pure read, idempotent on
+  re-run.
