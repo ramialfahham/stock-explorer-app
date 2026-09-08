@@ -64,9 +64,12 @@ no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as 
 final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
 **MR !101, merged** -- scheduled-pipeline alerting + same-day ingestion checkpoint
-(`ingestion/yfinance/ingest.py`, `--force-refetch` bypasses). **Owner action still pending,
-not verifiable from here**: GitLab Settings -> Integrations -> Pipeline emails -> your email
--> "Notify only broken pipelines" -> branches = `main` only (see `docs/operations_guide.md`).
+(`ingestion/yfinance/ingest.py`, `--force-refetch` bypasses). **The alerting route it
+documented did not work** and sat unchecked until 2026-09-08: the owner reported the GitLab
+"Pipeline emails" project integration is not in this project's Settings -> Integrations list
+(the API can only confirm it was never configured, not that it is unavailable). Failed-pipeline
+email is now live via GitLab's built-in per-user notifications instead (bell -> Custom ->
+Failed pipeline); see `docs/operations_guide.md`.
 
 **Finding, not folded into !101 (owner's call):** the 2026-09-01 job trace showed ingestion is
 only ~24 of the ~65-minute total (37%) -- the dominant, ungoverned cost is
@@ -264,18 +267,18 @@ each batch and nobody tracking it as of the last check.
    `name_vs_yfinance_audit_guard.md` (needs owner decisions on live-fetch vs. cached snapshot,
    fuzzy-match tolerance, market scope, and hard-fail vs. warn-only before it's build-ready),
    and the new `discover_saved_search_ux_findings.md` from item 4 above.
-6. **Free-tier Supabase idle-pause: not currently biting; cause not established.**
-   Checked live 2026-09-08: the project had gone 7 days since its last pipeline write
-   (2026-09-01) and was serving normally (HTTP 200, 4,683 rows). The owner confirmed in that
-   session that an UptimeRobot ping was introduced; **it is recorded nowhere in this repo --
-   not the target URL, not the interval**, so a future session cannot verify or maintain it.
-   Getting that written into `docs/operations_guide.md` is the open piece. Two live-in-the-code
-   caveats that make this fragile: the deck fetch is now wrapped in `@st.cache_data` with a
-   30-minute TTL, so a longer TTL would start starving Supabase of queries; and if the ping
-   targets the Render URL rather than Supabase directly, it now reaches Supabase only when a
-   page load falls outside the 30-minute cache window -- before this branch every request hit
-   Supabase, so the ping was guaranteed to. Neither is obvious from reading either system
-   alone, and nobody has confirmed which URL the ping actually targets.
+6. **Free-tier Supabase idle-pause: CLOSED 2026-09-08.** Two UptimeRobot monitors now exist,
+   documented in `docs/operations_guide.md`: one on `stock-explorer-app.onrender.com` (Render
+   sleeps the web service after ~15 min idle) and one hitting the Supabase REST API directly
+   (the project pauses after ~7 days with no activity). **The app monitor alone never covered
+   the database**, which is the trap worth remembering: a plain HTTP request to a Streamlit
+   app returns only the static shell, because Streamlit runs the app script on websocket
+   connect, not on GET. Verified by response body, which contains no card data. Until the
+   second monitor was added the database was uncovered and only survived on real visits.
+   **Closed on the setup being in place, not on observed effect** -- the database monitor
+   cannot be seen working for ~7 days. `docs/operations_guide.md` records how to verify it.
+   The app monitor's interval is recorded there (5 min); the database monitor's configured
+   interval was not captured, only the requirement that it be well under 7 days.
 7. **`supabase/migrations/001_initial_schema.sql`'s `user_interactions.action` CHECK
    constraint only allows `('save', 'skip')`**, stale as of 2026-09-05 against the app-level
    introduction of a third action, `'unsave'` (per-item Saved removal). No live path writes to
