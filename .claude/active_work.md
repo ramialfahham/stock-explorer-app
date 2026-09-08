@@ -12,40 +12,28 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-08)
 
-**MR !111, OPEN, awaiting owner review/merge** (`perf/first-visit-card-load`, pushed
-2026-09-08) -- first-visit load time. The
-owner reported the app took minutes to show anything and that any new user would close it.
-Measured cause was NOT Render cold start (0.42s TTFB, i.e. the instance was warm -- WHY it
-was warm is not established here; see open item 6 on the unconfirmed ping target):
-`_ensure_all_cards` fetched all 4,683 eligible `mart_stock_cards` rows at `select=*` (79
-columns) over 5 PostgREST pages plus all `card_assessments` over 2 more, discarded ~78% of
-them in `dedupe_to_latest_snapshot`, and cached the result in `st.session_state` -- which is
-PER BROWSER SESSION, so every first-time visitor paid the whole thing. `business_summary`
-alone was 66% of the payload.
+**MR !111, merged** -- first-visit load time. Every NEW visitor paid a full deck download
+before anything rendered (all 4,683 eligible rows at `select=*` plus all `card_assessments`,
+~78% discarded by dedupe, cached in `st.session_state` = per browser session). Fixed with a
+12-column deck, no assessments join on the deck, per-card hydration (`fetch_card_detail`), and
+`@st.cache_data` shared across sessions: **18.38 MB / 7 round trips / 7.80s -> 1.46 MB / 6 /
+1.87s**, plus ~0.61s per card opened. Render was never the cause (0.42s TTFB).
 
-Fix: a 12-column deck (`DECK_COLUMNS` in `frontend/supabase_cards.py`, each column justified
-in a comment), no `card_assessments` join on the deck at all, the full row fetched only for
-the card being rendered (`fetch_card_detail`), and both cached with `@st.cache_data` shared
-across sessions instead of per session. Measured against production: **18.38 MB / 7 round
-trips / 7.80s -> 1.46 MB / 1.87s**, plus ~0.61s per card opened. On round trips the honest
-figure is **7 -> 6**, not 7 -> 5: the deck is 5 pages, and the overflow menu's export probe
-adds a 6th on the cold path because a `st.popover` body is computed eagerly. Verified
-end-to-end in the running app (card face, saved-tab news, search) plus 604 tests.
+Five review rounds. The code was clean by round 3; rounds 4-5 went on false claims in my own
+prose (two wrong test counts, two unsupported causation statements, and a wrong belief that a
+`st.popover` body is lazy -- it is not, which is why the cold path is 6 round trips, not 5).
+Reviewers caught two real bugs: a cache guard that cleared `session_state` but not the shared
+cache, so it could only spin rather than recover; and an export diagnostic that failed open on
+the exact 42703 schema error it exists to announce. Full account in that MR's
+`contract.md`/`review.md`.
 
-**The delivered numbers miss the approved plan's own estimate** (~150-250 KB over 1-2 round
-trips). The estimate was sized against the ~1,039 rows that survive dedupe; the deck still
-fetches all 4,683 and dedupes client-side. Closing that gap is the reserved `DISTINCT ON`
-view decision, still the owner's call and still unmade.
-
-**Both reviewers FAILed round 1 on real defects**, all fixed: the shape guard cleared only
-`session_state` and not the cross-session cache, so it would have spun forever instead of
-recovering (`_cached_deck.clear()`, mutation-verified); the export probe cached a swallowed
-exception as "no problem" for a full TTL; a NEW user-visible error string had crept into
-`_hydrate` while the contract reserved user-visible copy. Two contract claims of mine were
-also simply false and are corrected in place: a `st.popover` body is NOT lazy (it computes on
-every script run unless it opts into `on_change="rerun"`), and the promised "browser first
-paint from a fresh incognito session" measurement was never produced -- what exists is the
-data-layer cost above.
+**Still the owner's call, unmade**: the delivered numbers miss the approved plan's own
+estimate (~150-250 KB over 1-2 round trips, sized against the ~1,039 deduped rows; the deck
+still fetches all 4,683 and dedupes client-side). Closing it is the reserved `DISTINCT ON`
+view -- needs a migration plus a grant plus a `coalesce` to preserve the `business_summary`
+backfill. Also unconfirmed: the 30-minute deck TTL (`_DECK_TTL_SECONDS`), shipped inside the
+plan's approved 15-60 min band, which is what keeps traffic querying Supabase inside its
+idle-pause window.
 
 **Read before touching the frontend fetch path**: `DECK_COLUMNS` is the cold path's entire
 cost. Adding a column there is paid by every visitor; adding one to the card face is paid by
