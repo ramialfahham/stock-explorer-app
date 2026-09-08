@@ -12,72 +12,83 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-08)
 
+**MR !111, OPEN, awaiting owner review/merge** (`perf/first-visit-card-load`, pushed
+2026-09-08) -- first-visit load time. The
+owner reported the app took minutes to show anything and that any new user would close it.
+Measured cause was NOT Render cold start (0.42s TTFB, i.e. the instance was warm -- WHY it
+was warm is not established here; see open item 6 on the unconfirmed ping target):
+`_ensure_all_cards` fetched all 4,683 eligible `mart_stock_cards` rows at `select=*` (79
+columns) over 5 PostgREST pages plus all `card_assessments` over 2 more, discarded ~78% of
+them in `dedupe_to_latest_snapshot`, and cached the result in `st.session_state` -- which is
+PER BROWSER SESSION, so every first-time visitor paid the whole thing. `business_summary`
+alone was 66% of the payload.
+
+Fix: a 12-column deck (`DECK_COLUMNS` in `frontend/supabase_cards.py`, each column justified
+in a comment), no `card_assessments` join on the deck at all, the full row fetched only for
+the card being rendered (`fetch_card_detail`), and both cached with `@st.cache_data` shared
+across sessions instead of per session. Measured against production: **18.38 MB / 7 round
+trips / 7.80s -> 1.46 MB / 1.87s**, plus ~0.61s per card opened. On round trips the honest
+figure is **7 -> 6**, not 7 -> 5: the deck is 5 pages, and the overflow menu's export probe
+adds a 6th on the cold path because a `st.popover` body is computed eagerly. Verified
+end-to-end in the running app (card face, saved-tab news, search) plus 604 tests.
+
+**The delivered numbers miss the approved plan's own estimate** (~150-250 KB over 1-2 round
+trips). The estimate was sized against the ~1,039 rows that survive dedupe; the deck still
+fetches all 4,683 and dedupes client-side. Closing that gap is the reserved `DISTINCT ON`
+view decision, still the owner's call and still unmade.
+
+**Both reviewers FAILed round 1 on real defects**, all fixed: the shape guard cleared only
+`session_state` and not the cross-session cache, so it would have spun forever instead of
+recovering (`_cached_deck.clear()`, mutation-verified); the export probe cached a swallowed
+exception as "no problem" for a full TTL; a NEW user-visible error string had crept into
+`_hydrate` while the contract reserved user-visible copy. Two contract claims of mine were
+also simply false and are corrected in place: a `st.popover` body is NOT lazy (it computes on
+every script run unless it opts into `on_change="rerun"`), and the promised "browser first
+paint from a fresh incognito session" measurement was never produced -- what exists is the
+data-layer cost above.
+
+**Read before touching the frontend fetch path**: `DECK_COLUMNS` is the cold path's entire
+cost. Adding a column there is paid by every visitor; adding one to the card face is paid by
+nobody until that card is opened. `tests/frontend/test_supabase_cards.py` pins that the deck
+covers every field the list paths read, and names three exclusions it must not regain.
+
+
 **MR !106, merged** -- deterministic style/rule guard for AI-generated card reads
-(`find_read_style_violations()`, `scripts/assessment_rules.py`), extending the existing
-hallucination guard with 6 checks over `READ_SYSTEM_PROMPT`'s own rules via regex -- zero new
-Claude spend, chosen over a periodic LLM-judge eval specifically because AI-read cost is
-already ungoverned (open item 8). **A real lesson in how hard "add a regex, don't add a new
-bug" is**: four consecutive cto-reviewer rounds, each catching a genuine, distinct bug in the
-PREVIOUS round's own fix (3 false positives in the original design, then 2 more introduced by
-each of the next two fix attempts) before round 4 came back clean. Full account, including a
-mid-review concurrent-edit-race incident (a reviewer's own git operation reverted an unrelated
-concurrent edit, self-caught and disclosed, logged as a new session memory), in MR !106's own
-`contract.md`/`review.md`.
+(`find_read_style_violations()`, `scripts/assessment_rules.py`), zero new Claude spend. Took
+four cto-reviewer rounds, each catching a real bug in the previous round's own fix. Detail in
+that MR's `contract.md`/`review.md`.
 
 ## Recent work (2026-09-07)
 
 **MR !104, merged** -- repo's first Streamlit `AppTest` end-to-end test,
-`tests/frontend/test_app_e2e.py`. Covers the cross-tab Discover/Saved/Search flow (save,
-remove, search) unit tests structurally can't reach -- new test infrastructure, not agreed
-work; `tests/README.md` documents what exists without asserting a future mandate. Two of my
-own claims were wrong, both caught by review and fixed: a false "AppTest never discussed in
-this repo" claim (it had been, in a narrower, non-conflicting decision), and an overclaimed
-"confirmed, not a production bug" verdict on an AppTest-only crash later traced into real,
-shared Streamlit code -- now open item 10 below. Full trace in MR !104's own
-`contract.md`/`review.md` history.
+`tests/frontend/test_app_e2e.py`, covering the cross-tab Discover/Saved/Search flow. Review
+caught two wrong claims of mine; the second became open item 10 below.
 
 ## Recent work (2026-09-06)
 
-**MR !100, merged** -- financial-type card capital-adequacy caveat (item 3). New
-`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` constant on every financial-type card regardless of
-`ai_read` state. Took 4 equity-analyst-reviewer + 2 scope-auditor rounds: caveat wording
-wrongly said "this bank" for the whole GICS Financial Services sector, then twice understated
-the card's shown metrics -- final wording states only the one invariant fact rather than
-enumerating card contents that can drift.
+**MR !100, merged** -- financial-type card capital-adequacy caveat (item 3):
+`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` on every financial-type card regardless of `ai_read`
+state. 4 equity-analyst + 2 scope-auditor rounds on wording alone.
 
 **Gotcha for future sessions, from that task**: `commit_review_gate.py`'s verdict parser needs
 the literal token `VERDICT:` at the start of its own line -- `Round 2 VERDICT: PASS` parses as
 no verdict at all, silently. Multi-round `review.md` entries: earlier rounds as prose, only the
 final round's verdict as a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
 
-**MR !101, merged** -- scheduled-pipeline alerting + ingestion checkpoint (item 2). Alerting:
-GitLab's native "Pipeline emails" integration, zero new code/dependency -- **owner action
-still pending, not verifiable as done from here**: Settings → Integrations → Pipeline emails →
-your email → "Notify only broken pipelines" → branches = `main` only (documented in
-`docs/operations_guide.md`). Checkpointing: `ingestion/yfinance/ingest.py`'s fetch functions
-skip tickers/batches already in a same-day `.checkpoint` marker instead of refetching, flush
-incrementally, `--force-refetch` bypasses it. Three review rounds caught real defects: a
-batch-duplication bug, non-atomic writes, and a freshness check with no protection against two
-other scripts (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) writing
-the same paths -- the marker mechanism is the fix for that third one. Landing after !100 meant
-a real merge conflict on this file (both branches edited it); resolved by merging `main` in,
-and the `frontend/`/`docs/data_contract.md` files that merge carried along were verified
-byte-identical to already-reviewed, already-live content -- owner approved skipping a
-redundant cto-reviewer/equity-analyst-reviewer re-dispatch on them.
+**MR !101, merged** -- scheduled-pipeline alerting + same-day ingestion checkpoint
+(`ingestion/yfinance/ingest.py`, `--force-refetch` bypasses). **Owner action still pending,
+not verifiable from here**: GitLab Settings -> Integrations -> Pipeline emails -> your email
+-> "Notify only broken pipelines" -> branches = `main` only (see `docs/operations_guide.md`).
 
-**Finding, not folded into !101 (owner's call):** pulling the real job trace (`2808154517`,
-the 2026-09-01 scheduled run) showed ingestion is only ~24 of the ~65-minute total (37%) -- the
-actual dominant, ungoverned cost is `generate_assessments.py`'s AI-read step (~39 min, one
-Haiku call per changed card, no cap). Logged as open item 8 below.
+**Finding, not folded into !101 (owner's call):** the 2026-09-01 job trace showed ingestion is
+only ~24 of the ~65-minute total (37%) -- the dominant, ungoverned cost is
+`generate_assessments.py`'s AI-read step (~39 min, one Haiku call per changed card, no cap).
+Open item 8 below.
 
-**MR !103, merged** -- dbt model contract on `mart_stock_cards` (`config: {contract: {enforced:
-true}}` + `data_type:` on all 80 columns) + `dbt source freshness` on all three raw sources
-(`loaded_at_query` via `raw_parquet_union`, warn 20d/error 30d). `yf_daily_prices` gained a new
-`ingested_at` column to make this possible. Five review rounds caught seven real gaps (a
-pre-merge-verification gap, an unscoped glob, a mis-cited prior decision, a schema-mismatch
-concat bug, a missing batch-isolation test, freshness being table- not per-market -- open item
-9 below, and a local-dev-only test gotcha), all fixed and mutation-tested. Full round-by-round
-account in MR !103's own `contract.md`/`review.md` history.
+**MR !103, merged** -- dbt model contract on `mart_stock_cards` (enforced, `data_type:` on all
+80 columns) + `dbt source freshness` on all three raw sources (warn 20d/error 30d).
+`yf_daily_prices` gained `ingested_at`. Five review rounds caught seven real gaps; the
+table-level-not-per-market freshness limitation became open item 9 below.
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
@@ -265,11 +276,18 @@ each batch and nobody tracking it as of the last check.
    `name_vs_yfinance_audit_guard.md` (needs owner decisions on live-fetch vs. cached snapshot,
    fuzzy-match tolerance, market scope, and hard-fail vs. warn-only before it's build-ready),
    and the new `discover_saved_search_ux_findings.md` from item 4 above.
-6. **Free-tier Supabase pauses after ~7 days idle** ("Could not load cards", a real bug in
-   `_ensure_all_cards`), never resolved -- and the current biweekly pipeline schedule
-   (1st/15th) creates gaps up to ~15 days between writes, longer than the pause threshold.
-   Worth checking whether this is silently affecting production right now, and deciding
-   keep-alive vs. a paid tier.
+6. **Free-tier Supabase idle-pause: not currently biting; cause not established.**
+   Checked live 2026-09-08: the project had gone 7 days since its last pipeline write
+   (2026-09-01) and was serving normally (HTTP 200, 4,683 rows). The owner confirmed in that
+   session that an UptimeRobot ping was introduced; **it is recorded nowhere in this repo --
+   not the target URL, not the interval**, so a future session cannot verify or maintain it.
+   Getting that written into `docs/operations_guide.md` is the open piece. Two live-in-the-code
+   caveats that make this fragile: the deck fetch is now wrapped in `@st.cache_data` with a
+   30-minute TTL, so a longer TTL would start starving Supabase of queries; and if the ping
+   targets the Render URL rather than Supabase directly, it now reaches Supabase only when a
+   page load falls outside the 30-minute cache window -- before this branch every request hit
+   Supabase, so the ping was guaranteed to. Neither is obvious from reading either system
+   alone, and nobody has confirmed which URL the ping actually targets.
 7. **`supabase/migrations/001_initial_schema.sql`'s `user_interactions.action` CHECK
    constraint only allows `('save', 'skip')`**, stale as of 2026-09-05 against the app-level
    introduction of a third action, `'unsave'` (per-item Saved removal). No live path writes to

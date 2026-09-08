@@ -24,7 +24,7 @@ from card_copy import (
 from card_ui import render_stock_card
 from explore_filters import (
     ALL_SECTORS,
-    cards_lack_business_summary,
+    deck_rows_lack_columns,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
@@ -39,7 +39,13 @@ import row_ui
 from saved_news import render_saved_news
 from settings import get_supabase_anon_key, get_supabase_url
 from styles import inject_global_css
-from supabase_cards import fetch_eligible_cards_with_assessments
+from supabase_cards import (
+    DECK_COLUMNS,
+    export_lacks_business_summary,
+    is_undefined_column_error,
+    fetch_card_detail,
+    fetch_deck,
+)
 from supabase_client import get_anon_client
 
 load_dotenv()
@@ -88,9 +94,53 @@ def _init_state() -> None:
         )
 
 
+# Short enough that a pipeline export shows up the same day without a redeploy, and short
+# enough that ordinary traffic keeps querying Supabase -- the free tier pauses after ~7 idle
+# days, so a long TTL would turn the cache into an outage risk (open item 6).
+_DECK_TTL_SECONDS = 30 * 60
+
+
+@st.cache_data(ttl=_DECK_TTL_SECONDS, show_spinner=False)
+def _cached_deck(_client) -> list[dict]:
+    """Deck rows shared across ALL browser sessions on this instance.
+
+    `_client` is underscore-prefixed so Streamlit skips hashing it; with no other argument the
+    cache key is constant, which is the point -- the previous session_state cache made every
+    first-time visitor re-download and re-dedupe the whole deck before anything rendered.
+    """
+    return fetch_deck(_client)
+
+
+@st.cache_data(ttl=_DECK_TTL_SECONDS, show_spinner=False)
+def _cached_card_detail(_client, market_code: str, ticker: str) -> dict | None:
+    return fetch_card_detail(_client, market_code, ticker)
+
+
+@st.cache_data(ttl=_DECK_TTL_SECONDS, show_spinner=False)
+def _cached_descriptions_missing(_client) -> bool:
+    return export_lacks_business_summary(_client)
+
+
+def _descriptions_missing(client) -> bool:
+    """The probe runs on every script run, not only when the menu is opened: a st.popover's
+    body is computed eagerly unless it opts into `on_change="rerun"`. The cache is what keeps
+    that to one round trip per TTL window. Catching OUTSIDE the cached call matters -- a
+    transient PostgREST error raised through @st.cache_data is not stored, so the diagnostic
+    retries on the next run instead of reporting "no problem" for the full TTL.
+
+    A missing `business_summary` COLUMN is not a failure to swallow -- it IS the state the
+    caption announces (an export predating migration 004), so it answers True. Any other
+    error stays silent: showing an operator a data-quality alarm because of a transient
+    network blip would be worse than showing nothing."""
+    try:
+        return _cached_descriptions_missing(client)
+    except Exception as exc:  # noqa: BLE001
+        return is_undefined_column_error(exc)
+
+
 def _load_cards(client) -> list[dict]:
     try:
-        return fetch_eligible_cards_with_assessments(client)
+        return _cached_deck(client)
     except Exception as exc:  # noqa: BLE001
         st.error(f"Could not load cards from Supabase: {exc}")
         return []
@@ -98,13 +148,34 @@ def _load_cards(client) -> list[dict]:
 
 def _ensure_all_cards(client) -> list[dict]:
     cards = st.session_state.get("all_cards") or []
-    if cards and cards_lack_business_summary(cards):
+    if cards and deck_rows_lack_columns(cards, DECK_COLUMNS):
+        # Both copies hold the stale shape. Clearing only session_state would re-read the same
+        # rows straight back out of the cross-session cache and trip this guard again on every
+        # rerun -- a spin, not a recovery.
+        _cached_deck.clear()
         cards = []
         st.session_state["all_cards"] = []
     if not cards:
         cards = _load_cards(client)
         st.session_state["all_cards"] = cards
     return cards
+
+
+def _hydrate(client, card: dict | None) -> dict | None:
+    """Swap a slim deck row for the full card row the card face needs.
+
+    Falls back to the slim row on a fetch failure: a card missing its metrics still renders
+    its name, sector and lead metric, which beats an exception on the only screen that
+    matters. Reuses _load_cards' existing error wording rather than introducing a second
+    string -- user-visible copy is an owner decision (working agreement §6)."""
+    if not card:
+        return card
+    try:
+        detail = _cached_card_detail(client, card["market_code"], card["ticker"])
+    except Exception as exc:  # noqa: BLE001
+        st.error(f"Could not load cards from Supabase: {exc}")
+        return card
+    return detail or card
 
 
 def _explore_filters() -> tuple[str, str]:
@@ -220,6 +291,7 @@ def _render_bottom_nav(*, saved_count: int, client) -> str:
                 cards=cards,
                 eligible_counts=st.session_state.get("eligible_counts") or {},
                 on_clear_saved=_clear_saved_session,
+                descriptions_missing=_descriptions_missing(client),
             )
     selected = normalize_nav_page(
         page or st.session_state.get("bottom_nav"),
@@ -384,6 +456,7 @@ def _render_discover_tab(client) -> dict | None:
         st.session_state["discover_focus_key"] = None
         st.rerun()
 
+    selected = _hydrate(client, selected)
     render_stock_card(selected, widget_key_prefix="discover")
     return selected
 
@@ -441,6 +514,7 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         st.rerun()
         return
 
+    selected = _hydrate(client, selected)
     render_saved_news(selected, widget_key_prefix="saved")
     render_stock_card(selected, widget_key_prefix="saved")
     if st.button("Remove from saved", key="saved_remove_current", type="secondary"):
@@ -508,7 +582,7 @@ def _render_search_tab(client) -> None:
     if selected:
         match = next((c for c in matches if _card_key(c) == selected), None)
         if match:
-            render_stock_card(match, widget_key_prefix="search")
+            render_stock_card(_hydrate(client, match), widget_key_prefix="search")
 
 
 def _discovery_page(client) -> None:

@@ -6,7 +6,7 @@ from explore_filters import (  # noqa: E402
     ALL_MARKETS,
     ALL_SECTORS,
     attach_assessments,
-    cards_lack_business_summary,
+    deck_rows_lack_columns,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
@@ -214,19 +214,27 @@ def test_dedupe_coalesces_summary_from_older_snapshot() -> None:
     assert deduped[0]["business_summary"] == "Older snapshot summary text."
 
 
-def test_cards_lack_business_summary_when_column_missing() -> None:
+def test_deck_rows_lack_columns_when_a_required_column_is_absent() -> None:
     cards = [_card("AAPL", "Technology")]
-    assert cards_lack_business_summary(cards) is True
+    assert deck_rows_lack_columns(cards, ("market_code", "ticker", "cash_runway_months")) is True
 
 
-def test_cards_lack_business_summary_when_all_empty() -> None:
-    cards = [{**_card("AAPL", "Technology"), "business_summary": "   "}]
-    assert cards_lack_business_summary(cards) is True
+def test_deck_rows_lack_columns_is_false_when_every_column_is_present() -> None:
+    """Present-but-null still counts as present. A metric a company genuinely has no value for
+    is normal; only a MISSING key means the cached row predates the current code."""
+    cards = [{**_card("AAPL", "Technology"), "cash_runway_months": None}]
+    assert deck_rows_lack_columns(cards, ("market_code", "ticker", "cash_runway_months")) is False
 
 
-def test_cards_lack_business_summary_when_populated() -> None:
-    cards = [{**_card("AAPL", "Technology"), "business_summary": "Apple designs products."}]
-    assert cards_lack_business_summary(cards) is False
+def test_deck_rows_lack_columns_ignores_extra_columns() -> None:
+    cards = [{**_card("AAPL", "Technology"), "unexpected": 1}]
+    assert deck_rows_lack_columns(cards, ("market_code", "ticker")) is False
+
+
+def test_deck_rows_lack_columns_is_false_for_an_empty_deck() -> None:
+    """An empty deck is a load that has not happened yet, not a stale shape -- returning True
+    here would make _ensure_all_cards refetch on every run against an empty export."""
+    assert deck_rows_lack_columns([], ("market_code",)) is False
 
 
 def test_attach_assessments_copies_fields_on_match() -> None:

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 from streamlit.testing.v1.element_tree import Button
 
@@ -107,9 +108,25 @@ def _save_interaction(ticker: str, *, seconds: int) -> dict[str, Any]:
 def app_test(monkeypatch: pytest.MonkeyPatch) -> AppTest:
     monkeypatch.setenv("SUPABASE_URL", "https://fixture.supabase.co")
     monkeypatch.setenv("SUPABASE_ANON_KEY", "fixture-anon-key")
+    # The deck and the card face are two separate fetches now, so both need mocking: the deck
+    # feeds the Discover/Saved/Search lists, fetch_card_detail feeds whichever card is opened.
+    monkeypatch.setattr(supabase_cards, "fetch_deck", lambda client: _fixture_cards())
     monkeypatch.setattr(
-        supabase_cards, "fetch_eligible_cards_with_assessments", lambda client: _fixture_cards()
+        supabase_cards,
+        "fetch_card_detail",
+        lambda client, market_code, ticker: next(
+            (
+                c
+                for c in _fixture_cards()
+                if c["market_code"] == market_code and c["ticker"] == ticker
+            ),
+            None,
+        ),
     )
+    monkeypatch.setattr(supabase_cards, "export_lacks_business_summary", lambda client: False)
+    # app.py caches the deck with @st.cache_data keyed only on an unhashed client, so the key is
+    # constant and one test's deck would otherwise be served to the next.
+    st.cache_data.clear()
     monkeypatch.setattr(supabase_client, "get_anon_client", lambda: object())
     monkeypatch.setattr(saved_news, "_fetch_news", lambda symbol: [])
     monkeypatch.setattr(

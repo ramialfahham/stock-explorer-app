@@ -37,10 +37,14 @@ polling Streamlit's own "Running..." indicator, not assumed from the code):
   same pre-processing delay to **~0.6-0.7 seconds**. The correlation between widget/DOM count
   and click-registration delay is direct and reproducible, not a one-off measurement.
 - Ruled out as causes of a *separate* slowness (see below), by reading the code, not by
-  guessing: Supabase data is bulk-fetched once per session
+  guessing: at the time of this investigation Supabase data was bulk-fetched once per session
   (`supabase_cards.fetch_eligible_cards_with_assessments`, paginated, cached in
-  `st.session_state["all_cards"]`), not per-card, so opening a specific company never triggers
-  its own network fetch. Sector benchmarks are precomputed columns on each card
+  `st.session_state["all_cards"]`), not per-card, so opening a specific company never triggered
+  its own network fetch. That fetch shape has since been replaced by a slim cross-session deck
+  plus per-card hydration (`supabase_cards.fetch_deck`/`fetch_card_detail`), so opening a
+  company now DOES fetch its own row -- which does not change this section's conclusion, since
+  the click delay measured here is widget-count-bound, not network-bound.
+  Sector benchmarks are precomputed columns on each card
   (`sector_median_*`), not computed live in the frontend. Pool filtering
   (`explore_filters.filter_pool`) is a single linear pass over ~923 items using set lookups, no
   nested loops; the subsequent sort (`app._discover_pool`'s own `pool.sort(...)`) is one
