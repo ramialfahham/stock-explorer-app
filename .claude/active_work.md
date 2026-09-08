@@ -12,30 +12,17 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-08)
 
-**MR pending -- deterministic style/rule guard for AI-generated card reads,
-`find_read_style_violations()` in `scripts/assessment_rules.py`.** Extends the existing
-hallucination guard (`validate_read_metrics`) with a sibling check over 6 of
-`READ_SYSTEM_PROMPT`'s own rules (dashes, exclamation/emoji, investment-advice language, named
-AI-tell phrases, growth-period phrasing, verdict-ending) via regex/string matching -- zero new
-Claude spend, zero new infrastructure. Chose this over a periodic LLM-judge eval specifically
-because Claude API cost here is already ungoverned (open item 8) and a full LLM-judge was
-already declined once on cost grounds (`docs/data_contract.md`); put to me directly before
-building anything, since cost/mechanism are owner-only calls.
-
-**A real, useful lesson in how hard "add a regex, don't add a new bug" actually is:** four
-consecutive cto-reviewer rounds, each catching a genuine, distinct bug in the PREVIOUS round's
-own fix -- round 1: three false positives in the original design (an unbounded "but" search, an
-unscoped growth-period phrase, unanchored cheap/expensive/price/worth-it). Round 2's fix for
-those introduced two more (a sentence-splitter that broke on the "." in every percentage this
-app renders, and a share/stock anchoring exclusion that swallowed legitimate "share of X"/
-"market share" vocabulary). Round 3's fix for THOSE introduced two more still (inverted OR/AND
-lookaround logic in the decimal-tolerant sentence boundary, and the share/stock exclusion
-leaking onto "stock" despite the code's own comment claiming otherwise -- caught only because
-the "stock" branch had zero test coverage until then). Round 4 came back genuinely clean after
-16 more adversarial counter-examples. Every fix mutation-tested for real at every round. Full
-round-by-round account, including a mid-review concurrent-edit-race incident (a reviewer's own
-git operation reverted an unrelated concurrent edit, self-caught and disclosed by the reviewer,
-logged as a new session memory) in this branch's own `contract.md`/`review.md`.
+**MR !106, merged** -- deterministic style/rule guard for AI-generated card reads
+(`find_read_style_violations()`, `scripts/assessment_rules.py`), extending the existing
+hallucination guard with 6 checks over `READ_SYSTEM_PROMPT`'s own rules via regex -- zero new
+Claude spend, chosen over a periodic LLM-judge eval specifically because AI-read cost is
+already ungoverned (open item 8). **A real lesson in how hard "add a regex, don't add a new
+bug" is**: four consecutive cto-reviewer rounds, each catching a genuine, distinct bug in the
+PREVIOUS round's own fix (3 false positives in the original design, then 2 more introduced by
+each of the next two fix attempts) before round 4 came back clean. Full account, including a
+mid-review concurrent-edit-race incident (a reviewer's own git operation reverted an unrelated
+concurrent edit, self-caught and disclosed, logged as a new session memory), in MR !106's own
+`contract.md`/`review.md`.
 
 ## Recent work (2026-09-07)
 
@@ -126,9 +113,18 @@ match the current UI (old screenshot showed a stale tagline, old verdict-copy st
 2026-09-08**: topics set via `polish-repo`'s `sync-topics.py` (language detection plus a new
 curated entry for this repo -- `streamlit`, `dbt`, `duckdb`, `supabase`, `postgresql`,
 `yfinance`, `data-engineering`, `python`); description rewritten (owner-approved wording) to
-drop an em dash and a stale "(migrated from GitHub)" aside the old one carried. Remaining
-portfolio items not yet started: a custom link-preview/avatar image (GitLab: the project
-avatar, not a separate social-preview setting).
+drop an em dash and a stale "(migrated from GitHub)" aside the old one carried.
+
+**Link-preview/avatar image (GitLab: the project avatar, not a separate social-preview
+setting) -- deferred, not started.** Tried reusing the existing README screenshot
+(`docs/media/discover-card.png`): a center-crop to square just chopped mid-sentence prose on
+both edges, illegible at avatar size -- dense-text card UI doesn't work as a small icon.
+Sketched 3 AI-generated icon concepts (stacked cards, a candlestick-chart card, a swipe-and-
+spark motif) using the app's real palette (`#0a0a0b` bg, `#c9a962` gold accent) -- owner
+rejected all three outright ("all 3 are crap"), decided to skip rather than keep iterating.
+Low stakes: repo isn't going public yet regardless (see the visibility-sequencing decision
+above). Revisit with either the owner's own asset or a clearer creative direction than "sketch
+some concepts" -- don't just regenerate more AI icon variations next time without that.
 
 **Owner decision on repo visibility (2026-09-08): go public once the repo is portfolio-grade,
 not before.** Sequencing, not a standing block -- the repo stays private through the remaining
