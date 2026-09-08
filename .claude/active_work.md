@@ -12,7 +12,8 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-08)
 
-**Branch `perf/first-visit-card-load`, open, not yet pushed** -- first-visit load time. The
+**MR !111, OPEN, awaiting owner review/merge** (`perf/first-visit-card-load`, pushed
+2026-09-08) -- first-visit load time. The
 owner reported the app took minutes to show anything and that any new user would close it.
 Measured cause was NOT Render cold start (0.42s TTFB, i.e. the instance was warm -- WHY it
 was warm is not established here; see open item 6 on the unconfirmed ping target):
