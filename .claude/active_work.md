@@ -103,7 +103,7 @@ line-length violation CI flagged that should have been checked locally before th
 push -- run `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (and the rest of
 `validate:full`'s local-equivalent commands) before pushing, not just `pytest`/`dbt build`.
 
-**Portfolio-readiness audit, in progress (2026-09-04).** Owner requested a full end-to-end
+**Portfolio-readiness audit -- quick wins done, nothing currently in flight.** Owner requested a full end-to-end
 audit ("this repo has to be portfolio-ready... someone who knows what they're talking about
 should say, 'this guy knows his stuff'"). First fixes, MR !97, merged 2026-09-05: README's
 live-demo link + Stack table corrected from Streamlit Community Cloud to Render (the actual,
@@ -116,7 +116,7 @@ curated entry for this repo -- `streamlit`, `dbt`, `duckdb`, `supabase`, `postgr
 drop an em dash and a stale "(migrated from GitHub)" aside the old one carried.
 
 **Link-preview/avatar image (GitLab: the project avatar, not a separate social-preview
-setting) -- deferred, not started.** Tried reusing the existing README screenshot
+setting) -- deferred after real attempts, unresolved.** Tried reusing the existing README screenshot
 (`docs/media/discover-card.png`): a center-crop to square just chopped mid-sentence prose on
 both edges, illegible at avatar size -- dense-text card UI doesn't work as a small icon.
 Sketched 3 AI-generated icon concepts (stacked cards, a candlestick-chart card, a swipe-and-
@@ -136,27 +136,13 @@ All three sibling branches from this stretch of work are merged into `main` as o
 MR !95 (`test/browser-storage-coverage`), MR !96 (`fix/discover-search-nav-state-loss`, Open
 item 4 below), MR !97 (`docs/portfolio-readme-accuracy-fixes`, above).
 
-**Saved-tab confirm + per-item removal, in progress (2026-09-05), branch
-`feat/saved-clear-confirm-remove`.** Two owner-decided product fixes from a "what product work
-is left" review: "Clear saved" (the bulk wipe in the "⋯" menu) now confirms in place before
-acting (two-click, session-state-driven label swap -- no second nested popover, since
-`st.popover` shouldn't nest); a single saved company can now be removed on its own (previously
-only the all-or-nothing bulk clear existed). Planning turned up a real, scope-expanding bug
-before any code was written, escalated and approved: `frontend/explore_filters.py` had its own
-separate "is this saved" copy (no concept of reversal) feeding Discover's saved-exclusion
-filter -- shipping per-item removal without fixing it would have made a removed ticker vanish
-from Saved but stay excluded from Discover forever, with no way back in since Search has no
-Save action. Fixed by a single shared `saved_keys_with_order()` helper in
-`explore_filters.py` that both the Discover-pool filter and the Saved tab's own count/list now
-delegate to, so the two can never disagree again. A second real bug caught during plan
-validation, before shipping: `clear_interactions()` ends with its own `st.rerun()`, which halts
-the rest of the script run, so the confirm-flag reset had to be reordered to fire *before* that
-call, not after, or the confirm prompt would get stuck reopening with an impossible "Clear all
-0 saved companies?". Both bugs verified fixed by hand against the running dev server, not just
-reasoned about. Full account, review trail, and a scope-auditor correction round (2 stray em
-dashes, one file missing from `scope_paths`, a stale `_saved_keys_with_order` name, and
-strengthening the per-item-removal decision's owner-visibility trail) in this branch's own
-`.claude/task/contract.md`/`review.md`.
+**MR !98, merged 2026-09-05** -- Saved-tab confirm + per-item removal (what shipped: Open item
+4 below). Planning caught two real bugs before/during implementation: a separate, out-of-sync
+"is this saved" check in `frontend/explore_filters.py` that would have stranded a removed
+ticker excluded from Discover forever (fixed via a shared `saved_keys_with_order()` helper),
+and a `clear_interactions()`/`st.rerun()` ordering bug that would have stuck the confirm prompt
+reopening on an impossible "Clear all 0 saved companies?". Both verified fixed by hand against
+the running dev server. Full account in this MR's own `contract.md`/`review.md`.
 
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
