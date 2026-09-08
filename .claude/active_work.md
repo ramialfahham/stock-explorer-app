@@ -26,7 +26,7 @@ universe lost prices; and the `dividendYield` scale guard did not exist. The las
 below. Also open: the learn panel re-implements four metric formulas in Python against a stated
 invariant, and the AI read and the card face disagree on labels and units.
 
-**Branch `fix/dividend-yield-scale-guard`, in progress** -- percent-scale guard for all three
+**MR !114, OPEN, awaiting owner review/merge** (`fix/dividend-yield-scale-guard`) -- percent-scale guard for all three
 passthrough metrics (`dividend_yield_pct`, `revenue_growth_yoy_pct`, `roe_pct`).
 `dbt_analytics/tests/assert_percent_scale_passthroughs.sql` asserts the median absolute value
 per market against a TWO-SIDED band; bands, margins and the known holes are in
