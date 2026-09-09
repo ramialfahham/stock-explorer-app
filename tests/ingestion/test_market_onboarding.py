@@ -521,7 +521,7 @@ def test_active_market_has_a_supabase_markets_row(market_code: str) -> None:
 
     `mart_stock_cards`, `user_interactions` and `card_assessments` all foreign-key to
     `public.markets`. `export_to_supabase.py` writes the mart only and never inserts a market,
-    so a missing row makes the first batch containing that market raise a foreign-key
+    so a missing row makes the single `replace_cards_snapshot` transaction raise a foreign-key
     violation, which aborts the export for EVERY market and stops the assessment step running.
     No CI job exercises the production export, so nothing else catches this before a scheduled
     run.

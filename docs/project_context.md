@@ -81,7 +81,8 @@ dbt <command> --project-dir dbt_analytics --profiles-dir .
 
 - Primary mart: `mart_stock_cards` (all markets; filter by `market_code` at export/UI).
 - Do not create per-market mart copies.
-- Exporter: `scripts/export_to_supabase.py` upserts `mart_stock_cards` using the service role key
+- Exporter: `scripts/export_to_supabase.py` replaces the `mart_stock_cards` snapshot in one
+  transaction (`replace_cards_snapshot`) using the service role key
   (scheduled via the `data-pipeline` job in [`.gitlab-ci.yml`](../.gitlab-ci.yml)).
 - Streamlit reads Supabase with the **anon** key only.
 

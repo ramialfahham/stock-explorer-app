@@ -65,12 +65,17 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `009_pre_revenue_card_metrics.sql` | Pre-revenue/survival-card metric columns (Sector Router 4c) |
 | `010_card_assessments.sql` | `card_assessments` table — health verdict + AI read (Slice 5) |
 | `011_grant_roles.sql` | Explicit role grants — needed when "automatically expose new tables" (step 1) is off |
+| `012_sector_benchmark_min_max.sql` | Sector benchmark min/max columns on mart |
+| `013_net_cash.sql` | `net_cash` on mart, replacing `net_cash_to_market_cap` on the pre-revenue card |
 | `014_fr_cac40_market.sql` | France (CAC 40) row in `public.markets`. Required: three tables foreign-key to it and the export never inserts one |
 | `015_nl_ch_es_markets.sql` | Netherlands (AEX), Switzerland (SMI), Spain (IBEX 35) rows in `public.markets`. Same requirement as 014 |
+| `016_sector_benchmark_quartiles.sql` | Sector benchmark q1/q3 columns on mart |
+| `017_sector_benchmark_financial_operating.sql` | Sector benchmark columns for the financial and operating card metrics |
+| `018_atomic_card_export.sql` | `replace_cards_snapshot()`: one transaction per snapshot, so a half-failed export cannot mix two |
 
-`012_sector_benchmark_min_max.sql` and `013_net_cash.sql` exist on disk but are missing from
-this table. That gap predates the France work and is left rather than backfilled here, so
-the omission is not mistaken for an error in the migration sequence.
+The table was previously missing 012 and 013, with a note excusing the gap; 016 and 017 then
+landed and were absent too, so the note went stale rather than the table getting fixed. It is
+complete as of 018. Keep it that way rather than adding another disclaimer.
 
 After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives
 company descriptions. The app holds its deck in an in-process cache shared by all browser

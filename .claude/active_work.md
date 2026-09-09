@@ -10,6 +10,50 @@ the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WA
 flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
 back under cap by moving settled history into the new archive above._
 
+## Recent work (2026-09-09)
+
+**MR !115 OPEN, awaiting owner merge** (`fix/atomic-card-export`) -- issue #9 finding A1. Batched, untransacted
+upserts could leave production serving two snapshots mixed. Replaced by
+`supabase/migrations/018_atomic_card_export.sql`'s `replace_cards_snapshot()`: one transaction,
+delete-then-insert scoped to the `(market_code, snapshot_date)` pairs the payload carries.
+
+**The recurring failure in every review round on this branch, in one line:** asserted, then
+"verified" against a fixture that could not disprove it. It produced a single-snapshot guard
+built on a false invariant (the mart is multi-date; `fct_fundamentals_snapshot` keeps the
+latest row PER TICKER), a `pg_attribute` column list that turned a fail-loud coupling
+fail-silent, and four `attach_assessments` unit tests left passing vacuously. Full detail in
+`.claude/task/contract.md`'s `amendments:`, which ships with the branch.
+
+**Measured, so nobody re-derives it:** payload 3.9 MB (~6 MB with six more markets) vs an API
+accepting 16 MB+; execution 2.87s, 4.21s at double size. `authenticator` carries
+`statement_timeout=8s`, `service_role` none; whether 8s binds a service-role request is UNTESTED
+(the function is not REST-reachable). If it binds, headroom is under 2x at double scale.
+
+**Owner decisions, ANSWERED 2026-09-09, do not reopen. THREE, not two.** (1) `grant delete on
+public.mart_stock_cards to service_role` -- granted. (2) The delete can roll a ticker back to an
+earlier snapshot when the payload covers its newest one (older numbers), OR drop it from the
+deck when the covered pairs take ALL its rows -- accepted, over never removing a row, which
+rebuilds the accumulate-forever growth of open item 1.
+(3) A `financial` company-type card (the whole GICS Financial Services sector, NOT just banks)
+whose health block is withheld loses `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, the line saying ROE
+and net margin do not show whether it holds enough capital -- LEFT AS IS and
+filed as issue #11, over moving the caveat out of the block, which is card composition and
+would put this branch through the UX PR gate.
+
+**Do not "simplify" the snapshot gate in `attach_assessments`.** It is the answer to the
+owner's "the user must not be confused": a rolled-back card kept the verdict computed from the
+snapshot it is no longer showing, because `card_assessments` is `unique (market_code, ticker)`
+and `generate_assessments.py` never deletes. The verdict and AI read are now withheld unless
+the assessment's `snapshot_date` matches the card's, compared through `_snapshot_sort_key` (a
+bare `str()` would blank every badge app-wide and silently if the column ever gained a time
+component). Mutation-verified in both directions. It self-heals next healthy run except for a
+ticker out of the dbt mart still holding older Supabase rows: it keeps showing a card whose
+assessment is never rewritten. A fully evicted ticker shows no card, so nothing to withhold.
+
+**Still open, owner's call:** NO automated coverage of the SQL function -- every test uses a
+fake client, and three review rounds found real defects in it. Closing it needs a
+`services: [postgres]` container in CI.
+
 ## Recent work (2026-09-08)
 
 **Pipeline engineering audit -- filed as issue #9, findings posted as a comment there.** Three
@@ -18,26 +62,21 @@ Headline: the dbt project and ingestion are genuinely good; almost every real de
 no CI gate reaches -- the export boundary, the frontend, and prose-only standards. **Read the
 issue before starting any cleanup work**; it is the only complete record.
 
-Four findings can produce wrong data or a failed run: a half-failed export silently mixes two
-snapshots (no transaction, no retry, and the stale-export policy has no case for it); a Yahoo
-outlier overflows one of eleven undocumented `numeric(10,4)` caps and aborts the batch; price
+Four findings can produce wrong data or a failed run; the first is FIXED on the 2026-09-09
+branch above. A half-failed export silently mixed two snapshots; a Yahoo
+outlier overflows one of six undocumented `numeric(10,4)` caps (four more columns are
+`numeric(18,6)`) and now aborts the whole export transaction (one 500-row batch before); price
 ingestion failures print a warning and vanish, so freshness reads green while a third of the
 universe lost prices; and the `dividendYield` scale guard did not exist. The last is fixed
 below. Also open: the learn panel re-implements four metric formulas in Python against a stated
 invariant, and the AI read and the card face disagree on labels and units.
 
-**MR !114, OPEN, awaiting owner review/merge** (`fix/dividend-yield-scale-guard`) -- percent-scale guard for all three
-passthrough metrics (`dividend_yield_pct`, `revenue_growth_yoy_pct`, `roe_pct`).
-`dbt_analytics/tests/assert_percent_scale_passthroughs.sql` asserts the median absolute value
-per market against a TWO-SIDED band; bands, margins and the known holes are in
-`docs/data_contract.md`'s "Percent-scale passthrough guard" section. **The direction differs per
-metric and this is the trap**: `dividendYield` arrives as a percent so a flip makes it 100x
-smaller, while `revenueGrowth` and `returnOnEquity` arrive as fractions and are multiplied by
-100, so a flip makes them 100x LARGER. A one-sided floor was blind to two of three, including
-the only user-visible one. Mutation-verified in both directions, per metric, per market: 6
-cases, 6 caught. The review cycle ran long and is worth knowing about: the SQL was settled
-and independently mutation-verified early, and almost every later round found a false claim in
-the prose describing it, several introduced by the previous round's fix.
+**MR !114, merged** -- two-sided percent-scale guard for the three Yahoo passthroughs
+(`assert_percent_scale_passthroughs.sql`), per market, mutation-verified in both directions.
+**The trap worth remembering**: `dividendYield` arrives as a percent so a flip makes it 100x
+SMALLER, while `revenueGrowth` and `returnOnEquity` arrive as fractions and are x100, so a flip
+makes them LARGER. A one-sided floor was blind to two of three. Bands and known holes in
+`docs/data_contract.md`'s "Percent-scale passthrough guard".
 
 **Issue #10, filed, not fixed**: production holds `dividendYield` in MIXED units right now --
 AvalonBay (0.0387) and Equity Residential (0.0426) are REITs yielding ~4%, i.e. fraction-scale
@@ -50,24 +89,25 @@ field (likelier than changing its units) passes every guard silently. The projec
 `accepted_range` tests at all.
 
 
-**MR !111, merged** -- first-visit load time. Every NEW visitor paid a full deck download
-before anything rendered (4,683 rows at `select=*`, ~78% discarded by dedupe, cached per
-browser session). Fixed with a 12-column deck, per-card hydration and `@st.cache_data` shared
-across sessions: **18.38 MB / 7 round trips / 7.80s -> 1.46 MB / 6 / 1.87s**. Render was never
-the cause.
-
-**Still the owner's call, unmade**: the result misses the plan's own estimate (~150-250 KB over
-1-2 round trips) because the deck still fetches all 4,683 rows and dedupes client-side. Closing
-it is the reserved `DISTINCT ON` view (migration + grant + a `coalesce` to keep the
-`business_summary` backfill). Also unconfirmed: the 30-minute `_DECK_TTL_SECONDS`, inside the
-plan's approved 15-60 min band, which keeps traffic querying Supabase inside its idle-pause
-window.
+**MR !111, merged** -- first-visit load time. Cut the deck fetch from 18.38 MB / 7 round trips
+to 1.46 MB / 6. Real, but **it did NOT fix what the owner experiences**, measured live
+2026-09-09: TTFB is 210ms, yet a warm session takes ~7.4s to render and a cold one far longer.
+The dominant cost is Streamlit's OWN front end -- 54 JS files plus 2 fonts, ~1.2 MB, the last
+request finishing around 20s, with 38 KB files taking seconds each on a starved free-tier
+instance. No change in this repo's code moves that. The realistic options are a paid Render
+plan or not Streamlit (issue #2), both owner calls. **Do not re-measure the data layer and
+conclude the app is fast**; measure first paint in a browser.
 
 **Read before touching the frontend fetch path**: `DECK_COLUMNS` is the cold path's entire
 cost. Adding a column there is paid by every visitor; adding one to the card face is paid by
-nobody until that card is opened. `tests/frontend/test_supabase_cards.py` pins that the deck
-covers every field the list paths read, and names three exclusions it must not regain.
+nobody until that card is opened. Still unmade: the reserved `DISTINCT ON` view, and the
+30-minute `_DECK_TTL_SECONDS` inside the plan's approved 15-60 min band.
 
+**Mobile type scale is too small and unfixed** (owner, 2026-09-09: "completely crap"). Measured
+at 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. The tokens are
+centralised in `frontend/styles.py` (`--ss-caption-size` 0.72rem, `--ss-label` 0.75rem,
+`--ss-row-title` 0.85rem). Changing them is a UX PR gate change (`docs/working_agreement.md`),
+needing the 480px checklist.
 
 **MR !106, merged** -- deterministic style/rule guard for AI-generated card reads
 (`find_read_style_violations()`, `scripts/assessment_rules.py`), zero new Claude spend. Took
@@ -96,50 +136,28 @@ the ~65-minute total. The dominant, ungoverned cost is `generate_assessments.py`
 
 ## Recent work (2026-09-01 to 2026-09-02)
 
-All nine Gemini-feedback points in
-[`docs/backlog/gemini_verdict_feedback.md`](../docs/backlog/gemini_verdict_feedback.md)
-shipped (MRs !73/!75/!77/!79/!81/!83/!85/!87; !79 declined sector-relative calibration,
-!85 declined moving the pre_revenue threshold) -- that doc now has nothing outstanding.
-Full account, including three real review FAILs, in `docs/handover_2026-09-03.md`.
+All nine Gemini-feedback points shipped (MRs !73-!87; !79 and !85 declined on the owner's
+call). Full account in `docs/handover_2026-09-03.md`.
 
-**MR !92 (2026-09-03) -- 5-metric benchmark expansion, merged.** Owner-approved follow-up to
-!22, not one of the nine Gemini points above (scoped down from an original "11-metric" idea
-after finding pre-revenue's 3-company coverage could never clear the 8-peer rendering
-threshold). Extends the range-mark feature from 4 to 9 benchmarked metrics
-(`debt_to_equity`/`current_ratio_stmt`/`statement_roe_pct`/`net_margin_pct`/`roa_pct` added).
-Mid-review, two reviewers independently caught a real bug: the new
+**MR !92, merged** -- 5-metric benchmark expansion (range marks from 4 to 9 benchmarked
+metrics). Two reviewers independently caught a real bug mid-review: the new
 `debt_to_equity`/`statement_roe_pct` sector aggregates had no guard against negative
-stockholders' equity, the same sign-inversion class !73/!77 already guard at the verdict
-layer but that guard never covered peer-benchmark aggregation. Fixed and escalated to the
-owner (approved, "go") since it broke the task's own "no metric-specific exception" scope --
-worth reading as a caution for future benchmark-style aggregates over any ratio with a
-denominator that can legitimately flip sign. Also caught post-push: a `sqlfluff`
-line-length violation CI flagged that should have been checked locally before the first
-push -- run `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (and the rest of
-`validate:full`'s local-equivalent commands) before pushing, not just `pytest`/`dbt build`.
+stockholders' equity, the sign-inversion class !73/!77 already guard at the verdict layer but
+never covered peer-benchmark aggregation. **Caution for any future benchmark aggregate over a
+ratio whose denominator can flip sign.** Also: a `sqlfluff` line-length violation reached CI
+that a local run would have caught, so run `sqlfluff lint dbt_analytics/models
+dbt_analytics/tests` and the rest of `validate:full` locally before pushing, not just pytest.
 
-**Portfolio-readiness audit -- quick wins done, nothing currently in flight.** Owner requested a full end-to-end
-audit ("this repo has to be portfolio-ready... someone who knows what they're talking about
-should say, 'this guy knows his stuff'"). First fixes, MR !97, merged 2026-09-05: README's
-live-demo link + Stack table corrected from Streamlit Community Cloud to Render (the actual,
-already-shipped deploy target, verified live); `docs/media/discover-card.png` refreshed to
-match the current UI (old screenshot showed a stale tagline, old verdict-copy style, and a
-"Forward P/E" metric no longer on the card). **GitLab topics + project description done
-2026-09-08**: topics set via `polish-repo`'s `sync-topics.py` (language detection plus a new
-curated entry for this repo -- `streamlit`, `dbt`, `duckdb`, `supabase`, `postgresql`,
-`yfinance`, `data-engineering`, `python`); description rewritten (owner-approved wording) to
-drop an em dash and a stale "(migrated from GitHub)" aside the old one carried.
+**Portfolio-readiness: presentation fixes merged, SUBSTANCE is the open half.** MR !97 (README
+deploy target, refreshed screenshot) and GitLab topics/description are done. The owner's
+correction on 2026-09-09 is the part that matters: "this is not about make-up, it's about
+substance, specifically the engineering part" -- portfolio-grade means the pipeline itself,
+which is what issue #9's audit findings track.
 
-**Link-preview/avatar image (GitLab: the project avatar, not a separate social-preview
-setting) -- deferred after real attempts, unresolved.** Tried reusing the existing README screenshot
-(`docs/media/discover-card.png`): a center-crop to square just chopped mid-sentence prose on
-both edges, illegible at avatar size -- dense-text card UI doesn't work as a small icon.
-Sketched 3 AI-generated icon concepts (stacked cards, a candlestick-chart card, a swipe-and-
-spark motif) using the app's real palette (`#0a0a0b` bg, `#c9a962` gold accent) -- owner
-rejected all three outright ("all 3 are crap"), decided to skip rather than keep iterating.
-Low stakes: repo isn't going public yet regardless (see the visibility-sequencing decision
-above). Revisit with either the owner's own asset or a clearer creative direction than "sketch
-some concepts" -- don't just regenerate more AI icon variations next time without that.
+**Link-preview/avatar image -- deferred, unresolved.** Cropping the README screenshot to a
+square chopped mid-sentence prose and was illegible at avatar size; three AI-generated icon
+concepts in the app palette were rejected outright ("all 3 are crap"). Revisit only with the
+owner's own asset or a clearer direction, not by generating more variations.
 
 **Owner decision on repo visibility (2026-09-08): go public once the repo is portfolio-grade,
 not before.** Sequencing, not a standing block -- the repo stays private through the remaining
@@ -147,23 +165,18 @@ polish work (topics/description/link-preview image, and whatever else "portfolio
 out to need) and flips public as the last step, not a precondition to start on the rest. Don't
 treat visibility as something to decide independently of that polish work finishing.
 
-All three sibling branches from this stretch of work are merged into `main` as of 2026-09-05:
-MR !95 (`test/browser-storage-coverage`), MR !96 (`fix/discover-search-nav-state-loss`, Open
-item 4 below), MR !97 (`docs/portfolio-readme-accuracy-fixes`, above).
-
-**MR !98, merged 2026-09-05** -- Saved-tab confirm + per-item removal (what shipped: Open item
-4 below). Planning caught two real bugs before/during implementation: a separate, out-of-sync
-"is this saved" check in `frontend/explore_filters.py` that would have stranded a removed
-ticker excluded from Discover forever (fixed via a shared `saved_keys_with_order()` helper),
-and a `clear_interactions()`/`st.rerun()` ordering bug that would have stuck the confirm prompt
-reopening on an impossible "Clear all 0 saved companies?". Both verified fixed by hand against
-the running dev server. Full account in this MR's own `contract.md`/`review.md`.
+MRs !95, !96, !97 and !98 all merged 2026-09-05 (browser-storage coverage, Discover/Search nav
+state loss, README accuracy, Saved-tab confirm + per-item removal). !98's planning caught two
+real bugs first: an out-of-sync "is this saved" check that would have stranded a removed ticker
+(now the shared `saved_keys_with_order()`), and a `clear_interactions()`/`st.rerun()` ordering
+bug. Detail in each MR's own `contract.md`/`review.md`.
 
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
 - **Metric-assignment matrix**: perspectives (valuation/profitability/growth/solvency/
   liquidity/cash/returns) are semi-universal lenses; the metric filling each is type-specific;
-  some lenses are honestly EMPTY (never fill with a weak proxy). Financial (bank) cards have
+  some lenses are honestly EMPTY (never fill with a weak proxy). `financial` company-type cards
+  (the whole GICS sector, not just banks) have
   no sound solvency/liquidity/cash metric sourceable from yfinance -- leave it blank.
 - **Metric definitions**: statement ROE = common income / common equity; ROA = net income /
   total assets from statements; `cash_runway` = cash / FCF-burn in months. New computed
@@ -245,10 +258,10 @@ each batch and nobody tracking it as of the last check.
    leave it for now** -- known, accepted category of yfinance noise, not worth building a
    revenue-growth fallback (e.g. computed from ingested total-revenue statement rows instead
    of the fragile info scalar) for three cards. Revisit if Yahoo's data doesn't recover, or if
-   this pattern shows up on more tickers. **Still separately open, not resolved by the above:
-   there is no eviction mechanism** -- a ticker that stops being exported keeps its last card
-   in the deck indefinitely (frontend dedupes to newest row per ticker, not newest snapshot).
-   Whether the deck should evict by snapshot age remains an owner call.
+   this pattern shows up on more tickers. **Eviction is now REACHABLE, and still undecided:** the atomic
+   export (branch above) deletes the `(market, date)` pairs a payload covers, so a ticker
+   leaves the deck when those take ALL its remaining rows. Whether it should evict BY SNAPSHOT
+   AGE is still an owner call.
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
@@ -256,10 +269,12 @@ each batch and nobody tracking it as of the last check.
    Previously survived only
    as an LLM prompt instruction with no card-face caveat, so a card with a null `ai_read`
    warned nobody. Fixed with a deterministic, owner-approved caveat ("These numbers do not
-   show whether this company holds enough capital to stay safe.") that now shows on every
-   financial-type card regardless of `ai_read` state, since the prompt only asks the model to
+   show whether this company holds enough capital to stay safe.") that shows on a
+   financial-type card in every `ai_read` state, since the prompt only asks the model to
    mention the limit, never guarantees it does (`frontend/card_copy.py`'s
-   `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by `frontend/card_ui.py`). Two review rounds
+   `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by `frontend/card_ui.py`). It renders inside
+   the health block, so a card whose block is withheld loses it too -- see the third owner
+   answer above, and issue #11. Two review rounds
    caught the wording overclaiming what it excludes ("this bank" -- `company_type ==
    "financial"` is the whole GICS Financial Services sector, not banks; "profitability only" /
    "profitability and returns only" -- the card also shows a growth metric) before landing on

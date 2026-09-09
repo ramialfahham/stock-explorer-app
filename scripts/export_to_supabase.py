@@ -1,4 +1,4 @@
-"""Upsert mart_stock_cards from DuckDB into Supabase (service role).
+"""Replace the mart_stock_cards snapshot in Supabase from DuckDB (service role).
 
 --target selects which Postgres schema this writes to, inside the SAME Supabase project
 (same credentials, no new secrets):
@@ -8,7 +8,7 @@
                     real Postgres before it ships. Requires the "dev" schema to already
                     exist (run apply_supabase_migrations.py --target dev first) AND to be
                     added to the Supabase project's Settings -> API -> Exposed schemas list
-                    once, manually — this script goes through PostgREST (client.table()),
+                    once, manually. This script goes through PostgREST (client.rpc()),
                     which only serves schemas on that list. apply_supabase_migrations.py is
                     unaffected (raw Postgres connection, not PostgREST).
 """
@@ -115,7 +115,7 @@ def _load_mart_rows(db_path: Path) -> list[dict]:
     try:
         cols = ", ".join(EXPORT_COLUMNS)
         rows = conn.execute(
-            f"select {cols} from marts.mart_stock_cards"
+            f"select {cols} from marts.mart_stock_cards order by market_code, ticker, snapshot_date"
         ).fetchdf()
     finally:
         conn.close()
@@ -141,6 +141,21 @@ def _load_mart_rows(db_path: Path) -> list[dict]:
         record["exported_at"] = exported_at
         records.append(record)
     return records
+
+
+def inserted_count(data: object) -> int | None:
+    """The row count replace_cards_snapshot returned, or None if the response is not one.
+
+    PostgREST returns a scalar function's result as a bare value, but client versions differ
+    on whether they hand it back wrapped in a single-element list. This accepts either rather
+    than guessing, and returns None for anything else so the caller fails loudly instead of
+    comparing against a shape it did not expect.
+    """
+    if isinstance(data, list):
+        data = data[0] if len(data) == 1 else None
+    if isinstance(data, bool) or not isinstance(data, int):
+        return None
+    return data
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -188,15 +203,31 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     client = create_client(url, key, options=SyncClientOptions(schema=schema))
-    batch_size = 500
-    for start in range(0, len(records), batch_size):
-        batch = records[start : start + batch_size]
-        client.table("mart_stock_cards").upsert(
-            batch,
-            on_conflict="market_code,ticker,snapshot_date",
-        ).execute()
 
-    print(f"export_to_supabase: upserted {len(records)} rows to '{schema}'")
+    # One transaction, server-side. The previous batched upsert committed each batch
+    # separately, so a mid-run failure left production holding the new snapshot for some
+    # tickers and the previous one for the rest, which the frontend then served as a mix.
+    response = client.rpc("replace_cards_snapshot", {"payload": records}).execute()
+
+    inserted = inserted_count(response.data)
+    if inserted is None:
+        # The call returned 2xx, so the transaction COMMITTED; only the response shape is
+        # unrecognised. Saying anything about a rollback here would be a guess about
+        # production state, and the wrong one.
+        print(
+            f"export_to_supabase: UNVERIFIED -- the write returned {response.data!r}, which is "
+            f"not a row count. The snapshot was almost certainly written; check "
+            f"mart_stock_cards in Supabase before re-running."
+        )
+        return 1
+    if inserted != len(records):
+        print(
+            f"export_to_supabase: FAILED -- sent {len(records)} rows, database reported "
+            f"{inserted} inserted. The transaction did not do what was asked."
+        )
+        return 1
+
+    print(f"export_to_supabase: replaced snapshot with {inserted} rows in '{schema}'")
     return 0
 
 

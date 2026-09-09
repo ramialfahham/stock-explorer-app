@@ -283,9 +283,12 @@ metrics as (
 ),
 
 eligibility as (
-    -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a bank-appropriate
-    -- pair, since the operating solvency/cash metrics are unsourceable for them; pre_revenue
-    -- qualifies on net_cash alone (its survival card); operating keeps a four-metric AND.
+    -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a two-metric
+    -- pair. The operating solvency/cash metrics are computed for them ungated above and are
+    -- dropped here BY CLASSIFICATION, not because they cannot be fetched: leverage and
+    -- cash-conversion ratios do not mean for a balance-sheet business what they mean for an
+    -- operating one. pre_revenue qualifies on net_cash alone (its survival card); operating
+    -- keeps a four-metric AND.
     -- forward_pe was dropped from BOTH the financial and operating sets: a card
     -- must not be gated on a metric it does not display, and forward_pe is no longer
     -- catalogued (owner's call -- it carries the share price, which this twice-monthly

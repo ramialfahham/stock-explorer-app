@@ -164,7 +164,7 @@ Nullable — e.g. financials have no current/non-current split, so `stmt_current
 **Additional computed metrics — formula reference:** computed once in `int_stock__card_metrics`. The
 authoritative display definitions live in the [`metric_catalogue` seed](../dbt_analytics/seeds/metric_catalogue.csv);
 many of the below are now catalogued and exported per company type by the Sector/Lifecycle Router (the
-operating solvency/returns set, the bank set, and the pre-revenue survival set), while several remain
+operating solvency/returns set, the `financial` set, and the pre-revenue survival set), while several remain
 data-only intermediates (the info-scalar duplicates, `interest_coverage`, `computed_fcf`, and
 `net_cash_to_ev`). Nullable; not clipped.
 
@@ -235,8 +235,13 @@ substitute ROE, ROA, or hand-built ROIC.
 
 - **operating** — all four of `ebit_margin_pct`, `revenue_growth_yoy_pct`,
   `net_debt_to_ebitda`, `fcf_margin_pct` non-null.
-- **financial** — `statement_roe_pct`, `net_margin_pct` non-null (the operating
-  solvency/cash metrics are unsourceable for banks).
+- **financial**: `statement_roe_pct`, `net_margin_pct` non-null. The operating metrics are
+  not required BY CLASSIFICATION, not because they cannot be fetched: rule 1 above keys on
+  `sector = 'Financial Services'` alone, and EBITDA and free cash flow are perfectly sourceable
+  for an exchange or a ratings agency. They are dropped because leverage and cash-conversion
+  ratios do not mean for a balance-sheet business what they mean for an operating one. Banks and
+  insurers are the paradigm; the other members of the sector (exchanges, ratings agencies) are
+  carried along by the coarse sector key.
 - **pre_revenue** — `net_cash` non-null, i.e. cash and total debt are both present (the
   operating metrics break for revenue ≤ 0, and for positive-but-negligible revenue).
 
@@ -295,6 +300,50 @@ Benchmark availability does **not** affect `is_card_eligible`.
 
 **Stale export policy:** if the scheduled pipeline run fails the completeness gate, **keep
 last good Supabase snapshot**; do not truncate to empty.
+
+**The export is atomic**, so a partial snapshot is not a state the pipeline can produce.
+`scripts/export_to_supabase.py` sends the whole deck to `replace_cards_snapshot`
+(`supabase/migrations/018_atomic_card_export.sql`), which deletes and re-inserts every
+`(market_code, snapshot_date)` pair the payload covers, inside one transaction. Either every row lands or none does and the previous
+snapshot stays intact. It previously wrote in batches of 500 with no transaction, so a failure
+partway left some tickers on the new snapshot and the rest on the old one, which the frontend
+then served as a mix with nothing marking it.
+
+Three things worth knowing.
+
+It replaces every `snapshot_date` the payload carries, not one. The mart is multi-date by
+design (`_marts.yml` declares the grain as `(market_code, ticker, snapshot_date)`), and a
+per-market re-run after a partial ingest legitimately produces more than one date, so
+refusing that would turn a documented recovery step into a total export failure.
+
+A ticker that was in a `(market, date)` pair the payload covers, but is no longer in the
+mart, is deleted and not re-inserted. The old upsert left it.
+
+What that does to the deck depends on what else the ticker has. Nothing has ever deleted from
+this table, so it holds roughly one row per `(ticker, snapshot_date)` ever exported. If any of
+its rows sit at pairs the payload does NOT cover, those survive and the ticker rolls BACK to
+the newest of them: the reader sees a staler card whose `As of` date is correct but whose move BACKWARDS is
+unannounced, rather than nothing. It leaves
+the deck when the covered pairs take ALL of its remaining rows, which a multi-date payload can
+do without any single pair having been its last. Both outcomes touch the unmade decision about
+whether the deck should evict.
+
+The reachable path is narrower than it first looks, and the condition matters. A ticker is
+only evicted if its last exported `(market, date)` pair is one that some STILL-eligible ticker
+of the same market currently occupies in the mart. A ticker that simply failed to refresh
+keeps its row and its eligibility, so an un-refreshed market alone evicts nothing.
+
+Two ways to reach it. A PARTIALLY refreshed market, where one ticker refreshes and becomes
+ineligible (so it drops out of the mart) while another ticker of the same market failed to
+refresh and still sits at the first one's old date. Or an eligibility-rule or seed change that
+flips a ticker ineligible with no re-ingest at all.
+
+Whether the deck SHOULD evict this way is an open question, and is not settled by this
+mechanism having made it possible.
+
+It inserts only the columns the payload carries, so a column the export does not send keeps
+its DEFAULT, and it raises if the payload names a column the table does not have rather than
+silently dropping it.
 
 **Checked by `dbt source freshness`** (`data-pipeline` job, before `dbt build`; also run in
 `validate:full` on every merge request, against CI fixture data, to catch a broken freshness
@@ -559,6 +608,17 @@ year"/"over the year" about growth, and the read must end on the verdict's meani
 violation fails exactly the same way the numeric guard does -- fail closed, self-heals next
 `input_hash` change, no retry.
 
+**The whole health block is withheld when the assessment's `snapshot_date` differs from the
+card's** -- verdict, read and the financial caveat together, with no placeholder. That is a
+different case from the four below, which all keep the verdict and drop only `ai_read`. It
+happens when the two jobs disagree about which snapshot the card is on: the assessments step
+failing after a successful export, or the export rolling a card back to an earlier snapshot
+(see "Stale export policy"). It self-heals on the next healthy run except for a ticker that
+has dropped out of the dbt mart while older Supabase rows survive: it keeps rendering a card,
+and `generate_assessments.py` reads only the DuckDB mart, so its assessment row is never
+rewritten and the mismatch is permanent. A ticker whose rows are ALL deleted is a different
+case and not this one -- it renders no card at all, so it has no verdict to withhold.
+
 When `ai_read` is absent (a brand-new card, a per-card API failure, a hallucination-guard
 reject, or a style-guard reject), the card shows a deterministic,
 non-AI one-line summary under its own "What the verdict means" heading instead of the AI-written
@@ -578,7 +638,7 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `ai_read` | text | Claude Haiku prose read (`claude-haiku-4-5`); educational, never advice; reasons only from the card's numbers |
 | `read_model` | text | model id that wrote `ai_read` (from the Claude API response) |
 | `input_hash` | text | sha256 of the verdict inputs plus the display currency; drives 5b regenerate-on-change |
-| `snapshot_date` | date | the mart snapshot the assessment reflects |
+| `snapshot_date` | date | the mart snapshot the assessment reflects. Load-bearing at read time, not just provenance: the frontend attaches the verdict only when this equals the card's `snapshot_date` |
 | `generated_at` | timestamptz | last write |
 
 **Verdict rules (deterministic, per `company_type`).** The color is decided by transparent rules — **not**
@@ -635,11 +695,18 @@ Conservative — one serious weakness caps it:
   not rescue any other weak axis. `debt_to_equity` and `statement_roe_pct` get no analogous
   relief -- this is scoped to the one metric pair the feedback and the owner's decision named.
 - **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
-  adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the bank verdict stays modest).
-  This limit is also shown card-face on every financial-type card, not just instructed in the
-  AI-read prompt (`frontend/card_copy.py`'s `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by
-  `frontend/card_ui.py`'s `_health_block_html` regardless of whether `ai_read` is present) --
-  the prompt only asks the model to mention it, never guarantees the model does.
+  adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the verdict on a `financial`
+  card stays modest -- for a whole sector, of which banks are only the part CET1/Tier 1 names).
+  This limit is shown card-face rather than only instructed in the AI-read prompt
+  (`frontend/card_copy.py`'s `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by
+  `frontend/card_ui.py`'s `_health_block_html` whether or not `ai_read` is present) -- the
+  prompt only asks the model to mention it, never guarantees the model does. **It rides with
+  the health block, so a financial card that has no attached assessment shows its profitability
+  numbers with no capital-adequacy caveat.** True for every card whose block is withheld: one
+  awaiting its first assessment, and one whose assessment is on a different `snapshot_date`.
+  Known gap, owner-decided to leave as-is rather than render the caveat independently of the
+  verdict, which would be a card-composition change under the UX PR gate. Filed as gitlab
+  issue #11 (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/work_items/11).
 - **`revenue_growth_yoy_pct` — ONE-SIDED, on operating and financial cards**.
   Growth below `GROWTH_DECLINE_THRESHOLD_PCT` (0.0, any year-over-year decline, no tolerance
   band) **blocks green**. It can do nothing else: growth never earns green, and it never causes

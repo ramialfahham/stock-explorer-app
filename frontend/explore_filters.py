@@ -99,13 +99,29 @@ def attach_assessments(
     assessments: dict[tuple[str, str], dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Copy health_verdict/ai_read onto each card when a matching card_assessments row
-    exists. No match (the assessments pipeline runs after export and can lag a
-    newly-eligible card) -> card returned unchanged. Callers must treat a missing
-    health_verdict key as "omit the health block", never a placeholder."""
+    exists AND was computed from the snapshot the card is showing. No match (the assessments
+    pipeline runs after export and can lag a newly-eligible card) -> card returned unchanged.
+    Callers must treat a missing health_verdict key as "omit the health block", never a
+    placeholder.
+
+    The snapshot check is what keeps a card from contradicting itself. A verdict and AI read
+    computed from one snapshot printed over another snapshot's numbers is worse than no
+    verdict: the badge is the product's central claim and the reader cannot see the mismatch.
+    Both directions are real. The assessments step can fail after a successful export, leaving
+    an older verdict over newer numbers; and the export can roll a card back to an earlier
+    snapshot while the verdict stays on the newer one. A healthy run writes both from the same
+    mart, so a working pipeline never trips this.
+
+    One case does NOT self-heal, and the card stays verdict-less indefinitely: a ticker the
+    export evicted from its newest snapshot keeps its old assessment row forever, because
+    generate_assessments.py builds records only from mart rows and never deletes."""
     result: list[dict[str, Any]] = []
     for card in cards:
         row = assessments.get(_card_key(card))
         if row is None:
+            result.append(card)
+            continue
+        if _snapshot_sort_key(row) != _snapshot_sort_key(card):
             result.append(card)
             continue
         merged = dict(card)

@@ -56,7 +56,7 @@ _LEAD_METRIC_BY_TYPE = {
 def lead_metric_for_row(card: dict) -> tuple[str, str] | None:
     """The one metric a Discover list row leads with.
 
-    Operating margin for operating companies, Return on equity for financial (banks), cash
+    Operating margin for operating companies, Return on equity for financial firms, cash
     runway for pre-revenue: each is a CORE, verdict-deciding input to that company type's
     own verdict rule in scripts/assessment_rules.py, not just any input of any weight.
     `statement_roe_pct` was the first choice for both operating and financial, but for
@@ -90,7 +90,7 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
     """Metric ids to render for this card, grouped by analytical lens then display order.
 
     A metric shows only when it applies to the card's ``company_type`` **and** has a value —
-    so a lens that is blank for a type (e.g. bank solvency) or simply missing for a row is
+    so a lens that is blank for a type (e.g. financial-firm solvency) or missing for a row is
     omitted, never rendered as an em-dash. A missing/None ``company_type`` defaults to
     ``operating`` (the classifier's own default and the current universe's majority).
     """
@@ -565,17 +565,20 @@ VERDICT_FALLBACK_READ = {
     "red": "Exhibits at least one severe financial vulnerability that impairs overall stability.",
 }
 
-# Shown on every "financial" company-type card (the whole GICS "Financial Services" sector --
+# Shown on a "financial" company-type card (the whole GICS "Financial Services" sector --
 # banks, insurers, payment networks, asset managers, exchanges, ratings agencies -- not banks
-# specifically, see docs/data_contract.md's company_type classification), regardless of whether
-# ai_read is present -- the LLM is only prompted, never required, to state this limit in its own
-# prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT, "financial" company-type lens), so
-# relying on the model to say it every time would silently reintroduce the gap this exists to
-# close. Deliberately says "this company", not "this bank" -- mirrors READ_SYSTEM_PROMPT's own
-# already-reviewed "financial company" framing rather than the bank-specific framing an earlier
-# draft used, which was wrong for the non-bank share of this sector (equity-analyst-reviewer
-# finding). Deliberately states only what's MISSING, not an enumeration of what's shown --
-# an earlier draft said "profitability only" / "profitability and returns only" and was wrong
+# specifically, see docs/data_contract.md's company_type classification) in every narrative
+# state, whether or not ai_read is present -- the LLM is only prompted, never required, to
+# state this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT,
+# "financial" company-type lens), so relying on the model to say it every time would silently
+# reintroduce the gap this exists to close. It renders inside card_ui.py's _health_block_html
+# though, so a card whose health block is withheld shows no caveat at all: a known gap, left
+# rather than rendering it separately (gitlab issue #11). Deliberately says "this company", not
+# "this bank" -- mirrors READ_SYSTEM_PROMPT's own already-reviewed "financial company" framing
+# rather than the bank-specific framing an earlier draft used, which was wrong for the non-bank
+# share of this sector (equity-analyst-reviewer finding). Deliberately states only what's
+# MISSING, not an enumeration of what's shown -- an earlier draft said "profitability only" /
+# "profitability and returns only" and was wrong
 # both times as soon as checked against metric_catalogue.csv's actual applies_to=financial set
 # (also includes a growth metric), because that set is data-driven and can change independently
 # of this string. Stating only the one invariant fact (capital adequacy is never assessed here)

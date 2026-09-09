@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from pathlib import Path
 
 import duckdb
@@ -27,24 +28,38 @@ def _make_mart(path: Path, rows: list[dict]) -> None:
 _ROW = {"market_code": "us_sp500", "ticker": "T1", "snapshot_date": "2026-06-01"}
 
 
+class _FakeResponse:
+    def __init__(self, data) -> None:
+        self.data = data
+
+
 class _FakeQuery:
-    def __init__(self, calls: list[dict]) -> None:
+    def __init__(self, calls: list[dict], response=None) -> None:
         self._calls = calls
+        self._response = response
 
     def upsert(self, batch, on_conflict=None):
         self._calls.append({"batch": batch, "on_conflict": on_conflict})
         return self
 
     def execute(self):
-        return None
+        return self._response
 
 
 class _FakeClient:
-    def __init__(self, calls: list[dict]) -> None:
+    """Records every rpc/table call so a test can assert HOW the export wrote, not just that
+    it returned 0. The whole point of this change is that the write is one transaction."""
+
+    def __init__(self, calls: list[dict], rpc_result=None) -> None:
         self._calls = calls
+        self._rpc_result = rpc_result
 
     def table(self, _name: str) -> _FakeQuery:
         return _FakeQuery(self._calls)
+
+    def rpc(self, name: str, params: dict) -> _FakeQuery:
+        self._calls.append({"rpc": name, "params": params})
+        return _FakeQuery(self._calls, _FakeResponse(self._rpc_result))
 
 
 def test_export_columns_include_sector_min_max() -> None:
@@ -123,7 +138,7 @@ def test_target_dev_passes_dev_schema_to_create_client(tmp_path: Path, monkeypat
 
     def fake_create_client(url, key, options=None):
         seen_kwargs["options"] = options
-        return _FakeClient([])
+        return _FakeClient([], rpc_result=1)
 
     monkeypatch.setattr(exp, "create_client", fake_create_client)
 
@@ -148,7 +163,7 @@ def test_options_passed_to_create_client_is_the_sync_variant(tmp_path: Path, mon
 
     def fake_create_client(url, key, options=None):
         seen_kwargs["options"] = options
-        return _FakeClient([])
+        return _FakeClient([], rpc_result=1)
 
     monkeypatch.setattr(exp, "create_client", fake_create_client)
 
@@ -166,7 +181,7 @@ def test_target_prod_is_the_default_schema(tmp_path: Path, monkeypatch) -> None:
 
     def fake_create_client(url, key, options=None):
         seen_kwargs["options"] = options
-        return _FakeClient([])
+        return _FakeClient([], rpc_result=1)
 
     monkeypatch.setattr(exp, "create_client", fake_create_client)
 
@@ -186,3 +201,117 @@ def test_dry_run_needs_no_credentials_regardless_of_target(tmp_path: Path, monke
     assert exp.main(["--duckdb-path", str(db), "--target", "dev", "--dry-run"]) == 1
     # --dry-run still requires SUPABASE_URL/KEY to be present today (unchanged behavior);
     # this pins that --target doesn't accidentally bypass the existing credential check.
+
+
+# --- Atomic export (issue #9 finding A1) ---
+# The export used to write in batches of 500 with no transaction, so a failure partway left
+# production holding the new snapshot for some tickers and the previous one for the rest.
+# These pin the shape of the fix: one call, one transaction, and a loud failure if the
+# database does not confirm every row.
+
+
+_EXPORT_RUN = itertools.count()
+
+
+def _run_export(monkeypatch, tmp_path, rows, rpc_result):
+    db = tmp_path / f"mart_{next(_EXPORT_RUN)}.duckdb"
+    _make_mart(db, rows)
+    calls: list[dict] = []
+    monkeypatch.setattr(exp, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.setenv("SUPABASE_URL", "https://fixture.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "fixture-key")
+    monkeypatch.setattr(exp, "create_client", lambda *a, **k: _FakeClient(calls, rpc_result))
+    code = exp.main(["--duckdb-path", str(db)])
+    return code, calls
+
+
+def test_export_writes_in_a_single_transaction(tmp_path: Path, monkeypatch) -> None:
+    """One rpc call, never a per-batch loop. A second write call would mean a partial failure
+    is still reachable."""
+    rows = [dict(_ROW, ticker=f"T{i}") for i in range(3)]
+    code, calls = _run_export(monkeypatch, tmp_path, rows, len(rows))
+
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0]["rpc"] == "replace_cards_snapshot"
+    assert len(calls[0]["params"]["payload"]) == len(rows)
+    assert not [c for c in calls if "batch" in c]
+
+
+def test_export_fails_when_the_database_confirms_a_different_count(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A short count means the transaction did not do what was asked. Exiting 0 there would
+    report a good export over a snapshot nobody verified."""
+    rows = [dict(_ROW, ticker=f"T{i}") for i in range(3)]
+    code, _ = _run_export(monkeypatch, tmp_path, rows, 2)
+    assert code == 1
+
+
+def test_export_fails_on_an_unreadable_response(tmp_path: Path, monkeypatch) -> None:
+    rows = [dict(_ROW, ticker=f"T{i}") for i in range(3)]
+    assert _run_export(monkeypatch, tmp_path, rows, None)[0] == 1
+    assert _run_export(monkeypatch, tmp_path, rows, "3")[0] == 1
+
+
+def test_unreadable_response_does_not_claim_a_rollback(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """postgrest raises on a non-2xx, so reaching this branch means the write COMMITTED.
+    An earlier version printed "the transaction rolled back ... the previous snapshot is
+    intact" here, which is false in the only case that reaches it and would send an operator
+    hunting for a rollback that never happened."""
+    rows = [dict(_ROW, ticker=f"T{i}") for i in range(3)]
+    _run_export(monkeypatch, tmp_path, rows, {"unexpected": "shape"})
+    out = capsys.readouterr().out
+    assert "rolled back" not in out
+    assert "previous snapshot is intact" not in out
+    assert "UNVERIFIED" in out and "check" in out
+
+
+def test_count_mismatch_says_the_transaction_did_not_do_what_was_asked(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    rows = [dict(_ROW, ticker=f"T{i}") for i in range(3)]
+    _run_export(monkeypatch, tmp_path, rows, 2)
+    out = capsys.readouterr().out
+    assert "FAILED" in out
+    assert "rolled back" not in out
+
+
+def test_export_accepts_either_scalar_response_shape(tmp_path: Path, monkeypatch) -> None:
+    """PostgREST returns a scalar function's result bare; client versions differ on whether
+    they wrap it in a one-element list. Verified against dev over a direct Postgres
+    connection, NOT over REST, so the shape is handled rather than assumed."""
+    rows = [dict(_ROW, ticker=f"T{i}") for i in range(3)]
+    assert _run_export(monkeypatch, tmp_path, rows, 3)[0] == 0
+    assert _run_export(monkeypatch, tmp_path, rows, [3])[0] == 0
+
+
+def test_inserted_count_rejects_shapes_that_are_not_a_count() -> None:
+    assert exp.inserted_count(3) == 3
+    assert exp.inserted_count([3]) == 3
+    assert exp.inserted_count(None) is None
+    assert exp.inserted_count("3") is None
+    assert exp.inserted_count([3, 4]) is None
+    assert exp.inserted_count(True) is None
+
+
+def test_mart_rows_are_read_in_a_deterministic_order(tmp_path: Path, monkeypatch) -> None:
+    """The source query had no ORDER BY, so which rows landed before a partial failure
+    differed every run and the resulting state could not be reproduced. The order must be the
+    grain `_marts.yml` declares -- (market_code, ticker, snapshot_date) -- not a prefix of it.
+    Two columns happen to be total today only because `fct_fundamentals_snapshot` is uniqueness
+    tested per (market_code, ticker) a layer upstream; the mart itself restates no such thing,
+    and the exporter should not lean on an invariant its own source does not declare."""
+    rows = [dict(_ROW, ticker=t) for t in ("T3", "T1", "T2")] + [
+        dict(_ROW, ticker="T1", snapshot_date="2026-05-01")
+    ]
+    _, calls = _run_export(monkeypatch, tmp_path, rows, len(rows))
+    sent = [(r["ticker"], r["snapshot_date"]) for r in calls[0]["params"]["payload"]]
+    assert sent == [
+        ("T1", "2026-05-01"),
+        ("T1", "2026-06-01"),
+        ("T2", "2026-06-01"),
+        ("T3", "2026-06-01"),
+    ]

@@ -8,8 +8,8 @@ required set is per company type (the Sector/Lifecycle Router):
   2. `revenue_growth_yoy_pct` — `revenueGrowth × 100`
   3. `net_debt_to_ebitda` — `netDebt / ebitda` (both required; no statement fallback)
   4. `fcf_margin_pct` — latest annual `Free Cash Flow / Total Revenue × 100`
-- **financial** (banks) — the pair: `statement_roe_pct` + `net_margin_pct`
-  (the operating solvency/cash metrics are unsourceable for banks).
+- **financial**: the pair `statement_roe_pct` + `net_margin_pct` (the operating metrics are
+  dropped by classification, not because they cannot be fetched; see `docs/data_contract.md`).
 - **pre_revenue** — `net_cash` (cash minus total debt; the operating metrics break for revenue ≤ 0).
 
 `forward_pe` left the operating and financial sets, and pre_revenue moved off
