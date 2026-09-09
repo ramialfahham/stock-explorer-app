@@ -24,12 +24,13 @@ At the end of a session, update `.claude/active_work.md` so the next one continu
 Before a non-trivial change, write `.claude/task/contract.md` (template:
 `CONTRACT_TEMPLATE.md`): objective, `scope_paths` (the files this task may touch),
 `decisions_reserved` (owner-only questions — §6), `done_when`. Commit it with the
-branch so it is visible in the PR. The scope-auditor reviewer flags any edit outside
+branch so it is visible in the MR. The scope-auditor reviewer flags any edit outside
 `scope_paths` at review time.
 
 Before committing, run the review cycle (the commit gate enforces it):
 
-1. Stage everything (`git add`).
+1. Stage the paths the change touches, explicitly. Never `git add -A`: it sweeps whatever
+   is untracked into a reviewed commit.
 2. Run the reviewers the routing requires (`.claude/review_routing.json`) against the
    staged diff — cold, read-only, adversarial.
 3. Write `.claude/task/review.md` (template: `REVIEW_TEMPLATE.md`) with each reviewer's
@@ -39,16 +40,43 @@ Before committing, run the review cycle (the commit gate enforces it):
 
 Trace before you change a shared data model: know what depends on it downstream first.
 
+**Prose earns its place only three ways.** Write it if it records a decision that cannot be
+derived from the code, defines something the code cannot state itself (what a metric means,
+what a contract guarantees), or is machine-checked (`scope_paths`, `diff_sha256`, verdicts).
+
+NARRATIVE belongs in the commit message and the MR description, which are append-only and so
+cannot rot into contradicting the current state. A contract or handover can rot, and did: MR
+!115 spent six of its eleven review rounds on findings against narrative prose, after the code
+it described had stopped changing. This is not licence to move a DECISION or an OPEN ITEM out
+of `.claude/active_work.md`, though: that file is injected into the next session and an MR
+description is not, so anything a future session must ACT on stays there.
+
+Do not write a history of how the work went, a record of your
+own mistakes, or a rationale in a file separate from the thing it explains. If a "why" is worth
+keeping, put it next to the code, where a reviewer can check it against what it describes.
+
+When you change a claim, grep the repo for the claim, not for the file you were told about.
+Every one of those six rounds was the same failure: fixing the site a reviewer named and leaving
+the same assertion standing elsewhere.
+
 ## 3. Branches
 
-Every change goes on a new branch — never commit or push to `main`. Push with an explicit
-refspec (`git push origin <branch>`), open a PR, wait for CI + the user's approval.
-**Never run `gh pr merge`** — merging is the user's action. Before branching, check
-`gh pr list --state open`: if the work is a hard dependency of an open PR and a separate
-branch buys nothing, commit to that branch instead.
+Every change goes on a new branch, never a commit or push to `main`. This repo lives on
+GitLab: push to the `gitlab` remote with a FULL refspec (`git push gitlab <branch>:<branch>`)
+and use `glab`, never `gh`. `git push gitlab <branch>` alone is not safe on this machine: the
+global `~/.gitconfig` sets `push.default = upstream` and a branch's upstream can resolve to
+`main`. Verify the push output's `-> <branch>` line names the feature branch.
 
-This is **hook-enforced**: a commit or push while on `main`/`master`, `gh pr merge`, and
-`git commit --amend`/`--no-verify` are all hard-blocked.
+Open an MR, wait for CI and the user's approval. **Never merge one** -- merging is the user's
+action, every time, regardless of MR number. Before branching, check `glab mr list`: if the
+work is a hard dependency of an open MR and a separate branch buys nothing, commit to that
+branch instead.
+
+Partly **hook-enforced**: a commit or push while on `main`/`master`, `git commit --amend` and
+`--no-verify` are hard-blocked, and so is `gh pr merge`. **The merge guard matches `gh pr merge`
+and nothing else** (`branch_discipline.py`'s `_GH_PR_MERGE` regex), so `glab mr merge` -- the
+command this repo would actually reach for -- is NOT blocked by anything. Nothing stops you
+there except this rule. Do not merge.
 
 ## 4. Quality
 

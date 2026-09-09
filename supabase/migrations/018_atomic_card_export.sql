@@ -64,6 +64,9 @@ begin
     -- Both DEFAULT columns here are also NOT NULL, so that aborts rather than writing wrong
     -- values, and the only caller sends an identical key set on every element.
     -- attidentity/attgenerated exclude generated columns by definition rather than by name.
+    -- Derived from the catalog rather than written out: a literal column list would be a
+    -- fourth hand-maintained copy of this schema, alongside the dbt contract, EXPORT_COLUMNS
+    -- and the migrations, of which only the dbt contract is machine-checked.
     select string_agg(quote_ident(attname), ', ' order by attnum)
     into column_list
     from pg_attribute

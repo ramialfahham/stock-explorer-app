@@ -185,6 +185,30 @@ Pipelines → Run pipeline**, then that job's manual play button. Never runs aut
 
 ---
 
+## 3c. Export timing and the schema cache
+
+The card export is a single `replace_cards_snapshot` RPC, so the whole deck is one statement.
+Measured 2026-09-09: payload 3.9 MB (roughly 6 MB with the six queued markets) against an API
+that accepts at least 16 MB; execution 2.87s for the current deck and 4.21s at double size.
+
+`pg_roles` shows `authenticator`, the role PostgREST connects as, carrying
+`statement_timeout=8s`, while `service_role` has none set. **Whether that 8s binds a
+service-role request is not established**: the function is reached over PostgREST on every
+export, but it completes in 2.87s, so calling it cannot exercise an 8s bound. Settling it would
+need a deliberate `pg_sleep` probe on an exposed schema, which this repo does not have. If it
+does bind, the margin is roughly 2.8x today and under 2x at
+double scale, and it shrinks with every market added. That is a reason to watch the export
+duration as markets are onboarded, not a reason to act now: exceeding the timeout aborts the
+statement, the transaction rolls back, PostgREST returns non-2xx and the job dies loudly with
+the previous snapshot intact. It is never a corruption path.
+
+PostgREST caches the schema, so **the first export after a migration that adds or changes a
+function can return PGRST202 until the cache reloads**. The scheduled pipeline has minutes of
+slack between `apply_supabase_migrations.py` and `export_to_supabase.py`, so this only bites a
+manual run made immediately after applying a migration.
+
+---
+
 ## 4. What gets created
 
 | Table | Purpose |

@@ -6,170 +6,77 @@ _The next session is handed exactly this file. Keep it current. Full history thr
 [`docs/handover_2026-05-24.md`](../docs/handover_2026-05-24.md)) -- this file stays lean on
 purpose (it's injected whole at SessionStart by `handover_in.py`, capped at 32,000 bytes).
 When a slice/MR merges, collapse its entry here to one or two lines and let the archive keep
-the detail. **Archival pass done 2026-09-03**: this file was ~146KB (the SIZE WARNING first
-flagged by scope-auditor on 2026-08-28 at ~95KB was never actioned before this pass); trimmed
-back under cap by moving settled history into the new archive above._
+the detail._
 
-## Recent work (2026-09-09)
+## In flight
 
-**MR !115 OPEN, awaiting owner merge** (`fix/atomic-card-export`) -- issue #9 finding A1. Batched, untransacted
-upserts could leave production serving two snapshots mixed. Replaced by
-`supabase/migrations/018_atomic_card_export.sql`'s `replace_cards_snapshot()`: one transaction,
-delete-then-insert scoped to the `(market_code, snapshot_date)` pairs the payload carries.
+**Branch `docs/trim-process-prose`** -- deletes the narrative prose that caused six of MR !115's
+eleven review rounds and writes the rule that stops it into the working agreement §2. Docs plus
+two comments; no executable change.
 
-**The recurring failure in every review round on this branch, in one line:** asserted, then
-"verified" against a fixture that could not disprove it. It produced a single-snapshot guard
-built on a false invariant (the mart is multi-date; `fct_fundamentals_snapshot` keeps the
-latest row PER TICKER), a `pg_attribute` column list that turned a fail-loud coupling
-fail-silent, and four `attach_assessments` unit tests left passing vacuously. Full detail in
-`.claude/task/contract.md`'s `amendments:`, which ships with the branch.
+**NEXT PIECE OF WORK: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
+375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
+centralised in `frontend/styles.py`. Changing them is a UX PR gate change
+(`docs/working_agreement.md`) needing the 480px checklist.
 
-**Measured, so nobody re-derives it:** payload 3.9 MB (~6 MB with six more markets) vs an API
-accepting 16 MB+; execution 2.87s, 4.21s at double size. `authenticator` carries
-`statement_timeout=8s`, `service_role` none; whether 8s binds a service-role request is UNTESTED
-(the function is not REST-reachable). If it binds, headroom is under 2x at double scale.
+## Atomic card export (MR !115, merged `f98f4025`)
 
-**Owner decisions, ANSWERED 2026-09-09, do not reopen. THREE, not two.** (1) `grant delete on
+Issue #9 finding A1. The export wrote the deck in batches with no transaction, so a half-failure
+served two snapshots mixed. `supabase/migrations/018_atomic_card_export.sql`'s
+`replace_cards_snapshot()` replaces the covered `(market_code, snapshot_date)` pairs in one
+transaction.
+
+**Owner decisions, ANSWERED 2026-09-09, do not reopen.** (1) `grant delete on
 public.mart_stock_cards to service_role` -- granted. (2) The delete can roll a ticker back to an
-earlier snapshot when the payload covers its newest one (older numbers), OR drop it from the
-deck when the covered pairs take ALL its rows -- accepted, over never removing a row, which
-rebuilds the accumulate-forever growth of open item 1.
-(3) A `financial` company-type card (the whole GICS Financial Services sector, NOT just banks)
-whose health block is withheld loses `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, the line saying ROE
-and net margin do not show whether it holds enough capital -- LEFT AS IS and
-filed as issue #11, over moving the caveat out of the block, which is card composition and
-would put this branch through the UX PR gate.
+earlier snapshot, or drop it from the deck when the covered pairs take ALL its rows -- accepted,
+over never removing a row, which rebuilds the accumulate-forever growth of open item 1. (3) A
+`financial` company-type card (the whole GICS sector, not just banks) whose health block is
+withheld loses `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` -- left as is, filed as issue #11.
 
-**Do not "simplify" the snapshot gate in `attach_assessments`.** It is the answer to the
-owner's "the user must not be confused": a rolled-back card kept the verdict computed from the
-snapshot it is no longer showing, because `card_assessments` is `unique (market_code, ticker)`
-and `generate_assessments.py` never deletes. The verdict and AI read are now withheld unless
-the assessment's `snapshot_date` matches the card's, compared through `_snapshot_sort_key` (a
-bare `str()` would blank every badge app-wide and silently if the column ever gained a time
-component). Mutation-verified in both directions. It self-heals next healthy run except for a
-ticker out of the dbt mart still holding older Supabase rows: it keeps showing a card whose
-assessment is never rewritten. A fully evicted ticker shows no card, so nothing to withhold.
-
-**Still open, owner's call:** NO automated coverage of the SQL function -- every test uses a
-fake client, and three review rounds found real defects in it. Closing it needs a
+**Open, owner's call:** no automated coverage of the SQL function; every test uses a fake
+client, and three review rounds found real defects in that surface. Needs a
 `services: [postgres]` container in CI.
 
-## Recent work (2026-09-08)
+## What is still wrong (the open record)
 
-**Pipeline engineering audit -- filed as issue #9, findings posted as a comment there.** Three
-parallel passes (dbt, export boundary, ingestion+frontend) against the repo's own standards.
-Headline: the dbt project and ingestion are genuinely good; almost every real defect sits where
-no CI gate reaches -- the export boundary, the frontend, and prose-only standards. **Read the
-issue before starting any cleanup work**; it is the only complete record.
+**Issue #9, the pipeline audit, is the complete record -- read it before starting cleanup
+work.** Of its four findings that can produce wrong data or a failed run, TWO are fixed: the
+mixed-snapshot export (!115) and the missing `dividendYield` scale guard (!114). Still open:
+the `numeric(10,4)` overflow, and price-ingestion failures that print a warning and vanish, so
+freshness reads green while a third of the universe has lost prices. Also open, from the same
+audit: the learn panel re-implements four metric formulas in Python against a stated invariant,
+and **the AI read and the card face disagree on labels and units**. Issue
+#10: production holds `dividendYield` in MIXED units (fraction-scale rows in a percent-scale
+column); nothing user-visible is wrong and a per-market median guard structurally cannot see
+it. Issue #12: `metric_catalogue.csv` applicability strings say "banks" for rules covering the
+whole `financial` type.
 
-Four findings can produce wrong data or a failed run; the first is FIXED on the 2026-09-09
-branch above. A half-failed export silently mixed two snapshots; a Yahoo
-outlier overflows one of six undocumented `numeric(10,4)` caps (four more columns are
-`numeric(18,6)`) and now aborts the whole export transaction (one 500-row batch before); price
-ingestion failures print a warning and vanish, so freshness reads green while a third of the
-universe lost prices; and the `dividendYield` scale guard did not exist. The last is fixed
-below. Also open: the learn panel re-implements four metric formulas in Python against a stated
-invariant, and the AI read and the card face disagree on labels and units.
+**Nothing asserts a fill rate anywhere**, so a provider DROPPING a field (likelier than
+changing its units) passes every guard silently. There are no `accepted_range` tests at all.
 
-**MR !114, merged** -- two-sided percent-scale guard for the three Yahoo passthroughs
-(`assert_percent_scale_passthroughs.sql`), per market, mutation-verified in both directions.
-**The trap worth remembering**: `dividendYield` arrives as a percent so a flip makes it 100x
-SMALLER, while `revenueGrowth` and `returnOnEquity` arrive as fractions and are x100, so a flip
-makes them LARGER. A one-sided floor was blind to two of three. Bands and known holes in
-`docs/data_contract.md`'s "Percent-scale passthrough guard".
+## Recently merged (detail in each MR's own contract.md / review.md)
 
-**Issue #10, filed, not fixed**: production holds `dividendYield` in MIXED units right now --
-AvalonBay (0.0387) and Equity Residential (0.0426) are REITs yielding ~4%, i.e. fraction-scale
-rows in a percent-scale column. This qualifies the repo's recorded "dividendYield is a PERCENT"
-decision to "usually". Nothing user-visible is wrong (the field is data-only) and a per-market
-median guard structurally cannot see per-row mixed units.
-
-**Still unguarded, same class:** nothing asserts a fill rate anywhere, so a provider DROPPING a
-field (likelier than changing its units) passes every guard silently. The project has no
-`accepted_range` tests at all.
-
-
-**MR !111, merged** -- first-visit load time. Cut the deck fetch from 18.38 MB / 7 round trips
-to 1.46 MB / 6. Real, but **it did NOT fix what the owner experiences**, measured live
-2026-09-09: TTFB is 210ms, yet a warm session takes ~7.4s to render and a cold one far longer.
-The dominant cost is Streamlit's OWN front end -- 54 JS files plus 2 fonts, ~1.2 MB, the last
-request finishing around 20s, with 38 KB files taking seconds each on a starved free-tier
-instance. No change in this repo's code moves that. The realistic options are a paid Render
-plan or not Streamlit (issue #2), both owner calls. **Do not re-measure the data layer and
-conclude the app is fast**; measure first paint in a browser.
-
-**Read before touching the frontend fetch path**: `DECK_COLUMNS` is the cold path's entire
-cost. Adding a column there is paid by every visitor; adding one to the card face is paid by
-nobody until that card is opened. Still unmade: the reserved `DISTINCT ON` view, and the
-30-minute `_DECK_TTL_SECONDS` inside the plan's approved 15-60 min band.
-
-**Mobile type scale is too small and unfixed** (owner, 2026-09-09: "completely crap"). Measured
-at 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. The tokens are
-centralised in `frontend/styles.py` (`--ss-caption-size` 0.72rem, `--ss-label` 0.75rem,
-`--ss-row-title` 0.85rem). Changing them is a UX PR gate change (`docs/working_agreement.md`),
-needing the 480px checklist.
-
-**MR !106, merged** -- deterministic style/rule guard for AI-generated card reads
-(`find_read_style_violations()`, `scripts/assessment_rules.py`), zero new Claude spend. Took
-four cto-reviewer rounds, each catching a real bug in the previous round's own fix. Detail in
-that MR's `contract.md`/`review.md`.
-
-## Recent work (2026-09-06 to 2026-09-07)
-
-All merged; detail lives in each MR's own `contract.md`/`review.md`. **!104** repo's first
-Streamlit `AppTest` end-to-end test (`tests/frontend/test_app_e2e.py`); review caught two wrong
-claims of mine, the second became open item 10. **!100** financial-card capital-adequacy caveat.
-**!101** scheduled-pipeline alerting + same-day ingestion checkpoint; the alerting route it
-documented did not work and sat unchecked until 2026-09-08, now live via GitLab's per-user
-notifications (bell -> Custom -> Failed pipeline), see `docs/operations_guide.md`. **!103** dbt
-model contract on `mart_stock_cards` + `dbt source freshness` on all three raw sources; its
-table-level-not-per-market freshness limitation became open item 9.
-
-**Gotcha for future sessions**: `commit_review_gate.py`'s verdict parser needs the literal token
-`VERDICT:` at the start of its own line -- `Round 2 VERDICT: PASS` parses as no verdict at all,
-silently. Multi-round `review.md`: earlier rounds as prose, only the final round's verdict as a
-bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line.
-
-**Finding, still open (owner's call):** the 2026-09-01 job trace showed ingestion is only ~24 of
-the ~65-minute total. The dominant, ungoverned cost is `generate_assessments.py`'s AI-read step
-(~39 min, one Haiku call per changed card, no cap). Open item 8 below.
-
-## Recent work (2026-09-01 to 2026-09-02)
-
-All nine Gemini-feedback points shipped (MRs !73-!87; !79 and !85 declined on the owner's
-call). Full account in `docs/handover_2026-09-03.md`.
-
-**MR !92, merged** -- 5-metric benchmark expansion (range marks from 4 to 9 benchmarked
-metrics). Two reviewers independently caught a real bug mid-review: the new
-`debt_to_equity`/`statement_roe_pct` sector aggregates had no guard against negative
-stockholders' equity, the sign-inversion class !73/!77 already guard at the verdict layer but
-never covered peer-benchmark aggregation. **Caution for any future benchmark aggregate over a
-ratio whose denominator can flip sign.** Also: a `sqlfluff` line-length violation reached CI
-that a local run would have caught, so run `sqlfluff lint dbt_analytics/models
-dbt_analytics/tests` and the rest of `validate:full` locally before pushing, not just pytest.
-
-**Portfolio-readiness: presentation fixes merged, SUBSTANCE is the open half.** MR !97 (README
-deploy target, refreshed screenshot) and GitLab topics/description are done. The owner's
-correction on 2026-09-09 is the part that matters: "this is not about make-up, it's about
-substance, specifically the engineering part" -- portfolio-grade means the pipeline itself,
-which is what issue #9's audit findings track.
-
-**Link-preview/avatar image -- deferred, unresolved.** Cropping the README screenshot to a
-square chopped mid-sentence prose and was illegible at avatar size; three AI-generated icon
-concepts in the app palette were rejected outright ("all 3 are crap"). Revisit only with the
-owner's own asset or a clearer direction, not by generating more variations.
-
-**Owner decision on repo visibility (2026-09-08): go public once the repo is portfolio-grade,
-not before.** Sequencing, not a standing block -- the repo stays private through the remaining
-polish work (topics/description/link-preview image, and whatever else "portfolio-grade" turns
-out to need) and flips public as the last step, not a precondition to start on the rest. Don't
-treat visibility as something to decide independently of that polish work finishing.
-
-MRs !95, !96, !97 and !98 all merged 2026-09-05 (browser-storage coverage, Discover/Search nav
-state loss, README accuracy, Saved-tab confirm + per-item removal). !98's planning caught two
-real bugs first: an out-of-sync "is this saved" check that would have stranded a removed ticker
-(now the shared `saved_keys_with_order()`), and a `clear_interactions()`/`st.rerun()` ordering
-bug. Detail in each MR's own `contract.md`/`review.md`.
+- **!114** two-sided percent-scale guard for the three Yahoo passthroughs. The trap worth
+  remembering: `dividendYield` arrives as a percent, `revenueGrowth`/`returnOnEquity` as
+  fractions x100, so a one-sided bound is blind to two of three. Bands and known holes in
+  `docs/data_contract.md`.
+- **!111** first-visit deck fetch, 18.38 MB -> 1.46 MB. See Do NOT: it did not fix what the
+  owner experiences.
+- **!106** deterministic style guard for AI card reads. **!104** first Streamlit `AppTest` e2e
+  test. **!103** dbt model contract + source freshness (table-level limitation is open item 9).
+  **!101** pipeline alerting, route now live via GitLab per-user notifications
+  (`docs/operations_guide.md`). **!100** capital-adequacy caveat.
+- **!92** 5-metric benchmark expansion. **Caution for any future benchmark aggregate over a
+  ratio whose denominator can flip sign**: the new aggregates had no guard against negative
+  stockholders' equity, a class already guarded at the verdict layer but never at aggregation.
+- **!97** README deploy target + screenshot; GitLab topics/description done.
+- **!95-!98** (merged 2026-09-05, after `docs/handover_2026-09-03.md`'s cutoff, so NOT in that
+  archive -- detail is in each MR's own `contract.md`/`review.md`): browser-storage coverage,
+  Discover/Search nav state loss, README accuracy, Saved-tab confirm + per-item removal. !98's
+  planning caught two real bugs first: an out-of-sync "is this saved" check that would have
+  stranded a removed ticker, now the shared `saved_keys_with_order()`, and a
+  `clear_interactions()`/`st.rerun()` ordering bug.
+- **!73-!87** the nine Gemini-feedback points: see `docs/handover_2026-09-03.md`.
 
 ## Standing decisions (durable -- do not re-litigate without new evidence)
 
@@ -212,19 +119,31 @@ bug. Detail in each MR's own `contract.md`/`review.md`.
   earlier general rejection, then point 9's full investigation): "being in some top
   percentile can still mean an unhealthy state if the whole sector is in an unhealthy state."
   Rating agencies' per-industry ABSOLUTE thresholds would be the legitimate shape to copy if
-  this is ever revisited, not relative ranking. **The file used to carry a "Step 3:
-  sector-calibrated thresholds, THE next fundamental piece" section proposing exactly this --
-  removed in this pass as superseded by point 9's decline; see the archive if the historical
-  reasoning is ever needed.**
-- **Changelogs live in one place**: code and docs describe the present; git, this file, task
-  contracts and review records carry history. Never date-stamp a fix into a comment or doc
-  prose describing current behavior.
+  this is ever revisited, not relative ranking. A superseded "sector-calibrated thresholds"
+  proposal is in the archive if the historical reasoning is ever needed.
+- **Changelogs live in one place**: code and docs describe the present; git history and MR
+  descriptions carry how it got that way. This file, task contracts and review records carry
+  current state and POINTERS into git. A one-line entry naming a merged MR is a pointer;
+  paragraphs narrating how the work went are a changelog and belong in the commit message (see
+  the working agreement's prose rule). Never date-stamp a fix into a comment or doc prose
+  describing current behavior.
 - **No em/en-dash on any line added to this repo, anywhere, any file** -- flagged repeatedly
   this session; use `--` instead, matching the convention already used throughout this repo's
   own prose.
-- **Repo hosting: GitLab-only while the GitHub account (`origin`) remains suspended.** Owner
-  confirmed 2026-09-04, explicitly conditional -- revisit only if that account is recovered, not
-  something to re-ask otherwise.
+- **Repo hosting: GitLab-only while the GitHub account remains suspended.** Owner confirmed
+  2026-09-04, explicitly conditional -- revisit only if that account is recovered, not something
+  to re-ask otherwise. The dead `origin` remote has been DELETED from this clone: a bare
+  `git push origin` now fails with "no such remote" rather than reaching a suspended account.
+  It was removed because a warning in this file did not stop a session pushing to it.
+- **Repo goes public once it is portfolio-grade, not before** (owner, 2026-09-08). Sequencing,
+  not a standing block: the repo stays private through the remaining substance work and flips
+  public as the last step. Portfolio-grade means the PIPELINE, not presentation -- owner,
+  2026-09-09: "this is not about make-up, it's about substance, specifically the engineering
+  part". Issue #9's findings are what that tracks.
+- **Link-preview/avatar image: deferred, unresolved.** Cropping the README screenshot chopped
+  mid-sentence prose and was illegible at avatar size; three generated icon concepts were
+  rejected outright. Revisit only with the owner's own asset or a clearer direction, never by
+  generating more variations.
 
 ## Market coverage
 
@@ -351,13 +270,8 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
 
 ## Do NOT
 
-- Commit/push `main`; run `gh pr merge` or merge any MR -- the owner merges, every time,
-  regardless of MR number.
-- **`git push gitlab <branch-name>` alone is not safe on this machine -- it can silently push
-  to `main` instead**, because the global `~/.gitconfig` has `push.default = upstream` and a
-  worktree branch's upstream can resolve to `main`. Always push with an explicit refspec
-  (`git push gitlab <branch>:<branch>`) and verify the push output's `-> <branch>` line names
-  the actual feature branch.
+- Commit/push `main`, or merge any MR. See the working agreement §3 for what is and is not
+  hook-enforced; the merge guard covers `gh pr merge` only.
 - Buy CI minutes, register a self-hosted runner, set CI/CD variable *values*, or touch
   protected-branch settings on GitLab -- all owner-only (§6 cost/config).
 - Emit buy/sell/hold/price-target/advice anywhere -- educational only.
@@ -372,8 +286,25 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
 - Clip or hide outlier magnitudes at the data layer -- route to the correct lens (the display
   layer now handles visual compression via the Tukey-fence range-mark clamp, MR !87).
 - Compute from `info` scalars where a period-matched financial-statement line exists.
-- `git add -A` in this repo -- `.venv/` is untracked and NOT gitignored, and adding it times
-  the command out. Stage explicit paths.
+- **"Simplify" the snapshot gate in `attach_assessments`.** It is the answer to the owner's "the
+  user must not be confused": a rolled-back card kept the verdict computed from a snapshot it is
+  no longer showing. Verdict and AI read are withheld unless the assessment's `snapshot_date`
+  matches the card's, compared through `_snapshot_sort_key` -- a bare `str()` would blank every
+  badge app-wide, silently, if the column ever gained a time component. Mutation-verified both
+  directions.
+- **Re-measure the data layer and conclude the app is fast.** MR !111 cut the deck fetch to
+  1.46 MB and the owner still waits ~7.4s warm, far longer cold: the dominant cost is
+  Streamlit's own front end (54 JS files, ~1.2 MB, last request ~20s on a starved free tier).
+  No change in this repo moves it. Measure FIRST PAINT in a browser, not TTFB. The real options
+  are a paid Render plan or not Streamlit (issue #2), both owner calls.
+- **Add a column to `DECK_COLUMNS` casually** -- it is the cold path's entire cost, paid by
+  every visitor. A column on the card face is paid by nobody until that card is opened. Still
+  reserved and unbuilt from MR !111's plan: a `DISTINCT ON` view to push deck deduplication
+  into Postgres. `_DECK_TTL_SECONDS`' approved 15-60 minute band is recorded beside the
+  constant in `frontend/app.py`.
+- **Push before running `validate:full` locally** (`sqlfluff lint dbt_analytics/models
+  dbt_analytics/tests` and the rest, not just pytest) -- a lint violation reaching CI is a
+  wasted round trip. Push mechanics themselves are in the working agreement §3.
 
 ## Context / operational notes
 
@@ -384,7 +315,12 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
   commit forces `review.md`'s conflict resolution into the same atomic commit as the
   substantive change, and no hash it holds can describe a diff that includes its own bytes --
   full account in `docs/portfolio-readme-accuracy-fixes`'s MR !97 history). Get the live hash
-  via `commit_review_gate.py --staged-hash`. Reviewer agents are NOT registered as
+  via `commit_review_gate.py --staged-hash` -- use it, do not hand-roll the hash; a session
+  spent nine review rounds labelling them with `git hash-object` output, which the gate's
+  `[0-9a-fA-F]{64}` pattern can never match. The verdict parser needs the literal token
+  `VERDICT:` at the START of its own line -- `Round 2 VERDICT: PASS` parses as no verdict at
+  all, silently. In a multi-round `review.md`, write earlier rounds as prose and give ONLY the
+  final round a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line. Reviewer agents are NOT registered as
   subagent_types in this frontend -- dispatch them as `general-purpose` agents with the role
   `.md` inlined (roles live in the `dbt-agent-kit` plugin's `agents/` dir, plus
   `.claude/agents/equity-analyst-reviewer.md`, the one role this repo keeps in its own tree).
@@ -419,8 +355,9 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
   production.** App is deployed on Render (native GitLab OAuth, auto-deploy on push),
   serving real cards from a new Supabase project (the original is permanently
   GitHub-OAuth-locked and inaccessible). Scheduled `data-pipeline` CI job runs biweekly
-  (1st/15th, 06:00 UTC) and refreshes production unattended. `origin` still points at the
-  suspended GitHub account -- push to `gitlab`, never `origin`, and use `glab`, never `gh`,
-  in this repo. Full narrative (the account-recovery story, the CI-minutes/runner
+  (1st/15th, 06:00 UTC) and refreshes production unattended. The GitHub account is permanently
+  suspended and its `origin` remote has been deleted from this clone (see Standing decisions);
+  push to `gitlab`, use `glab`, never `gh`. Full narrative (the account-recovery story, the
+  CI-minutes/runner
   consolidation saga, the branch-protection ordering trap) is in
   `docs/handover_2026-08-18.md` and `docs/handover_2026-09-03.md`.
