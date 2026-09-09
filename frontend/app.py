@@ -96,7 +96,9 @@ def _init_state() -> None:
 
 # Short enough that a pipeline export shows up the same day without a redeploy, and short
 # enough that ordinary traffic keeps querying Supabase -- the free tier pauses after ~7 idle
-# days, so a long TTL would turn the cache into an outage risk (open item 6).
+# days, so a long TTL would turn the cache into an outage risk (open item 6). 30 minutes sits
+# inside the 15-60 minute band the owner approved for this value; moving outside that band is
+# a §6 decision, not a tuning choice.
 _DECK_TTL_SECONDS = 30 * 60
 
 
