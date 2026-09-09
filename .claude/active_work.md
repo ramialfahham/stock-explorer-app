@@ -12,7 +12,7 @@ back under cap by moving settled history into the new archive above._
 
 ## Recent work (2026-09-09)
 
-**Branch `fix/atomic-card-export`, in review** -- issue #9 finding A1. Batched, untransacted
+**MR !115 OPEN, awaiting owner merge** (`fix/atomic-card-export`) -- issue #9 finding A1. Batched, untransacted
 upserts could leave production serving two snapshots mixed. Replaced by
 `supabase/migrations/018_atomic_card_export.sql`'s `replace_cards_snapshot()`: one transaction,
 delete-then-insert scoped to the `(market_code, snapshot_date)` pairs the payload carries.
