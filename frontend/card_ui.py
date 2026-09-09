@@ -266,8 +266,10 @@ def _company_summary_html(card: dict) -> str:
 
 
 def _health_block_html(card: dict) -> str:
-    """Verdict badge + narrative, or "" when no card_assessments row matched this card --
-    never a placeholder. Both always visible when present, no click needed.
+    """Verdict badge + narrative, or "" when no card_assessments row was attached to this card
+    -- never a placeholder. Both always visible when present, no click needed. attach_assessments
+    withholds a row whose snapshot_date differs from the card's, so a row can exist in
+    card_assessments and still render "" here.
 
     The narrative is either the AI-written read (when ai_read is present) or a deterministic
     fallback one-liner (VERDICT_FALLBACK_READ) naming what the verdict means, when it is
@@ -278,10 +280,13 @@ def _health_block_html(card: dict) -> str:
     BLOCK_LABEL_ASSESSMENT's "AI-written", which the fallback text is not.
 
     A financial-type card (the whole GICS "Financial Services" sector, not banks specifically)
-    also always carries FINANCIAL_CAPITAL_ADEQUACY_CAVEAT, regardless
-    of which narrative state above applies -- the LLM is only prompted, never required, to
-    state this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT), so
-    relying on the model to say it every time would silently reintroduce the gap this closes.
+    carries FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in every narrative state above -- the LLM is only
+    prompted, never required, to state this limit in its own prose
+    (scripts/assessment_rules.py's READ_SYSTEM_PROMPT), so relying on the model to say it every
+    time would silently reintroduce the gap this closes. But the caveat lives INSIDE this block
+    and so goes with it: the early return above drops the caveat along with the verdict, which
+    is a known gap the owner chose to leave rather than render the caveat separately
+    (gitlab issue #11).
     """
     token = health_verdict_token(card)
     if not token:

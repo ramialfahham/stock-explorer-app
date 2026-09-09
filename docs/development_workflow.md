@@ -114,7 +114,7 @@ python scripts/check_supabase_connection.py
 | Registry / market | Vars synced, seed exists, CI green |
 | Ingestion | Raw parquet matches `data_contract.md` grain; no derived metrics in Python |
 | dbt model | Layer folder correct, model + column descriptions (§2), model-level tests (§3), `check_dbt_tests.py`, `dbt build` + `check_dbt_documentation.py` pass |
-| Export | Upsert to Supabase documented; RLS unchanged for anon read |
+| Export | Write path to Supabase documented (cards replace the snapshot in one transaction, assessments upsert); RLS unchanged for anon read |
 | New market | Every step of the activation checklist done, including the `public.markets` migration. "Vars synced, seed exists, CI green" is NOT sufficient: that describes a market whose next production export fails on a foreign key |
 | Docs | `north_star` / `data_contract` updated if behavior or schema changed |
 

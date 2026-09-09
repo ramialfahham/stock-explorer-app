@@ -43,7 +43,7 @@ metaphors or opaque queue counters (e.g. global `1/834`) in product copy.
 Discovery cards show **fundamentals**, not batch pipeline prices, grouped by analytical lens
 (valuation, profitability, growth, solvency, liquidity, cash, returns) so a card reads as one
 coherent picture, not a flat list. Which metrics apply, and which are mandatory for a company
-to appear in the scoped pool at all, depends on **company type** (operating, financial/bank,
+to appear in the scoped pool at all, depends on **company type** (operating, financial,
 pre-revenue, via the Sector/Lifecycle Router): each type has its own required set (no
 fallbacks, no substitutes within that set) and its own full displayed set, typically larger
 than the required set. No hero/tier visual split: every applicable metric renders the same
@@ -68,8 +68,11 @@ with its own inline Read more/Show less toggle when truncated (see
 [`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)) — not inside the learn panel.
 
 **Health verdict + read (Slice 6c):** a 🟢/🟡/🔴 verdict (deterministic rules, Slice 5a) renders
-right after identity, always visible whenever a card has a matching `card_assessments` row;
-omitted entirely (no placeholder) when it does not. Alongside the badge: a short Claude-written
+right after identity, visible whenever a card has a matching `card_assessments` row that was
+computed from the snapshot the card is showing; omitted entirely (no placeholder) when it does
+not. Matching means the same `(market_code, ticker)` AND the same `snapshot_date`: a verdict
+computed from numbers the card is not displaying is withheld, because the reader cannot see the
+mismatch and the badge is the card's central claim. Alongside the badge: a short Claude-written
 plain-language read (Slice 5b) when one has passed generation and its hallucination guard, or
 otherwise a deterministic, non-AI one-line summary under its own "What the verdict means" heading
 (never labeled AI-written). See the Progressive disclosure table below and

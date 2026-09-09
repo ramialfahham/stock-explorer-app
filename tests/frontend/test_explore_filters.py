@@ -16,11 +16,14 @@ from explore_filters import (  # noqa: E402
 )
 
 
-def _card(ticker: str, sector: str, market: str = "us_sp500") -> dict:
+def _card(
+    ticker: str, sector: str, market: str = "us_sp500", snapshot_date: str = "2026-06-09"
+) -> dict:
     return {
         "market_code": market,
         "ticker": ticker,
         "sector": sector,
+        "snapshot_date": snapshot_date,
         "is_card_eligible": True,
     }
 
@@ -240,7 +243,11 @@ def test_deck_rows_lack_columns_is_false_for_an_empty_deck() -> None:
 def test_attach_assessments_copies_fields_on_match() -> None:
     cards = [_card("AAPL", "Technology")]
     assessments = {
-        ("us_sp500", "AAPL"): {"health_verdict": "green", "ai_read": "Sturdy figures."}
+        ("us_sp500", "AAPL"): {
+            "snapshot_date": "2026-06-09",
+            "health_verdict": "green",
+            "ai_read": "Sturdy figures.",
+        }
     }
     result = attach_assessments(cards, assessments)
     assert result[0]["health_verdict"] == "green"
@@ -258,7 +265,13 @@ def test_attach_assessments_leaves_card_unchanged_without_a_match() -> None:
 
 def test_attach_assessments_preserves_null_ai_read() -> None:
     cards = [_card("AAPL", "Technology")]
-    assessments = {("us_sp500", "AAPL"): {"health_verdict": "red", "ai_read": None}}
+    assessments = {
+        ("us_sp500", "AAPL"): {
+            "snapshot_date": "2026-06-09",
+            "health_verdict": "red",
+            "ai_read": None,
+        }
+    }
     result = attach_assessments(cards, assessments)
     assert result[0]["health_verdict"] == "red"
     assert result[0]["ai_read"] is None
@@ -266,6 +279,47 @@ def test_attach_assessments_preserves_null_ai_read() -> None:
 
 def test_attach_assessments_does_not_mutate_the_original_card() -> None:
     card = _card("AAPL", "Technology")
-    assessments = {("us_sp500", "AAPL"): {"health_verdict": "green", "ai_read": "text"}}
+    assessments = {
+        ("us_sp500", "AAPL"): {
+            "snapshot_date": "2026-06-09",
+            "health_verdict": "green",
+            "ai_read": "text",
+        }
+    }
     attach_assessments([card], assessments)
     assert "health_verdict" not in card
+
+
+def test_attach_assessments_withholds_a_verdict_from_another_snapshot() -> None:
+    """The verdict is the product's central claim and a reader cannot tell which numbers it
+    was computed from, so a verdict that does not belong to the numbers on screen is withheld
+    rather than shown. Both directions occur: the assessments step can fail after a successful
+    export, and the atomic export can roll a card back to an earlier snapshot."""
+    for label, assessment_date in (("older", "2026-06-08"), ("newer", "2026-06-10")):
+        cards = [_card("AAPL", "Technology", snapshot_date="2026-06-09")]
+        assessments = {
+            ("us_sp500", "AAPL"): {
+                "snapshot_date": assessment_date,
+                "health_verdict": "green",
+                "ai_read": "Sturdy figures.",
+            }
+        }
+        result = attach_assessments(cards, assessments)
+        assert "health_verdict" not in result[0], label
+        assert "ai_read" not in result[0], label
+
+
+def test_attach_assessments_compares_snapshots_after_normalising_them() -> None:
+    """A date column read back as a timestamp must not blank every verdict app-wide. The
+    module already normalises this field for dedupe_to_latest_snapshot; the gate uses the same
+    normaliser so a time component cannot silently suppress the whole deck."""
+    cards = [_card("AAPL", "Technology", snapshot_date="2026-06-09")]
+    assessments = {
+        ("us_sp500", "AAPL"): {
+            "snapshot_date": "2026-06-09T00:00:00+00:00",
+            "health_verdict": "green",
+            "ai_read": "Sturdy figures.",
+        }
+    }
+    result = attach_assessments(cards, assessments)
+    assert result[0]["health_verdict"] == "green"

@@ -126,6 +126,7 @@ def test_fetch_card_detail_returns_full_row_with_assessment() -> None:
     assessments = [[{
         "market_code": "us_sp500",
         "ticker": "ADI",
+        "snapshot_date": "2026-06-09",
         "health_verdict": "green",
         "ai_read": "Sturdy.",
     }]]
@@ -256,3 +257,28 @@ def test_export_probe_propagates_an_undefined_column_error() -> None:
     except _ApiError:
         return
     raise AssertionError("expected the undefined-column error to propagate")
+
+
+def test_card_detail_omits_a_verdict_computed_from_a_different_snapshot() -> None:
+    """A verdict and AI read computed from one snapshot, printed over another snapshot's
+    numbers, is worse than no verdict: the badge is the product's central claim and the reader
+    cannot see the mismatch. Both directions are reachable -- the assessments step can fail
+    after a successful export (verdict older than the card), and the atomic export can roll a
+    card back to an earlier snapshot (verdict newer than the card)."""
+    for label, assessment_date in (("verdict older", "2026-06-08"), ("verdict newer", "2026-06-10")):
+        client = _FakeClient(
+            {
+                "mart_stock_cards": [[_mart(snapshot_date="2026-06-09")]],
+                "card_assessments": [[{
+                    "market_code": "us_sp500",
+                    "ticker": "ADI",
+                    "snapshot_date": assessment_date,
+                    "health_verdict": "green",
+                    "ai_read": "Sturdy.",
+                }]],
+            }
+        )
+        card = fetch_card_detail(client, "us_sp500", "ADI")
+        assert card is not None, label
+        assert "health_verdict" not in card, label
+        assert "ai_read" not in card, label
