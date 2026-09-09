@@ -10,9 +10,12 @@ the detail._
 
 ## In flight
 
-**Branch `docs/trim-process-prose`** -- deletes the narrative prose that caused six of MR !115's
-eleven review rounds and writes the rule that stops it into the working agreement §2. Docs plus
-two comments; no executable change.
+**MR !116 open, awaiting owner merge** (`docs/trim-process-prose`) -- deletes the narrative
+prose that caused six of MR !115's eleven review rounds and writes the rule that stops it into
+the working agreement §2. Docs plus two comments; no executable change. Three things in its
+`contract.md` need the owner: the plugin's contract/review templates still prescribe the removed
+categories, the `glab mr merge` guard gap needs a shared per-machine hook edited, and
+`.claude/working-agreement.md` has no required reviewer in `review_routing.json`.
 
 **NEXT PIECE OF WORK: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
