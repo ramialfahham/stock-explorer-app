@@ -10,12 +10,7 @@ the detail._
 
 ## In flight
 
-**MR !116 open, awaiting owner merge** (`docs/trim-process-prose`) -- deletes the narrative
-prose that caused six of MR !115's eleven review rounds and writes the rule that stops it into
-the working agreement §2. Docs plus two comments; no executable change. Three things in its
-`contract.md` need the owner: the plugin's contract/review templates still prescribe the removed
-categories, the `glab mr merge` guard gap needs a shared per-machine hook edited, and
-`.claude/working-agreement.md` has no required reviewer in `review_routing.json`.
+Nothing in flight. `main` is at `b064474b`.
 
 **NEXT PIECE OF WORK: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
@@ -72,6 +67,12 @@ changing its units) passes every guard silently. There are no `accepted_range` t
 - **!92** 5-metric benchmark expansion. **Caution for any future benchmark aggregate over a
   ratio whose denominator can flip sign**: the new aggregates had no guard against negative
   stockholders' equity, a class already guarded at the verdict layer but never at aggregation.
+- **!116** deleted the narrative prose that caused six of !115's eleven review rounds and put
+  the rule in the working agreement §2: prose earns its place only if it records a decision not
+  derivable from code, defines something the code cannot state, or is machine-checked. Also
+  corrected three instructions in that file that were FALSE, not stale: "stage everything
+  (`git add`)", pushing to `origin` with `gh`, and the claim that any merge command is
+  hook-blocked.
 - **!97** README deploy target + screenshot; GitLab topics/description done.
 - **!95-!98** (merged 2026-09-05, after `docs/handover_2026-09-03.md`'s cutoff, so NOT in that
   archive -- detail is in each MR's own `contract.md`/`review.md`): browser-storage coverage,
@@ -170,6 +171,19 @@ each batch and nobody tracking it as of the last check.
 
 ## Open items (carried forward, genuinely unresolved as of 2026-09-03)
 
+0. **THREE OWNER DECISIONS RESERVED BY MR !116, moved here because a task `contract.md` is
+   rewritten per task and would have lost them.** None is urgent; none is agent-executable.
+   (a) `CONTRACT_TEMPLATE.md` and `REVIEW_TEMPLATE.md` live in the dbt-agent-kit plugin and
+   still prescribe the `amendments:` category !116 removed here. Editing them changes every
+   project using the plugin. (b) The merge guard matches `gh pr merge` only, so `glab mr merge`
+   is blocked by nothing; closing it means editing `~/.claude/hooks/branch_discipline.py`, a
+   per-machine file every project shares. The working agreement §3 states the gap rather than
+   overselling the guard. (c) `.claude/working-agreement.md` has no required reviewer in
+   `review_routing.json` beyond `always`, though it governs every agent action here.
+   cto-reviewer recommends routing it to itself, since `.claude/settings.json` and `*hooks/*`
+   already route there for carrying execution authority; the evidence is !116, whose only
+   blocking correctness finding came from the reviewer routing did not require.
+
 1. **BXB, RMS, SPK (`au_asx200`) are still stuck on a 2026-08-20 snapshot as of 2026-09-03**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
    and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
@@ -180,8 +194,8 @@ each batch and nobody tracking it as of the last check.
    leave it for now** -- known, accepted category of yfinance noise, not worth building a
    revenue-growth fallback (e.g. computed from ingested total-revenue statement rows instead
    of the fragile info scalar) for three cards. Revisit if Yahoo's data doesn't recover, or if
-   this pattern shows up on more tickers. **Eviction is now REACHABLE, and still undecided:** the atomic
-   export (branch above) deletes the `(market, date)` pairs a payload covers, so a ticker
+   this pattern shows up on more tickers. **Eviction is now REACHABLE, and still undecided:**
+   the atomic export (MR !115) deletes the `(market, date)` pairs a payload covers, so a ticker
    leaves the deck when those take ALL its remaining rows. Whether it should evict BY SNAPSHOT
    AGE is still an owner call.
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
