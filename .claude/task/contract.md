@@ -1,64 +1,99 @@
 # Task contract
 
-objective: Delete the process prose that produced eleven review rounds on MR !115, and write
-  down the rule that stops it recurring.
+objective: Make price-ingestion failures visible instead of silent. Issue #9 finding A3.
 
-  The export code was settled at review round 5 and never changed again. Rounds 6-11 were
-  entirely findings against prose DESCRIBING that code: wrong counts, a claim corrected in one
-  file and left standing in another, and twice a sentence contradicting another sentence in the
-  same file. `contract.md` was 35,527 bytes, of which 25,064 (71%) was an `amendments:` section
-  narrating the author's own mistakes. That section was the source of most of the errors and of
-  every mirror that contradicted the docs.
+  `_fetch_daily_prices` catches a failed batch, prints a warning and `continue`s
+  (`ingestion/yfinance/ingest.py:238-244`). It returns only a DataFrame, so nothing downstream
+  can tell a complete fetch from a partial one. The fundamentals path already does this
+  correctly: `_fetch_fundamentals` returns `(frame, stats)` and its counts reach the per-market
+  summary.
 
-  Narrative rots because nothing checks it. Git history and an MR description cannot, because
-  they are append-only and never claim to describe the present.
+  The consequence is not a lost warning in a log. `_flush` writes the partial result over the
+  previous complete file through `_atomic_write_parquet`, giving it a fresh mtime and a fresh
+  `ingested_at`, so `dbt source freshness` (warn 20d / error 30d) reads green while part of the
+  universe has silently lost its prices. Eligibility is fundamentals-driven, so the completeness
+  and baseline gates do not catch it either. No `check_*` script mentions prices at all.
 
 scope_paths:
-  - .claude/active_work.md
+  - ingestion/yfinance/ingest.py
+  - ingestion/main.py
+  - tests/ingestion/test_ingest_resume.py
+  - tests/ingestion/test_ingest_failure_reporting.py
   - .claude/task/contract.md
   - .claude/task/review.md
-  - .claude/working-agreement.md
-  - docs/supabase_setup.md
-  - frontend/app.py
-  - supabase/migrations/018_atomic_card_export.sql
+  - .claude/active_work.md
 
 decisions_reserved:
-  - THE RULE ITSELF is a change to how this repo works, so §6 makes it the owner's. Asked
-    directly ("For what do we need your prose. The prose is the problem.") and answered "do it".
-    The rule adopted: prose earns its place only if it records a decision not derivable from
-    code, defines something the code cannot state itself, or is machine-checked. Everything else
-    goes to git and the MR description.
-  - NOT DONE, FLAGGED: `CONTRACT_TEMPLATE.md` and `REVIEW_TEMPLATE.md` live in the dbt-agent-kit
-    plugin, outside this repo, and still prescribe the categories being removed here. Editing
-    them changes every project using the plugin and never appears in this repo's diff. Left for
-    the owner to decide; this branch only changes what this repo does.
-  - NOT DONE, FLAGGED: the merge guard covers `gh pr merge` only, so `glab mr merge` -- the
-    command this repo would actually use -- is blocked by nothing. Closing it means editing
-    `~/.claude/hooks/branch_discipline.py`, a per-machine file every project shares, so it is
-    the owner's call. The working agreement now states the gap instead of overselling the guard.
-  - NOT DONE, FLAGGED: `.claude/working-agreement.md` has no required reviewer in
-    `review_routing.json` beyond `always`, though it governs how every agent works here.
-    cto-reviewer was dispatched voluntarily for this change. Adding a routing entry is a rule
-    change and was not made unilaterally, since a self-authorized scope widening was already
-    flagged on the previous branch.
+  - MAKING A PARTIAL PRICE FETCH FAIL THE RUN changes what the scheduled pipeline treats as
+    success: a job that previously exited 0 with missing prices would now exit non-zero. That is
+    the point of the fix, but it is a CI behaviour change, and `ingestion/main.py` carries a
+    deliberate "observability only -- not a gate" decision for the elapsed timer, so the file
+    has precedent in the other direction. OWNER DECISION: fail the run, or surface the counts
+    and leave the exit code alone.
+    ASKED AND ANSWERED TWICE. The first answer was FAIL THE RUN, given on two premises the
+    author supplied and had not checked. Both are false:
+      * Prices have NO downstream consumer. `stg_yf__daily_prices` is defined and never selected
+        from anywhere in `dbt_analytics/models`, and no price column reaches the mart, the export
+        or a card. Losing prices costs nothing shipped today.
+      * `call_with_retry` retries rate limits ONLY (`rate_limit.py`: it re-raises unless
+        `is_rate_limited(exc)`). Connection resets, timeouts and parse errors reach the failure
+        path on attempt 0, unretried. The author's impact_map claimed retries were exhausted.
+    Corrected blast radius: `run_ingestion.py` is step 2 of 10 in `data-pipeline`'s plain
+    `script:` list with no `retry:`, so a non-zero exit skips `dbt build`, all three gates, the
+    Supabase export and the assessments. `storage/` has no `cache:`, so a re-run refetches
+    ~1,190 tickers. One unretried blip in ~25 batch calls would cost a whole twice-monthly
+    refresh.
+    OWNER ANSWER on the corrected facts: DO NOT GATE. Count and report loudly; leave the exit
+    code alone. The rejected alternative was keeping the gate. The recommendation was the
+    author's, presented with the correction.
+    Recorded so it is not re-derived: this is safe ONLY while nothing reads prices. A price
+    column gaining a consumer makes the gate question live again, which is why the reason sits
+    in the code beside the check.
+
+  - NOT DONE, FLAGGED: the counters cannot see the loss yfinance's OWN failure path produces.
+    `_download_one` catches a failed symbol and concatenates `utils.empty_df()` back in under
+    that ticker's key (yfinance 1.3.0, `multi.py`), so the column is present and all-NaN rather
+    than absent. `price_tickers_missing` tests column presence only, so those rows are written
+    and counted as retrieved, and `_yfinance_staging.yml` puts no `data_tests` on OHLCV at all.
+    Closing it means testing those columns, which is a data-contract change (§6) and not a
+    drop-in: a bare `not_null` on `close` fires on legitimate NaN (non-trading days in the
+    lookback window, halted sessions, a mid-window listing), so it needs a designed bound such
+    as an all-NaN share per ticker. It would also gate a model with no consumer, which is the
+    opposite of the decision above.
+
+  - NOT DONE, FLAGGED: nothing ENFORCES the precondition the decision above rests on. "Nothing
+    reads prices" is a comment. The day someone writes `ref('stg_yf__daily_prices')` the
+    reasoning becomes wrong and no test, gate or reviewer fires. Closing it needs a new
+    mechanism, so it is the owner's call.
+
+  - NOT DONE, FLAGGED, and the owner was NOT told this when choosing: "report loudly" buys less
+    than it sounds. The warning is stderr in a single-job pipeline whose log is not read while
+    the job is green -- cto-reviewer's words, "make them greppable, if someone already suspects
+    a problem and goes looking". A genuinely louder non-blocking form exists: a separate CI job
+    with `allow_failure: true`, which GitLab surfaces as a visible warning on the pipeline
+    without gating it. No existing repo mechanism does this (every `check_*` runs inline in
+    `data-pipeline` and gates everything after it), so it is a new workflow step and §6. The
+    choice was put as gate-or-report; the third option was not on the table because the author
+    did not know it. The counters shipped here are the prerequisite for any alerting built
+    later, so this is groundwork either way.
 
 done_when:
-  - `.claude/task/contract.md` has no `amendments:` section and no narrative of how the work
-    went, and this file demonstrates that by being one.
-  - `.claude/active_work.md` is materially under its 32,000-byte cap rather than 20 bytes under
-    it, with every owner decision, standing rule and open item preserved.
-  - Facts that were load-bearing but lived only in the deleted narrative have a home next to
-    what they describe: export timing and the PostgREST schema cache in `docs/supabase_setup.md`,
-    the column-list rationale in the migration itself, and the owner-approved 15-60 minute band
-    for `_DECK_TTL_SECONDS` as a comment beside that constant in `frontend/app.py`.
-  - `.claude/working-agreement.md` states the rule, so the next session inherits it.
-  - `pytest tests/ -q` green. NOT sqlfluff: it lints `dbt_analytics/models` and
-    `dbt_analytics/tests` only, so it cannot see the migration whose comment changed, and
-    citing it here would manufacture belief in a gate that does not cover this diff. The
-    migration comment is verified by reading it against the code it describes, which is what
-    the reviewers did.
+  - `_fetch_daily_prices` returns `(frame, stats)` carrying batches attempted, batches failed and
+    tickers missing, mirroring `_fetch_fundamentals`' existing shape.
+  - `ingest_market` merges those into its summary and `ingestion/main.py` prints them beside the
+    fundamentals counts.
+  - A failed batch is provably non-silent: tests inject a batch failure and assert the counts
+    reach `ingest_market`'s summary and the operator warning, mutation-verified. The summary's
+    whole key set is pinned, because `ingestion/main.py` indexes every counter by name and a
+    rename would otherwise pass every test and raise `KeyError` after a ~24-minute ingest.
+  - A clean run prints nothing on stderr, so the warning stays worth reading.
+  - Resume behaviour is unchanged. A partial file stays a usable checkpoint that a re-run
+    completes, which is what `_is_usable_checkpoint` and the pending-ticker filter exist for.
+    This task makes failure visible; it does not stop the write.
+  - `pytest tests/ -q` green.
 
-impact_map: Documentation and one SQL comment. No executable line changes, so no runtime,
-  schema or CI behaviour moves. The risk is deletion, not breakage: losing a fact that had no
-  other home. Mitigated by moving the load-bearing ones first and by scope-auditor checking the
-  handover against what it previously carried.
+impact_map: `ingestion/` only. No dbt model, no export, no frontend, no schema, and no exit
+  code changes: a run that would have passed still passes. The only behaviour change is four
+  counters in the per-market summary line and a stderr warning when a batch failed. Nothing
+  consumes the summary dict programmatically (`ingestion/main.py` is its sole reader), so the
+  added keys cannot break a caller.
