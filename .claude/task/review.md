@@ -1,126 +1,116 @@
 # Review
 
-diff_sha256: 292e272eab8e97aa4bc180ddbdafad1640883c35ace8bdbb69f0b4dc6ca94a70
+diff_sha256: b5417b75378741ed74af23177091b901a389024467b6395665c16fa46c6c2a65
 
-Four reviewers: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`),
-data-engineer-reviewer (`supabase/*`), cto-reviewer (dispatched voluntarily, since
-`.claude/working-agreement.md` has no required reviewer and governs every agent action here).
-Four rounds. Written short on purpose: this branch exists to stop review records becoming
-narrative.
+Three reviewers, by routing: scope-auditor (`always`), data-engineer-reviewer (`ingestion/*`),
+cto-reviewer (`tests/*`). Four rounds.
 
 ## What shipped
 
-`.claude/working-agreement.md` §2 gains the rule: prose earns its place only if it records a
-decision not derivable from code, defines something the code cannot state, or is
-machine-checked. Narrative goes to the commit message and MR description, with an explicit
-carve-out that decisions and open items stay in `.claude/active_work.md`, which is injected into
-the next session. Plus: when you change a claim, grep for the claim, not the file you were told
-about.
+`_fetch_daily_prices` returns `(frame, stats)` instead of a bare frame, carrying
+`price_batches`, `price_batches_failed`, `price_batches_empty` and `price_tickers_missing` --
+the shape `_fetch_fundamentals` beside it already used. `ingest_market` merges them into its
+summary; `ingestion/main.py` prints them and writes a stderr warning naming the affected
+markets when a batch failed.
 
-Two instructions in that file were false and are corrected. Step 1 of the review cycle said
-"Stage everything (`git add`)", which swept a 900 KB virtualenv into the index during MR !115;
-it now requires explicit paths. §3 told agents to `git push origin <branch>` and use `gh pr`,
-naming a remote that no longer exists in this clone; it now requires
-`git push gitlab <branch>:<branch>` and `glab`, and states the `push.default = upstream` trap.
+The run does NOT fail. That reverses the first answer, and the reversal is the substance of this
+review.
 
-§3 also stopped overselling a guard. It claimed "a merge command" is hook-enforced;
-`branch_discipline.py`'s `_GH_PR_MERGE` matches `gh pr merge` and nothing else, so
-`glab mr merge` is unguarded. It now says so.
+## The decision, asked twice
 
-`.claude/task/contract.md` is rewritten with no `amendments:` section, 35,527 bytes to 3,301.
-`.claude/active_work.md` drops four dated narrative sections, 31,980 bytes to 27,780 against a
-32,000-byte cap it was 20 bytes under.
+The owner was first asked "should a failed price batch fail the run" and answered yes, on two
+premises the author supplied without checking. Both were false:
 
-Facts that were load-bearing but lived only in the deleted narrative moved next to what they
-describe: export timing, the `statement_timeout` uncertainty and the PostgREST schema cache to
-`docs/supabase_setup.md` §3c; the column-list rationale into the migration; the owner-approved
-15-60 minute band for `_DECK_TTL_SECONDS` into a comment beside that constant.
+- **Nothing reads prices.** `stg_yf__daily_prices` is `ref`'d by no model. No price column
+  reaches the mart, the export or a card. scope-auditor found this; cto and data-engineer each
+  re-derived it independently.
+- **`call_with_retry` retries rate limits only.** `rate_limit.py` re-raises unless
+  `is_rate_limited(exc)`, so a connection reset or timeout reaches the failure path on attempt 0.
+  The contract had claimed retries were exhausted. data-engineer and cto both caught it.
 
-The dead `origin` remote was deleted from the clone. Not in the diff, but it is why §3 changed.
+Corrected blast radius: `run_ingestion.py` is step 2 of 10 in `data-pipeline`'s plain `script:`
+list with no `retry:`, and `storage/` has no `cache:`. A non-zero exit would skip `dbt build`,
+all three gates, the Supabase export and the assessments, and a re-run would refetch ~1,190
+tickers. One unretried blip in ~25 batch calls would have cost a whole twice-monthly refresh, to
+protect data with no consumer.
+
+Put back to the owner with the correction. Answer on the corrected facts: report, do not gate.
 
 ## Verification
 
-`pytest tests/ -q` 615 passed. No executable line changed anywhere: both non-markdown files are
-comment-only, verified line by line by three reviewers independently. Zero em-dashes and zero
-lines over 100 characters across 234 added lines. `sqlfluff` is deliberately NOT cited: it lints
-`dbt_analytics/models` and `dbt_analytics/tests` only and cannot see the migration whose comment
-changed, so claiming it would manufacture coverage this diff does not have.
+`pytest tests/ -q` 625 passed. 362 added lines, zero em-dashes, zero over 100 characters.
 
-## The recurring author error
-
-Relocating a claim without re-verifying it in its new context. The "80-column" count and the
-REST-reachability reason were both true where they came from and false where they landed. Four
-rounds found seventeen defects, all prose.
+Mutation-tested. cto ran 20 mutants, each proving it applied (occurrence count, sha256 before
+and after, on-disk readback) before its result was trusted -- after an earlier mutation in this
+task silently failed to apply and reported a false pass. All killed except two that exist
+verbatim at HEAD. The kills include deleting the stderr warning, un-naming the market,
+redirecting it to stdout, cross-swapping two counters, and renaming a counter in `ingest.py`
+alone, which previously passed every test and would have raised `KeyError` in production after a
+24-minute ingest.
 
 ## scope-auditor
 
-Failed rounds 1 and 2. Found five over-deletions, one with no other home in the repo (the open
-finding that the AI read and the card face disagree on labels and units), a false forwarding
-pointer to an archive that predates the MRs it named, and an owner-approved parameter band that
-existed nowhere else. Then found the standing decision rewritten in this commit contradicted two
-self-histories left standing in the same file.
+Failed rounds 1 and 2. Found that the gate's blast radius was never put to the owner, that
+"re-run before trusting downstream output" was false because nothing consumes prices, and that
+the branch gated the feed affecting no shipped output while leaving ungated the one that decides
+whether a card exists. Then found four test docstrings still describing the reversed design.
 
-VERDICT: PASS
-
-## analytics-engineer-reviewer
-
-Failed rounds 2 and 3. Found `done_when` citing `sqlfluff` as evidence for a file `sqlfluff`
-cannot lint, three rules stated twice across the handover and the working agreement, and the
-inverted changelog rule that contradicted the `## Recently merged` section this commit added.
-Confirmed the migration comment's copy count and which copy is machine-checked, independently.
+Withdrew its own date-stamp finding after checking four precedents: "My original reading was too
+strict."
 
 VERDICT: PASS
 
 ## data-engineer-reviewer
 
-Failed round 2 on the migration comment's "80-column" figure, established the real numbers by
-counting (78 payload keys, not 80), and recommended deleting the count rather than correcting it
-since a count in a comment rots on the next `add column`. Then found `docs/supabase_setup.md`
-giving a checkably false reason for the `statement_timeout` question being open.
+Failed rounds 1, 2 and 3. Established that `call_with_retry` retries rate limits only. Found the
+failure message claimed the parquet was partial and freshly stamped, which is false when every
+batch fails, because `_flush` is never reached. Then found the corrected comment had
+over-corrected into contradicting its own file: it declared `price_tickers_missing` blind to
+per-symbol loss while `ingest.py` increments it on exactly that, asserted by a test in the same
+diff.
 
 VERDICT: PASS
 
 ## cto-reviewer
 
-Failed round 2 on the one finding that made the repo less safe than before this branch: §3
-generalised "`gh pr merge` is hook-blocked" into "a merge command", which is false and pointed
-agents at the unguarded path. Supplied the stopping rule and the judgement that rounds 3 and 4
-were past the point of return.
+Failed round 1 on the retry premise and on four surviving mutants. Verified the yfinance claim
+against the pinned source rather than from memory, and recovered dangling blobs to prove no
+executable drift between rounds instead of accepting the author's summary.
+
+Answered the question it was asked directly: the shipped warning is stderr in a green single-job
+log, so "make failures visible" ships as "make them greppable, if someone already suspects a
+problem and goes looking". It judged this not a defect in the diff but a gap in the menu the
+owner was offered.
 
 VERDICT: PASS
 
 ## Owner decisions
 
-Three `NOT DONE, FLAGGED` entries in `contract.md`, none decided here:
+One taken, twice, recorded in `contract.md` with both answers and the correction between them:
+report, do not gate.
 
-- `CONTRACT_TEMPLATE.md` and `REVIEW_TEMPLATE.md` live in the dbt-agent-kit plugin and still
-  prescribe the categories removed here. Editing them changes every project using the plugin.
-- The merge guard covers `gh pr merge` only. Closing it means editing
-  `~/.claude/hooks/branch_discipline.py`, a per-machine file every project shares.
-- `.claude/working-agreement.md` has no required reviewer in `review_routing.json` beyond
-  `always`. cto-reviewer recommends adding it, on the grounds that routing already sends
-  `.claude/settings.json` and `*hooks/*` there for carrying execution authority, and this file
-  carries instruction authority. The evidence is this branch: the one blocking correctness
-  finding came from the reviewer routing did not require.
+Three `NOT DONE, FLAGGED`, none decided here:
+
+- The counters cannot see the loss yfinance's own failure path produces. A failed symbol is
+  concatenated back as an all-NaN OHLCV block, so the column is present and the symbol counts as
+  retrieved; `_yfinance_staging.yml` puts no `data_tests` on OHLCV at all. Closing it is a
+  data-contract change, and a bare `not_null` on `close` is the wrong instrument because
+  legitimate NaN exists (non-trading days, halted sessions, mid-window listings).
+- Nothing ENFORCES the "nothing reads prices" precondition the whole decision rests on. It is a
+  comment. `ref('stg_yf__daily_prices')` would make it wrong silently.
+- "Report loudly" buys less than it sounds, and the owner was not told so when choosing. A
+  separate CI job with `allow_failure: true` surfaces a visible pipeline warning without gating.
+  No existing repo mechanism does this, so it is a new workflow step. The choice was put as
+  gate-or-report because the author did not know the third option existed.
 
 ## Follow-ups, disclosed not fixed
 
-- `.claude/active_work.md` quotes `"no such remote"` as the failure of a bare `git push origin`.
-  cto and data-engineer each corrected it differently (the actual message is
-  `fatal: 'origin' does not appear to be a git repository`, and `push.default = upstream` may
-  error first). The substance is right and is the whole deterrent. Delete the quoted string
-  rather than correct it a third time.
-- Three date-stamped fixes remain in `.claude/active_work.md`, which its own standing decision
-  forbids. All pre-existing and equally in conflict before this branch.
-- The `!95-!98` entry in `## Recently merged` frames process rather than state. Inside the
-  reconciling reading, but the one entry that strains it.
-- `docs/handover_2026-09-03.md` carries the SUPERSEDED wording of this same rule ("git, this
-  file, the contract and the review record carry the history"). It is a dated archive, framed as
-  one, and outside `scope_paths`; editing it to agree with the present would destroy the
-  property that makes an archive worth keeping. But a session grepping for the rule hits both
-  wordings with nothing marking one superseded. Whether an archive may carry a "superseded by"
-  annotation is a rule question about how archives work here, so it is the owner's.
-- cto's stopping judgement, recorded because the next person to run this cycle should weigh it:
-  routing is path-keyed, so a docs-only branch pulls the same full panel a data-model change
-  does. Rounds 1 and 2 did the real work here; rounds 3 and 4 produced one contradiction and one
-  misquoted git message.
+- `done_when` enumerates three counters where four ship. A minimum, not an inventory
+  (scope-auditor, not raised under the stopping rule).
+- The contract cites `ingest.py:238-244`; the block starts at 237. Names the right code.
+- For a batch of exactly one ticker a failure degenerates to `downloaded.empty` and is counted as
+  `price_batches_empty`, not as an invisible NaN block. The comment describes the multi-symbol
+  case, which is what `BATCH_SIZE` produces in production (cto).
+- Nothing couples the `ingest.py` comment's `yfinance==1.3.0` citation to `requirements.txt`, so
+  a version bump fires nothing. cto judged naming the version the LOWER-liability option, since
+  unfalsifiable prose rots invisibly while a named version makes staleness self-announcing.
