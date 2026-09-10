@@ -10,9 +10,28 @@ the detail._
 
 ## In flight
 
-Nothing in flight. `main` is at `b064474b`.
+**MR !118 open, awaiting owner merge** (`fix/price-ingest-visibility`) -- issue #9 finding A3.
+Price-batch failures were swallowed; they are now counted, printed in the per-market summary and
+warned about on stderr. The run does NOT fail: the owner's first answer was to gate, reversed on
+corrected facts (nothing reads prices; `call_with_retry` retries rate limits only, so a
+connection reset reaches the failure path unretried; `run_ingestion.py` is step 2 of 10 with no
+`retry:`). Three things in its `contract.md` need the owner, all §6: the counters cannot see a
+symbol yfinance returns as an all-NaN block, nothing enforces the "no price consumer"
+precondition, and `allow_failure: true` would be a louder non-blocking report but is a new CI
+job that was never put on the menu.
 
-**NEXT PIECE OF WORK: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
+**AFTER !118, issue #9's remaining Tier-1 data-integrity work, in this order:** A2 (11
+undocumented `numeric` precision caps; one Yahoo outlier over ~1e6 aborts the export, and the
+project has no `accepted_range` test anywhere), C3 (the dbt mart's real grain has no test --
+deleting one `qualify` line passes everything and silently doubles the deck), C4 (`market_code`
+is read from parquet contents and never validated against the registry), and a fill-rate
+assertion (a provider DROPPING a field passes every guard today).
+
+**ALSO NEXT, and the reason A3 landed where it did: `fundamentals_failed` is counted and exits
+0**, while fundamentals are the SOLE driver of `is_card_eligible`. A3 gated nothing in the end;
+this is the feed where a gate would actually protect a shipped output.
+
+**NEXT UI PIECE: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
 centralised in `frontend/styles.py`. Changing them is a UX PR gate change
 (`docs/working_agreement.md`) needing the 480px checklist.
