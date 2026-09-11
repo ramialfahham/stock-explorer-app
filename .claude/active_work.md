@@ -18,12 +18,19 @@ the detail._
 
 ## In flight
 
-**MR !122 open, awaiting owner merge** (`fix/fundamentals-failure-gate`). Fundamentals fetch
-failures above 5% of a market's requested tickers fail the ingest run; at or below, the run
-continues and the failed tickers are named on stderr. Rule: `docs/data_contract.md`,
-completeness gates, "At ingestion". Next after merge: issue #9's remaining Tier-1 items below.
+**MR !123 open, awaiting owner merge** (`fix/drop-numeric-precision-caps`, issue #9 A2).
+Migration `019` widens the ten `numeric(p,s)` columns on `mart_stock_cards` to plain `numeric`,
+found from `pg_attribute`; a test refuses `numeric`/`decimal`/`dec(p,s)` in any later migration.
+Applied and verified on `dev`; prod gets it on the next scheduled run. Next after merge: C3.
 
-**Merged this pass.** !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures are
+**Owner question left open by A2:** `accepted_range` tests on the card metrics. A definitional
+bound (values beyond X are nulled on the card) is a metric definition, owner's. A wide sanity
+guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
+owner confirms in one line. Neither exists; decide which, or neither.
+
+**Merged this pass.** !122 (`fix/fundamentals-failure-gate`, issue #9 A3 follow-up): fundamentals
+failures above 5% of a market's requested tickers fail the ingest run; below, the failed tickers
+are named on stderr. !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures are
 counted, printed and warned on stderr; the run does not fail. Three owner questions from its
 contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file
 carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context
@@ -36,9 +43,8 @@ freshness, full `dbt build`, the eligibility and export gates, assessments dry-r
 yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
 task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
 
-**Issue #9's remaining Tier-1 data-integrity work, in this order:** A2 (11
-undocumented `numeric` precision caps; one Yahoo outlier over ~1e6 aborts the export, and the
-project has no `accepted_range` test anywhere), C3 (the dbt mart's real grain has no test --
+**Issue #9's remaining Tier-1 data-integrity work, in this order:** C3 (the dbt mart's real
+grain has no test --
 deleting one `qualify` line passes everything and silently doubles the deck), C4 (`market_code`
 is read from parquet contents and never validated against the registry), and a fill-rate
 assertion (a provider DROPPING a field passes every guard today).
