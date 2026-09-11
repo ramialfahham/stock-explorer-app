@@ -1,0 +1,17 @@
+unit_tests:
+  - name: fct_fundamentals_snapshot_keeps_only_the_latest_snapshot_per_ticker
+    description: >
+      Raw parquet is overwritten each run and carries one snapshot_date, so no stored data ever
+      exercises the qualify that makes this model one row per (market_code, ticker). Two dates
+      for one ticker here do. Deleting the qualify doubles the deck downstream; this catches it.
+    model: fct_fundamentals_snapshot
+    given:
+      - input: ref('base_yf__fundamentals')
+        rows:
+          - { market_code: us_sp500, ticker: AAA, snapshot_date: "2026-08-15", info_market_cap: 100}
+          - { market_code: us_sp500, ticker: AAA, snapshot_date: "2026-09-01", info_market_cap: 200}
+          - { market_code: us_sp500, ticker: BBB, snapshot_date: "2026-08-15", info_market_cap: 300}
+    expect:
+      rows:
+        - { market_code: us_sp500, ticker: AAA, snapshot_date: "2026-09-01", info_market_cap: 200}
+        - { market_code: us_sp500, ticker: BBB, snapshot_date: "2026-08-15", info_market_cap: 300}

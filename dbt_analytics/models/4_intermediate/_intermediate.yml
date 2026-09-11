@@ -4,7 +4,8 @@ models:
   - name: int_stock__card_metrics
     description: >
       **What:** Swipe-card metrics and per-company-type eligibility per ticker snapshot.
-      **Grain:** One row per (market_code, ticker, snapshot_date).
+      **Grain:** One row per (market_code, ticker), each at its market's latest snapshot_date
+      from fct_fundamentals_snapshot.
       **Source:** fct_fundamentals_snapshot, dim_stock.
       **Used by:** int_stock__sector_benchmarks, mart_stock_cards.
       Eligibility rules: see doc block card_eligibility in _docs.md / data_contract.md.
@@ -18,7 +19,6 @@ models:
             combination_of_columns:
               - market_code
               - ticker
-              - snapshot_date
       - dbt_utils.expression_is_true:
           arguments:
             expression: >-

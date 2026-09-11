@@ -318,10 +318,10 @@ then served as a mix with nothing marking it.
 
 Three things worth knowing.
 
-It replaces every `snapshot_date` the payload carries, not one. The mart is multi-date by
-design (`_marts.yml` declares the grain as `(market_code, ticker, snapshot_date)`), and a
-per-market re-run after a partial ingest legitimately produces more than one date, so
-refusing that would turn a documented recovery step into a total export failure.
+It replaces every `snapshot_date` the payload carries, not one. The mart holds one row per
+`(market_code, ticker)`, but markets can sit on different dates: a per-market re-run after a
+partial ingest legitimately produces more than one date across the payload, so refusing that
+would turn a documented recovery step into a total export failure.
 
 A ticker that was in a `(market, date)` pair the payload covers, but is no longer in the
 mart, is deleted and not re-inserted. The old upsert left it.

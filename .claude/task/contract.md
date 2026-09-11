@@ -3,43 +3,40 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: Remove the Postgres precision caps on `mart_stock_cards` so a Yahoo outlier cannot
-  abort the export. Issue #9 finding A2.
+objective: Test the grain the mart actually has. Issue #9 finding C3.
 
-  Measured: migration `002` created ten `numeric(10,4)` / `numeric(18,6)` columns; every column
-  added since is plain `numeric`. `numeric(10,4)` overflows above 999,999.9999.
-  `revenue_growth_yoy_pct` is `info_revenue_growth * 100` straight from Yahoo, so a company
-  going from trivial to real revenue produces a value the column cannot hold, and the atomic
-  export (one transaction) then writes nothing for that cycle. The dbt contract declares these
-  columns `double` and `docs/data_contract.md` lists them as `numeric`; neither mentions a cap.
-  The split is historical: only `002`'s columns were capped.
+  Measured: `fct_fundamentals_snapshot` keeps the latest `snapshot_date` per `(market_code,
+  ticker)` with one `qualify`, and nothing downstream reintroduces history, so
+  `int_stock__card_metrics` and both marts hold one row per `(market_code, ticker)` per build.
+  They are documented and tested at `(market_code, ticker, snapshot_date)`, the grain of the
+  accumulating Postgres table. Raw parquet is overwritten each run and carries one
+  `snapshot_date`, so the fact's own `(market_code, ticker)` test never sees a second date and
+  the `qualify` is exercised by nothing: deleting it passes every test on the data CI has.
 
 scope_paths:
-  - supabase/migrations/019_drop_numeric_precision_caps.sql
-  - docs/supabase_setup.md
-  - tests/tooling/test_supabase_migrations_schema.py
+  - dbt_analytics/models/3_core/_core.yml
+  - dbt_analytics/models/3_core/_core_unit_tests.yml
+  - dbt_analytics/models/4_intermediate/_intermediate.yml
+  - dbt_analytics/models/5_marts/_marts.yml
+  - docs/data_contract.md
+  - tests/tooling/test_export_to_supabase.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - Removing a cap widens what the table accepts; it changes no shipped number and no
-    definition. Agent-executable under the audit's finding, which the owner ordered as next.
-  - NOT done here: `accepted_range` tests on the metrics. Their bounds are metric definitions
-    (§6) and nothing in the repo states them. Once the caps are gone, the only reason for a
-    range test is data sanity, which is a separate question with owner-set bounds.
+  - None. The models already behave this way and the fact's description says so; the change
+    makes the tests and the model descriptions match the behaviour. The Supabase table's grain
+    in `docs/data_contract.md` stays `(market_code, ticker, snapshot_date)`: that describes the
+    table, which accumulates, and is correct.
 
 done_when:
-  - `019_drop_numeric_precision_caps.sql` alters every `numeric` column of
-    `public.mart_stock_cards` that carries a typmod to plain `numeric`, found from `pg_attribute`
-    at run time rather than from a hand-written list, and raises if any remain afterwards.
-  - Applied to `--target dev` and verified there over a direct connection: zero capped numeric
-    columns; a row with `revenue_growth_yoy_pct = 12345678.9` inserts and reads back.
-  - A test in `tests/tooling` asserts that no migration after `002` declares a `numeric(p,s)`,
-    `decimal(p,s)` or `dec(p,s)` column, so the cap cannot come back by copy-paste.
-  - `docs/supabase_setup.md`'s migration table gains the `019` row.
+  - A dbt unit test on `fct_fundamentals_snapshot` feeds two rows for one ticker with different
+    `snapshot_date`s and expects only the later one. Deleting the `qualify` fails it.
+  - `int_stock__card_metrics`, `mart_stock_cards` and `mart_stock_eligibility_gaps` carry a
+    `unique_combination_of_columns` on `(market_code, ticker)`, and their `Grain:` lines say so.
+  - `dbt build` green locally on the stored raw data with the tightened tests.
 
-impact_map: Production schema change, applied by the existing runner on the next scheduled
-  run. Ten columns on a table of roughly one row per exported card, so a rewrite costs nothing
-  if Postgres does one. Reads are unaffected: the frontend formats through `card_copy.py`, which
-  does not depend on column precision.
+impact_map: Tests and descriptions only. No model SQL, no export, no schema. Markets can sit
+  on different dates after a per-market re-run; that stays legal, since the grain is per
+  ticker, not per build.

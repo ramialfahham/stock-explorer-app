@@ -299,11 +299,10 @@ def test_inserted_count_rejects_shapes_that_are_not_a_count() -> None:
 
 def test_mart_rows_are_read_in_a_deterministic_order(tmp_path: Path, monkeypatch) -> None:
     """The source query had no ORDER BY, so which rows landed before a partial failure
-    differed every run and the resulting state could not be reproduced. The order must be the
-    grain `_marts.yml` declares -- (market_code, ticker, snapshot_date) -- not a prefix of it.
-    Two columns happen to be total today only because `fct_fundamentals_snapshot` is uniqueness
-    tested per (market_code, ticker) a layer upstream; the mart itself restates no such thing,
-    and the exporter should not lean on an invariant its own source does not declare."""
+    differed every run and the resulting state could not be reproduced. The order is the
+    Postgres table's key, (market_code, ticker, snapshot_date), not a prefix of it: the mart
+    declares (market_code, ticker) uniqueness, but the exporter orders what it is handed and
+    must stay total for a payload that carries a ticker at two dates, as this one does."""
     rows = [dict(_ROW, ticker=t) for t in ("T3", "T1", "T2")] + [
         dict(_ROW, ticker="T1", snapshot_date="2026-05-01")
     ]
