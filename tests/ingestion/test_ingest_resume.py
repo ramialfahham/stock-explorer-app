@@ -206,7 +206,7 @@ def test_prices_flush_survives_a_simulated_crash(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
 
     with pytest.raises(KeyboardInterrupt):
-        ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
+        _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
 
     on_disk = pd.read_parquet(output_dir / "yf_daily_prices.parquet")
     assert sorted(on_disk["ticker"].unique()) == ["AAA", "BBB"]
@@ -222,7 +222,7 @@ def test_prices_skip_if_fresh_today(monkeypatch, tmp_path):
         return _fake_price_frame(tickers)
 
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
-    ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
+    _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
     assert sorted(calls) == ["AAA", "BBB", "CCC", "DDD"]
 
     calls.clear()
@@ -234,7 +234,9 @@ def test_prices_skip_if_fresh_today(monkeypatch, tmp_path):
         return _fake_price_frame(tickers)
 
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download_second_call)
-    combined = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"])
+    combined, _ = ingest_module._fetch_daily_prices(
+        MARKET, ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"]
+    )
     assert calls == ["EEE", "FFF"]
     assert sorted(combined["ticker"].unique()) == ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"]
 
@@ -247,7 +249,7 @@ def test_prices_no_duplicate_rows_when_batch_boundaries_shift(monkeypatch, tmp_p
     monkeypatch.setattr(ingest_module, "BATCH_SIZE", 3)
 
     monkeypatch.setattr(ingest_module.yf, "download", lambda tickers, **kwargs: _fake_price_frame(tickers))
-    ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+    _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
 
     calls: list[str] = []
 
@@ -258,7 +260,7 @@ def test_prices_no_duplicate_rows_when_batch_boundaries_shift(monkeypatch, tmp_p
     # BATCH_SIZE=3 puts AAA/BBB (already fetched) in the same window as CCC (new) --
     # the exact partially-covered-batch scenario the fix targets.
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
-    combined = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD", "EEE"])
+    combined, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD", "EEE"])
 
     assert "AAA" not in calls
     assert "BBB" not in calls
@@ -273,7 +275,7 @@ def test_prices_stale_file_is_fully_refetched(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
 
     monkeypatch.setattr(ingest_module.yf, "download", lambda tickers, **kwargs: _fake_price_frame(tickers))
-    ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+    _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
 
     _backdate_checkpoint(output_dir / "yf_daily_prices.parquet")
 
@@ -284,7 +286,7 @@ def test_prices_stale_file_is_fully_refetched(monkeypatch, tmp_path):
         return _fake_price_frame(tickers)
 
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
-    ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+    _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
     assert sorted(calls) == ["AAA", "BBB"]
 
 
@@ -315,7 +317,7 @@ def test_prices_ignores_a_fresh_today_file_with_an_old_schema(monkeypatch, tmp_p
 
     monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
-    combined = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+    combined, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
 
     assert sorted(calls) == ["AAA", "BBB"]
     assert "ZZZ" not in combined["ticker"].values
@@ -351,7 +353,7 @@ def test_prices_ingested_at_is_not_overwritten_by_a_later_batchs_flush(monkeypat
 
     monkeypatch.setattr(ingest_module, "datetime", _FakeDatetime)
 
-    combined = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
+    combined, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
 
     stamps = combined.set_index("ticker")["ingested_at"]
     assert stamps["AAA"] == stamps["BBB"], "same batch must share one fetch_time"
@@ -367,7 +369,7 @@ def test_prices_force_bypasses_skip(monkeypatch, tmp_path):
     monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
 
     monkeypatch.setattr(ingest_module.yf, "download", lambda tickers, **kwargs: _fake_price_frame(tickers))
-    ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+    _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
 
     calls: list[str] = []
 
@@ -376,5 +378,103 @@ def test_prices_force_bypasses_skip(monkeypatch, tmp_path):
         return _fake_price_frame(tickers)
 
     monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
-    ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"], force=True)
+    _, _ = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"], force=True)
     assert sorted(calls) == ["AAA", "BBB"]
+
+
+def test_price_batch_failure_is_counted_not_swallowed(monkeypatch, tmp_path):
+    """Issue #9 A3. A failed batch used to print a warning and `continue`, returning only a
+    frame, so no caller could tell a complete fetch from a partial one. The parquet is still
+    written and still carries a fresh timestamp, so `dbt source freshness` cannot see the loss
+    and no `check_*` script looks at prices at all."""
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+
+    def _fake_download(tickers, **kwargs):
+        if "CCC" in tickers:
+            raise RuntimeError("yfinance said no")
+        return _fake_price_frame(tickers)
+
+    monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
+    monkeypatch.setattr(ingest_module, "call_with_retry", lambda fn: fn())
+
+    combined, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
+
+    assert stats["price_batches"] == 2
+    assert stats["price_batches_failed"] == 1
+
+    # The partial write still happens, on purpose: it is the resume checkpoint. What changes is
+    # that the caller can now tell it is partial.
+    assert sorted(combined["ticker"].unique()) == ["AAA", "BBB"]
+    assert (output_dir / "yf_daily_prices.parquet").exists()
+
+
+def test_empty_and_missing_are_counted_from_the_real_fetch(monkeypatch, tmp_path):
+    """The empty-batch and missing-ticker paths are the two the stderr warning does not fire
+    on, so nothing else would notice their counters regressing. Exercised against the real
+    _fetch_daily_prices, not a faked summary."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+
+    def _fake_download(tickers, **kwargs):
+        if "CCC" in tickers:
+            return pd.DataFrame()
+        # Return AAA only, so BBB is absent from the response columns.
+        return _fake_price_frame([tickers[0]])
+
+    monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
+    monkeypatch.setattr(ingest_module, "call_with_retry", lambda fn: fn())
+
+    _, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB", "CCC", "DDD"])
+
+    assert stats["price_batches_empty"] == 1
+    assert stats["price_tickers_missing"] == 1
+    assert stats["price_batches_failed"] == 0
+
+
+def test_price_stats_reach_the_market_summary(monkeypatch, tmp_path):
+    """The counts are useless unless they leave `_fetch_daily_prices`. `ingest_market` is what
+    `ingestion/main.py` reads, and its fundamentals counts already arrive this way."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+    monkeypatch.setattr(
+        ingest_module,
+        "load_constituents",
+        lambda market_code: pd.DataFrame({"ticker": ["AAA", "BBB", "CCC", "DDD"]}),
+    )
+    monkeypatch.setattr(ingest_module, "_write_constituents_snapshot", lambda market, frame: None)
+    monkeypatch.setattr(
+        ingest_module,
+        "_fetch_fundamentals_row",
+        lambda market, local_ticker, yf_symbol, snapshot_date: _fake_row(local_ticker),
+    )
+
+    def _fake_download(tickers, **kwargs):
+        if "CCC" in tickers:
+            raise RuntimeError("yfinance said no")
+        return _fake_price_frame(tickers)
+
+    monkeypatch.setattr(ingest_module.yf, "download", _fake_download)
+    monkeypatch.setattr(ingest_module, "call_with_retry", lambda fn: fn())
+
+    summary = ingest_module.ingest_market(MARKET, delay_seconds=0)
+
+    assert summary["price_batches_failed"] == 1
+    assert summary["price_batches"] == 2
+
+    # Pin the whole key set, not just the two this test reads. `ingestion/main.py` indexes every
+    # one of these by name, so renaming a counter here alone would pass every test and then
+    # raise KeyError on the real run, after the ~24-minute ingest has already happened.
+    assert set(summary) == {
+        "constituents",
+        "tickers_requested",
+        "price_rows",
+        "price_batches",
+        "price_batches_failed",
+        "price_batches_empty",
+        "price_tickers_missing",
+        "fundamentals_rows",
+        "fundamentals_ok",
+        "fundamentals_failed",
+        "fundamentals_skipped",
+    }

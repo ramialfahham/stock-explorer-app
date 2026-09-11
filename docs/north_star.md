@@ -1,5 +1,9 @@
 # North star — Stock Explorer
 
+> DURABLE. **Owns:** product vision and user-facing behaviour. Wins on conflict for anything a user
+> sees.
+> **Never:** technical contracts or process.
+
 Product vision and UX principles. When implementation choices conflict, this document wins
 for user-facing behavior. Technical contracts live in [`data_contract.md`](data_contract.md).
 

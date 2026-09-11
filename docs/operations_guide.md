@@ -1,5 +1,8 @@
 # Operations guide — Stock Swipe App
 
+> DURABLE. **Owns:** how production data moves, and the runbook for when it breaks.
+> **Never:** product rules or metric definitions.
+
 How production data moves and how to respond when it breaks. Product rules live in
 [`north_star.md`](north_star.md); field-level contracts in [`data_contract.md`](data_contract.md).
 

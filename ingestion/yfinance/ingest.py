@@ -175,7 +175,23 @@ def _fetch_daily_prices(
     *,
     max_tickers: int | None = None,
     force: bool = False,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    # Returns stats alongside the frame for the same reason _fetch_fundamentals does: a caller
+    # cannot otherwise tell a batch was lost. _flush writes whatever was retrieved over the
+    # previous complete file with a fresh mtime and ingested_at, so a run that lost batches
+    # still looks fresh to `dbt source freshness`.
+    # Batch-level, plus ONE of the two per-symbol cases. price_tickers_missing catches a symbol
+    # absent from the response columns. It cannot catch the case yfinance's own failure path
+    # produces: a failed download is concatenated back in as an all-NaN OHLCV block (1.3.0,
+    # multi.py's _download_one -> utils.empty_df()), so the column IS present, the symbol counts
+    # as retrieved, its NaN rows are written, and nothing objects -- the staging model puts no
+    # test on OHLCV at all.
+    stats = {
+        "price_batches": 0,
+        "price_batches_failed": 0,
+        "price_batches_empty": 0,
+        "price_tickers_missing": 0,
+    }
     tickers = local_tickers[:max_tickers] if max_tickers else local_tickers
 
     output_path = raw_dir(market.market_code) / "yf_daily_prices.parquet"
@@ -234,9 +250,11 @@ def _fetch_daily_prices(
                 progress=False,
             )
 
+        stats["price_batches"] += 1
         try:
             downloaded = call_with_retry(_download_batch)
         except Exception as exc:  # noqa: BLE001
+            stats["price_batches_failed"] += 1
             print(
                 f"  warning: price batch failed for {market.market_code} "
                 f"(tickers {start}-{start + len(batch)}): {exc}"
@@ -244,6 +262,7 @@ def _fetch_daily_prices(
             continue
 
         if downloaded.empty:
+            stats["price_batches_empty"] += 1
             continue
 
         # Stamped once per batch (one yfinance call = one fetch event), on the raw row
@@ -261,6 +280,7 @@ def _fetch_daily_prices(
         else:
             for local_ticker, yf_ticker in zip(batch_local, batch):
                 if yf_ticker not in downloaded.columns.get_level_values(0):
+                    stats["price_tickers_missing"] += 1
                     continue
                 part = downloaded[yf_ticker].copy()
                 part["ticker"] = local_ticker
@@ -270,7 +290,7 @@ def _fetch_daily_prices(
 
         _flush()
 
-    return _current_combined()
+    return _current_combined(), stats
 
 
 def _latest_annual_statement_value(
@@ -444,7 +464,7 @@ def ingest_market(
     _write_constituents_snapshot(market, constituents)
 
     local_tickers = constituents["ticker"].tolist()
-    prices = _fetch_daily_prices(
+    prices, price_stats = _fetch_daily_prices(
         market, local_tickers, max_tickers=max_tickers, force=force
     )
     fundamentals, fund_stats = _fetch_fundamentals(
@@ -460,5 +480,6 @@ def ingest_market(
         "tickers_requested": len(local_tickers[:max_tickers] if max_tickers else local_tickers),
         "price_rows": len(prices),
         "fundamentals_rows": len(fundamentals),
+        **price_stats,
         **fund_stats,
     }

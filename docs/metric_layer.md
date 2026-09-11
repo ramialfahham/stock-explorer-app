@@ -1,5 +1,8 @@
 # Metric layer
 
+> DURABLE. **Owns:** where metric definitions live, and what earns a catalogue row.
+> **Never:** the definitions themselves. The `metric_catalogue.csv` seed owns those.
+
 > How Stock Explorer keeps its card metrics consistent. Adapted from the football-data-pipeline
 > metric-catalogue pattern. Short by design.
 
@@ -18,6 +21,17 @@ No prose document defines a metric; docs *reference* the seed.
 | where a metric is **computed** | `dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql` (once) |
 | the card-level data contract (grain, eligibility, export shape, freshness) | [`data_contract.md`](data_contract.md) |
 | how the card consumes metrics | the frontend reads `frontend/metrics.json` (generated from the seed) |
+
+## What earns a catalogue row
+
+A metric can be computed and data-only. Cataloguing it is what RENDERS it: the seed feeds
+`frontend/metrics.json`, which feeds `card_copy`, which feeds `card_ui`, uniformly. Adding a row
+therefore puts the metric on the card.
+
+Which company types see it is the seed's `applies_to` column. A metric whose `applies_to`
+excludes a card's `company_type` is omitted from that card entirely -- no heading, no empty slot,
+never a dash placeholder (`frontend/card_copy.py`, `frontend/card_ui.py`, pinned by
+`tests/frontend/test_card_ui.py`).
 
 ## The three parts
 

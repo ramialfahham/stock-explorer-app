@@ -1,5 +1,12 @@
 # Data contract — Stock Swipe App
 
+> DURABLE. **Owns:** grains, freshness, completeness, export shape, eligibility and the verdict
+> rules.
+> **Never:** agent process. Where a metric's formula, label or format is authoritative is
+> settled in [`metric_layer.md`](metric_layer.md), not here. The market-activation checklist
+> near the end is operational and sits here because it is contract-driven; the day-to-day runbook
+> is [`operations_guide.md`](operations_guide.md).
+
 Grains, freshness, completeness, and export shape. Ingestion lands **raw fields only**;
 dbt computes metrics and eligibility. See [`layering.md`](layering.md) for layer rules.
 
@@ -724,6 +731,19 @@ Conservative — one serious weakness caps it:
 - **pre_revenue** — `cash_runway_months` / `net_cash` / `working_capital`. The net-cash axis
   now bands on zero for both weak and good (is there more cash than debt?), because a money
   amount has no scale-free "good" level the way the old ratio's 0.2 did.
+
+**`burn_rate_monthly` is shown on the card and deliberately NOT read by the verdict.** That is
+the one intentional exception to "every metric a card shows feeds the verdict", and the reason is
+double counting: `cash_runway_months` already divides cash by burn, so reading burn separately
+would weigh the same fact twice. It stays on the card because a ratio alone destroys the
+magnitude information the raw number carries.
+
+**Percentile or sector-relative ranking as a verdict threshold is rejected**, considered and
+declined twice. Being in some top percentile can still mean an unhealthy state if the whole
+sector is unhealthy, so a relative rank cannot answer "is this company financially sound". If
+this is ever revisited, the legitimate shape to copy is a rating agency's per-industry ABSOLUTE
+thresholds, not relative ranking. This is a different rule from the benchmark-display guidance in
+[`north_star.md`](north_star.md), which concerns how peer context is SHOWN.
 
 Missing inputs are treated as unknown/neutral, never faked; an all-unknown card falls back to `yellow`.
 Thresholds live in `scripts/assessment_rules.py`, whose `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC`

@@ -1,64 +1,73 @@
 # Task contract
+> DISPOSABLE. **Owns:** THIS task's objective, `scope_paths`, reserved decisions and
+> `done_when`.
+> **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: Delete the process prose that produced eleven review rounds on MR !115, and write
-  down the rule that stops it recurring.
+objective: Give every context file a stated owner, and move the rules that gate every commit out
+  of the files designed to be thrown away.
 
-  The export code was settled at review round 5 and never changed again. Rounds 6-11 were
-  entirely findings against prose DESCRIBING that code: wrong counts, a claim corrected in one
-  file and left standing in another, and twice a sentence contradicting another sentence in the
-  same file. `contract.md` was 35,527 bytes, of which 25,064 (71%) was an `amendments:` section
-  narrating the author's own mistakes. That section was the source of most of the errors and of
-  every mirror that contradicted the docs.
+  Measured, not assumed. The repo-wide "no em/en-dash on any line added" rule exists in exactly
+  two places: `.claude/active_work.md` and `.claude/task/review.md`. The handover is trimmed
+  every pass to stay under a 32,000-byte cap; the task contract and review are overwritten by the
+  next task. A rule that blocks every commit lives only in files whose job is to be discarded,
+  which is why it keeps being re-learned from a memory file instead of read from the repo.
+  (`docs/data_contract.md:605` also bans em-dashes, but in AI-generated card prose. Different
+  rule, not this one.)
 
-  Narrative rots because nothing checks it. Git history and an MR description cannot, because
-  they are append-only and never claim to describe the present.
+  The same shape, measured across the repo: decision rights are asserted in six files, "what
+  fails CI" in five with no owner, and metric definitions in three besides the `metric_catalogue`
+  seed that `docs/metric_layer.md` declares the single source of truth. Two files are named
+  "working agreement", differing only by hyphen versus underscore.
+
+  The rule that explains all of it: files split by LIFETIME, and durable content has been living
+  in disposable files.
 
 scope_paths:
+  - CLAUDE.md
+  - .claude/working-agreement.md
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
-  - .claude/working-agreement.md
-  - docs/supabase_setup.md
-  - frontend/app.py
-  - supabase/migrations/018_atomic_card_export.sql
+  - .claude/skills/onboard-market/SKILL.md
+  - docs/engineering_standards.md
+  - docs/data_contract.md
+  - docs/layering.md
+  - docs/metric_layer.md
+  - docs/north_star.md
+  - docs/project_context.md
+  - docs/development_workflow.md
+  - docs/operations_guide.md
+  - docs/working_agreement.md
 
 decisions_reserved:
-  - THE RULE ITSELF is a change to how this repo works, so §6 makes it the owner's. Asked
-    directly ("For what do we need your prose. The prose is the problem.") and answered "do it".
-    The rule adopted: prose earns its place only if it records a decision not derivable from
-    code, defines something the code cannot state itself, or is machine-checked. Everything else
-    goes to git and the MR description.
-  - NOT DONE, FLAGGED: `CONTRACT_TEMPLATE.md` and `REVIEW_TEMPLATE.md` live in the dbt-agent-kit
-    plugin, outside this repo, and still prescribe the categories being removed here. Editing
-    them changes every project using the plugin and never appears in this repo's diff. Left for
-    the owner to decide; this branch only changes what this repo does.
-  - NOT DONE, FLAGGED: the merge guard covers `gh pr merge` only, so `glab mr merge` -- the
-    command this repo would actually use -- is blocked by nothing. Closing it means editing
-    `~/.claude/hooks/branch_discipline.py`, a per-machine file every project shares, so it is
-    the owner's call. The working agreement now states the gap instead of overselling the guard.
-  - NOT DONE, FLAGGED: `.claude/working-agreement.md` has no required reviewer in
-    `review_routing.json` beyond `always`, though it governs how every agent works here.
-    cto-reviewer was dispatched voluntarily for this change. Adding a routing entry is a rule
-    change and was not made unilaterally, since a self-authorized scope widening was already
-    flagged on the previous branch.
+  - THE CONVENTION ITSELF is a change to how this repo works, so §6. Asked and answered: the
+    owner described the problem (files with no defined purpose, contradictory entries, bloat,
+    losing track of which source has authority) and approved this order of work. The convention
+    adopted: DURABLE files hold rules, contracts and definitions; DISPOSABLE files hold state.
+    Nothing permanent may live in a disposable file, and no state may live in a durable file.
+  - The rule against dated decisions in code lands here; the existing code sites are swept in a
+    separate change. Both that sweep and the working-agreement rename are recorded in
+    `.claude/active_work.md`, not in this file, because this file is overwritten by the next task.
 
 done_when:
-  - `.claude/task/contract.md` has no `amendments:` section and no narrative of how the work
-    went, and this file demonstrates that by being one.
-  - `.claude/active_work.md` is materially under its 32,000-byte cap rather than 20 bytes under
-    it, with every owner decision, standing rule and open item preserved.
-  - Facts that were load-bearing but lived only in the deleted narrative have a home next to
-    what they describe: export timing and the PostgREST schema cache in `docs/supabase_setup.md`,
-    the column-list rationale in the migration itself, and the owner-approved 15-60 minute band
-    for `_DECK_TTL_SECONDS` as a comment beside that constant in `frontend/app.py`.
-  - `.claude/working-agreement.md` states the rule, so the next session inherits it.
-  - `pytest tests/ -q` green. NOT sqlfluff: it lints `dbt_analytics/models` and
-    `dbt_analytics/tests` only, so it cannot see the migration whose comment changed, and
-    citing it here would manufacture belief in a gate that does not cover this diff. The
-    migration comment is verified by reading it against the code it describes, which is what
-    the reviewers did.
+  - Every context file in `scope_paths` opens with a statement of what it owns and what it must
+    never contain, and that statement is TRUE of the file as staged. `SKILL.md` is in scope only
+    to repair a pointer this diff's own deletion broke; it is a procedure, not a context file,
+    and takes no header. `CLAUDE.md` is the exception it
+    declares itself to be: it is injected every session, so it restates the one hard rule a
+    session must not miss and says the linked doc wins on conflict.
+  - The repo-wide em/en-dash prohibition and the no-date-stamping rule move to
+    `docs/engineering_standards.md` §1.2 and §1.3. "Changelogs live in one place" does NOT move
+    there: `.claude/working-agreement.md` §2 already owned it, so §1.3 points at that instead of
+    creating a second durable copy.
+  - `.claude/active_work.md`'s standing decisions that merely restate a durable doc are deleted,
+    not copied. Verified per entry before removal: seven of ten checked were already stated in
+    `docs/data_contract.md`, `metric_catalogue.csv` or `docs/ui/`.
+  - `.claude/active_work.md` gets materially smaller and holds only state: what is in flight,
+    what is open, what a future session must act on.
+  - No rule is deleted without a durable home. Each removal names where it now lives.
 
-impact_map: Documentation and one SQL comment. No executable line changes, so no runtime,
-  schema or CI behaviour moves. The risk is deletion, not breakage: losing a fact that had no
-  other home. Mitigated by moving the load-bearing ones first and by scope-auditor checking the
-  handover against what it previously carried.
+impact_map: Documentation only. No executable line, no schema, no CI. The risk is deletion:
+  removing a handover entry whose durable twin says something subtly narrower. Each removal is
+  checked against the twin's exact wording first, and the reviewers are asked to verify the pair
+  rather than the removal alone.

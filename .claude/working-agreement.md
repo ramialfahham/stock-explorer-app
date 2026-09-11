@@ -1,5 +1,9 @@
 # Working agreement — how the agent works here
 
+> DURABLE. **Owns:** how an agent works here -- the protocol, task contracts, the review cycle,
+> branch rules, decision rights, escalation.
+> **Never:** project facts, metric definitions, or session state.
+
 Read before doing anything. This governs how any AI agent (Claude Code, Cursor, …)
 works in this repo.
 
@@ -62,7 +66,13 @@ the same assertion standing elsewhere.
 ## 3. Branches
 
 Every change goes on a new branch, never a commit or push to `main`. This repo lives on
-GitLab: push to the `gitlab` remote with a FULL refspec (`git push gitlab <branch>:<branch>`)
+GitLab, and only GitLab while the GitHub account remains suspended. That is conditional, not
+permanent: revisit only if that account is recovered, and do not re-ask otherwise. **Do not add
+an `origin` remote or push to one**: the GitHub account behind that name is suspended, and a
+session pushed to it anyway despite this rule, which is why the remote was removed rather than
+left in place with a warning.
+
+Push to the `gitlab` remote with a FULL refspec (`git push gitlab <branch>:<branch>`)
 and use `glab`, never `gh`. `git push gitlab <branch>` alone is not safe on this machine: the
 global `~/.gitconfig` sets `push.default = upstream` and a branch's upstream can resolve to
 `main`. Verify the push output's `-> <branch>` line names the feature branch.

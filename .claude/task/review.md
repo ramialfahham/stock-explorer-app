@@ -1,126 +1,79 @@
 # Review
 
-diff_sha256: 292e272eab8e97aa4bc180ddbdafad1640883c35ace8bdbb69f0b4dc6ca94a70
+> DISPOSABLE. **Owns:** THIS task's reviewer verdicts and the staged-diff hash they were
+> given against.
+> **Never:** a rule. Overwritten by the next task.
 
-Four reviewers: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`),
-data-engineer-reviewer (`supabase/*`), cto-reviewer (dispatched voluntarily, since
-`.claude/working-agreement.md` has no required reviewer and governs every agent action here).
-Four rounds. Written short on purpose: this branch exists to stop review records becoming
-narrative.
+diff_sha256: 4d42d2ccbc94505c002c50a0f3deb503832a0b1ec057777b78d7e4e2d8353c1d
+
+Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer, cto-reviewer,
+equity-analyst-reviewer (`docs/data_contract.md`). Six rounds.
 
 ## What shipped
 
-`.claude/working-agreement.md` §2 gains the rule: prose earns its place only if it records a
-decision not derivable from code, defines something the code cannot state, or is
-machine-checked. Narrative goes to the commit message and MR description, with an explicit
-carve-out that decisions and open items stay in `.claude/active_work.md`, which is injected into
-the next session. Plus: when you change a claim, grep for the claim, not the file you were told
-about.
+Fifteen Markdown files. Each context file opens with a DURABLE or DISPOSABLE header stating
+what it owns and what it must never hold. The em/en-dash rule and the no-dates-in-comments rule
+move from the disposable handover into `docs/engineering_standards.md` §1.2 and §1.3, with a
+pointer from `CLAUDE.md`. `.claude/active_work.md` loses its "Standing decisions" section (each
+entry checked against a durable twin before deletion) and gains the open items a future session
+must act on, each with a runnable command. No executable line changed; `pytest tests/ -q` 625
+passed.
 
-Two instructions in that file were false and are corrected. Step 1 of the review cycle said
-"Stage everything (`git add`)", which swept a 900 KB virtualenv into the index during MR !115;
-it now requires explicit paths. §3 told agents to `git push origin <branch>` and use `gh pr`,
-naming a remote that no longer exists in this clone; it now requires
-`git push gitlab <branch>:<branch>` and `glab`, and states the `push.default = upstream` trap.
+## Measured
 
-§3 also stopped overselling a guard. It claimed "a merge command" is hook-enforced;
-`branch_discipline.py`'s `_GH_PR_MERGE` matches `gh pr merge` and nothing else, so
-`glab mr merge` is unguarded. It now says so.
-
-`.claude/task/contract.md` is rewritten with no `amendments:` section, 35,527 bytes to 3,301.
-`.claude/active_work.md` drops four dated narrative sections, 31,980 bytes to 27,780 against a
-32,000-byte cap it was 20 bytes under.
-
-Facts that were load-bearing but lived only in the deleted narrative moved next to what they
-describe: export timing, the `statement_timeout` uncertainty and the PostgREST schema cache to
-`docs/supabase_setup.md` §3c; the column-list rationale into the migration; the owner-approved
-15-60 minute band for `_DECK_TTL_SECONDS` into a comment beside that constant.
-
-The dead `origin` remote was deleted from the clone. Not in the diff, but it is why §3 changed.
-
-## Verification
-
-`pytest tests/ -q` 615 passed. No executable line changed anywhere: both non-markdown files are
-comment-only, verified line by line by three reviewers independently. Zero em-dashes and zero
-lines over 100 characters across 234 added lines. `sqlfluff` is deliberately NOT cited: it lints
-`dbt_analytics/models` and `dbt_analytics/tests` only and cannot see the migration whose comment
-changed, so claiming it would manufacture coverage this diff does not have.
-
-## The recurring author error
-
-Relocating a claim without re-verifying it in its new context. The "80-column" count and the
-REST-reachability reason were both true where they came from and false where they landed. Four
-rounds found seventeen defects, all prose.
+Net +1,222 bytes across the branch: disposable files shrink by 4,667, durable files grow by
+5,889, of which roughly 1,083 is header-only in seven files. `active_work.md` is 28,392 bytes
+against the enforced 32,000 cap, headroom up from 1,320 to 3,608.
 
 ## scope-auditor
 
-Failed rounds 1 and 2. Found five over-deletions, one with no other home in the repo (the open
-finding that the AI read and the card face disagree on labels and units), a false forwarding
-pointer to an archive that predates the MRs it named, and an owner-approved parameter band that
-existed nowhere else. Then found the standing decision rewritten in this commit contradicted two
-self-histories left standing in the same file.
+Failed rounds 1 to 5, each on a claim contradicted by the file it sat in or by a second site:
+a header on `docs/data_contract.md` false three times running, an "eleven first-party sites"
+count that was wrong, `contract.md` holding `NOT DONE HERE, NEXT` items under a header
+forbidding content that outlives the task, and a recorded grep that returned 33,563 hits.
 
-VERDICT: PASS
-
-## analytics-engineer-reviewer
-
-Failed rounds 2 and 3. Found `done_when` citing `sqlfluff` as evidence for a file `sqlfluff`
-cannot lint, three rules stated twice across the handover and the working agreement, and the
-inverted changelog rule that contradicted the `## Recently merged` section this commit added.
-Confirmed the migration comment's copy count and which copy is machine-checked, independently.
-
-VERDICT: PASS
-
-## data-engineer-reviewer
-
-Failed round 2 on the migration comment's "80-column" figure, established the real numbers by
-counting (78 payload keys, not 80), and recommended deleting the count rather than correcting it
-since a count in a comment rots on the next `add column`. Then found `docs/supabase_setup.md`
-giving a checkably false reason for the `statement_timeout` question being open.
+Final round: 15 staged paths equal `scope_paths`; the ownership headers are true of the files
+as staged; the date-sweep grep runs as written and returns 10. Noted, not blocking, that the
+grep's blind spot is wider than item (c) states: five dated sites sit in docstrings and one
+`COMMENT ON` literal that a comment-anchored pattern never touches.
 
 VERDICT: PASS
 
 ## cto-reviewer
 
-Failed round 2 on the one finding that made the repo less safe than before this branch: §3
-generalised "`gh pr merge` is hook-blocked" into "a merge command", which is false and pointed
-agents at the unguarded path. Supplied the stopping rule and the judgement that rounds 3 and 4
-were past the point of return.
+Failed round 1 on a standards paragraph asserting "the convention already used throughout the
+repo" and a check "on the ADDED lines of a staged diff" that does not exist. Measured the branch
+rather than accepting the author's framing and judged it net-positive on placement, not on
+volume. Recommended that the next context task be a per-doc size budget in CI, because a budget
+stops recurrence where a sweep removes text once.
+
+Final round: hash confirmed, zero non-Markdown files staged, 625 tests green, three prior
+findings verified closed.
+
+VERDICT: PASS
+
+## analytics-engineer-reviewer
+
+Passed at three consecutive hashes. Confirmed the four `see .claude/task/contract.md` pointers
+in `int_stock__card_metrics.sql` are dead: each comment states its reasoning inline before the
+trailing clause, and the rewritten contract does not reference those columns. Noted that the
+recorded pointer grep walks `.venv` and times out; `git grep -n "task/contract.md" -- '*.py'
+'*.sql'` returns the same 7 hits in under a second.
+
+VERDICT: PASS
+
+## equity-analyst-reviewer
+
+Checked the two verdict paragraphs moved from the handover into `docs/data_contract.md` against
+the code. `burn_rate_monthly` sits in `INPUT_FIELDS_BY_TYPE` because that table is the full
+displayed set, but `_verdict_pre_revenue` bands only `cash_runway_months`, `net_cash` and
+`working_capital`, so the prose describes what the verdict reads. The double-counting reasoning
+is arithmetically exact: catalogue runway is cash divided by burn. `assessment_rules.py` holds no
+sector or percentile reference, so the ranking rejection describes the code as shipped.
 
 VERDICT: PASS
 
 ## Owner decisions
 
-Three `NOT DONE, FLAGGED` entries in `contract.md`, none decided here:
-
-- `CONTRACT_TEMPLATE.md` and `REVIEW_TEMPLATE.md` live in the dbt-agent-kit plugin and still
-  prescribe the categories removed here. Editing them changes every project using the plugin.
-- The merge guard covers `gh pr merge` only. Closing it means editing
-  `~/.claude/hooks/branch_discipline.py`, a per-machine file every project shares.
-- `.claude/working-agreement.md` has no required reviewer in `review_routing.json` beyond
-  `always`. cto-reviewer recommends adding it, on the grounds that routing already sends
-  `.claude/settings.json` and `*hooks/*` there for carrying execution authority, and this file
-  carries instruction authority. The evidence is this branch: the one blocking correctness
-  finding came from the reviewer routing did not require.
-
-## Follow-ups, disclosed not fixed
-
-- `.claude/active_work.md` quotes `"no such remote"` as the failure of a bare `git push origin`.
-  cto and data-engineer each corrected it differently (the actual message is
-  `fatal: 'origin' does not appear to be a git repository`, and `push.default = upstream` may
-  error first). The substance is right and is the whole deterrent. Delete the quoted string
-  rather than correct it a third time.
-- Three date-stamped fixes remain in `.claude/active_work.md`, which its own standing decision
-  forbids. All pre-existing and equally in conflict before this branch.
-- The `!95-!98` entry in `## Recently merged` frames process rather than state. Inside the
-  reconciling reading, but the one entry that strains it.
-- `docs/handover_2026-09-03.md` carries the SUPERSEDED wording of this same rule ("git, this
-  file, the contract and the review record carry the history"). It is a dated archive, framed as
-  one, and outside `scope_paths`; editing it to agree with the present would destroy the
-  property that makes an archive worth keeping. But a session grepping for the rule hits both
-  wordings with nothing marking one superseded. Whether an archive may carry a "superseded by"
-  annotation is a rule question about how archives work here, so it is the owner's.
-- cto's stopping judgement, recorded because the next person to run this cycle should weigh it:
-  routing is path-keyed, so a docs-only branch pulls the same full panel a data-model change
-  does. Rounds 1 and 2 did the real work here; rounds 3 and 4 produced one contradiction and one
-  misquoted git message.
+The DURABLE/DISPOSABLE convention itself, recorded in `contract.md` as asked and answered.
+Nothing else: no metric, label, format or shipped number changed.

@@ -1,5 +1,8 @@
 # Development workflow — Stock Swipe App
 
+> DURABLE. **Owns:** the branch, MR and CI flow, and the definition of done.
+> **Never:** agent process -- that is `.claude/working-agreement.md`.
+
 How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`](../.claude/working-agreement.md) (UX PR gate: [`working_agreement.md`](working_agreement.md)).
 
 ---
