@@ -28,6 +28,12 @@ repos:
 
   - repo: local
     hooks:
+      - id: context-budget
+        name: context budget (docs/context_budget.yml)
+        entry: python scripts/check_context_budget.py
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: gitleaks
         name: gitleaks (staged secret scan)
         entry: gitleaks git --pre-commit --staged --redact --config .gitleaks.toml

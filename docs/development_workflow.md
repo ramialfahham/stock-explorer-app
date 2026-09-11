@@ -18,7 +18,7 @@ How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`]
 
 Never commit directly to `main`.
 
-**One-time setup:** `pip install -r requirements-dev.txt && pre-commit install` — installs the pre-commit hooks (`no-commit-to-branch` rejects commits on `main`, plus a staged gitleaks secret scan). See [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
+**One-time setup:** `pip install -r requirements-dev.txt && pre-commit install` -- installs the pre-commit hooks (`no-commit-to-branch` rejects commits on `main`, a staged gitleaks secret scan, and the context byte budget). See [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 
 **GitLab (recommended):** branch protection on `main` — require MR, disallow direct push. Read
 it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/protected_branches`
@@ -34,6 +34,7 @@ See [`.gitlab-ci.yml`](../.gitlab-ci.yml) — `validate:full` job.
 
 Always runs:
 
+- `scripts/check_context_budget.py`
 - `scripts/check_layer_contract.py`
 - `scripts/check_registry_var_sync.py`
 - `scripts/check_dbt_sql_structure.py`

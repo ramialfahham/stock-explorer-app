@@ -3,71 +3,56 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: Give every context file a stated owner, and move the rules that gate every commit out
-  of the files designed to be thrown away.
+objective: Put a byte budget on every context file and make CI fail when one is exceeded or
+  when a context file exists with no budget, so growth and new files become visible, reviewed
+  decisions instead of drift.
 
-  Measured, not assumed. The repo-wide "no em/en-dash on any line added" rule exists in exactly
-  two places: `.claude/active_work.md` and `.claude/task/review.md`. The handover is trimmed
-  every pass to stay under a 32,000-byte cap; the task contract and review are overwritten by the
-  next task. A rule that blocks every commit lives only in files whose job is to be discarded,
-  which is why it keeps being re-learned from a memory file instead of read from the repo.
-  (`docs/data_contract.md:605` also bans em-dashes, but in AI-generated card prose. Different
-  rule, not this one.)
-
-  The same shape, measured across the repo: decision rights are asserted in six files, "what
-  fails CI" in five with no owner, and metric definitions in three besides the `metric_catalogue`
-  seed that `docs/metric_layer.md` declares the single source of truth. Two files are named
-  "working agreement", differing only by hyphen versus underscore.
-
-  The rule that explains all of it: files split by LIFETIME, and durable content has been living
-  in disposable files.
+  Owner-approved after MR !119 measured the ownership pass at net +1,222 bytes: a convention
+  nobody enforces will drift again, and a budget stops recurrence where a sweep removes text
+  once.
 
 scope_paths:
-  - CLAUDE.md
-  - .claude/working-agreement.md
-  - .claude/active_work.md
+  - docs/context_budget.yml
+  - scripts/check_context_budget.py
+  - tests/tooling/test_check_context_budget.py
+  - .gitlab-ci.yml
+  - .pre-commit-config.yaml
+  - .claude/review_routing.json
+  - docs/engineering_standards.md
+  - docs/development_workflow.md
   - .claude/task/contract.md
   - .claude/task/review.md
-  - .claude/skills/onboard-market/SKILL.md
-  - docs/engineering_standards.md
-  - docs/data_contract.md
-  - docs/layering.md
-  - docs/metric_layer.md
-  - docs/north_star.md
-  - docs/project_context.md
-  - docs/development_workflow.md
-  - docs/operations_guide.md
-  - docs/working_agreement.md
+  - .claude/active_work.md
 
 decisions_reserved:
-  - THE CONVENTION ITSELF is a change to how this repo works, so §6. Asked and answered: the
-    owner described the problem (files with no defined purpose, contradictory entries, bloat,
-    losing track of which source has authority) and approved this order of work. The convention
-    adopted: DURABLE files hold rules, contracts and definitions; DISPOSABLE files hold state.
-    Nothing permanent may live in a disposable file, and no state may live in a durable file.
-  - The rule against dated decisions in code lands here; the existing code sites are swept in a
-    separate change. Both that sweep and the working-agreement rename are recorded in
-    `.claude/active_work.md`, not in this file, because this file is overwritten by the next task.
+  - The mechanism itself (a new CI step) is §6 and was asked and answered: yes.
+  - The budget numbers. Proposed: each governed file's current size rounded UP to the next
+    1,000 bytes, plus 1,000. Archives (`docs/handover_*.md`) get their current size rounded up
+    and no headroom, because an archive is not written to. `.claude/active_work.md` gets 32,000,
+    the cap `handover_in.py` already enforces. `.claude/task/contract.md` and `review.md` get a
+    flat 8,000 each: they are rewritten per task, so their current size says nothing. Several
+    recent committed reviews exceeded 8,000 bytes (`git log -- .claude/task/review.md`, sizes via
+    `git cat-file -s`). 8,000 is kept knowing that: a review that long is the narrative §2
+    forbids, and the budget is meant to refuse it. When it fires, the review blocks its own
+    commit and the fix is to trim the review, not to raise the number. Size is measured with
+    CRLF collapsed to LF, so Windows pre-commit and Linux CI agree. Raising any budget is an
+    edit to `docs/context_budget.yml`, which routes to cto-reviewer, so every increase is
+    reviewed.
+  - Which files are governed. Proposed: `CLAUDE.md`, `.claude/*.md`, `.claude/task/*.md`,
+    `docs/*.md`, `docs/ui/*.md`. Fail closed: a Markdown file matching those globs with no
+    budget entry fails the check, and a budget entry whose file does not exist fails it too.
 
 done_when:
-  - Every context file in `scope_paths` opens with a statement of what it owns and what it must
-    never contain, and that statement is TRUE of the file as staged. `SKILL.md` is in scope only
-    to repair a pointer this diff's own deletion broke; it is a procedure, not a context file,
-    and takes no header. `CLAUDE.md` is the exception it
-    declares itself to be: it is injected every session, so it restates the one hard rule a
-    session must not miss and says the linked doc wins on conflict.
-  - The repo-wide em/en-dash prohibition and the no-date-stamping rule move to
-    `docs/engineering_standards.md` §1.2 and §1.3. "Changelogs live in one place" does NOT move
-    there: `.claude/working-agreement.md` §2 already owned it, so §1.3 points at that instead of
-    creating a second durable copy.
-  - `.claude/active_work.md`'s standing decisions that merely restate a durable doc are deleted,
-    not copied. Verified per entry before removal: seven of ten checked were already stated in
-    `docs/data_contract.md`, `metric_catalogue.csv` or `docs/ui/`.
-  - `.claude/active_work.md` gets materially smaller and holds only state: what is in flight,
-    what is open, what a future session must act on.
-  - No rule is deleted without a durable home. Each removal names where it now lives.
+  - `python scripts/check_context_budget.py` exits 0 on the tree as committed and prints one line
+    per file over budget or unbudgeted, with the size and the budget, when it fails.
+  - Mutation-proven in `tests/tooling`: a file one byte over its budget fails; a governed file
+    with no entry fails; an entry with no file fails; a file exactly at budget passes.
+  - The check runs in `validate:full` before the dbt steps and as a `repo: local` pre-commit
+    hook, so it fails on the developer's machine before it fails in CI.
+  - `docs/context_budget.yml` routes to cto-reviewer in `.claude/review_routing.json`.
+  - `docs/engineering_standards.md` §1.3 states the rule in one paragraph: to grow a context
+    file past its budget, raise the budget in the same MR and say why in the MR description.
 
-impact_map: Documentation only. No executable line, no schema, no CI. The risk is deletion:
-  removing a handover entry whose durable twin says something subtly narrower. Each removal is
-  checked against the twin's exact wording first, and the reviewers are asked to verify the pair
-  rather than the removal alone.
+impact_map: New CI step and pre-commit hook; no data, schema or frontend change. The risk is a
+  budget set so tight that the next honest edit to a doc fails CI for the wrong reason, which is
+  why every non-archive budget carries at least 1,000 bytes of headroom.
