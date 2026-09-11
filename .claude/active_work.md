@@ -18,6 +18,13 @@ the detail._
 
 ## In flight
 
+**MR !119 open, awaiting owner merge** (`docs/context-ownership`). Every context file carries a
+DURABLE or DISPOSABLE header; the dash and no-dates rules live in `docs/engineering_standards.md`
+§1.2/§1.3. Measured net +1,222 bytes: better placed, not less. cto-reviewer's recommendation for
+the NEXT context task, an owner call because it is a new CI mechanism (§6): a per-doc size budget
+in CI that fails closed, ahead of the comment sweep in the context-file debt item below. A budget
+stops recurrence; a sweep removes text once.
+
 **MR !118 open, awaiting owner merge** (`fix/price-ingest-visibility`) -- issue #9 finding A3.
 Price-batch failures were swallowed; they are now counted, printed in the per-market summary and
 warned about on stderr. The run does NOT fail: the owner's first answer was to gate, reversed on
@@ -151,14 +158,16 @@ Live owner decisions a future session must act on, not numbered because they are
   (a) the `## Do NOT` section below still holds fourteen standing rules with no durable home;
   (b) code comments point at `.claude/task/contract.md`, which is per-task and overwritten, so
   those pointers are already dead. Find them with
-  `grep -rn "task/contract.md" --include=*.py --include=*.sql . | grep -v /target/`, not from a
+  `git grep -n "task/contract.md" -- '*.py' '*.sql'` (7 hits), not from a
   list: every list written on this branch was wrong in both directions. Each comment already
   states its reasoning inline before the pointer, so deleting the trailing clause loses nothing;
   (c) the deferred sweep of dated code
   comments must strip the DATE, not the comment. Start from
   `git grep -nE "^\s*(#|--).*(20[0-9]{2}-[0-9]{2}-[0-9]{2}|owner[- ](approved|decided|settled))"
   -- '*.py' '*.sql'` (10 hits, minus `dbt_analytics/target/`). It anchors on comment-start, so a
-  date on a CONTINUATION line of a multi-line comment escapes it: read around each hit. And --
+  date on a CONTINUATION line of a multi-line comment escapes it, and so does a docstring or a
+  `COMMENT ON` literal (five such sites in `frontend/` and `supabase/migrations/013_net_cash.sql`
+  at review time): read around each hit and search docstrings separately. And --
   `scripts/assessment_rules.py`'s `_CURRENCY_SYMBOLS` comment is the designated durable home for
   the currency rule and carries a date, so deleting it would kill the home the onboard-market
   skill now points at.
