@@ -3,40 +3,33 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: Test the grain the mart actually has. Issue #9 finding C3.
+objective: Fail the build when a raw parquet's `market_code` column disagrees with the folder
+  it sits in. Issue #9 finding C4.
 
-  Measured: `fct_fundamentals_snapshot` keeps the latest `snapshot_date` per `(market_code,
-  ticker)` with one `qualify`, and nothing downstream reintroduces history, so
-  `int_stock__card_metrics` and both marts hold one row per `(market_code, ticker)` per build.
-  They are documented and tested at `(market_code, ticker, snapshot_date)`, the grain of the
-  accumulating Postgres table. Raw parquet is overwritten each run and carries one
-  `snapshot_date`, so the fact's own `(market_code, ticker)` test never sees a second date and
-  the `qualify` is exercised by nothing: deleting it passes every test on the data CI has.
+  Measured: `raw_parquet_union` loops `active_market_codes` to build file paths and reads every
+  column, `market_code` included, from the file. Ingestion writes the column and the folder
+  from the same `market.market_code`, so they agree unless a file is copied or restored by hand.
+  Nothing checks it: no `accepted_values` on `market_code` in any layer, no comparison to the
+  folder. A file under `ch_smi/` carrying `nl_aex` rows partitions them into `nl_aex`.
 
 scope_paths:
-  - dbt_analytics/models/3_core/_core.yml
-  - dbt_analytics/models/3_core/_core_unit_tests.yml
-  - dbt_analytics/models/4_intermediate/_intermediate.yml
-  - dbt_analytics/models/5_marts/_marts.yml
-  - docs/data_contract.md
-  - tests/tooling/test_export_to_supabase.py
+  - dbt_analytics/macros/raw_parquet_partition.sql
+  - dbt_analytics/tests/assert_raw_market_code_matches_folder.sql
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - None. The models already behave this way and the fact's description says so; the change
-    makes the tests and the model descriptions match the behaviour. The Supabase table's grain
-    in `docs/data_contract.md` stays `(market_code, ticker, snapshot_date)`: that describes the
-    table, which accumulates, and is correct.
+  - Test, not override. Making the folder authoritative (`'{{ market }}' as market_code` in the
+    union) would silently relabel a misplaced file's rows; that is a behaviour change and the
+    owner's call. A test that fails the build changes nothing about what a correct file
+    produces. Agent-executable under the audit finding the owner ordered.
 
 done_when:
-  - A dbt unit test on `fct_fundamentals_snapshot` feeds two rows for one ticker with different
-    `snapshot_date`s and expects only the later one. Deleting the `qualify` fails it.
-  - `int_stock__card_metrics`, `mart_stock_cards` and `mart_stock_eligibility_gaps` carry a
-    `unique_combination_of_columns` on `(market_code, ticker)`, and their `Grain:` lines say so.
-  - `dbt build` green locally on the stored raw data with the tightened tests.
+  - A singular test reads each active market's three raw files under their folder and returns
+    every row whose `market_code` differs from the folder name. Swapping one market's
+    `yf_constituents.parquet` for another's fails it; the stored tree passes.
+  - `check_dbt_sql_structure.py` accepts the test (§1.1 shape).
 
-impact_map: Tests and descriptions only. No model SQL, no export, no schema. Markets can sit
-  on different dates after a per-market re-run; that stays legal, since the grain is per
-  ticker, not per build.
+impact_map: A new dbt test node; no model, export or schema change. A hand-copied raw file now
+  fails `dbt build` instead of landing in the wrong market.
