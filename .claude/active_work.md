@@ -18,10 +18,20 @@ the detail._
 
 ## In flight
 
-**MR !125 open, awaiting owner merge** (`test/market-code-partition-c4`, issue #9 C4). A
-singular test reads every active market's three raw files and fails when a file's
-`market_code` column differs from its folder. Test only; making the folder authoritative was
-reserved, not done. Next after merge: the fill-rate assertion, the last Tier-1 item.
+**MR !126 open, awaiting owner merge** (`test/metric-fill-floor`, issue #9's last Tier-1
+item). A singular test fails the build when fewer than half of a market's eligible cards of a
+company type carry a catalogued metric that applies to that type (groups under five rows
+skipped); owner-set at 50%. Rule: `docs/data_contract.md`, percent-scale guard, "Fill floor".
+After merge, Tier 1 of the audit is closed; next is the mobile type scale below.
+
+**Three owner questions from the fill floor, none urgent:** (a) CI fixtures are 5 operating,
+1 financial, 1 pre-revenue per market, so `dbt build` exercises the floor for operating
+metrics only (pytest covers the other types with fixtures); raising the fixture counts widens
+`scripts/seed_ci_raw_fixtures.py`. (b) `cash_runway_months` and `burn_rate_monthly` are
+legitimately null for a pre-revenue company not burning cash, so a market with five such cards
+would trip the floor on correct data; only three pre-revenue companies exist today. (c)
+`jinja2` is imported directly in `tests/tooling/test_metric_fill_floor.py` but pinned only
+through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 
 **Doc wording, three reviewers noted, not fixed:** `docs/data_contract.md` "Supabase export --
 `mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
@@ -32,17 +42,19 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !124 (`test/mart-grain-c3`, issue #9 C3): a unit test pins the latest-
-snapshot `qualify`; the three downstream grain tests are `(market_code, ticker)`. !123 (`fix/drop-
-numeric-precision-caps`, issue #9 A2): migration `019` widens the ten capped `numeric` columns on
-`mart_stock_cards`; a test refuses a cap in any later migration. !122 (`fix/fundamentals-failure-
-gate`, issue #9 A3 follow-up): fundamentals failures above 5% of a market's requested tickers fail
-the ingest run; below, the failed tickers are named on stderr. !118 (`fix/price-ingest-
-visibility`, issue #9 A3): price-batch failures are counted, printed and warned on stderr; the run
-does not fail. Three owner questions from its contract remain open, item 0 (d) to (f) below. !119
-(`docs/context-ownership`): every context file carries a DURABLE or DISPOSABLE header. !120
-(`ci/context-size-budget`): every governed context file has a byte budget in
-`docs/context_budget.yml`, checked in CI and at pre-commit.
+**Merged this pass.** !125 (`test/market-code-partition-c4`, issue #9 C4): a singular test fails
+the build when a raw file's `market_code` column differs from its folder. !124 (`test/mart-
+grain-c3`, issue #9 C3): a unit test pins the latest- snapshot `qualify`; the three downstream
+grain tests are `(market_code, ticker)`. !123 (`fix/drop- numeric-precision-caps`, issue #9 A2):
+migration `019` widens the ten capped `numeric` columns on `mart_stock_cards`; a test refuses a
+cap in any later migration. !122 (`fix/fundamentals-failure- gate`, issue #9 A3 follow-up):
+fundamentals failures above 5% of a market's requested tickers fail the ingest run; below, the
+failed tickers are named on stderr. !118 (`fix/price-ingest- visibility`, issue #9 A3): price-
+batch failures are counted, printed and warned on stderr; the run does not fail. Three owner
+questions from its contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`):
+every context file carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every
+governed context file has a byte budget in `docs/context_budget.yml`, checked in CI and at pre-
+commit.
 
 **Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
 describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
@@ -50,9 +62,6 @@ no path rules and runs nine more steps than Tier A names (`seed_ci_raw_fixtures`
 freshness, full `dbt build`, the eligibility and export gates, assessments dry-run, pytest, the
 yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
 task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
-
-**Issue #9's last Tier-1 data-integrity item:** a fill-rate assertion (a provider DROPPING a
-field passes every guard today). After it, Tier 1 is closed and the mobile type scale is next.
 
 **NEXT UI PIECE: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
@@ -91,8 +100,7 @@ column); nothing user-visible is wrong and a per-market median guard structurall
 it. Issue #12: `metric_catalogue.csv` applicability strings say "banks" for rules covering the
 whole `financial` type.
 
-**Nothing asserts a fill rate anywhere**, so a provider DROPPING a field (likelier than
-changing its units) passes every guard silently. There are no `accepted_range` tests at all.
+There are no `accepted_range` tests; the owner question on them is in the In flight section.
 
 ## Recently merged (detail in each MR's own contract.md / review.md)
 

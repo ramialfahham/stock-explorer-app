@@ -462,10 +462,19 @@ exported mart at the latest snapshot the smallest market, `ch_smi`, had 20 eligi
 20 carried a dividend; CI fixtures give 6 per market. Both clear the floor, so the guard is
 exercised rather than skipped in either environment.
 
-**What this does NOT cover.** A metric going entirely null -- a provider dropping or renaming a
-field, likelier than a units change -- passes having asserted nothing; that is a coverage
-assertion, and the project has no `accepted_range` or fill-rate tests anywhere. Nor does a
-market-median guard see per-row mixed units, which production currently has (issue #10).
+**What this does NOT cover.** Per-row mixed units, which production currently has (issue #10):
+a market-median guard structurally cannot see them. A metric going entirely null, a provider
+dropping or renaming a field, is covered by the fill floor below, not by this guard. There are
+still no `accepted_range` tests.
+
+**Fill floor** (`assert_metric_fill_floor.sql`). For every `(market_code, company_type,
+metric)` where the catalogue says the metric applies to that type, at least half of the
+eligible cards must carry a value; groups under five rows are skipped. Owner-set: a sanity
+floor between normal gaps (measured 79% at worst with five or more rows) and a dropped field
+(0%), not a metric definition. Metrics that gate eligibility are already 100% among eligible
+rows by construction; this floor exists for the displayed-but-not-required ones. CI fixtures
+hold five operating rows per market and one each of the other types, so CI exercises the floor
+for operating metrics only.
 
 ---
 
