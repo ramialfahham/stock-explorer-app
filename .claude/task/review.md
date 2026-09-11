@@ -4,49 +4,37 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 3b3f24166996a667a74091a421f3ec4f9e88cec60d7aa8d17792f6719f20cb53
+diff_sha256: 9b2ff4aa5595875fb08d77c772da891eb1110bb15e53af0049424d0d5127e9dd
 
-Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer
-(`dbt_analytics/*.yml`), cto-reviewer (`tests/*`), equity-analyst-reviewer
-(`docs/data_contract.md`). Two rounds.
+Two reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`).
+One round.
 
 ## What shipped
 
-A dbt unit test on `fct_fundamentals_snapshot` feeds two dates for one ticker and expects only
-the later. Deleting the `qualify` fails it; the pre-existing `(market_code, ticker)` data test
-passes that same mutant on stored data, because every raw file carries one date. The grain
-tests on `int_stock__card_metrics`, `mart_stock_cards` and `mart_stock_eligibility_gaps` are
-tightened from three columns to `(market_code, ticker)`, the grain those models have. No SQL
-changed. Local `dbt build` of the four models: 56 PASS.
-
-## Round 1
-
-scope-auditor and analytics-engineer converged: the new Grain lines claimed one `snapshot_date`
-per build, which a per-market re-run makes false (markets can sit on different dates; the
-grain is per ticker, not per build); `docs/data_contract.md` and a `test_export_to_supabase.py`
-docstring still described the old three-column declaration; the contract named a model that
-does not exist. All fixed; the two swept files were added to `scope_paths`.
+A macro `raw_parquet_partition` tags each active market's raw file with its folder name beside
+the file's own `market_code`; a singular test returns every row where the two differ. The
+stored tree passes; `nl_aex`'s constituents file placed under `ch_smi/` fails it. No model
+change. `check_layer_contract.py` does not scan `macros/` or `tests/`, so its pass says nothing
+about this diff; `sqlfluff` and `check_dbt_sql_structure.py` do cover it and pass.
 
 ## scope-auditor
+
+Confirmed the remedy is a test under the existing `dbt build`, not a new mechanism, and that
+the override form (folder as authoritative) is correctly reserved. Noted the contract's
+"same `market.market_code`" is one step removed for constituents, whose column comes from the
+seed CSV; the conclusion holds and the test covers a mis-copied seed too.
 
 VERDICT: PASS
 
 ## analytics-engineer-reviewer
 
-Traced every join: `dim_stock` and constituents unique per ticker, benchmarks per
-`(market_code, sector)`, so nothing fans out a ticker. Killed the `qualify` mutant with the
-unit test and confirmed the old test passes it.
-
-VERDICT: PASS
-
-## cto-reviewer
-
-VERDICT: PASS
-
-## equity-analyst-reviewer
+Reproduced the mutation independently. Probed that a file missing the column errors rather
+than passes, and that a NULL column is reported. Keeps the two macros separate on purpose: the
+production union should not carry a test-only branch.
 
 VERDICT: PASS
 
 ## Owner decisions
 
-None. The Postgres table's grain in `docs/data_contract.md` stays three-column; it accumulates.
+None. Reserved and untouched: making the folder authoritative, which would relabel a
+misplaced file's rows instead of failing the build.
