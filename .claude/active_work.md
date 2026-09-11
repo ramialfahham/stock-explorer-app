@@ -18,23 +18,29 @@ the detail._
 
 ## In flight
 
-**MR !123 open, awaiting owner merge** (`fix/drop-numeric-precision-caps`, issue #9 A2).
-Migration `019` widens the ten `numeric(p,s)` columns on `mart_stock_cards` to plain `numeric`,
-found from `pg_attribute`; a test refuses `numeric`/`decimal`/`dec(p,s)` in any later migration.
-Applied and verified on `dev`; prod gets it on the next scheduled run. Next after merge: C3.
+**MR !124 open, awaiting owner merge** (`test/mart-grain-c3`, issue #9 C3). A dbt unit test
+on `fct_fundamentals_snapshot` feeds two dates for one ticker and expects the later; the grain
+tests on `int_stock__card_metrics` and both marts are `(market_code, ticker)`, which is what
+they produce. No SQL changed. Next after merge: C4.
+
+**Doc wording, three reviewers noted, not fixed:** `docs/data_contract.md` "Supabase export --
+`mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
+the dbt MODEL's name, now that the model declares two. Add the word "table" there.
 
 **Owner question left open by A2:** `accepted_range` tests on the card metrics. A definitional
 bound (values beyond X are nulled on the card) is a metric definition, owner's. A wide sanity
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !122 (`fix/fundamentals-failure-gate`, issue #9 A3 follow-up): fundamentals
-failures above 5% of a market's requested tickers fail the ingest run; below, the failed tickers
-are named on stderr. !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures are
-counted, printed and warned on stderr; the run does not fail. Three owner questions from its
-contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file
-carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context
-file has a byte budget in `docs/context_budget.yml`, checked in CI and at pre-commit.
+**Merged this pass.** !123 (`fix/drop-numeric-precision-caps`, issue #9 A2): migration `019`
+widens the ten capped `numeric` columns on `mart_stock_cards`; a test refuses a cap in any later
+migration. !122 (`fix/fundamentals-failure-gate`, issue #9 A3 follow-up): fundamentals failures
+above 5% of a market's requested tickers fail the ingest run; below, the failed tickers are named
+on stderr. !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures are counted,
+printed and warned on stderr; the run does not fail. Three owner questions from its contract
+remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries
+a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context file has a
+byte budget in `docs/context_budget.yml`, checked in CI and at pre-commit.
 
 **Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
 describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
@@ -43,11 +49,9 @@ freshness, full `dbt build`, the eligibility and export gates, assessments dry-r
 yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
 task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
 
-**Issue #9's remaining Tier-1 data-integrity work, in this order:** C3 (the dbt mart's real
-grain has no test --
-deleting one `qualify` line passes everything and silently doubles the deck), C4 (`market_code`
-is read from parquet contents and never validated against the registry), and a fill-rate
-assertion (a provider DROPPING a field passes every guard today).
+**Issue #9's remaining Tier-1 data-integrity work, in this order:** C4 (`market_code` is read
+from parquet contents and never validated against the registry), and a fill-rate assertion (a
+provider DROPPING a field passes every guard today).
 
 **NEXT UI PIECE: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
