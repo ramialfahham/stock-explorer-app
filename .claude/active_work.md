@@ -18,8 +18,10 @@ the detail._
 
 ## In flight
 
-Nothing open. Next, in order: the `fundamentals_failed` gate below, then issue #9's remaining
-Tier-1 items.
+**MR !122 open, awaiting owner merge** (`fix/fundamentals-failure-gate`). Fundamentals fetch
+failures above 5% of a market's requested tickers fail the ingest run; at or below, the run
+continues and the failed tickers are named on stderr. Rule: `docs/data_contract.md`,
+completeness gates, "At ingestion". Next after merge: issue #9's remaining Tier-1 items below.
 
 **Merged this pass.** !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures are
 counted, printed and warned on stderr; the run does not fail. Three owner questions from its
@@ -40,10 +42,6 @@ project has no `accepted_range` test anywhere), C3 (the dbt mart's real grain ha
 deleting one `qualify` line passes everything and silently doubles the deck), C4 (`market_code`
 is read from parquet contents and never validated against the registry), and a fill-rate
 assertion (a provider DROPPING a field passes every guard today).
-
-**ALSO NEXT, and the reason A3 landed where it did: `fundamentals_failed` is counted and exits
-0**, while fundamentals are the SOLE driver of `is_card_eligible`. A3 gated nothing in the end;
-this is the feed where a gate would actually protect a shipped output.
 
 **NEXT UI PIECE: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
 375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
