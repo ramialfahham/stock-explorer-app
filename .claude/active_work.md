@@ -23,8 +23,8 @@ Tier-1 items.
 
 **Merged this pass.** !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures
 are counted, printed and warned on stderr; the run does not fail. Three owner questions from
-its contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file
-carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context
+its contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every
+context file carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context
 file has a byte budget in `docs/context_budget.yml`, checked in CI and at pre-commit.
 
 **Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
