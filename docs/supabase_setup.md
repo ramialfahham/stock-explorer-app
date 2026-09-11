@@ -72,10 +72,11 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `016_sector_benchmark_quartiles.sql` | Sector benchmark q1/q3 columns on mart |
 | `017_sector_benchmark_financial_operating.sql` | Sector benchmark columns for the financial and operating card metrics |
 | `018_atomic_card_export.sql` | `replace_cards_snapshot()`: one transaction per snapshot, so a half-failed export cannot mix two |
+| `019_drop_numeric_precision_caps.sql` | Every `numeric(p,s)` column on the mart becomes plain `numeric`; `numeric(10,4)` would overflow on one Yahoo outlier and abort the export |
 
 The table was previously missing 012 and 013, with a note excusing the gap; 016 and 017 then
 landed and were absent too, so the note went stale rather than the table getting fixed. It is
-complete as of 018. Keep it that way rather than adding another disclaimer.
+complete as of 019. Keep it that way rather than adding another disclaimer.
 
 After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives
 company descriptions. The app holds its deck in an in-process cache shared by all browser
