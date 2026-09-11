@@ -1,5 +1,9 @@
 # Working Agreement — UX PR gate
 
+> DURABLE. **Owns:** the UX PR gate for user-facing frontend changes.
+> **Never:** agent process. That is `.claude/working-agreement.md`, a different file with a
+> confusingly similar name.
+
 > **Agent process moved.** The general working agreement (how any AI agent operates here:
 > the Explore → Plan → Confirm → Implement → Verify protocol, task contracts, review cycle,
 > branch rules, decision rights, escalation) now lives in

@@ -1,7 +1,11 @@
 # Project context — Stock Swipe App
 
-Stock-specific conventions that extend the general standards in `working_agreement.md`,
-`layering.md`, and `engineering_standards.md`. When the general docs and this file
+> DURABLE. **Owns:** stock-specific conventions that extend the general standards.
+> **Never:** anything the general standards already state.
+
+Stock-specific conventions that extend the general standards in
+[`.claude/working-agreement.md`](../.claude/working-agreement.md), `layering.md` and
+`engineering_standards.md`. When the general docs and this file
 conflict on dbt layers, naming, or testing, the general docs win. This file covers
 what is unique to this repo.
 

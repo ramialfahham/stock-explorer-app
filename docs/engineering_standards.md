@@ -1,5 +1,9 @@
 # dbt Engineering Standards
 
+> DURABLE. **Owns:** how code and prose are written here -- naming, SQL structure, comments, prose
+> conventions, testing, contracts, change management, secrets, the CI gate.
+> **Never:** metric definitions or product behaviour.
+
 Practical standards for analytics engineering.
 Use together with `layering.md` (layer rules and materialisations).
 
@@ -83,6 +87,32 @@ Do not write a comment when:
 - The context belongs in the PR description
 
 One sentence per comment is almost always enough. No multi-line comment blocks.
+
+**No dates, timestamps, approval markers or authorship in a comment you add or edit.** Not
+"owner-approved 2026-09-09", not "fixed in MR !115", not "added by". A comment states what is
+true now; git records when and who. A dated comment cannot be checked against the code beside
+it, so it rots without anything noticing. Sites that predate this rule are not grandfathered in
+spirit, only in sequence.
+
+---
+
+## 1.3. Prose Conventions
+
+**No em-dash or en-dash on any line you add or edit, in any file.** Use `--`. The repo's existing
+prose is inconsistent, so this is a forward rule rather than a description of what is already
+there, and a pre-existing dash on an untouched line is not a violation. No count of the current
+mix is given here: it depends on what you count as prose, and it changes with every commit.
+
+**Nothing enforces it**: there is no CI job, script or hook that checks it, so it holds only at
+review time.
+
+**No date-stamping a fix into doc prose that describes current behaviour**, the same rule §1.2
+applies to comments. "Fixed 2026-09-05" in a sentence about how something works today is a
+changelog wearing a description's clothes.
+
+For where narrative belongs, and what a contract or handover may carry, see
+[`.claude/working-agreement.md`](../.claude/working-agreement.md) §2. That file owns the rule;
+this one does not restate it.
 
 ---
 

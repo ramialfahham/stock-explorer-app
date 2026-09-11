@@ -1,5 +1,13 @@
 # Active work -- handover
 
+> DISPOSABLE. **Owns:** STATE only -- what is in flight, what is open, and what the next session
+> must act on. Rewritten continuously and capped at 32,000 bytes.
+> **Never:** a definition, or a narrative of how work went. Those belong in a durable doc, in
+> git, or in the MR description. If a rule is only written here, it is lost on the next trim.
+> The `## Do NOT` section below is a KNOWN EXCEPTION and a debt: fourteen standing rules still
+> live there with no durable home. Migrating them is the next context task, not this one. **Do
+> not trim that section to make room** -- trimming it deletes rules, and nothing else holds them.
+
 _The next session is handed exactly this file. Keep it current. Full history through
 2026-09-03 is archived in [`docs/handover_2026-09-03.md`](../docs/handover_2026-09-03.md)
 (itself built on [`docs/handover_2026-08-18.md`](../docs/handover_2026-08-18.md) and
@@ -101,73 +109,6 @@ changing its units) passes every guard silently. There are no `accepted_range` t
   `clear_interactions()`/`st.rerun()` ordering bug.
 - **!73-!87** the nine Gemini-feedback points: see `docs/handover_2026-09-03.md`.
 
-## Standing decisions (durable -- do not re-litigate without new evidence)
-
-- **Metric-assignment matrix**: perspectives (valuation/profitability/growth/solvency/
-  liquidity/cash/returns) are semi-universal lenses; the metric filling each is type-specific;
-  some lenses are honestly EMPTY (never fill with a weak proxy). `financial` company-type cards
-  (the whole GICS sector, not just banks) have
-  no sound solvency/liquidity/cash metric sourceable from yfinance -- leave it blank.
-- **Metric definitions**: statement ROE = common income / common equity; ROA = net income /
-  total assets from statements; `cash_runway` = cash / FCF-burn in months. New computed
-  columns coexist with info-scalar equivalents, never replace them silently.
-- **yfinance `dividendYield` is USUALLY a percent, not a fraction** (0.94 = 0.94%).
-  `payoutRatio`/`returnOnEquity`/`returnOnAssets` ARE fractions. This entry used to say
-  "is a PERCENT ... verified live" flatly; that is qualified as of 2026-09-08, because
-  production holds fraction-scale rows too (AvalonBay 0.0387, Equity Residential 0.0426, both
-  REITs yielding ~4%). Issue #10. A wholesale revert would ship a silent 100x error and IS
-  guarded (`assert_percent_scale_passthroughs.sql`, two-sided, per market); per-row mixed units
-  are NOT, and a median-based guard structurally cannot see them.
-- **Filter every future metric suggestion through**: sourceable from yfinance? legible to a
-  true beginner? An external review (Gemini) proposed CET1/Tier1/LCR/NIM/ROIC/ARR/NRR/TAM --
-  all rejected as unsourceable and/or too advanced. Only ROA survived both filters.
-- **Cataloguing a metric RENDERS it** (catalogue -> metrics.json -> card_copy -> card_ui,
-  uniform). A metric can be computed and data-only (no catalogue row) without being shown.
-- **Authoring metric copy/caveats, rewording user-visible text, and anything changing an
-  already-shipped output/number is a §6 owner call, every time.**
-- **AI assessments**: educational, never advice; true-beginner language; reason only from the
-  given numbers; end on the health verdict.
-- **Growth feeds the verdict one-sidedly**: a shrinking top line blocks green; growth never
-  earns green, never causes red (a company can grow into losses). Do NOT make this symmetric.
-- **`burn_rate_monthly` stays shown and unread by the verdict**, deliberately: runway already
-  divides cash by burn, so reading burn separately double-counts, and a ratio alone destroys
-  magnitude information the raw number carries.
-- **Currency display**: real-world form per currency, not a uniform rule. CHF renders bare
-  (no symbol in general use); CAD -> C$ (follows AUD -> A$); SEK/DKK/NOK stay ISO codes
-  ("kr" names three different currencies). Changing this means editing BOTH copies of
-  `_CURRENCY_SYMBOLS` (`scripts/assessment_rules.py` and `frontend/card_copy.py`) and NOT
-  bumping `INPUT_HASH_VERSION` (a mirror-drift test, `test_currency_symbol_maps_are_mirrors`,
-  catches a single-copy edit).
-- **Percentile/sector-relative ranking for verdict thresholds is rejected**, twice now (an
-  earlier general rejection, then point 9's full investigation): "being in some top
-  percentile can still mean an unhealthy state if the whole sector is in an unhealthy state."
-  Rating agencies' per-industry ABSOLUTE thresholds would be the legitimate shape to copy if
-  this is ever revisited, not relative ranking. A superseded "sector-calibrated thresholds"
-  proposal is in the archive if the historical reasoning is ever needed.
-- **Changelogs live in one place**: code and docs describe the present; git history and MR
-  descriptions carry how it got that way. This file, task contracts and review records carry
-  current state and POINTERS into git. A one-line entry naming a merged MR is a pointer;
-  paragraphs narrating how the work went are a changelog and belong in the commit message (see
-  the working agreement's prose rule). Never date-stamp a fix into a comment or doc prose
-  describing current behavior.
-- **No em/en-dash on any line added to this repo, anywhere, any file** -- flagged repeatedly
-  this session; use `--` instead, matching the convention already used throughout this repo's
-  own prose.
-- **Repo hosting: GitLab-only while the GitHub account remains suspended.** Owner confirmed
-  2026-09-04, explicitly conditional -- revisit only if that account is recovered, not something
-  to re-ask otherwise. The dead `origin` remote has been DELETED from this clone: a bare
-  `git push origin` now fails with "no such remote" rather than reaching a suspended account.
-  It was removed because a warning in this file did not stop a session pushing to it.
-- **Repo goes public once it is portfolio-grade, not before** (owner, 2026-09-08). Sequencing,
-  not a standing block: the repo stays private through the remaining substance work and flips
-  public as the last step. Portfolio-grade means the PIPELINE, not presentation -- owner,
-  2026-09-09: "this is not about make-up, it's about substance, specifically the engineering
-  part". Issue #9's findings are what that tracks.
-- **Link-preview/avatar image: deferred, unresolved.** Cropping the README screenshot chopped
-  mid-sentence prose and was illegible at avatar size; three generated icon concepts were
-  rejected outright. Revisit only with the owner's own asset or a clearer direction, never by
-  generating more variations.
-
 ## Market coverage
 
 Nine markets active (as of the last check, 2026-08-27): US S&P 500, UK FTSE 100, Japan
@@ -189,6 +130,40 @@ against a 959-ticker, 73-minute pipeline run and a 2-hour CI timeout, with headr
 each batch and nobody tracking it as of the last check.
 
 ## Open items (carried forward, genuinely unresolved as of 2026-09-03)
+
+Live owner decisions a future session must act on, not numbered because they are not defects:
+
+- **Repo goes public once it is portfolio-grade, not before** (owner, 2026-09-08). Sequencing,
+  not a standing block: it stays private through the remaining substance work and flips public as
+  the last step. Portfolio-grade means the PIPELINE, not presentation -- owner, 2026-09-09: "this
+  is not about make-up, it's about substance, specifically the engineering part". Issue #9's
+  findings are what that tracks.
+- **Link-preview/avatar image: deferred, unresolved.** Cropping the README screenshot chopped
+  mid-sentence prose and was illegible at avatar size; three generated icon concepts were
+  rejected outright. Revisit only with the owner's own asset or a clearer direction, never by
+  generating more variations.
+
+- **Rename one of the two "working agreement" files.** `.claude/working-agreement.md` holds the
+  agent process, `docs/working_agreement.md` holds the UX PR gate. They differ only by hyphen
+  versus underscore, and a session cited the wrong one for a whole session before noticing. A
+  rename touches every reference, so it is its own change.
+- **Context-file debt, from the ownership pass.** Three items, all for the next context task:
+  (a) the `## Do NOT` section below still holds fourteen standing rules with no durable home;
+  (b) code comments point at `.claude/task/contract.md`, which is per-task and overwritten, so
+  those pointers are already dead. Find them with
+  `grep -rn "task/contract.md" --include=*.py --include=*.sql . | grep -v /target/`, not from a
+  list: every list written on this branch was wrong in both directions. Each comment already
+  states its reasoning inline before the pointer, so deleting the trailing clause loses nothing;
+  (c) the deferred sweep of dated code
+  comments must strip the DATE, not the comment. Start from
+  `git grep -nE "^\s*(#|--).*(20[0-9]{2}-[0-9]{2}-[0-9]{2}|owner[- ](approved|decided|settled))"
+  -- '*.py' '*.sql'` (10 hits, minus `dbt_analytics/target/`). It anchors on comment-start, so a
+  date on a CONTINUATION line of a multi-line comment escapes it: read around each hit. And --
+  `scripts/assessment_rules.py`'s `_CURRENCY_SYMBOLS` comment is the designated durable home for
+  the currency rule and carries a date, so deleting it would kill the home the onboard-market
+  skill now points at.
+
+Numbered defects and gaps:
 
 0. **THREE OWNER DECISIONS RESERVED BY MR !116, moved here because a task `contract.md` is
    rewritten per task and would have lost them.** None is urgent; none is agent-executable.
@@ -312,8 +287,8 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
   protected-branch settings on GitLab -- all owner-only (§6 cost/config).
 - Emit buy/sell/hold/price-target/advice anywhere -- educational only.
 - Reword or author metric copy/definitions/caveats without owner sign-off (§6).
-- Add a catalogue row for a new metric before it has a per-type display assignment --
-  renders an un-valued cell.
+- Add a catalogue row for a new metric before it has a per-type display assignment. The
+  catalogue is what renders a metric, so the row must know which company types see it.
 - Hand-roll a plan-back in prose -- use plan mode.
 - Ask the owner cryptic/jargon questions -- plain language, context, a recommendation,
   sparingly.
@@ -392,7 +367,7 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
   serving real cards from a new Supabase project (the original is permanently
   GitHub-OAuth-locked and inaccessible). Scheduled `data-pipeline` CI job runs biweekly
   (1st/15th, 06:00 UTC) and refreshes production unattended. The GitHub account is permanently
-  suspended and its `origin` remote has been deleted from this clone (see Standing decisions);
+  suspended and its `origin` remote has been deleted from this clone (working agreement §3);
   push to `gitlab`, use `glab`, never `gh`. Full narrative (the account-recovery story, the
   CI-minutes/runner
   consolidation saga, the branch-protection ordering trap) is in

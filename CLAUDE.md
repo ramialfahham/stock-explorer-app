@@ -1,5 +1,9 @@
 # Stock Swipe App
 
+> DURABLE. **Owns:** the map -- what this project is, and which file owns what. Injected into
+> every session, so the hard rules a session must not miss are surfaced here as POINTERS.
+> **Never:** the substance itself. Where this file summarises, the linked doc wins on conflict.
+
 A card-based stock dashboard. Users are shown stock cards per session and save/skip them.
 Pipeline: Python ingestion (yfinance → raw parquet) → dbt transforms on an ephemeral
 DuckDB → export marts to Supabase (Postgres) → Streamlit reads the card marts. Markets are
@@ -16,6 +20,9 @@ The essence:
 - Never commit or push to `main`. Branch, open an MR, let the user merge.
 - The decisions in §6 (product, naming, anything permanent, new mechanisms, cost) are the
   user's — escalate, don't decide.
+- **No em-dash or en-dash on any line you add or edit, in any file.** Use `--`. Nothing enforces
+  this; it holds at review time only. Full rule and the rest of the prose and comment conventions:
+  [`docs/engineering_standards.md`](docs/engineering_standards.md) §1.2 and §1.3.
 
 ## Stack
 

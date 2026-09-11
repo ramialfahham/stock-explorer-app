@@ -1,5 +1,8 @@
 # dbt Layering Rules
 
+> DURABLE. **Owns:** what is allowed in each dbt layer.
+> **Never:** metric definitions -- those live in the `metric_catalogue` seed.
+
 This document defines what is allowed in each dbt layer.
 Use it together with `engineering_standards.md`.
 

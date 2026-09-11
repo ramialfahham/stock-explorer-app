@@ -42,9 +42,10 @@ for what is active. This sentence is a starting figure, not a current one.
 - **Which markets**, and in what order.
 - **Which index**, where a country has more than one credible choice. Norway was OBX rather than
   the broader OSEBX. Present the options and recommend; do not pick silently.
-- **Currency display** for a currency not already in `_CURRENCY_SYMBOLS`
-  (`scripts/assessment_rules.py`, `frontend/card_copy.py`). A standing proposal for the queued
-  markets is in `.claude/active_work.md`, marked overturnable.
+- **Currency display** for a currency not already in `_CURRENCY_SYMBOLS`. The rule and the
+  reasoning sit beside that constant in `scripts/assessment_rules.py`, mirrored in
+  `frontend/card_copy.py`: use each currency's real-world form, not a uniform one. Both copies
+  must change together; `test_currency_symbol_maps_are_mirrors` catches a single-copy edit.
 
 A thin or stubbed constituent is NOT an owner decision: carry it and let eligibility drop it.
 Silently excluding a real index member to make a count look clean is the worse error.
