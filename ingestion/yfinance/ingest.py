@@ -406,7 +406,7 @@ def _fetch_fundamentals(
     max_tickers: int | None = None,
     delay_seconds: float = 0.0,
     force: bool = False,
-) -> tuple[pd.DataFrame, dict[str, int]]:
+) -> tuple[pd.DataFrame, dict[str, object]]:
     tickers = local_tickers[:max_tickers] if max_tickers else local_tickers
     snapshot_date = datetime.now(timezone.utc).date()
 
@@ -418,7 +418,13 @@ def _fetch_fundamentals(
         rows = existing.to_dict(orient="records")
         already_fetched = set(existing["ticker"].unique())
 
-    stats = {"fundamentals_ok": 0, "fundamentals_failed": 0, "fundamentals_skipped": 0}
+    failed_tickers: list[str] = []
+    stats: dict[str, object] = {
+        "fundamentals_ok": 0,
+        "fundamentals_failed": 0,
+        "fundamentals_skipped": 0,
+        "fundamentals_failed_tickers": failed_tickers,
+    }
 
     def _flush() -> None:
         _atomic_write_parquet(pd.DataFrame(rows), output_path)
@@ -439,6 +445,7 @@ def _fetch_fundamentals(
             _flush()
         except Exception as exc:  # noqa: BLE001
             stats["fundamentals_failed"] += 1
+            failed_tickers.append(local_ticker)
             label = "rate-limited" if is_rate_limited(exc) else "error"
             print(
                 f"  warning: fundamentals {label} for "
@@ -459,7 +466,7 @@ def ingest_market(
     max_tickers: int | None = None,
     delay_seconds: float = 0.0,
     force: bool = False,
-) -> dict[str, int]:
+) -> dict[str, object]:
     constituents = load_constituents(market.market_code)
     _write_constituents_snapshot(market, constituents)
 

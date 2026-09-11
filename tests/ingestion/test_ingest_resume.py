@@ -79,6 +79,27 @@ def test_fundamentals_flush_survives_a_simulated_crash(monkeypatch, tmp_path):
     assert sorted(on_disk["ticker"]) == ["AAA", "BBB"]
 
 
+def test_fundamentals_failures_are_named_not_only_counted(monkeypatch, tmp_path):
+    """A count says how many cards are stale; only the names say which. The names are what
+    main() prints, so they must come out of the real fetch loop, not be inferred later."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+
+    def _fake_fetch_row(market, local_ticker, yf_symbol, snapshot_date):
+        if local_ticker in ("BBB", "DDD"):
+            raise RuntimeError("yfinance said no")
+        return _fake_row(local_ticker)
+
+    monkeypatch.setattr(ingest_module, "_fetch_fundamentals_row", _fake_fetch_row)
+
+    frame, stats = ingest_module._fetch_fundamentals(
+        MARKET, ["AAA", "BBB", "CCC", "DDD"], delay_seconds=0
+    )
+
+    assert stats["fundamentals_failed"] == 2
+    assert stats["fundamentals_failed_tickers"] == ["BBB", "DDD"]
+    assert sorted(frame["ticker"]) == ["AAA", "CCC"]
+
+
 def test_fundamentals_skip_if_fresh_today(monkeypatch, tmp_path):
     _use_tmp_raw_dir(monkeypatch, tmp_path)
     calls: list[str] = []
@@ -477,4 +498,5 @@ def test_price_stats_reach_the_market_summary(monkeypatch, tmp_path):
         "fundamentals_ok",
         "fundamentals_failed",
         "fundamentals_skipped",
+        "fundamentals_failed_tickers",
     }

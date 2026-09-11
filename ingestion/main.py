@@ -9,6 +9,15 @@ import time
 from ingestion.registry import load_markets
 from ingestion.yfinance.ingest import ingest_market
 
+# The number is the eligibility baseline gate's warn_drop_fraction
+# (scripts/eligibility_baseline.json), pinned equal by a test. Same number, different
+# denominator: that gate measures a drop in the mart's eligible count, this one fetch failures
+# over every requested ticker. Above it the run fails and the export is skipped, which keeps
+# the last good Supabase snapshot. At or below it the run continues and the failed tickers are
+# named on stderr, because each one keeps its previous card: the As-of date is older, but
+# nothing says a refresh was attempted and failed.
+FUNDAMENTALS_FAIL_FRACTION = 0.05
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ingest raw yfinance data to storage/raw/")
@@ -52,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
 
     start = time.monotonic()
     markets_with_failed_prices: list[str] = []
+    markets_over_fundamentals_line: list[str] = []
     for market in markets:
         if market.source != "yfinance":
             print(f"Skipping {market.market_code}: unsupported source {market.source}")
@@ -79,6 +89,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         if stats["price_batches_failed"]:
             markets_with_failed_prices.append(market.market_code)
+        failed = int(stats["fundamentals_failed"])
+        if failed:
+            requested = int(stats["tickers_requested"])
+            names = ", ".join(stats["fundamentals_failed_tickers"])
+            if failed > FUNDAMENTALS_FAIL_FRACTION * requested:
+                markets_over_fundamentals_line.append(market.market_code)
+                print(
+                    f"run_ingestion: {market.market_code}: fundamentals failed for {failed} of "
+                    f"{requested} tickers, over the {FUNDAMENTALS_FAIL_FRACTION:.0%} line: "
+                    f"{names}",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    f"run_ingestion: {market.market_code}: fundamentals failed for {failed} of "
+                    f"{requested} tickers, within the {FUNDAMENTALS_FAIL_FRACTION:.0%} line, so "
+                    f"the run continues. Each keeps its previous card with an older As-of date "
+                    f"and no sign a refresh was attempted: {names}",
+                    file=sys.stderr,
+                )
         # Observability only -- not a gate. Ingestion is ~37% of the scheduled job's
         # total runtime (measured: ~24 of ~65 min against a 2h timeout), so stopping
         # early here would not meaningfully protect the job's actual timeout risk; this
@@ -103,6 +133,15 @@ def main(argv: list[str] | None = None) -> int:
             "downstream reads prices, so the run continues.",
             file=sys.stderr,
         )
+
+    if markets_over_fundamentals_line:
+        print(
+            "run_ingestion: fundamentals failures over the line for "
+            f"{', '.join(markets_over_fundamentals_line)}; failing the run so the export keeps "
+            "the last good snapshot. A re-run in CI refetches every ticker.",
+            file=sys.stderr,
+        )
+        return 1
 
     return 0
 
