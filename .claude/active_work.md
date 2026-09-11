@@ -18,10 +18,14 @@ the detail._
 
 ## In flight
 
-**MR !120 open, awaiting owner merge** (`ci/context-size-budget`). Every governed context file
-has a byte budget in `docs/context_budget.yml`, checked first in `validate:full` and at
-pre-commit; over budget, unbudgeted or missing fails. To grow a file, raise its budget in the
-same MR and say why. Rule text: `docs/engineering_standards.md` §1.3.
+Nothing open. Next, in order: the `fundamentals_failed` gate below, then issue #9's remaining
+Tier-1 items.
+
+**Merged this pass.** !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures are
+counted, printed and warned on stderr; the run does not fail. Three owner questions from its
+contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file
+carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context
+file has a byte budget in `docs/context_budget.yml`, checked in CI and at pre-commit.
 
 **Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
 describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
@@ -30,20 +34,7 @@ freshness, full `dbt build`, the eligibility and export gates, assessments dry-r
 yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
 task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
 
-**MR !119 merged** (`docs/context-ownership`, `cad2951a`): every context file carries a DURABLE
-or DISPOSABLE header; dash and no-dates rules live in `docs/engineering_standards.md` §1.2/§1.3.
-
-**MR !118 open, awaiting owner merge** (`fix/price-ingest-visibility`) -- issue #9 finding A3.
-Price-batch failures were swallowed; they are now counted, printed in the per-market summary and
-warned about on stderr. The run does NOT fail: the owner's first answer was to gate, reversed on
-corrected facts (nothing reads prices; `call_with_retry` retries rate limits only, so a
-connection reset reaches the failure path unretried; `run_ingestion.py` is step 2 of 10 with no
-`retry:`). Three things in its `contract.md` need the owner, all §6: the counters cannot see a
-symbol yfinance returns as an all-NaN block, nothing enforces the "no price consumer"
-precondition, and `allow_failure: true` would be a louder non-blocking report but is a new CI
-job that was never put on the menu.
-
-**AFTER !118, issue #9's remaining Tier-1 data-integrity work, in this order:** A2 (11
+**Issue #9's remaining Tier-1 data-integrity work, in this order:** A2 (11
 undocumented `numeric` precision caps; one Yahoo outlier over ~1e6 aborts the export, and the
 project has no `accepted_range` test anywhere), C3 (the dbt mart's real grain has no test --
 deleting one `qualify` line passes everything and silently doubles the deck), C4 (`market_code`
@@ -194,6 +185,14 @@ Numbered defects and gaps:
    cto-reviewer recommends routing it to itself, since `.claude/settings.json` and `*hooks/*`
    already route there for carrying execution authority; the evidence is !116, whose only
    blocking correctness finding came from the reviewer routing did not require.
+
+   **And three from MR !118, same reason, all data-contract questions (§6):** (d) the price
+   counters cannot see a symbol yfinance returns as an all-NaN OHLCV block; closing it needs a
+   contract-level rule, and a bare `not_null` on `close` is wrong because legitimate NaN exists.
+   (e) Nothing enforces the "nothing reads prices" precondition the no-gate decision rests on;
+   a `ref('stg_yf__daily_prices')` would make it wrong silently. (f) A separate CI job with
+   `allow_failure: true` would surface price loss as a visible pipeline warning without gating;
+   it is a new workflow step and was never put on the menu.
 
 1. **BXB, RMS, SPK (`au_asx200`) are still stuck on a 2026-08-20 snapshot as of 2026-09-03**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
