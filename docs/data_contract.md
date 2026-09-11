@@ -484,6 +484,18 @@ Run on **scheduled pipeline** (Tier C), not on every PR. Implemented by
 
 Warn exits 0; fail exits 1 and blocks export.
 
+### At ingestion, before dbt
+
+| Check | Fail | Continue |
+|-------|------|----------|
+| Fundamentals fetch failures, per market | **> 5%** of its tickers | at or below; tickers named |
+
+Implemented in `ingestion/main.py`; the 5% is the baseline gate's `warn_drop_fraction`, pinned
+equal by a test. A failed run skips the export, so Supabase keeps its last good snapshot. A
+ticker that fails under the line has no new row, so its previous snapshot stays in the deck:
+the card's `As of` date is older, but nothing on it says a refresh was attempted. The stderr
+line is the only trace of the attempt.
+
 ### Registry
 
 `scripts/check_registry_var_sync.py` ensures `dbt_project.yml` `active_market_codes` matches
