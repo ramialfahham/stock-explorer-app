@@ -1,0 +1,36 @@
+# Byte budget per context file, measured with CRLF collapsed to LF. CI and pre-commit run
+# scripts/check_context_budget.py: over budget fails, a governed file with no entry fails, an
+# entry with no file fails. To grow a file past its budget, raise the number here in the same
+# MR and say why in the MR description. Governed globs are defined in the script, not here.
+budgets:
+  .claude/task/contract.md: 8000
+  .claude/task/review.md: 8000
+  .claude/active_work.md: 32000
+  .claude/working-agreement.md: 9000
+  CLAUDE.md: 5000
+  docs/ui/card_metric_cell.md: 26000
+  docs/ui/design_system.md: 10000
+  docs/ui/disclosure_pattern.md: 4000
+  docs/ui/discover_header.md: 8000
+  docs/ui/discover_list.md: 10000
+  docs/ui/saved_list.md: 7000
+  docs/data_contract.md: 58000
+  docs/development_workflow.md: 7000
+  docs/engineering_standards.md: 12000
+  docs/handover_2026-05-24.md: 12000
+  docs/handover_2026-08-18.md: 36000
+  docs/handover_2026-09-03.md: 150000
+  docs/ingest_coverage_notes.md: 3000
+  docs/intl-balance-sheet-row-labels.md: 5000
+  docs/intl-quarterly-row-labels.md: 3000
+  docs/layering.md: 7000
+  docs/metric_audit.md: 5000
+  docs/metric_layer.md: 6000
+  docs/north_star.md: 15000
+  docs/operations_guide.md: 14000
+  docs/product_roadmap_2026-06.md: 8000
+  docs/project_context.md: 6000
+  docs/streamlit_deploy.md: 4000
+  docs/supabase_setup.md: 14000
+  docs/ux_principles_finanz_lern_apps.md: 6000
+  docs/working_agreement.md: 3000

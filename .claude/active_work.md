@@ -18,12 +18,20 @@ the detail._
 
 ## In flight
 
-**MR !119 open, awaiting owner merge** (`docs/context-ownership`). Every context file carries a
-DURABLE or DISPOSABLE header; the dash and no-dates rules live in `docs/engineering_standards.md`
-§1.2/§1.3. Measured net +1,222 bytes: better placed, not less. cto-reviewer's recommendation for
-the NEXT context task, an owner call because it is a new CI mechanism (§6): a per-doc size budget
-in CI that fails closed, ahead of the comment sweep in the context-file debt item below. A budget
-stops recurrence; a sweep removes text once.
+**MR !120 open, awaiting owner merge** (`ci/context-size-budget`). Every governed context file
+has a byte budget in `docs/context_budget.yml`, checked first in `validate:full` and at
+pre-commit; over budget, unbudgeted or missing fails. To grow a file, raise its budget in the
+same MR and say why. Rule text: `docs/engineering_standards.md` §1.3.
+
+**Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
+describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
+no path rules and runs nine more steps than Tier A names (`seed_ci_raw_fixtures`, source
+freshness, full `dbt build`, the eligibility and export gates, assessments dry-run, pytest, the
+yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
+task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
+
+**MR !119 merged** (`docs/context-ownership`, `cad2951a`): every context file carries a DURABLE
+or DISPOSABLE header; dash and no-dates rules live in `docs/engineering_standards.md` §1.2/§1.3.
 
 **MR !118 open, awaiting owner merge** (`fix/price-ingest-visibility`) -- issue #9 finding A3.
 Price-batch failures were swallowed; they are now counted, printed in the per-market summary and
@@ -154,7 +162,7 @@ Live owner decisions a future session must act on, not numbered because they are
   agent process, `docs/working_agreement.md` holds the UX PR gate. They differ only by hyphen
   versus underscore, and a session cited the wrong one for a whole session before noticing. A
   rename touches every reference, so it is its own change.
-- **Context-file debt, from the ownership pass.** Three items, all for the next context task:
+- **Context-file debt, from the ownership pass.** Three items, one task:
   (a) the `## Do NOT` section below still holds fourteen standing rules with no durable home;
   (b) code comments point at `.claude/task/contract.md`, which is per-task and overwritten, so
   those pointers are already dead. Find them with

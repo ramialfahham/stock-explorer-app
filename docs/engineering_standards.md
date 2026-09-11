@@ -114,6 +114,13 @@ For where narrative belongs, and what a contract or handover may carry, see
 [`.claude/working-agreement.md`](../.claude/working-agreement.md) §2. That file owns the rule;
 this one does not restate it.
 
+**Every governed context file has a byte budget** in [`context_budget.yml`](context_budget.yml),
+checked by `scripts/check_context_budget.py` in CI and at pre-commit; the governed globs are
+named in that script. Over budget fails; a governed file with no entry fails; an entry with no
+file fails. To grow a file past its budget, raise the number in the same MR and say why in the MR
+description. A new context file needs a budget line before it can be committed, which is the
+point: adding a file is a decision, not a reflex.
+
 ---
 
 ## 2. Documentation Policy
@@ -283,18 +290,7 @@ Generic dbt examples do not override this section.
 
 ## 8. CI Minimum Gate
 
-Every PR should pass before merge:
+Every MR must pass the `validate:full` job in [`.gitlab-ci.yml`](../.gitlab-ci.yml). That job
+is the authoritative list of its own steps; where a doc summarises it, the job wins.
 
-1. `python scripts/check_dbt_sql_structure.py`
-2. `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (requires `profiles.yml` from
-   `profiles.yml.example` for the dbt templater)
-3. `dbt deps`
-4. `dbt parse`
-5. `python scripts/check_dbt_tests.py`
-6. `dbt build --select staging`
-7. `dbt build --select tag:base tag:core`
-8. `dbt docs generate` then `python scripts/check_dbt_documentation.py` (requires `target/catalog.json`)
-
-Before release to prod:
-
-9. `dbt build` (full run)
+Before release to prod: `dbt build` (full run)

@@ -9,6 +9,7 @@
     "*schema.yml": ["analytics-engineer-reviewer"],
     "dbt_analytics/*.yml": ["analytics-engineer-reviewer"],
     "scripts/*": ["cto-reviewer"],
+    "docs/context_budget.yml": ["cto-reviewer"],
     "tests/*": ["cto-reviewer"],
     ".github/workflows/*": ["cto-reviewer"],
     ".gitlab-ci.yml": ["cto-reviewer"],
