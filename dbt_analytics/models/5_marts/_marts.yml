@@ -4,7 +4,8 @@ models:
   - name: mart_stock_cards
     description: >
       **What:** Supabase export dataset for Streamlit stock swipe cards (card-eligible rows only).
-      **Grain:** One row per (market_code, ticker, snapshot_date) where is_card_eligible.
+      **Grain:** One row per (market_code, ticker) where is_card_eligible, each at its market's
+      latest snapshot_date. The Supabase table accumulates dates per ticker; this model does not.
       **Source:** int_stock__card_metrics left join int_stock__sector_benchmarks.
       **Used by:** export_to_supabase.py, Streamlit app.
     config:
@@ -20,7 +21,6 @@ models:
             combination_of_columns:
               - market_code
               - ticker
-              - snapshot_date
       - dbt_utils.expression_is_true:
           arguments:
             expression: >-
@@ -441,7 +441,7 @@ models:
   - name: mart_stock_eligibility_gaps
     description: >
       **What:** QA mart of tickers failing the per-type eligibility gate.
-      **Grain:** One row per (market_code, ticker, snapshot_date) where NOT is_card_eligible.
+      **Grain:** One row per (market_code, ticker) where NOT is_card_eligible.
       **Source:** int_stock__card_metrics.
       **Used by:** check_eligibility_gaps.py (ops/CI). Not exported to Supabase.
     meta:
@@ -454,7 +454,6 @@ models:
             combination_of_columns:
               - market_code
               - ticker
-              - snapshot_date
       - dbt_utils.expression_is_true:
           arguments:
             expression: is_card_eligible = false
