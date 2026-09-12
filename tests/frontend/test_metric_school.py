@@ -116,8 +116,9 @@ def test_render_operating_card_shows_four_tabs_with_face_labels_and_currency() -
     metrics = playgrounds_for_card(card)
     assert [t.label for t in tabs] == [metric_label(m, card) for m in metrics]
     assert tabs[0].label == "Operating margin (annual)"
-    for tab, metric in zip(tabs, metrics):
-        assert tab.markdown[0].value == f"**{metric_label(metric, card)}**"
+    assert not at.markdown, "the tab name carries the metric; no heading repeats it"
+    assert [n.label for n in tabs[0].number_input] == ["Revenue (£B)", "Operating profit (£B)"]
+    assert [n.label for n in tabs[2].number_input][0] == "Hypothetical net debt (£B)"
     labels = [n.label for n in at.number_input]
     assert len(labels) == 8
     assert all(label.endswith("(£B)") for label in labels), labels
@@ -126,7 +127,6 @@ def test_render_operating_card_shows_four_tabs_with_face_labels_and_currency() -
 def test_render_financial_card_shows_only_growth_and_pre_revenue_nothing() -> None:
     at = _render(_card("financial"))
     assert [t.label for t in at.tabs] == ["Rev growth YoY (quarter)"]
-    assert at.tabs[0].markdown[0].value == "**Rev growth YoY (quarter)**"
     assert [n.label for n in at.tabs[0].number_input] == ["Revenue one year ago ($B)", "Revenue today ($B)"]
     at = _render(_card("pre_revenue"))
     assert len(at.tabs) == 0 and len(at.number_input) == 0

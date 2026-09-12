@@ -3,56 +3,41 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: The learn panel's four practice playgrounds follow the card face: only the
-  metrics the face shows for this card get a playground, each carries the face's label,
-  and money inputs carry the card's currency. Issue #9 finding B1.
+objective: Three owner decisions from MR !131 and !132, taken in chat: two catalogue
+  `applicability` sentences reworded; the playground tabs drop the bold heading that
+  repeated the tab name.
 
 scope_paths:
+  - dbt_analytics/seeds/metric_catalogue.csv
+  - frontend/metrics.json
   - frontend/metric_school.py
-  - frontend/card_copy.py
-  - scripts/audit_mart_vs_yfinance.py
-  - docs/metric_audit.md
-  - docs/backlog/landing_onboarding_rework.md
+  - tests/tooling/test_metric_catalogue.py
   - tests/frontend/test_metric_school.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - Keep the playgrounds. The finding lists three user-visible consequences to fix, not the
-    feature's existence; `docs/north_star.md` names the playgrounds as part of the learn
-    panel. Removing them is the owner's alternative (product content, §6), recorded, not
-    taken.
-  - The playground arithmetic stays in Python. It teaches the catalogue's `calculation`
-    sentence on numbers the user types; no stored value on any card comes from it. The
-    invariant in `scripts/audit_mart_vs_yfinance.py` is reworded to what it guards (no
-    Python path produces a card value), because as written it was false of the repo.
-  - Input wording: "Revenue ($B)" becomes the same words with the card's currency symbol,
-    as `format_metric_value` already prints money on the face. The words themselves are
-    unchanged; the owner may reword.
+  - Owner-set wording (chosen from options presented in chat, option A each):
+    `statement_roe_pct`: "Means something different for banks." becomes "For a bank, high
+    ROE mostly reflects regulated leverage, not a financing choice; compare banks with
+    banks."
+    `working_capital`: "businesses with no turnover" becomes "businesses with little or no
+    revenue".
+  - Owner-set composition: the playground tab name carries the metric label; the bold
+    heading inside each tab, which repeated it, is removed.
 
 done_when:
-  - A pure `playgrounds_for_card(card)` returns the ordered playground metrics that are in
-    `metrics_for_card(card)`; `render_metric_playgrounds` renders exactly those tabs and
-    nothing when the list is empty. Tests: an operating card with all four values gets four;
-    a financial card gets only revenue growth; a pre-revenue card gets none; a card missing
-    one value loses that tab.
-  - Tab and heading labels come from `metric_label(metric, card)`, so an `annual_latest`
-    card's margin playground reads "Operating margin (annual)" like its face.
-  - Money inputs carry the card's currency symbol through a public `currency_symbol()` in
-    `card_copy`, which `_format_currency_compact` also uses; unit test pins a GBP label, a
-    symbol-less code and the no-currency fallback.
-  - An AppTest renders `render_metric_playgrounds` for an operating GBP `annual_latest` card
-    (four tabs in face order, first tab "Operating margin (annual)", eight inputs all ending
-    "(£B)"), a financial card (one tab, two inputs) and a pre-revenue card (nothing), so the
-    dispatch, the tab labels and the input labels are executed by a test.
-  - The `METRIC_LABELS[...]` scan test is replaced by one over the playground registry
-    (every registered metric is in the catalogue).
-  - `scripts/audit_mart_vs_yfinance.py` docstring and `docs/metric_audit.md` state the
-    invariant as what holds: no Python path produces a stored metric.
+  - The two sentences replaced, CSV rewritten through the csv module and re-parsed at 21
+    columns per row; only those two rows differ.
+  - `frontend/metrics.json` regenerated; `test_regenerated_json_matches_committed` passes.
+  - The pinned `working_capital` phrase in `test_metric_catalogue.py` follows the new text;
+    `test_metrics_withheld_from_financials_never_say_banks` still passes (ROE is shown for
+    financials, so its bank sentence is allowed).
+  - No `st.markdown` heading inside a playground tab; the AppTest asserts no markdown on
+    the page and binds each tab to its metric through its input labels instead.
   - `pytest tests/ -q` green.
 
-impact_map: `frontend/metric_school.py` (render path and a new pure selector),
-  `frontend/card_copy.py` (one public helper over the existing symbol table),
-  `scripts/audit_mart_vs_yfinance.py` and `docs/metric_audit.md` (invariant wording). No dbt,
-  no mart, no catalogue change.
+impact_map: Two catalogue strings and their JSON export (no screen renders `applicability`);
+  four lines removed from the playground render path. No formula, format, `applies_to` or
+  eligibility change.

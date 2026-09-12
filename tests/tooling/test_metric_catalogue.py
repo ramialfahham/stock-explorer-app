@@ -133,4 +133,4 @@ def test_the_three_withheld_metrics_name_their_company_type() -> None:
     assert "Shown only for operating companies" in by_id["current_ratio_stmt"]["applicability"]
     assert _OWNER_BANK_SENTENCES["current_ratio_stmt"] in by_id["current_ratio_stmt"]["applicability"]
     assert by_id["working_capital"]["applies_to"] == "pre_revenue"
-    assert "businesses with no turnover" in by_id["working_capital"]["applicability"]
+    assert "businesses with little or no revenue" in by_id["working_capital"]["applicability"]
