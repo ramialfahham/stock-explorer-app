@@ -17,6 +17,7 @@ from card_copy import (
     VERDICT_EMOJI,
     VERDICT_FALLBACK_READ,
     ai_read,
+    ai_read_preview,
     benchmark_compare_available,
     benchmark_compare_unavailable_learn,
     benchmark_indicator_label,
@@ -310,7 +311,19 @@ def _health_block_html(card: dict) -> str:
     read = ai_read(card)
     if read:
         label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
-        read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
+        # Folded to its first lines so the first metric value shares the phone screen with the
+        # verdict (owner composition call); the full read is one tap away, and the caveat sits
+        # outside the toggle so a financial card never hides it.
+        preview, folded = ai_read_preview(read)
+        if folded:
+            read_html = disclosure_html(
+                _esc(preview),
+                f'<p class="ss-ai-read">{_esc(read)}</p>',
+                more_label="Read more",
+                less_label="Show less",
+            )
+        else:
+            read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
         return f'<div class="ss-health-block">{badge}{label}{read_html}{caveat_html}</div>'
     fallback = VERDICT_FALLBACK_READ.get(token)
     if not fallback:

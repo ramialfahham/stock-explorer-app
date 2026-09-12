@@ -227,3 +227,48 @@ def test_search_with_no_match_shows_warning(app_test: AppTest) -> None:
     _assert_clean(at)
     assert len(at.warning) == 1
     assert "nonexistent-zzz" in at.warning[0].value
+
+
+def _rendered_markdown(at: AppTest) -> list[str]:
+    """Every st.markdown value except the injected stylesheet, whose CSS mentions every
+    class name and would match any selector-shaped probe."""
+    return [m.value for m in at.markdown if not m.value.lstrip().startswith("<style>")]
+
+
+def _header_is_compact(at: AppTest) -> bool:
+    return any("ss-brand-header--compact" in v for v in _rendered_markdown(at))
+
+
+def _scope_stats_line_present(at: AppTest) -> bool:
+    return any("ss-header-stats--solo" in v for v in _rendered_markdown(at))
+
+
+def test_header_compacts_while_a_card_is_open_and_restores_on_back(app_test: AppTest) -> None:
+    """The call site, not the helper: _discovery_page must read the focus key before the nav
+    widget renders and choose the compact header, then choose the full one again on Back."""
+    at = app_test.run()
+    _assert_clean(at)
+    assert not _header_is_compact(at)
+    assert _scope_stats_line_present(at)
+
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    assert _header_is_compact(at)
+    assert not _scope_stats_line_present(at), "the count moved onto the back row"
+    assert any("saved" in v and "ss-header-stats--inline" in v for v in _rendered_markdown(at))
+
+    at = at.button(key="discover_back_to_list").click().run()
+    _assert_clean(at)
+    assert not _header_is_compact(at)
+    assert _scope_stats_line_present(at)
+
+
+def test_switching_to_saved_while_a_discover_card_is_open_restores_the_header(
+    app_test: AppTest,
+) -> None:
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    assert _header_is_compact(at)
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    assert not _header_is_compact(at)

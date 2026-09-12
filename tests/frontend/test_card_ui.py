@@ -654,3 +654,56 @@ def test_metric_groups_also_render_in_learn_panel() -> None:
     # led the card purely because the lens taxonomy put it first -- and its only metric,
     # forward_pe, was dropped. No card leads with price any more.
     assert ">Profitability<" in html
+
+
+# --- AI read folds on the card face (ux/card-view-fold) ---
+# Owner composition call: the read opens at its first lines so the verdict, its first reasons
+# and the first metric value share one phone screen; the full read is one tap away.
+
+
+def test_a_long_ai_read_folds_behind_read_more() -> None:
+    card = _card_with_all_metrics("operating")
+    card["health_verdict"] = "green"
+    card["ai_read"] = " ".join(f"word{i}" for i in range(60))
+    html = _health_block_html(card)
+    assert "<details" in html
+    assert "Read more" in html
+    assert "Show less" in html
+    assert "ss-disclosure-preview" in html
+    assert "word59" in html, "the full read must still be in the HTML, one tap away"
+    preview = html.split('class="ss-disclosure-preview">', 1)[1].split("</p>", 1)[0]
+    assert "word59" not in preview
+    assert preview.endswith("…")
+
+
+def test_a_short_ai_read_renders_plain() -> None:
+    card = _card_with_all_metrics("operating")
+    card["health_verdict"] = "green"
+    card["ai_read"] = "Turns sales into profit at a healthy rate."
+    html = _health_block_html(card)
+    assert "<details" not in html
+    assert "Read more" not in html
+    assert '<p class="ss-ai-read">' in html
+
+
+def test_the_financial_caveat_stays_outside_the_fold() -> None:
+    """The caveat is the most important line on a financial card; folding it with the read
+    would hide it by default."""
+    card = _card_with_all_metrics("financial")
+    card["company_type"] = "financial"
+    card["health_verdict"] = "yellow"
+    card["ai_read"] = " ".join(f"word{i}" for i in range(60))
+    html = _health_block_html(card)
+    assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in html
+    details_end = html.index("</details>")
+    assert html.index(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT) > details_end
+
+
+def test_the_verdict_badge_and_label_stay_outside_the_fold() -> None:
+    card = _card_with_all_metrics("operating")
+    card["health_verdict"] = "green"
+    card["ai_read"] = " ".join(f"word{i}" for i in range(60))
+    html = _health_block_html(card)
+    details_start = html.index("<details")
+    assert html.index(VERDICT_BADGE_LABEL["green"]) < details_start
+    assert html.index(BLOCK_LABEL_ASSESSMENT) < details_start

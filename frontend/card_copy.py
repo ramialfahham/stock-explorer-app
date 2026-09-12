@@ -489,6 +489,9 @@ STALE_SNAPSHOT_DAYS = 18
 
 # Yahoo longBusinessSummary preview length on the card face (tap to expand).
 BUSINESS_SUMMARY_PREVIEW_WORDS = 20
+# AI-written read preview on the card face: about three lines at 375px wide and 14px body
+# copy, so the verdict, its first reasons and the first metric value share one phone screen.
+AI_READ_PREVIEW_WORDS = 28
 
 
 def business_summary_full(card: dict) -> str | None:
@@ -522,6 +525,12 @@ def business_summary_preview(
         return None
     preview, _ = truncate_words(full, max_words)
     return preview or None
+
+
+def ai_read_preview(text: str, *, max_words: int = AI_READ_PREVIEW_WORDS) -> tuple[str, bool]:
+    """The read's first words for the card face; bool is True when the rest sits behind the
+    toggle."""
+    return truncate_words(text, max_words)
 
 
 def business_summary_is_truncated(

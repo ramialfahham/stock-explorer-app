@@ -113,6 +113,17 @@ section[data-testid="stSidebar"] {
     padding-bottom: 0.45rem;
     border-bottom: 1px solid var(--ss-border);
 }
+/* Card view: the saved count shares one row with the back button, so no rule of its own.
+   !important for the same reason as .ss-filter-summary: it sits in a bare layout column. */
+.ss-header-stats--inline {
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+    text-align: right;
+}
+[data-testid="stElementContainer"]:has(.ss-back-row-marker) + [data-testid="stLayoutWrapper"] {
+    margin: 0 0 0.45rem;
+}
 .ss-header-pool {
     font-size: var(--ss-caption-size);
     color: var(--ss-muted);

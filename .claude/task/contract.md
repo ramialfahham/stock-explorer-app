@@ -3,49 +3,53 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: Raise the mobile type scale so body copy is 14px and nothing renders under 12px.
+objective: Put the first metric value back above the fold on a phone when a card is open.
 
-  Before the change the caption token (0.72rem, 11.5px) carried body copy at most
-  `font-size` sites in `frontend/styles.py`, and the hardcoded sizes went down to 0.65rem.
-  The live counts at 375px are in the MR description.
+  Measured at 375x812 on a typical card after the type scale: the card starts at 270px (brand
+  66, nav 38, saved-count line 29, back button ~50, plus gaps) and the first metric value sits
+  at 978px, with the AI-written paragraph taking 284px and "About the company" 114px of the
+  card itself. A zero-height header alone would leave the first metric at ~708px on this card
+  and below the fold on longer ones, so the header is a third of the problem.
 
 scope_paths:
+  - frontend/app.py
+  - frontend/card_ui.py
+  - frontend/card_copy.py
   - frontend/styles.py
-  - docs/ui/design_system.md
-  - docs/ui/card_metric_cell.md
-  - tests/frontend/test_styles.py
+  - tests/frontend/test_app.py
+  - tests/frontend/test_card_ui.py
+  - tests/frontend/test_app_e2e.py
+  - docs/ui/discover_header.md
+  - docs/ui/disclosure_pattern.md
+  - docs/north_star.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - The scale. Owner-set: body 14px (new `--ss-body`, 0.875rem); captions and meta lines 13px
-    (`--ss-caption-size` from 0.72rem to 0.8125rem); chips and small uppercase labels 12px
-    (`--ss-label`, unchanged, now the floor); list-row titles 15px (`--ss-row-title` from
-    0.85rem to 0.9375rem); card title 17px (`--ss-title` from 1rem to 1.0625rem); the big
-    metric value 24px unchanged. The brand wordmark (1.35rem) and the icon-button glyph
-    (1.05rem) are not text sizes and are unchanged.
-  - Which text is body and which is caption at each site is the agent's reading
-    of what the text is; the owner saw the result live at 375px in the session.
-  - The fold. Measured on a long financial card at 480x812: the first metric value sat 20px
-    above the fold before and sits 64px below it after; at 375x812 it was below the fold
-    before the change. Owner chose to ship the scale and take the ~300px of header above the
-    card (brand, tagline, disclaimer, nav, saved count, back button) as the next UI piece,
-    over holding this change until that layout is designed.
+  - Composition, owner-set, both levers: (1) while a card is open, the header drops the tagline
+    and the "Not investment advice" line (both stay on every list view, which every visit
+    starts from) and the back button shares one row with the saved count; (2) the AI-written
+    paragraph opens folded to its first lines with the card's existing Read more / Show less
+    toggle; the verdict badge, the block label and the financial caveat stay fully visible.
+  - The fold length in words is the agent's: enough for about three lines at 375px and 14px.
 
 done_when:
-  - Every `font-size` in `frontend/styles.py` uses a token; no hardcoded size remains below
-    the wordmark and icon glyph.
-  - A test in `tests/frontend/test_styles.py` asserts every `font-size` in the stylesheet is
-    a token reference or one of those two named exceptions, and that no size token resolves
-    under 0.75rem.
-  - At 375px: no visible text element under 12px on Discover, the card or Saved; no
-    horizontal scroll; Save reachable on Discover; company and verdict visible without
-    scrolling. The first-metric-above-the-fold check is the reserved decision above.
-  - `docs/ui/design_system.md` tokens table lists the type tokens with the new values;
-    `docs/ui/card_metric_cell.md`'s typography line names the body token, not 0.78rem.
-  - Before and after measurements at 375px and 480px in the MR; the repo has no browser
-    driver to write screenshot files, and the owner reviewed the screens live.
+  - `_health_block_html` renders the AI read through `disclosure_html` when it exceeds the
+    preview length, with the full text inside the toggle and the caveat outside it; a short
+    read renders plain, as the company summary already does.
+  - On a focused card (Discover and Saved), the header renders the brand only, and the back
+    button and saved count share one row; list views are unchanged.
+  - Tests in `tests/frontend` pin: the fold and its labels; a short read not folded; the
+    caveat outside the toggle; the badge and label outside the toggle; the compact header's
+    content; `_card_open` following the Discover and Saved focus keys and never Search; and,
+    through AppTest driving the real script, the header compact with a card open, full again
+    on Back and on a tab switch, with the stats line gone while the back row shows the count.
+  - Measured at 375x812 on the card that measured 978px before: the first metric value above
+    the fold; at 480x812 on the long financial card that measured 876px: above the fold.
+  - `docs/ui/discover_header.md` rows 2, 3 and 6 state the focused-view behaviour;
+    `docs/ui/disclosure_pattern.md` lists the AI read as a placement; `docs/north_star.md`'s
+    mobile success check names what makes it hold instead of saying it was not re-verified.
 
-impact_map: Frontend CSS only. Larger type lengthens every card; the 480px first-metric
-  check is the guard against pushing it below the fold. No data, no export, no copy change.
+impact_map: Frontend only. Two card-face behaviours change: the header while a card is open,
+  and the AI read's default state. The full read stays in the HTML, one tap away.
