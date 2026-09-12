@@ -25,9 +25,19 @@ _ROWS = [
      "working_capital": -5.0e7},
 ]
 
+# Operating on the annual fallback: the card face labels its margin "(annual)", so the loader
+# must carry ebit_margin_basis or the read names it "(TTM)" again.
+_ANNUAL_BASIS_ROW = {
+    "market_code": "us_sp500", "ticker": "ANNX", "company_type": "operating", "currency": "USD",
+    "snapshot_date": "2026-07-01", "net_debt_to_ebitda": 0.9, "ebit_margin_pct": 12.3,
+    "fcf_margin_pct": 5.0, "ebit_margin_basis": "annual_latest",
+}
+
 
 def _make_mart(path: Path, rows: list[dict]) -> None:
-    text_cols = {"market_code", "ticker", "company_type", "currency", "snapshot_date"}
+    text_cols = {
+        "market_code", "ticker", "company_type", "currency", "snapshot_date", "ebit_margin_basis"
+    }
     defs = ", ".join(
         f"{c} VARCHAR" if c in text_cols else f"{c} DOUBLE"
         for c in gen.ASSESSMENT_INPUT_COLUMNS
@@ -68,6 +78,21 @@ def test_build_records_dedupes_and_assigns_verdicts(tmp_path: Path) -> None:
             "market_code", "ticker", "company_type", "health_verdict",
             "input_hash", "snapshot_date", "generated_at",
         }
+
+
+def test_loader_carries_the_margin_basis_into_the_read(tmp_path: Path) -> None:
+    """Removing ebit_margin_basis from ASSESSMENT_INPUT_COLUMNS would make every annual-basis
+    read say "(TTM)" beside a card that says "(annual)", with nothing else failing; this pins
+    the column from DuckDB through to the prompt."""
+    from assessment_rules import build_read_messages
+
+    db = tmp_path / "mart.duckdb"
+    _make_mart(db, [_ANNUAL_BASIS_ROW])
+    rows = {r["ticker"]: r for r in gen._load_mart_rows(db)}
+    assert rows["ANNX"]["ebit_margin_basis"] == "annual_latest"
+    _system, user = build_read_messages(rows["ANNX"], "yellow")
+    assert "- Operating margin (annual): 12.3%" in user
+    assert "Operating margin (TTM)" not in user
 
 
 def test_dry_run_needs_no_credentials(tmp_path: Path, monkeypatch) -> None:
@@ -259,7 +284,9 @@ def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> No
     rec = _base_record()
     client = _FakeAnthropic(
         text="Operating margin looks strong.",
-        referenced_metrics=[{"label": "Operating margin", "value_as_shown": "99.9%"}],  # wrong
+        referenced_metrics=[  # wrong
+            {"label": "Operating margin (TTM)", "value_as_shown": "99.9%"}
+        ],
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 0, "carried": 0, "failed": 1}
@@ -270,7 +297,9 @@ def test_attach_reads_accepts_a_read_citing_a_number_that_matches() -> None:
     rec = _base_record()
     client = _FakeAnthropic(
         text="Operating margin looks strong, financially healthy on these figures.",
-        referenced_metrics=[{"label": "Operating margin", "value_as_shown": "24.0%"}],  # correct
+        referenced_metrics=[  # correct
+            {"label": "Operating margin (TTM)", "value_as_shown": "24.0%"}
+        ],
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "failed": 0}

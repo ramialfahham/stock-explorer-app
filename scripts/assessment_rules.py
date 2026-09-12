@@ -502,7 +502,7 @@ READ_TOOL_SCHEMA: dict[str, Any] = {
                     "properties": {
                         "label": {
                             "type": "string",
-                            "description": "The metric's label exactly as it appears in the numbers list, e.g. 'Operating margin'.",
+                            "description": "The metric's label exactly as it appears in the numbers list, e.g. 'Operating margin (TTM)'.",
                         },
                         "value_as_shown": {
                             "type": "string",
@@ -519,18 +519,20 @@ READ_TOOL_SCHEMA: dict[str, Any] = {
 
 
 # Per-metric beginner brief for the facts block: label + one plain gloss + a value
-# format. Keys MUST cover every field in INPUT_FIELDS_BY_TYPE (a tests/tooling guard
-# asserts it). Wording is drawn from dbt_analytics/seeds/metric_catalogue.csv;
-# the growth line states which way growth counts, so the read never turns it into a buy
-# cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
+# format. Keys MUST cover every field in INPUT_FIELDS_BY_TYPE, every label is the
+# catalogue's label for that metric, and every fmt renders the value exactly as
+# frontend/card_copy.py renders it on the card face; tests/tooling pins all three against
+# dbt_analytics/seeds/metric_catalogue.csv, so the read can only cite what the reader sees
+# beside it. The growth line states which way growth counts, so the read never turns it into
+# a buy cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
 READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "ebit_margin_pct": {
-        "label": "Operating margin",
+        "label": "Operating margin (TTM)",
         "fmt": "pct",
         "gloss": "share of sales kept as operating profit (higher = more profitable); can look extreme when revenue is very small",
     },
     "revenue_growth_yoy_pct": {
-        "label": "Revenue growth vs a year ago",
+        "label": "Rev growth YoY (quarter)",
         "fmt": "pct",
         "gloss": "how fast the top line is growing; for a financial company that is net interest plus fees, not sales. A fall counts against the verdict, a rise does not count for it. A very big percentage either way can just mean an unusual prior year rather than real change",
     },
@@ -540,7 +542,7 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
         "gloss": "roughly how many years of earnings would clear net debt (lower = less borrowing); can explode to a huge or distorted number when earnings are near zero",
     },
     "fcf_margin_pct": {
-        "label": "Free cash flow margin",
+        "label": "FCF margin (annual)",
         "fmt": "pct",
         "gloss": "share of sales kept as real cash (higher = stronger); negative = burning cash; can look extreme when revenue is very small",
     },
@@ -581,11 +583,11 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     },
     "cash_runway_months": {
         "label": "Cash runway",
-        "fmt": "months",
-        "gloss": "how long the cash lasts at the current spend (higher = more time before needing to raise money)",
+        "fmt": "ratio_1",
+        "gloss": "in months: how long the cash lasts at the current spend (higher = more time before needing to raise money)",
     },
     "burn_rate_monthly": {
-        "label": "Cash burn per month",
+        "label": "Cash burn (monthly)",
         "fmt": "currency",
         "gloss": "how fast cash is going out each month, a money amount (lower = the cash lasts longer)",
     },
@@ -643,11 +645,21 @@ def _format_metric_value(value: Any, fmt: str, currency: str | None = None) -> s
     v = float(value)
     if fmt == "pct":
         return f"{v:.1f}%"
-    if fmt == "months":
-        return f"{v:.0f} months"
+    if fmt == "ratio_1":
+        return f"{v:.1f}"
     if fmt == "currency":
         return _compact_amount(v, currency)
     return f"{v:.2f}"  # ratio
+
+
+def read_metric_label(field: str, row: Mapping[str, Any]) -> str:
+    """The label the card face shows for this metric on THIS row. One metric's label depends
+    on the row: operating margin says "(annual)" when the mart fell back to the latest annual
+    statement (ebit_margin_basis == "annual_latest"), mirroring frontend/card_copy.py's
+    metric_label; a test pins the two equal for both bases."""
+    if field == "ebit_margin_pct" and row.get("ebit_margin_basis") == "annual_latest":
+        return "Operating margin (annual)"
+    return READ_METRIC_BRIEF[field]["label"]
 
 
 def _present_metric_renderings(
@@ -666,7 +678,7 @@ def _present_metric_renderings(
         if _is_missing(value):
             continue
         brief = READ_METRIC_BRIEF[field]
-        out[brief["label"]] = _format_metric_value(value, brief["fmt"], currency)
+        out[read_metric_label(field, row)] = _format_metric_value(value, brief["fmt"], currency)
     return out
 
 
@@ -686,7 +698,7 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
         currency = None
     renderings = _present_metric_renderings(row, ctype, currency)
     glosses = {field: READ_METRIC_BRIEF[field]["gloss"] for field in INPUT_FIELDS_BY_TYPE[ctype]}
-    labels_to_fields = {READ_METRIC_BRIEF[f]["label"]: f for f in INPUT_FIELDS_BY_TYPE[ctype]}
+    labels_to_fields = {read_metric_label(f, row): f for f in INPUT_FIELDS_BY_TYPE[ctype]}
     lines = [
         f"- {label}: {rendered} - {glosses[labels_to_fields[label]]}"
         for label, rendered in renderings.items()
