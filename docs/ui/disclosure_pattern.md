@@ -24,6 +24,7 @@ Helper: `disclosure_html(preview, full_body_html, more_label=..., less_label=...
 |---------|--------|--------|
 | Saved tab headlines | Shipped | Read full headline / Show less |
 | Company description (card face) | Shipped | Read more / Show less |
+| AI-written read (card face) | Shipped | Read more / Show less |
 | Learn panel metric bodies | Shipped | Read more / Show less |
 | Sector gloss long copy | Backlog | — |
 
@@ -36,6 +37,13 @@ only after opening the panel and scrolling past every metric's explanation. It n
 lives in the learn panel at all — the toggle sits inline, right where the truncated preview
 ends, so reading the rest of the description needs no navigation and no scrolling past
 unrelated content.
+
+**The AI-written read folds to its first lines** (`_health_block_html`, preview length
+`AI_READ_PREVIEW_WORDS` in `frontend/card_copy.py`, about three lines at 375px) so the
+verdict badge, its first reasons and the first metric value share one phone screen. The
+badge, the block label and the financial caveat stay outside the toggle; a read short enough
+to fit renders plain. Owner composition call after the type scale pushed the first metric
+below the fold on long cards.
 
 **Learn panel metric bodies also use this pattern now** (`_metric_learn_blocks()` in
 `frontend/card_ui.py`) — each metric's full explanation gets its own toggle instead of every

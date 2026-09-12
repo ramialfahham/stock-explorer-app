@@ -23,18 +23,29 @@
 └─────────────────────────────────────────────┘
 ```
 
-Rows 5-6 above depict the **list** view. Once a card is focused, row 5 (Filters) disappears
-entirely and row 6 (Stats) collapses to the `{saved} saved` count alone -- see their table
-entries below.
+Rows 2, 3, 5 and 6 above depict the **list** views. Once a card is focused (Discover or
+Saved), rows 2 and 3 are not rendered, row 5 disappears entirely, and row 6 becomes one row
+with the back button: `[ ← Back to list ]` left, `{saved} saved` right. Every visit starts on
+a list view, so the tagline and the disclosure are still seen every visit; on the card view
+they are the header's share of what pushes the first metric value below the fold at 375px
+(the folded AI read is the larger share; see `disclosure_pattern.md`), and the north star's
+mobile success check wants that value above the fold.
+
+```
+│ Stock Explorer                              │  1. Brand only
+│ [ Discover | Saved | Search ]          [⋯] │  4. Nav
+│ [ ← Back to list ]                  3 saved │  6. Back row (`_render_back_row()`)
+│ … the card …                                │
+```
 
 | # | Block | Source | Notes |
 |---|--------|--------|-------|
 | 1 | Brand | `_render_brand_header()` | Product name only — no market name |
-| 2 | Tagline | `_render_brand_header()` | One line under brand |
-| 3 | Disclosure | `_render_brand_header()` | "Not investment advice." A permanent caption, not a one-time screen. Replaced the old first-run landing gate (removed) so the disclosure stays reachable every visit instead of appearing once and never again |
+| 2 | Tagline | `_render_brand_header()` | One line under brand. List views only |
+| 3 | Disclosure | `_render_brand_header()` | "Not investment advice." A permanent caption, not a one-time screen. Replaced the old first-run landing gate (removed) so the disclosure stays reachable every visit instead of appearing once and never again. List views only; the card view is never a visit's first screen |
 | 4 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
 | 5 | Filters | `_render_explore_filters()` | **Discover list view only**: one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()`. Hidden entirely once a card is focused -- a filter for a list that isn't currently on screen is dead chrome |
-| 6 | Stats | `_render_scope_stats()` | Discover list view: `{remaining} match your filters · {saved} saved`; Discover focus view, Saved, and Search: `{saved} saved` only |
+| 6 | Stats | `_render_scope_stats()` / `_render_back_row()` | Discover list view: `{remaining} match your filters · {saved} saved`; Saved list and Search: `{saved} saved` only; a focused card (Discover or Saved): the back button and `{saved} saved` on one row |
 
 Sticky **Save** / **Not now** actions render **below** the card body on Discover — not in the header.
 

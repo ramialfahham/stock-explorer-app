@@ -11,6 +11,7 @@ from app import (
     _discover_page_count,
     _discover_page_slice,
     _sync_search_query,
+    _card_open,
     brand_header_html,
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
@@ -31,6 +32,17 @@ def test_brand_header_html_orders_name_then_tagline_then_disclaimer() -> None:
     tagline_pos = html.index(PRODUCT_TAGLINE)
     disclaimer_pos = html.index("Not investment advice.")
     assert name_pos < tagline_pos < disclaimer_pos
+
+
+def test_compact_brand_header_is_the_name_alone() -> None:
+    """While a card is open the tagline and disclosure give way to the first metric value;
+    both stay on every list view, where each visit starts (docs/ui/discover_header.md)."""
+    html = brand_header_html(compact=True)
+    assert PRODUCT_NAME in html
+    assert PRODUCT_TAGLINE not in html
+    assert "Not investment advice." not in html
+    assert "ss-brand-header--compact" in html
+    assert "ss-brand-header--compact" not in brand_header_html()
 
 
 # --- Discover list pagination (perf/paginate-discover-list) ---
@@ -235,3 +247,28 @@ def test_descriptions_missing_stays_quiet_on_a_transient_failure(
 
     monkeypatch.setattr(app_module, "export_lacks_business_summary", _raise)
     assert app_module._descriptions_missing(object()) is False
+
+
+# --- _card_open: what decides the compact header, read from session state before the nav
+# widget renders (see _discovery_page). Plain state, no widget, so it is unit-tested here.
+
+
+def test_card_open_on_discover_follows_the_discover_focus_key() -> None:
+    assert _card_open("Discover") is False
+    st.session_state["discover_focus_key"] = "us_sp500::MMM"
+    assert _card_open("Discover") is True
+    assert _card_open("Saved") is False, "a Discover focus does not compact the Saved list"
+
+
+def test_card_open_on_saved_follows_the_saved_focus_key() -> None:
+    st.session_state["saved_focus_key"] = "us_sp500::MMM"
+    assert _card_open("Saved") is True
+    assert _card_open("Discover") is False
+
+
+def test_card_open_is_never_true_on_search() -> None:
+    """Search renders a card under its results, not as a view of its own, so the header
+    stays full there."""
+    st.session_state["search_selected"] = "us_sp500::MMM"
+    st.session_state["discover_focus_key"] = "us_sp500::MMM"
+    assert _card_open("Search") is False

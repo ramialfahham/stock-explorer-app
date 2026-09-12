@@ -18,15 +18,16 @@ the detail._
 
 ## In flight
 
-**MR !127 open, awaiting owner merge** (`ux/mobile-type-scale`). Body copy 14px on a new
-`--ss-body` token, captions 13px, chips 12px as the floor; every `font-size` a size token,
-tested. Tokens and roles: `docs/ui/design_system.md`.
+**MR !128 open, awaiting owner merge** (`ux/card-view-fold`). On Discover and Saved with a
+card open: brand-only header, back button and saved count on one row, AI read folded to its
+first 28 words behind Read more. First metric value back above the 812px fold at 375 and 480
+wide. Specs: `docs/ui/discover_header.md`, `docs/ui/disclosure_pattern.md`.
 
-**NEXT UI PIECE: compact the header when a card is open.** The UX gate's first-metric-above-
-the-fold check fails on long cards at 480x812 (first metric 64px below; 20px above before the
-type scale; at 375x812 it was below before too). The ~300px above the card (brand, tagline,
-disclaimer, nav, saved count, back button) is the space. Layout change: needs a wireframe in
-the MR per `docs/working_agreement.md` item 4 and the owner's composition call (§6).
+**NEXT, owner's pick.** Issue #9's remaining user-facing finding: the AI read and the card
+face can disagree on labels and units (the read is prompted with the card's figures; nothing
+checks its wording against the catalogue labels the card shows). Or issue #10 (mixed
+`dividendYield` units in production, invisible to the median guard), or issue #12 (catalogue
+applicability strings say "banks" for the whole `financial` type).
 
 **Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
 
@@ -48,7 +49,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !126 (`test/metric-fill-floor`): fill floor, 50% per (market, company type,
+**Merged this pass.** !127 (`ux/mobile-type-scale`): body 14px, captions 13px, 12px floor, every
+size a token. !126 (`test/metric-fill-floor`): fill floor, 50% per (market, company type,
 applicable metric) among eligible cards, five-row skip. !125 (`test/market-code-partition-c4`,
 issue #9 C4): a singular test fails the build when a raw file's `market_code` column differs from
 its folder. !124 (`test/mart- grain-c3`, issue #9 C3): a unit test pins the latest- snapshot
@@ -91,12 +93,12 @@ client, and three review rounds found real defects in that surface. Needs a
 ## What is still wrong (the open record)
 
 **Issue #9, the pipeline audit, is the complete record -- read it before starting cleanup
-work.** Of its four findings that can produce wrong data or a failed run, TWO are fixed: the
-mixed-snapshot export (!115) and the missing `dividendYield` scale guard (!114). Still open:
-the `numeric(10,4)` overflow, and price-ingestion failures that print a warning and vanish, so
-freshness reads green while a third of the universe has lost prices. Also open, from the same
-audit: the learn panel re-implements four metric formulas in Python against a stated invariant,
-and **the AI read and the card face disagree on labels and units**. Issue
+work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), the
+`dividendYield` scale guard (!114), price-ingestion reporting (!118), the fundamentals gate
+(!122), the precision caps (!123), the mart grain (!124), `market_code` vs folder (!125), the
+fill floor (!126). Still open from the same audit: the learn panel re-implements four metric
+formulas in Python against a stated invariant, and **the AI read and the card face can
+disagree on labels and units**. Issue
 #10: production holds `dividendYield` in MIXED units (fraction-scale rows in a percent-scale
 column); nothing user-visible is wrong and a per-market median guard structurally cannot see
 it. Issue #12: `metric_catalogue.csv` applicability strings say "banks" for rules covering the

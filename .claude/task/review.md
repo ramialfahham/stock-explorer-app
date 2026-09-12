@@ -4,36 +4,28 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 3a4f7aa06418da7d38e82a762cda6eea133a6c0927d5c548f652f6f66dce1b55
+diff_sha256: 59381553c7812d74e65776f34cc5464cfd07d0c85da09fd5b7b6b5c918c29402
 
 Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `tests/*`).
-Three rounds.
+Two rounds.
 
 ## What shipped
 
-Owner-set mobile type scale in `frontend/styles.py`: body 14px on a new `--ss-body` token,
-captions 13px, chips and small labels 12px as the floor, row titles 15px, card title 17px.
-Every `font-size` is a size token except the wordmark and the icon glyph. Three tests guard it:
-every size is one of the six size tokens or a named exception, no size token under 0.75rem
-and all in rem, four named body-copy rules on the body token. Docs updated. 662 tests.
-
-Measured live at 375px: Discover 125 of 167 text elements under 14px before, 65 after, none
-under 12; card 59 of 87 before with six at 10.9px, 36 after, none under 12; Saved minimum
-13px; no horizontal scroll. The first metric on a long card sits 64px below the fold at
-480x812 (20px above before); owner chose to ship and take header compaction next.
+On Discover and Saved, while a card is open, the header is the brand alone and the back
+button shares one row with the saved count. The AI-written read folds to its first 28 words
+behind the card's existing Read more toggle; the verdict badge, block label and financial
+caveat stay outside it. Measured at 375x812 on 3M: first metric value 742px (was 978); at
+480x812 on 3i: 757px (was 876). 672 tests, including two AppTest cases that drive the real
+script through open card, Back and a tab switch.
 
 ## Round 1
 
-scope-auditor: the contract's site counts were grep-line counts, not declarations; a history
-comment in the test; range-mark width claims measured at the old axis size. cto: the same
-counts; `font-size :` and the `font:` shorthand escaped the guard; an unreachable assert.
-
-## Round 2
-
-cto: any `var(--ss-*)` passed the size test while only six names were floored, so a spacing
-token or a new small token escaped. Fixed by requiring the token name to be a size token.
-The author's first fix in round 1 had written `\b` as a literal backspace byte, which made the
-regex vacuous; the mutants exposed it before the reviewers saw it.
+cto: the Saved card view's back row showed the deck-filtered count while the list showed the
+interaction count, so a saved company that had dropped out of the deck made the number change
+on tap; fixed to one count. Nothing pinned the header actually compacting at the call site;
+two AppTest tests now do, and the inverted-header mutant fails them. scope-auditor: the north
+star still called the AI read "always visible"; a sentence credited the two caption lines with
+the whole fold loss; `_card_open` was untested; the success check overclaimed Search.
 
 ## scope-auditor
 
@@ -45,5 +37,4 @@ VERDICT: PASS
 
 ## Owner decisions
 
-The scale, set in chat. Shipping with the first-metric fold check failing on long cards at
-480px, recorded in `contract.md` with the numbers.
+Both levers, chosen in chat on the measured breakdown. The preview length is the agent's.

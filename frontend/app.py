@@ -241,7 +241,17 @@ def _clear_saved_session() -> None:
     st.session_state["saved_focus_key"] = None
 
 
-def brand_header_html() -> str:
+def brand_header_html(*, compact: bool = False) -> str:
+    """compact: brand only, while a card is open on Discover or Saved. The tagline and
+    disclosure stay on every list view, where each visit starts; on the card view they are the
+    header's share of what pushes the first metric value below the fold (owner composition
+    call, docs/ui/discover_header.md)."""
+    if compact:
+        return (
+            '<div class="ss-brand-header ss-brand-header--compact">'
+            f'<div class="ss-brand">{html.escape(PRODUCT_NAME)}</div>'
+            "</div>"
+        )
     return (
         '<div class="ss-brand-header">'
         f'<div class="ss-brand">{html.escape(PRODUCT_NAME)}</div>'
@@ -251,8 +261,32 @@ def brand_header_html() -> str:
     )
 
 
-def _render_brand_header() -> None:
-    st.markdown(brand_header_html(), unsafe_allow_html=True)
+def _render_brand_header(*, compact: bool = False) -> None:
+    st.markdown(brand_header_html(compact=compact), unsafe_allow_html=True)
+
+
+def _card_open(active: str) -> bool:
+    if active == "Discover":
+        return bool(st.session_state.get("discover_focus_key"))
+    if active == "Saved":
+        return bool(st.session_state.get("saved_focus_key"))
+    return False
+
+
+def _render_back_row(*, key: str, saved_count: int, on_back) -> None:
+    """Back button and saved count on one row, replacing the separate stats line while a
+    card is open."""
+    st.markdown('<div class="ss-back-row-marker"></div>', unsafe_allow_html=True)
+    with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+        if st.button("← Back to list", key=key, use_container_width=False):
+            on_back()
+            st.rerun()
+        with st.container(width="stretch"):
+            st.markdown(
+                f'<div class="ss-header-stats ss-header-stats--inline">'
+                f"{html.escape(f'{saved_count} saved')}</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:
@@ -454,9 +488,11 @@ def _render_discover_tab(client) -> dict | None:
         st.rerun()
         return None
 
-    if st.button("← Back to list", key="discover_back_to_list", use_container_width=False):
-        st.session_state["discover_focus_key"] = None
-        st.rerun()
+    _render_back_row(
+        key="discover_back_to_list",
+        saved_count=_saved_count(get_interactions()),
+        on_back=lambda: st.session_state.update({"discover_focus_key": None}),
+    )
 
     selected = _hydrate(client, selected)
     render_stock_card(selected, widget_key_prefix="discover")
@@ -481,9 +517,11 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
     focus_key = st.session_state.get("saved_focus_key")
 
     if focus_key:
-        if st.button("← Back to list", key="saved_back_to_list", use_container_width=False):
-            st.session_state["saved_focus_key"] = None
-            st.rerun()
+        _render_back_row(
+            key="saved_back_to_list",
+            saved_count=_saved_count(interactions),
+            on_back=lambda: st.session_state.update({"saved_focus_key": None}),
+        )
     else:
         snapshot_label = latest_snapshot_label(saved_cards)
         if snapshot_label:
@@ -595,23 +633,31 @@ def _discovery_page(client) -> None:
     _ensure_all_cards(client)
     saved_count = _saved_count(interactions)
 
-    _render_brand_header()
+    # The brand header renders above the nav, so the page it belongs to is read from session
+    # state before the nav widget confirms it; the widget's own key is what it reads too.
+    _render_brand_header(compact=_card_open(
+        normalize_nav_page(
+            st.session_state.get("bottom_nav") or st.session_state.get("active_page")
+        )
+    ))
     active = _render_bottom_nav(saved_count=saved_count, client=client)
 
     discover_focused = active == "Discover" and bool(
         st.session_state.get("discover_focus_key")
     )
+    card_open = _card_open(active)
 
     if active == "Discover" and not discover_focused:
         _render_explore_filters(client)
 
     _sync_eligible_counts(client)
     remaining = len(_discover_pool(client)) if active == "Discover" and not discover_focused else 0
-    _render_scope_stats(
-        remaining=remaining,
-        saved_count=saved_count,
-        show_remaining=active == "Discover" and not discover_focused,
-    )
+    if not card_open:
+        _render_scope_stats(
+            remaining=remaining,
+            saved_count=saved_count,
+            show_remaining=active == "Discover" and not discover_focused,
+        )
 
     focused_card = None
 
