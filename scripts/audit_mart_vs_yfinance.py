@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Compare mart_stock_cards metrics to fresh yfinance, recomputed via dbt (see docs/metric_audit.md).
 
-Metric-layer Phase 2: there is NO Python re-implementation of any metric formula. To validate the
-mart, this fetches fresh fundamentals for a sample, lands them as a temporary raw parquet set,
-rebuilds int_stock__card_metrics through dbt into a throwaway DuckDB, and compares those
-dbt-computed values to the mart. The dbt model stays the single source of the formulas.
+Metric-layer Phase 2: no Python path produces a card value. To validate the mart, this fetches
+fresh fundamentals for a sample, lands them as a temporary raw parquet set, rebuilds
+int_stock__card_metrics through dbt into a throwaway DuckDB, and compares those dbt-computed
+values to the mart. The dbt model is the single source of every stored metric; the learn
+panel's playgrounds (frontend/metric_school.py) do the catalogue's arithmetic on numbers the
+user types and never write one.
 Offline mode (CI smoke) skips the live fetch + dbt rebuild and reports only mart-side facts.
 """
 

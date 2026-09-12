@@ -4,40 +4,37 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 96263f2fbb2c6b5821aaf1e6975bb1116ee8f52762a34a9c840e1217873f1b5d
+diff_sha256: 4fc6dfadf9f503c64c3dc9b59d136bdd26ad525b64a28f2f8629090dcdc9aca6
 
-Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer
-(`*.sql`, seeds), equity-analyst-reviewer (`*metric_catalogue.csv`), cto-reviewer
-(`tests/*`, `frontend/*`). Six rounds, five of them the cto against one test.
+Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `tests/*`,
+`scripts/*`). Three rounds.
 
 ## What shipped
 
-Issue #12. Three catalogue `applicability` sentences said "banks" for rules that withhold a
-metric from the whole `financial` type; replaced with the owner's wording (quoted in the
-contract), only the "banks" sentence of each string touched, CSV rewritten through the csv
-module. `frontend/metrics.json` regenerated. Two tests: rows whose `applies_to` excludes
-`financial` may not mention banks, except the owner's pinned `current_ratio_stmt` sentence;
-the three reworded rows are pinned to the owner's text. 678 tests.
+Issue #9 finding B1. The learn panel's playgrounds follow the card face: `playgrounds_for_card`
+selects the metrics in `metrics_for_card(card)` that have a playground, in face order; the
+panel renders one tab per such metric and nothing when there are none; tab and heading labels
+come from `metric_label(metric, card)`; money inputs carry the card's currency through a
+public `currency_symbol()` that `_format_currency_compact` now shares. The invariant in
+`scripts/audit_mart_vs_yfinance.py` and `docs/metric_audit.md` reworded from "no Python
+re-implementation of any formula" (false: this file) to "no Python path produces a stored
+metric". 686 tests.
 
-## Rounds 1 to 5
+## Round 1
 
-cto: the guard began as a regex for "not shown/defined for banks" and each round a paraphrase
-escaped it ("not presented", "not broken out", "Excluded", "Absent", then "banking sector").
-Widening the word list three times did not end it; the cto's own proposal did: key the guard
-off `applies_to` and forbid the word stem "bank" on withheld rows, exempting only the owner's
-sentence verbatim. Mutants on `statement_roe_pct` pass by design: that row is shown for
-banks, so a withholding sentence there would be false, not shorthand. scope-auditor passed
-twice (contract bullet re-checked against the redesigned test).
+cto: after the change no test executed the render path at all (the e2e fixture cards carry
+no metric values, so they now render zero tabs); a typo in the tab dispatch shipped green.
+Fixed with an AppTest over `render_metric_playgrounds` for the three company types.
+scope-auditor: `docs/backlog/landing_onboarding_rework.md` said the panel "renders
+unconditionally"; corrected, path added to scope.
+
+## Round 2
+
+cto: the AppTest checked tab labels and input counts but not that a tab's content belongs to
+it; zipping tabs with the registry put the margin playground under the growth tab on a
+financial card and passed. Fixed: each tab's first heading is asserted against its metric.
 
 ## scope-auditor
-
-VERDICT: PASS
-
-## analytics-engineer-reviewer
-
-VERDICT: PASS
-
-## equity-analyst-reviewer
 
 VERDICT: PASS
 
@@ -47,7 +44,5 @@ VERDICT: PASS
 
 ## Owner decisions
 
-The three sentences are the owner's. Recorded and NOT done, for the owner: `statement_roe_pct`
-still ends "Means something different for banks" (content-free caveat; say how, or drop);
-`working_capital` says "no turnover" where the classifier admits negligible revenue and every
-other row says "revenue".
+Playgrounds kept, per the owner in chat. Open, UX: tab labels now equal the bold heading
+inside each tab (before: "Margin/Growth/Debt/FCF" tabs over full-label headings).
