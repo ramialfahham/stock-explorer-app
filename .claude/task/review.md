@@ -4,36 +4,30 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 4b677cffc6c385f7e3e7c91598835a415297b091fb2f098ca6a0992f317a6900
+diff_sha256: 96263f2fbb2c6b5821aaf1e6975bb1116ee8f52762a34a9c840e1217873f1b5d
 
-Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`,
-`dbt_analytics/*.yml`), equity-analyst-reviewer (`docs/data_contract.md`), cto-reviewer
-(`docs/context_budget.yml`). Three rounds.
+Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer
+(`*.sql`, seeds), equity-analyst-reviewer (`*metric_catalogue.csv`), cto-reviewer
+(`tests/*`, `frontend/*`). Six rounds, five of them the cto against one test.
 
 ## What shipped
 
-`int_stock__card_metrics` scales a raw `dividendYield` below 0.05 by 100; a warn-severity
-singular test lists those rows each run; the percent-scale flip guard reads the raw column
-for this metric so a wholesale provider flip still fails the build; seven descriptions and
-`docs/data_contract.md` state the rule as a fact about the data it was set on, with both
-failure modes named; eight stale column-status claims in `_intermediate.yml` corrected.
-`docs/data_contract.md`'s byte budget 58,000 to 59,000 (net +601 of contract text; the file
-was 210 under at HEAD). 676 tests; dbt build green.
+Issue #12. Three catalogue `applicability` sentences said "banks" for rules that withhold a
+metric from the whole `financial` type; replaced with the owner's wording (quoted in the
+contract), only the "banks" sentence of each string touched, CSV rewritten through the csv
+module. `frontend/metrics.json` regenerated. Two tests: rows whose `applies_to` excludes
+`financial` may not mention banks, except the owner's pinned `current_ratio_stmt` sentence;
+the three reworded rows are pinned to the owner's text. 678 tests.
 
-## Round 1
+## Rounds 1 to 5
 
-All three: correcting rows inside the model blinded the existing flip guard for yields under
-5%, and the contract's guard section still claimed detection. Fixed by re-pointing the guard's
-dividend branch at raw `fct_fundamentals_snapshot`; a simulated wholesale flip fails it.
-equity-analyst: "no real yield sits below 0.05%" was written as a law; now a dated fact with
-its failure modes. scope-auditor: five more "not in the Supabase export" claims stood in the
-same file; "passthrough above 0.05" contradicted "0.05 or above".
-
-## Round 2
-
-scope-auditor and analytics-engineer: my rewrite of `statement_roe_pct`'s status was wrong
-on every count (it is catalogued, in financial eligibility, and rendered). Fixed. cto passed
-the budget raise as contract text at the smallest round step.
+cto: the guard began as a regex for "not shown/defined for banks" and each round a paraphrase
+escaped it ("not presented", "not broken out", "Excluded", "Absent", then "banking sector").
+Widening the word list three times did not end it; the cto's own proposal did: key the guard
+off `applies_to` and forbid the word stem "bank" on withheld rows, exempting only the owner's
+sentence verbatim. Mutants on `statement_roe_pct` pass by design: that row is shown for
+banks, so a withholding sentence there would be false, not shorthand. scope-auditor passed
+twice (contract bullet re-checked against the redesigned test).
 
 ## scope-auditor
 
@@ -53,6 +47,7 @@ VERDICT: PASS
 
 ## Owner decisions
 
-Correct on read at 0.05, chosen in chat over reject or leave. Recorded and NOT done: a
-decimals-based discriminator, which would catch a fraction row at any yield but mis-scale a
-genuine four-decimal percent.
+The three sentences are the owner's. Recorded and NOT done, for the owner: `statement_roe_pct`
+still ends "Means something different for banks" (content-free caveat; say how, or drop);
+`working_capital` says "no turnover" where the classifier admits negligible revenue and every
+other row says "revenue".
