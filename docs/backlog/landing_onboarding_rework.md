@@ -86,7 +86,7 @@ Resolved separately, not by this decision:
   couple that read "No sector comparison for this metric" instead, by design
   (`docs/ui/card_metric_cell.md`), not a bug. One further tap ("Understand these numbers")
   reaches, immediately, with no extra tap: a median-comparison recap, a short plain-language
-  analogy per metric, and an interactive playground (its own tabs, renders unconditionally,
+  analogy per metric, and an interactive playground (one tab per metric the face shows,
   `frontend/metric_school.py`). Only each metric's *fuller* written explanation sits behind its
   own further "Read more" toggle, one more tap per metric, which is deliberate progressive
   disclosure (`docs/north_star.md`'s Deep tier), not something to collapse into fewer taps. The

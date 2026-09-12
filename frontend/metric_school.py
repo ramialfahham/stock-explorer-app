@@ -6,13 +6,21 @@ from typing import Any
 
 import streamlit as st
 
-from card_copy import METRIC_LABELS
+from card_copy import currency_symbol, metric_label, metrics_for_card
 
 
 def _key(prefix: str, card: dict[str, Any], suffix: str) -> str:
     market = card.get("market_code") or "unknown"
     ticker = card.get("ticker") or "unknown"
     return f"{prefix}_{market}_{ticker}_{suffix}"
+
+
+def _money(name: str, card: dict[str, Any]) -> str:
+    """An input label in the card's currency: "Revenue (£B)"; "(CHF B)" for a code with
+    no symbol; "(B)" when the card has no currency."""
+    symbol = currency_symbol(card.get("currency"))
+    gap = " " if symbol[-1:].isalpha() else ""
+    return f"{name} ({symbol}{gap}B)"
 
 
 def _clamp(value: float, *, min_value: float, max_value: float | None = None) -> float:
@@ -66,14 +74,14 @@ def seed_fcf_margin_playground(card: dict[str, Any]) -> tuple[float, float]:
 
 
 def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{METRIC_LABELS['net_debt_to_ebitda']}**")
+    st.markdown(f"**{metric_label('net_debt_to_ebitda', card)}**")
     ratio = card.get("net_debt_to_ebitda")
     default_debt, default_ebitda = seed_net_debt_playground(card)
     if ratio is not None and ratio < 0:
         st.caption("Negative net debt means cash on hand exceeds debt (net cash position).")
 
     net_debt = st.number_input(
-        "Hypothetical net debt ($B)",
+        _money("Hypothetical net debt", card),
         min_value=-500.0,
         max_value=500.0,
         value=float(default_debt),
@@ -81,7 +89,7 @@ def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
         key=_key(prefix, card, "play_debt"),
     )
     ebitda = st.number_input(
-        "Hypothetical EBITDA ($B)",
+        _money("Hypothetical EBITDA", card),
         min_value=0.1,
         value=float(default_ebitda),
         step=0.5,
@@ -93,18 +101,18 @@ def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
 
 
 def _render_revenue_growth_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{METRIC_LABELS['revenue_growth_yoy_pct']}**")
+    st.markdown(f"**{metric_label('revenue_growth_yoy_pct', card)}**")
     revenue_prior, revenue_current = seed_revenue_growth_playground(card)
 
     revenue_prior = st.number_input(
-        "Revenue one year ago ($B)",
+        _money("Revenue one year ago", card),
         min_value=1.0,
         value=float(revenue_prior),
         step=1.0,
         key=_key(prefix, card, "play_rev_prior"),
     )
     revenue_current = st.number_input(
-        "Revenue today ($B)",
+        _money("Revenue today", card),
         min_value=0.0,
         value=float(revenue_current),
         step=1.0,
@@ -116,18 +124,18 @@ def _render_revenue_growth_playground(card: dict[str, Any], *, prefix: str) -> N
 
 
 def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{METRIC_LABELS['ebit_margin_pct']}**")
+    st.markdown(f"**{metric_label('ebit_margin_pct', card)}**")
     revenue, operating = seed_ebit_margin_playground(card)
 
     rev = st.number_input(
-        "Revenue ($B)",
+        _money("Revenue", card),
         min_value=1.0,
         value=float(revenue),
         step=1.0,
         key=_key(prefix, card, "play_ebit_rev"),
     )
     op = st.number_input(
-        "Operating profit ($B)",
+        _money("Operating profit", card),
         min_value=-500.0,
         max_value=500.0,
         value=float(operating),
@@ -140,18 +148,18 @@ def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None
 
 
 def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{METRIC_LABELS['fcf_margin_pct']}**")
+    st.markdown(f"**{metric_label('fcf_margin_pct', card)}**")
     revenue, fcf = seed_fcf_margin_playground(card)
 
     rev = st.number_input(
-        "Revenue ($B)",
+        _money("Revenue", card),
         min_value=1.0,
         value=float(revenue),
         step=1.0,
         key=_key(prefix, card, "play_fcf_rev"),
     )
     cash = st.number_input(
-        "Free cash flow ($B)",
+        _money("Free cash flow", card),
         min_value=-500.0,
         max_value=500.0,
         value=float(fcf),
@@ -163,27 +171,30 @@ def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
         st.info(f"Simulated FCF margin: **{simulated:.1f}%**")
 
 
+# Which metrics have a playground. Order comes from metrics_for_card(), not this dict, so
+# the tabs follow the face and a metric never appears below a card that omits it.
+_PLAYGROUNDS = {
+    "ebit_margin_pct": _render_ebit_margin_playground,
+    "revenue_growth_yoy_pct": _render_revenue_growth_playground,
+    "net_debt_to_ebitda": _render_net_debt_playground,
+    "fcf_margin_pct": _render_fcf_margin_playground,
+}
+
+
+def playgrounds_for_card(card: dict[str, Any]) -> tuple[str, ...]:
+    """The metrics that get a playground on this card: those with one, in face order, and
+    only when the face shows them (applies to the company type and has a value)."""
+    return tuple(m for m in metrics_for_card(card) if m in _PLAYGROUNDS)
+
+
 def render_metric_playgrounds(card: dict[str, Any], *, widget_key_prefix: str = "card") -> None:
-    """Hypothetical number playgrounds — safe sandbox, no live API calls."""
-    # The P/E playground was removed with forward_pe itself. It looked the
-    # metric up in METRIC_LABELS, which is built from frontend/metrics.json -- dropping the
-    # metric from the catalogue would have made that raise KeyError on every card that opened
-    # "Understand these numbers", since this panel renders unconditionally and P/E was tab 0.
-    # tests/frontend/test_metric_school.py now guards the whole class by scanning this file
-    # for label lookups and checking each id against the catalogue.
-    tabs = st.tabs(
-        [
-            "Margin",
-            "Growth",
-            "Debt",
-            "FCF",
-        ]
-    )
-    with tabs[0]:
-        _render_ebit_margin_playground(card, prefix=widget_key_prefix)
-    with tabs[1]:
-        _render_revenue_growth_playground(card, prefix=widget_key_prefix)
-    with tabs[2]:
-        _render_net_debt_playground(card, prefix=widget_key_prefix)
-    with tabs[3]:
-        _render_fcf_margin_playground(card, prefix=widget_key_prefix)
+    """Hypothetical number playgrounds -- safe sandbox, no live API calls. The arithmetic
+    here teaches the catalogue's `calculation` sentence on numbers the user types; no card
+    value comes from it."""
+    metrics = playgrounds_for_card(card)
+    if not metrics:
+        return
+    tabs = st.tabs([metric_label(m, card) for m in metrics])
+    for tab, metric in zip(tabs, metrics):
+        with tab:
+            _PLAYGROUNDS[metric](card, prefix=widget_key_prefix)

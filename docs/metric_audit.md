@@ -1,6 +1,6 @@
 # Metric audit — mart vs live yfinance
 
-Compare [`mart_stock_cards`](../dbt_analytics/models/5_marts/mart_stock_cards.sql) values to a **fresh yfinance pull**, recomputed by **rebuilding `int_stock__card_metrics` through dbt** on the fresh raw. There is no second (Python) formula — the dbt model is the single source of every metric (see [`metric_layer.md`](metric_layer.md)). Use this before changing card metrics or labels.
+Compare [`mart_stock_cards`](../dbt_analytics/models/5_marts/mart_stock_cards.sql) values to a **fresh yfinance pull**, recomputed by **rebuilding `int_stock__card_metrics` through dbt** on the fresh raw. No Python path produces a stored metric: the dbt model is the single source of every card value (see [`metric_layer.md`](metric_layer.md)); the learn panel's playgrounds compute on numbers the user types, never a stored value. Use this before changing card metrics or labels.
 
 ## Run locally
 

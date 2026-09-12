@@ -353,14 +353,21 @@ _VALUE_FORMATTERS = {
 _CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
 
 
+def currency_symbol(currency: str | None) -> str:
+    """The symbol the face prints money with; the ISO code when no symbol is known."""
+    code = (currency or "").upper()
+    return _CURRENCY_SYMBOLS.get(code) or code
+
+
 def _format_currency_compact(value: float, currency: str | None) -> str:
     """A money amount as a compact, sign-aware string with the card's currency symbol.
 
     e.g. 2_100_000_000/GBP -> "£2.1B"; -58_300_000/USD -> "-$58.3M". Used for level metrics
     (working capital, monthly cash burn) that are amounts, not ratios.
     """
-    code = (currency or "").upper()
-    symbol = _CURRENCY_SYMBOLS.get(code) or (f"{code} " if code else "")
+    symbol = currency_symbol(currency)
+    if symbol[-1:].isalpha():
+        symbol += " "
     sign = "-" if value < 0 else ""
     magnitude = abs(value)
     if magnitude >= 1_000_000_000:

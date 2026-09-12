@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-import pathlib
+from streamlit.testing.v1 import AppTest
 
+from card_copy import ALL_METRICS, metric_label
 from metric_school import (  # noqa: E402
+    _PLAYGROUNDS,
+    _money,
+    playgrounds_for_card,
     seed_ebit_margin_playground,
     seed_fcf_margin_playground,
     seed_net_debt_playground,
@@ -47,31 +51,82 @@ def test_extreme_negative_revenue_growth_clamps_current_revenue() -> None:
     assert current == 0.0
 
 
-def test_every_hardcoded_metric_label_key_exists_in_the_catalogue() -> None:
-    """Closes the bug class that shipped a live crash.
+def _card(company_type: str, **overrides) -> dict:
+    card = {"ticker": "TST", "market_code": "us_sp500", "currency": "USD", "company_type": company_type}
+    for metric in ALL_METRICS:
+        card[metric] = 1.5
+    card.update(overrides)
+    return card
 
-    `metric_school.py` renders playgrounds with hard-coded `METRIC_LABELS['<id>']`
-    subscripts, and `METRIC_LABELS` is built from the generated `frontend/metrics.json`.
-    Dropping `forward_pe` from the catalogue therefore turned tab 0 into a `KeyError` on
-    every card that opened "Understand these numbers" -- and the suite stayed green,
-    because these tests import only the `seed_*` helpers and never touch the render path.
 
-    Reading the ids straight out of the source is deliberate: a test that repeated the list
-    by hand would drift the same way the code did. This fails the moment a catalogued metric
-    is removed while a playground still asks for its label.
-    """
-    import re
+def test_every_playground_metric_is_in_the_catalogue() -> None:
+    """Closes the bug class that shipped a live crash: a playground for a metric the
+    catalogue no longer defines (forward_pe) raised KeyError on every opened card."""
+    missing = sorted(m for m in _PLAYGROUNDS if m not in ALL_METRICS)
+    assert not missing, f"playgrounds for {missing}, which the catalogue no longer defines"
 
-    from card_copy import METRIC_LABELS
 
-    source = (pathlib.Path(__file__).resolve().parents[2] / "frontend" / "metric_school.py").read_text(
-        encoding="utf-8"
+def test_operating_card_gets_all_four_playgrounds_in_face_order() -> None:
+    assert set(playgrounds_for_card(_card("operating"))) == set(_PLAYGROUNDS)
+    assert playgrounds_for_card(_card("operating")) == tuple(
+        m for m in ALL_METRICS if m in _PLAYGROUNDS
     )
-    keys = set(re.findall(r"METRIC_LABELS\[['\"]([a-z0-9_]+)['\"]\]", source))
-    assert keys, "no METRIC_LABELS subscripts found -- has the render path been rewritten?"
-    missing = sorted(k for k in keys if k not in METRIC_LABELS)
-    assert not missing, (
-        f"metric_school.py asks METRIC_LABELS for {missing}, which the catalogue no longer "
-        f"defines. Rendering a playground for it raises KeyError on the live card. Remove "
-        f"the playground alongside the metric, as the forward_pe one was."
-    )
+
+
+def test_financial_card_gets_only_the_playgrounds_its_face_shows() -> None:
+    assert playgrounds_for_card(_card("financial")) == ("revenue_growth_yoy_pct",)
+
+
+def test_pre_revenue_card_gets_no_playground() -> None:
+    assert playgrounds_for_card(_card("pre_revenue")) == ()
+
+
+def test_a_metric_missing_on_the_face_loses_its_playground() -> None:
+    assert "fcf_margin_pct" not in playgrounds_for_card(_card("operating", fcf_margin_pct=None))
+
+
+def test_margin_playground_label_follows_the_face_basis() -> None:
+    card = _card("operating", ebit_margin_basis="annual_latest")
+    assert metric_label("ebit_margin_pct", card) == "Operating margin (annual)"
+    assert metric_label("ebit_margin_pct", _card("operating")) == "Operating margin (TTM)"
+
+
+def test_money_inputs_carry_the_card_currency() -> None:
+    assert _money("Revenue", {"currency": "GBP"}) == "Revenue (£B)"
+    assert _money("Revenue", {"currency": "CHF"}) == "Revenue (CHF B)"
+    assert _money("Revenue", {}) == "Revenue (B)"
+
+
+def _render(card: dict) -> AppTest:
+    def script(card: dict) -> None:
+        from metric_school import render_metric_playgrounds
+
+        render_metric_playgrounds(card)
+
+    at = AppTest.from_function(script, args=(card,), default_timeout=30)
+    at.run()
+    assert not at.exception, at.exception
+    return at
+
+
+def test_render_operating_card_shows_four_tabs_with_face_labels_and_currency() -> None:
+    card = _card("operating", currency="GBP", ebit_margin_basis="annual_latest")
+    at = _render(card)
+    tabs = at.tabs
+    metrics = playgrounds_for_card(card)
+    assert [t.label for t in tabs] == [metric_label(m, card) for m in metrics]
+    assert tabs[0].label == "Operating margin (annual)"
+    for tab, metric in zip(tabs, metrics):
+        assert tab.markdown[0].value == f"**{metric_label(metric, card)}**"
+    labels = [n.label for n in at.number_input]
+    assert len(labels) == 8
+    assert all(label.endswith("(£B)") for label in labels), labels
+
+
+def test_render_financial_card_shows_only_growth_and_pre_revenue_nothing() -> None:
+    at = _render(_card("financial"))
+    assert [t.label for t in at.tabs] == ["Rev growth YoY (quarter)"]
+    assert at.tabs[0].markdown[0].value == "**Rev growth YoY (quarter)**"
+    assert [n.label for n in at.tabs[0].number_input] == ["Revenue one year ago ($B)", "Revenue today ($B)"]
+    at = _render(_card("pre_revenue"))
+    assert len(at.tabs) == 0 and len(at.number_input) == 0
