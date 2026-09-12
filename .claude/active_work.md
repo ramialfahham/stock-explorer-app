@@ -18,10 +18,10 @@ the detail._
 
 ## In flight
 
-**MR !131 open, awaiting owner merge** (`fix/catalogue-banks-wording`, issue #12). Three
-catalogue `applicability` sentences now say which company type the metric is shown for
-(owner wording, quoted in the MR's `contract.md`); a test keyed off `applies_to` forbids
-"bank" on any row withheld from financials except the owner's `current_ratio_stmt` sentence.
+**MR !132 open, awaiting owner merge** (`fix/learn-playgrounds-follow-card`, issue #9 B1,
+the audit's last finding). The learn panel's playgrounds render one tab per metric the face
+shows, labelled as the face, inputs in the card's currency; playgrounds kept by owner
+decision. Open, UX, owner's: tab labels now equal the bold heading inside each tab.
 
 **Two owner wording questions from !131, not done:** (a) `statement_roe_pct`'s applicability
 ends "Means something different for banks", a caveat with no content (`net_margin_pct` and
@@ -36,7 +36,7 @@ new labels without a hash bump; (b) `assert_dividend_yield_suspects` WARN count,
 yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a
 genuine four-decimal percent. Definition territory; not done.
 
-**NEXT:** the learn panel's four Python re-implementations of catalogue formulas (issue #9).
+**NEXT:** nothing queued from issue #9; owner questions above and item 0 below.
 
 **Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
 
@@ -58,8 +58,11 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !130 (`fix/dividend-yield-mixed-units`, issue #10): raw `dividendYield`
-below 0.05 scaled by 100 in `int_stock__card_metrics`; warn test lists raw suspects. !129 (`fix/read-labels-match-card`, issue #9 B2): the AI read names and
+**Merged this pass.** !131 (`fix/catalogue-banks-wording`, issue #12): catalogue
+`applicability` says which company type a withheld metric is shown for; a test keyed off
+`applies_to` guards it. !130 (`fix/dividend-yield-mixed-units`, issue #10): raw `dividendYield`
+below 0.05 scaled by 100 on read; warn test lists raw suspects. !129 (`fix/read-labels-match-
+card`, issue #9 B2): the AI read names and
 renders every metric as the card face does on that row. !128 (`ux/card-view-fold`): brand-only
 header and folded AI read while a card is open; first metric above the fold. !127 (`ux/mobile-
 type-scale`): body 14px, captions 13px, 12px floor, every size a token. !126 (`test/metric-fill-
@@ -71,9 +74,8 @@ when a raw file's `market_code` column differs from its folder. !124 (`test/mart
 widens the ten capped `numeric` columns on `mart_stock_cards`; a test refuses a cap in any later
 migration. !122 (`fix/fundamentals-failure- gate`, issue #9 A3 follow-up): fundamentals failures
 above 5% of a market's requested tickers fail the ingest run; below, the failed tickers are named
-on stderr. !118 (`fix/price-ingest- visibility`, issue #9 A3): price- batch failures are counted,
-printed and warned on stderr; the run does not fail. Three owner questions from its contract
-remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries
+on stderr. !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures counted and
+warned on stderr; run does not fail; owner questions item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries
 a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context file has a
 byte budget in `docs/context_budget.yml`, checked in CI and at pre- commit.
 
@@ -108,10 +110,9 @@ client, and three review rounds found real defects in that surface. Needs a
 work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), the
 `dividendYield` scale guard (!114), price-ingestion reporting (!118), the fundamentals gate
 (!122), the precision caps (!123), the mart grain (!124), `market_code` vs folder (!125), the
-fill floor (!126), the AI read's labels and rendering (!129). Still open from the same audit: the
-learn panel re-implements four metric formulas in Python against a stated invariant. Issue
-#10 (mixed `dividendYield` units): !130, merged. Issue #12 (catalogue "banks" wording):
-!131, open.
+fill floor (!126), the AI read's labels and rendering (!129). The learn panel's playgrounds
+(B1): !132, open. Issue #10 (mixed `dividendYield` units): !130, merged. Issue #12
+(catalogue "banks" wording): !131, merged.
 
 There are no `accepted_range` tests; the owner question on them is in the In flight section.
 
