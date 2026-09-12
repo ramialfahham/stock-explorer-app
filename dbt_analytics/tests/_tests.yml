@@ -1,0 +1,9 @@
+version: 2
+
+data_tests:
+  - name: assert_dividend_yield_suspects
+    description: >
+      Rows whose raw dividendYield arrived fraction-scale (issue #10). Warns rather than fails:
+      the model scales them to percent, and this exists to count them each run.
+    config:
+      severity: warn

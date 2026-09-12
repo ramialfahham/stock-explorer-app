@@ -191,10 +191,13 @@ data-only intermediates (the info-scalar duplicates, `interest_coverage`, `compu
 - `net_margin_pct` = `stmt_net_income / stmt_total_revenue * 100`.
 - `roa_pct` = `stmt_net_income / stmt_total_assets * 100` (total net income over total assets; leverage-neutral).
 - `statement_roe_pct` = `stmt_net_income_common / stmt_stockholders_equity * 100` (common income over common equity — both exclude minority interest; coexists with the info-scalar `roe_pct`).
-- `dividend_yield_pct` = `info_dividend_yield` (Yahoo `dividendYield`, no x100). Yahoo returns this as a
-  percent for MOST rows (0.94 = 0.94%) but not all: production holds fraction-scale rows too, so do not
-  treat the passthrough as unconditionally safe. See issue #10. **No longer catalogued**: computed and
-  stored, but no card renders it.
+- `dividend_yield_pct` = `info_dividend_yield` at or above 0.05, else `info_dividend_yield *
+  100` (4 dp). Yahoo sends `dividendYield` as a percent for most rows and a fraction for a few
+  (0.0387 = 3.87%, issue #10). When the rule was set no genuine yield sat below 0.05% and no
+  fraction row belonged to a 5%+ payer; either would break it (a token dividend on a very high
+  price, or a fraction row for a 5%+ payer passing through 100x small).
+  `assert_dividend_yield_suspects` (warn) lists the raw rows below 0.05 each run. **No longer
+  catalogued**: stored, rendered nowhere.
 - `net_cash` = `stmt_cash_and_equivalents - stmt_total_debt` (a money amount in the company's reporting currency). Pre-revenue card metric; replaced `net_cash_to_market_cap` because that ratio divided by market cap and therefore moved with the share price, which a twice-monthly pipeline cannot keep current.
 - `computed_fcf` = `stmt_operating_cash_flow + stmt_capital_expenditure` (capex negative; a transparent FCF distinct from `stmt_free_cash_flow` / `info_free_cashflow`; the burn basis for cash runway).
 - `cash_runway_months` = `stmt_cash_and_equivalents / (-computed_fcf) * 12` when `computed_fcf < 0` (null when not burning).
@@ -388,7 +391,7 @@ depends entirely on the provider's units staying put:
 
 | Metric | Source scalar | Yahoo unit today | Model | A units flip makes it |
 |--------|---------------|------------------|-------|-----------------------|
-| `dividend_yield_pct` | `dividendYield` | percent | passthrough | **100x smaller** |
+| `dividend_yield_pct` | `dividendYield` | percent, fraction for a few rows | passthrough at or above 0.05, x100 below | **100x smaller** (guard reads the RAW value) |
 | `revenue_growth_yoy_pct` | `revenueGrowth` | fraction | x100 | **100x larger** |
 | `roe_pct` | `returnOnEquity` | fraction | x100 | **100x larger** |
 
@@ -397,8 +400,11 @@ downward and a fraction source can only break upward; a one-sided floor would ha
 two of the three.
 
 `dbt_analytics/tests/assert_percent_scale_passthroughs.sql` asserts the shape of each
-distribution per market on `int_stock__card_metrics`, comparing the median absolute value
-against a band:
+distribution per market, comparing the median absolute value against a band. The x100 metrics
+are read from `int_stock__card_metrics`; dividend yield is read RAW from
+`fct_fundamentals_snapshot`, because the model's per-row correction would absorb a wholesale
+flip for every yield under 5% and blind this guard. On the raw value a flip still moves every
+market's median below the floor.
 
 | Metric | Band | Observed market medians, lowest to highest | Binding flip case against the band |
 |--------|------|-------------------------------------------|------------------------------------|
@@ -416,7 +422,8 @@ leaves the LOWEST market nearest the ceiling (`fr_cac40` 4.50 -> 450, 4.5x clear
 
 **What the observed figures are measured on.** They come from the exported Supabase mart, which
 is eligible-only (`mart_stock_cards.sql` filters `where m.is_card_eligible`). The test reads
-`int_stock__card_metrics`, a superset that also carries ineligible tickers.
+`int_stock__card_metrics` (raw `fct_fundamentals_snapshot` for the dividend branch, the same
+rows), a superset that also carries ineligible tickers.
 
 The direction of that difference is NOT established. The ineligible population is precisely
 what the export leaves behind, so no measurement of it exists here, and nothing in the repo

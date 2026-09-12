@@ -113,7 +113,7 @@ models:
       - name: roe_pct
         description: >
           Return on equity percent: info_return_on_equity × 100. Nullable; may be negative (loss-makers).
-          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          Data-only: not in eligibility, the catalogue or the Supabase export.
       - name: current_ratio
         description: >
           Current assets / current liabilities (Yahoo currentRatio passthrough). Data-only — not in
@@ -125,7 +125,7 @@ models:
       - name: price_to_sales
         description: >
           Price / sales per share, trailing twelve months (Yahoo priceToSalesTrailing12Months passthrough).
-          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          Data-only: not in eligibility, the catalogue or the Supabase export.
       - name: ev_to_ebitda
         description: >
           Enterprise value / EBITDA (Yahoo enterpriseToEbitda passthrough). Data-only — not in
@@ -148,17 +148,17 @@ models:
         description: >
           Leverage: stmt_total_debt / stmt_stockholders_equity (statement-based; equity excludes
           minority interest). Guarded against null/zero equity. Operating-company solvency lens.
-          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          Catalogued operating-card metric and exported; not in eligibility.
       - name: interest_coverage
         description: >
           Operating income (eff_stmt_op) / abs(stmt_interest_expense) — abs() defends against the
           landed interest sign. Guarded against null/zero interest. Operating-company solvency lens.
-          Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          Data-only: not in eligibility, the catalogue or the Supabase export.
       - name: current_ratio_stmt
         description: >
           Statement current ratio: stmt_current_assets / stmt_current_liabilities. Guarded against
           null/zero liabilities; null for financials (no current split). Coexists with the info-scalar
-          current_ratio. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          current_ratio. Catalogued operating-card metric and exported; not in eligibility.
       - name: working_capital
         description: >
           stmt_current_assets - stmt_current_liabilities (currency level). Null for financials.
@@ -167,28 +167,31 @@ models:
         description: >
           Price-to-tangible-book: info_market_cap / stmt_tangible_book_value (both totals; guarded to
           tangible book > 0). Point-in-time market cap vs latest-annual tangible book. Financials
-          valuation lens. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          valuation lens. Exported but no longer catalogued; not in eligibility.
       - name: net_margin_pct
         description: >
           Net margin percent: stmt_net_income / stmt_total_revenue * 100. Guarded against null/zero
-          revenue. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          revenue. Catalogued financial-card metric, exported, and in financial eligibility.
       - name: roa_pct
         description: >
           Return on assets percent: stmt_net_income / stmt_total_assets * 100 (total net income over
           total assets — leverage-neutral; the financials returns anchor). Guarded against null/zero
-          assets. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          assets. Catalogued financial-card metric and exported; not in eligibility.
       - name: statement_roe_pct
         description: >
           Statement ROE percent: stmt_net_income_common / stmt_stockholders_equity * 100 — common
           income over common (parent-only) equity, both excluding minority interest (resolves the
           consolidated-NI-over-parent-equity mismatch). Guarded against null/zero equity. Coexists with
-          the info-scalar roe_pct. Data-only — not in eligibility, the metric catalogue, or the Supabase export yet.
+          the info-scalar roe_pct. Catalogued for operating and financial cards, exported, and in
+          financial eligibility.
       - name: dividend_yield_pct
         description: >
-          Dividend yield percent: info_dividend_yield passthrough, no x100. Yahoo returns this as a
-          percent for MOST rows (0.94 = 0.94%) but not all; production holds fraction-scale rows too,
-          so the passthrough is not unconditionally safe (issue #10). Exported and stored, but no card
-          renders it: not in eligibility and not in the metric catalogue.
+          Dividend yield percent from info_dividend_yield. Yahoo returns this as a percent for most
+          rows (0.94 = 0.94%) and as a fraction for a few (0.0387 = 3.87%, issue #10); a raw value
+          below 0.05 is scaled by 100. On the data the rule was set on nothing genuine sat below 0.05%
+          and no fraction row belonged to a 5%+ payer; either would break it.
+          assert_dividend_yield_suspects counts those rows each run. Exported and stored, but no
+          card renders it: not in eligibility and not in the metric catalogue.
       - name: computed_fcf
         description: >
           Transparent free cash flow: stmt_operating_cash_flow + stmt_capital_expenditure (capex is
@@ -1339,17 +1342,25 @@ unit_tests:
         - {market_code: us_sp500, ticker: BANKNO, company_type: financial, is_card_eligible: false}
   - name: card_metrics_dividend_yield_pct_percent_passthrough
     # Mocked input pins the transform only; live scale: dbt_analytics/tests/assert_percent_scale_passthroughs.sql.
+    # A percent-scale value passes through; a fraction-scale value (below 0.05) is scaled by 100;
+    # 0.05 itself passes through, the boundary being "below", not "at" (issue #10).
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
         rows:
           - {market_code: us_sp500, ticker: DIV, snapshot_date: "2026-01-01", info_dividend_yield: 3.5, info_sector: Technology}
+          - {market_code: us_sp500, ticker: AVB, snapshot_date: "2026-01-01", info_dividend_yield: 0.0387, info_sector: Real Estate}
+          - {market_code: us_sp500, ticker: EDGE, snapshot_date: "2026-01-01", info_dividend_yield: 0.05, info_sector: Technology}
       - input: ref('dim_stock')
         rows:
           - {market_code: us_sp500, ticker: DIV, company_name: Div Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: AVB, company_name: Avalon, sector: Real Estate, currency: USD}
+          - {market_code: us_sp500, ticker: EDGE, company_name: Edge Co, sector: Technology, currency: USD}
     expect:
       rows:
         - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
+        - {market_code: us_sp500, ticker: AVB, dividend_yield_pct: 3.87}
+        - {market_code: us_sp500, ticker: EDGE, dividend_yield_pct: 0.05}
   - name: card_metrics_eligibility_no_longer_needs_forward_pe
     # The headline effect of the change, pinned. Before it, an operating or financial
     # company with a null forward_pe was INELIGIBLE and never reached a card; now it qualifies on

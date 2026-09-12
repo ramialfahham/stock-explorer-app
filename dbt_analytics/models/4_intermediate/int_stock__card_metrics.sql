@@ -212,7 +212,14 @@ metrics as (
                 and s.stmt_stockholders_equity != 0
                 then s.stmt_net_income_common / s.stmt_stockholders_equity * 100.0
         end as statement_roe_pct,
-        s.info_dividend_yield as dividend_yield_pct,
+        -- Yahoo returns dividendYield as a percent for most rows and as a fraction for a few
+        -- (issue #10). On the data the rule was set on, no genuine yield sat below 0.05% and no
+        -- fraction row belonged to a 5%+ payer, so a value under 0.05 is treated as a fraction
+        -- and scaled to percent; assert_dividend_yield_suspects counts those rows each run.
+        case
+            when s.info_dividend_yield < 0.05 then round(s.info_dividend_yield * 100.0, 4)
+            else s.info_dividend_yield
+        end as dividend_yield_pct,
         s.computed_fcf,
         case
             when s.computed_fcf is not null
