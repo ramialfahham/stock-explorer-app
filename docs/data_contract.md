@@ -619,7 +619,12 @@ meaning — regenerated only when `input_hash` changes or `ai_read` is null. The
 **Structured output + hallucination guard (Gemini feedback points 3/4).** The Haiku call forces
 tool-use (`tool_choice`, `write_card_read`): the model returns `read` (the prose) plus
 `referenced_metrics`, one `{label, value_as_shown}` entry per metric the read explicitly cites,
-copied exactly as shown in the prompt's own facts block. `validate_read_metrics` checks each pair
+copied exactly as shown in the prompt's own facts block. That facts block names each metric
+the way the card face does on that row (the catalogue's label, or operating margin's per-row
+"(annual)" form when `ebit_margin_basis` is `annual_latest`) and renders its value exactly as
+the card face does (`format_metric_value` in `frontend/card_copy.py`), both pinned by tests in
+`tests/tooling`, so a read can only cite what the reader sees beside it. `validate_read_metrics`
+checks each pair
 against `_present_metric_renderings`, the same rendering the model was shown: a numeric
 cross-check, not an LLM judge. It catches the model stating a number that does not match the
 card's data, not an unsupported qualitative claim that cites no wrong number (an LLM-judge second

@@ -3,53 +3,52 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next one.
 
-objective: Put the first metric value back above the fold on a phone when a card is open.
+objective: Make the AI read cite every metric by the label and value the card face shows.
+  Issue #9 finding B2.
 
-  Measured at 375x812 on a typical card after the type scale: the card starts at 270px (brand
-  66, nav 38, saved-count line 29, back button ~50, plus gaps) and the first metric value sits
-  at 978px, with the AI-written paragraph taking 284px and "About the company" 114px of the
-  card itself. A zero-height header alone would leave the first metric at ~708px on this card
-  and below the fold on longer ones, so the header is a third of the problem.
+  Measured: `READ_METRIC_BRIEF` in `scripts/assessment_rules.py` names four of thirteen
+  metrics differently from `metric_catalogue.csv` (`Operating margin` for `Operating margin
+  (TTM)`, `Revenue growth vs a year ago` for `Rev growth YoY (quarter)`, `Free cash flow
+  margin` for `FCF margin (annual)`, `Cash burn per month` for `Cash burn (monthly)`), and
+  renders cash runway as `18 months` where the card shows `18.4`. The existing guard checks
+  that every input field has a brief, never that the brief agrees with the catalogue.
 
 scope_paths:
-  - frontend/app.py
-  - frontend/card_ui.py
-  - frontend/card_copy.py
-  - frontend/styles.py
-  - tests/frontend/test_app.py
-  - tests/frontend/test_card_ui.py
-  - tests/frontend/test_app_e2e.py
-  - docs/ui/discover_header.md
-  - docs/ui/disclosure_pattern.md
-  - docs/north_star.md
+  - scripts/assessment_rules.py
+  - scripts/generate_assessments.py
+  - tests/tooling/test_assessment_rules.py
+  - tests/tooling/test_generate_assessments.py
+  - docs/data_contract.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - Composition, owner-set, both levers: (1) while a card is open, the header drops the tagline
-    and the "Not investment advice" line (both stay on every list view, which every visit
-    starts from) and the back button shares one row with the saved count; (2) the AI-written
-    paragraph opens folded to its first lines with the card's existing Read more / Show less
-    toggle; the verdict badge, the block label and the financial caveat stay fully visible.
-  - The fold length in words is the agent's: enough for about three lines at 375px and 14px.
+  - Which wording wins: owner chose the card's. The read's labels become the catalogue's
+    labels verbatim; runway renders as the card does, with "in months" in the gloss so the
+    prose can still say what the number is. One card label is per row: operating margin reads
+    "(annual)" when the mart fell back to the latest annual statement. "The card's wording"
+    means that row's wording, so the read now carries `ebit_margin_basis` and names the metric
+    the way `frontend/card_copy.metric_label` does for that row, pinned by test.
+  - Regenerating existing reads. Reads regenerate only when a card's input hash moves; a
+    prompt-only change leaves stored prose as is until then. Bumping `INPUT_HASH_VERSION`
+    would regenerate every read on the next scheduled run, about a thousand Haiku calls;
+    that is spend and the owner's call. NOT bumped here. How fast reads converge without a
+    bump is unmeasured: the hashed inputs are statement-derived and move when a filing lands,
+    so it is per card, not per run. The next scheduled run's `generated` and `carried` counts
+    say; the handover carries that check.
 
 done_when:
-  - `_health_block_html` renders the AI read through `disclosure_html` when it exceeds the
-    preview length, with the full text inside the toggle and the caveat outside it; a short
-    read renders plain, as the company summary already does.
-  - On a focused card (Discover and Saved), the header renders the brand only, and the back
-    button and saved count share one row; list views are unchanged.
-  - Tests in `tests/frontend` pin: the fold and its labels; a short read not folded; the
-    caveat outside the toggle; the badge and label outside the toggle; the compact header's
-    content; `_card_open` following the Discover and Saved focus keys and never Search; and,
-    through AppTest driving the real script, the header compact with a card open, full again
-    on Back and on a tab switch, with the stats line gone while the back row shows the count.
-  - Measured at 375x812 on the card that measured 978px before: the first metric value above
-    the fold; at 480x812 on the long financial card that measured 876px: above the fold.
-  - `docs/ui/discover_header.md` rows 2, 3 and 6 state the focused-view behaviour;
-    `docs/ui/disclosure_pattern.md` lists the AI read as a placement; `docs/north_star.md`'s
-    mobile success check names what makes it hold instead of saying it was not re-verified.
+  - Every `READ_METRIC_BRIEF` label equals the catalogue's `label` for that `metric_id`, and
+    a test in `tests/tooling` pins that; operating margin's per-row "(annual)" form is pinned
+    against `card_copy.metric_label` through the prompt and the validator.
+  - For every catalogued metric and a sample value, `_format_metric_value` in the read
+    renders the same string `frontend/card_copy.format_metric_value` renders on the card,
+    currency included, and a test pins that.
+  - The prose test that asserted `36 months` asserts the card's rendering instead.
+  - `docs/data_contract.md`'s AI-read section states that labels and values in the facts
+    block are the card's own, pinned by test.
 
-impact_map: Frontend only. Two card-face behaviours change: the header while a card is open,
-  and the AI read's default state. The full read stays in the HTML, one tap away.
+impact_map: Changes the prompt the read model sees, so newly generated reads cite the card's
+  labels. Existing stored reads are untouched until their input hash moves. No verdict, hash
+  input or card change.

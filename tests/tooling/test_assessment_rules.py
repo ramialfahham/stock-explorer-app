@@ -674,7 +674,7 @@ def test_read_brief_covers_every_input_field() -> None:
     assert union <= set(rules.READ_METRIC_BRIEF)
     for brief in rules.READ_METRIC_BRIEF.values():
         assert {"label", "gloss", "fmt"} <= set(brief)
-        assert brief["fmt"] in {"pct", "ratio", "months", "currency"}
+        assert brief["fmt"] in {"pct", "ratio", "ratio_1", "currency"}
     # _present_metric_renderings keys its dict by label, not field name, for every company
     # type -- if two fields for the same type ever shared a label, one would silently
     # overwrite the other, both in what the model is shown and in what the hallucination
@@ -682,6 +682,63 @@ def test_read_brief_covers_every_input_field() -> None:
     for ctype, fields in rules.INPUT_FIELDS_BY_TYPE.items():
         labels = [rules.READ_METRIC_BRIEF[f]["label"] for f in fields]
         assert len(labels) == len(set(labels)), f"duplicate label in {ctype}: {labels}"
+
+
+def test_read_labels_are_the_card_face_labels() -> None:
+    """Issue #9 B2: the read used to name four metrics differently from the card beside it.
+    The catalogue's label is what the reader sees, so it is what the read must cite."""
+    expected = {row["metric_id"].strip(): row["label"].strip() for row in _catalogue_rows()}
+    actual = {field: brief["label"] for field, brief in rules.READ_METRIC_BRIEF.items()}
+    assert actual == {field: expected[field] for field in actual}
+    # The catalogue label is the TTM form; the annual form is the card's own per-row override,
+    # pinned against card_copy in the test below rather than against the catalogue.
+
+
+def test_read_names_operating_margin_the_way_the_card_face_does_on_each_row() -> None:
+    """The one label that depends on the row: the card says "(annual)" when the mart fell back
+    to the latest annual statement. The read must follow the card, row by row, or it asserts a
+    period the card does not show (docs/ui/card_metric_cell.md lists hard-coding "(TTM)" as an
+    anti-pattern)."""
+    from card_copy import metric_label
+
+    for basis in ("ttm_quarterly", "annual_latest", None):
+        row = {"ebit_margin_basis": basis}
+        expected = metric_label("ebit_margin_pct", row)
+        assert rules.read_metric_label("ebit_margin_pct", row) == expected
+    annual = {
+        "company_type": "operating", "ebit_margin_pct": 12.34, "ebit_margin_basis": "annual_latest",
+    }
+    _system, user = rules.build_read_messages(annual, rules.VERDICT_YELLOW)
+    assert "- Operating margin (annual): 12.3%" in user
+    assert "Operating margin (TTM)" not in user
+    assert rules.validate_read_metrics(
+        annual, [{"label": "Operating margin (annual)", "value_as_shown": "12.3%"}]
+    )
+    assert not rules.validate_read_metrics(
+        annual, [{"label": "Operating margin (TTM)", "value_as_shown": "12.3%"}]
+    )
+
+
+def test_read_renders_every_value_exactly_as_the_card_face_does() -> None:
+    """One renderer's output must equal the other's, string for string, or the read says
+    "18 months" where the card shows "18.4". Samples pick awkward decimals and a negative
+    money amount so rounding and sign handling are covered, in two currencies."""
+    from card_copy import format_metric_value
+
+    samples = {
+        "ebit_margin_pct": 24.04, "revenue_growth_yoy_pct": -3.96, "net_debt_to_ebitda": 1.106,
+        "fcf_margin_pct": 15.55, "debt_to_equity": 0.604, "current_ratio_stmt": 1.795,
+        "statement_roe_pct": 19.04, "net_margin_pct": 97.45, "roa_pct": 0.96,
+        "net_cash": 2.1e9, "working_capital": -5.83e7, "cash_runway_months": 18.44,
+        "burn_rate_monthly": 5.0e6,
+    }
+    assert set(samples) == set(rules.READ_METRIC_BRIEF)
+    for currency in ("GBP", "JPY", "CHF", None):
+        for field, value in samples.items():
+            card = format_metric_value(field, value, currency)
+            fmt = rules.READ_METRIC_BRIEF[field]["fmt"]
+            read = rules._format_metric_value(value, fmt, currency)
+            assert read == card, f"{field} ({currency}): read {read!r} vs card {card!r}"
 
 
 def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
@@ -825,7 +882,7 @@ def test_build_read_messages_pre_revenue_uses_survival_metrics() -> None:
     }
     _system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
     assert rules.READ_METRIC_BRIEF["cash_runway_months"]["label"] in user
-    assert "36 months" in user  # months formatting
+    assert "Cash runway: 36.0" in user  # rendered as the card face renders it
     assert "£2.1B" in user      # money amounts carry the card's own currency
     assert "£5.0M" in user
     assert "$" not in user      # never an assumed USD symbol

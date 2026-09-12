@@ -76,6 +76,9 @@ ASSESSMENT_INPUT_COLUMNS = [
     # _METRIC_COLUMNS below via INPUT_FIELDS_BY_TYPE["pre_revenue"], so every row already carries
     # it regardless of company_type (the mart computes it unconditionally).
     "stmt_free_cash_flow",
+    # Names operating margin the way the card face does on this row ("(TTM)" or "(annual)");
+    # see assessment_rules.read_metric_label. Not a number, so not hashed.
+    "ebit_margin_basis",
     *_METRIC_COLUMNS,
 ]
 
