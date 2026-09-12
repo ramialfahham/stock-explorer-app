@@ -18,13 +18,17 @@ the detail._
 
 ## In flight
 
-**MR !130 open, awaiting owner merge** (`fix/dividend-yield-mixed-units`, issue #10). A raw
-`dividendYield` below 0.05 is scaled by 100 in `int_stock__card_metrics`; a warn test lists
-the raw suspects each run; the flip guard reads the raw column. Rule and its two failure
-modes: `docs/data_contract.md`, `dividend_yield_pct` definition. `docs/data_contract.md`'s
-budget rose to 59,000 (first time the budget gate fired; +601 of contract text).
+**MR !131 open, awaiting owner merge** (`fix/catalogue-banks-wording`, issue #12). Three
+catalogue `applicability` sentences now say which company type the metric is shown for
+(owner wording, quoted in the MR's `contract.md`); a test keyed off `applies_to` forbids
+"bank" on any row withheld from financials except the owner's `current_ratio_stmt` sentence.
 
-**CHECK on the first scheduled run after !129 (merged) and !130:** (a) `generate_assessments`
+**Two owner wording questions from !131, not done:** (a) `statement_roe_pct`'s applicability
+ends "Means something different for banks", a caveat with no content (`net_margin_pct` and
+`roa_pct` say how); say how, or drop it. (b) `working_capital` says "no turnover" where the
+`pre_revenue` classifier admits negligible revenue and every other row says "revenue".
+
+**CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
 new labels without a hash bump; (b) `assert_dividend_yield_suspects` WARN count, expected 5.
 
@@ -32,8 +36,7 @@ new labels without a hash bump; (b) `assert_dividend_yield_suspects` WARN count,
 yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a
 genuine four-decimal percent. Definition territory; not done.
 
-**NEXT, owner's pick:** issue #12 (catalogue applicability strings say "banks" for the whole
-`financial` type) or the learn panel's four Python re-implementations of catalogue formulas.
+**NEXT:** the learn panel's four Python re-implementations of catalogue formulas (issue #9).
 
 **Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
 
@@ -55,7 +58,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !129 (`fix/read-labels-match-card`, issue #9 B2): the AI read names and
+**Merged this pass.** !130 (`fix/dividend-yield-mixed-units`, issue #10): raw `dividendYield`
+below 0.05 scaled by 100 in `int_stock__card_metrics`; warn test lists raw suspects. !129 (`fix/read-labels-match-card`, issue #9 B2): the AI read names and
 renders every metric as the card face does on that row. !128 (`ux/card-view-fold`): brand-only
 header and folded AI read while a card is open; first metric above the fold. !127 (`ux/mobile-
 type-scale`): body 14px, captions 13px, 12px floor, every size a token. !126 (`test/metric-fill-
@@ -104,11 +108,10 @@ client, and three review rounds found real defects in that surface. Needs a
 work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), the
 `dividendYield` scale guard (!114), price-ingestion reporting (!118), the fundamentals gate
 (!122), the precision caps (!123), the mart grain (!124), `market_code` vs folder (!125), the
-fill floor (!126), the AI read's labels and rendering (!129, open). Still open from the same
-audit: the learn panel re-implements four metric formulas in Python against a stated
-invariant. Issue #10 (mixed `dividendYield` units): !130, open. Issue #12:
-`metric_catalogue.csv` applicability strings say "banks" for rules covering the whole
-`financial` type.
+fill floor (!126), the AI read's labels and rendering (!129). Still open from the same audit: the
+learn panel re-implements four metric formulas in Python against a stated invariant. Issue
+#10 (mixed `dividendYield` units): !130, merged. Issue #12 (catalogue "banks" wording):
+!131, open.
 
 There are no `accepted_range` tests; the owner question on them is in the In flight section.
 
