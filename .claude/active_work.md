@@ -18,15 +18,10 @@ the detail._
 
 ## In flight
 
-**MR !132 open, awaiting owner merge** (`fix/learn-playgrounds-follow-card`, issue #9 B1,
-the audit's last finding). The learn panel's playgrounds render one tab per metric the face
-shows, labelled as the face, inputs in the card's currency; playgrounds kept by owner
-decision. Open, UX, owner's: tab labels now equal the bold heading inside each tab.
-
-**Two owner wording questions from !131, not done:** (a) `statement_roe_pct`'s applicability
-ends "Means something different for banks", a caveat with no content (`net_margin_pct` and
-`roa_pct` say how); say how, or drop it. (b) `working_capital` says "no turnover" where the
-`pre_revenue` classifier admits negligible revenue and every other row says "revenue".
+**MR !133 open, awaiting owner merge** (`fix/owner-wording-roe-wc-playground-heading`).
+Three owner decisions: `statement_roe_pct` says how bank ROE differs (regulated leverage);
+`working_capital` says "little or no revenue"; playground tabs drop the heading that repeated
+the tab name. Nothing left open from !131 or !132.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -58,7 +53,9 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !131 (`fix/catalogue-banks-wording`, issue #12): catalogue
+**Merged this pass.** !132 (`fix/learn-playgrounds-follow-card`, issue #9 B1, the audit's
+last finding): playgrounds render one tab per metric the face shows, labelled as the face,
+inputs in the card's currency. !131 (`fix/catalogue-banks-wording`, issue #12): catalogue
 `applicability` says which company type a withheld metric is shown for; a test keyed off
 `applies_to` guards it. !130 (`fix/dividend-yield-mixed-units`, issue #10): raw `dividendYield`
 below 0.05 scaled by 100 on read; warn test lists raw suspects. !129 (`fix/read-labels-match-
@@ -111,7 +108,7 @@ work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), th
 `dividendYield` scale guard (!114), price-ingestion reporting (!118), the fundamentals gate
 (!122), the precision caps (!123), the mart grain (!124), `market_code` vs folder (!125), the
 fill floor (!126), the AI read's labels and rendering (!129). The learn panel's playgrounds
-(B1): !132, open. Issue #10 (mixed `dividendYield` units): !130, merged. Issue #12
+(B1): !132, merged; issue #9 fully closed. Issue #10 (mixed `dividendYield` units): !130, merged. Issue #12
 (catalogue "banks" wording): !131, merged.
 
 There are no `accepted_range` tests; the owner question on them is in the In flight section.
