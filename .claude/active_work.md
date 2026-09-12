@@ -18,11 +18,17 @@ the detail._
 
 ## In flight
 
-**MR !126 open, awaiting owner merge** (`test/metric-fill-floor`, issue #9's last Tier-1
-item). A singular test fails the build when fewer than half of a market's eligible cards of a
-company type carry a catalogued metric that applies to that type (groups under five rows
-skipped); owner-set at 50%. Rule: `docs/data_contract.md`, percent-scale guard, "Fill floor".
-After merge, Tier 1 of the audit is closed; next is the mobile type scale below.
+**MR !127 open, awaiting owner merge** (`ux/mobile-type-scale`). Body copy 14px on a new
+`--ss-body` token, captions 13px, chips 12px as the floor; every `font-size` a size token,
+tested. Tokens and roles: `docs/ui/design_system.md`.
+
+**NEXT UI PIECE: compact the header when a card is open.** The UX gate's first-metric-above-
+the-fold check fails on long cards at 480x812 (first metric 64px below; 20px above before the
+type scale; at 375x812 it was below before too). The ~300px above the card (brand, tagline,
+disclaimer, nav, saved count, back button) is the space. Layout change: needs a wireframe in
+the MR per `docs/working_agreement.md` item 4 and the owner's composition call (§6).
+
+**Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
 
 **Three owner questions from the fill floor, none urgent:** (a) CI fixtures are 5 operating,
 1 financial, 1 pre-revenue per market, so `dbt build` exercises the floor for operating
@@ -42,19 +48,20 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !125 (`test/market-code-partition-c4`, issue #9 C4): a singular test fails
-the build when a raw file's `market_code` column differs from its folder. !124 (`test/mart-
-grain-c3`, issue #9 C3): a unit test pins the latest- snapshot `qualify`; the three downstream
-grain tests are `(market_code, ticker)`. !123 (`fix/drop- numeric-precision-caps`, issue #9 A2):
-migration `019` widens the ten capped `numeric` columns on `mart_stock_cards`; a test refuses a
-cap in any later migration. !122 (`fix/fundamentals-failure- gate`, issue #9 A3 follow-up):
-fundamentals failures above 5% of a market's requested tickers fail the ingest run; below, the
-failed tickers are named on stderr. !118 (`fix/price-ingest- visibility`, issue #9 A3): price-
-batch failures are counted, printed and warned on stderr; the run does not fail. Three owner
-questions from its contract remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`):
-every context file carries a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every
-governed context file has a byte budget in `docs/context_budget.yml`, checked in CI and at pre-
-commit.
+**Merged this pass.** !126 (`test/metric-fill-floor`): fill floor, 50% per (market, company type,
+applicable metric) among eligible cards, five-row skip. !125 (`test/market-code-partition-c4`,
+issue #9 C4): a singular test fails the build when a raw file's `market_code` column differs from
+its folder. !124 (`test/mart- grain-c3`, issue #9 C3): a unit test pins the latest- snapshot
+`qualify`; the three downstream grain tests are `(market_code, ticker)`. !123 (`fix/drop- numeric-
+precision-caps`, issue #9 A2): migration `019` widens the ten capped `numeric` columns on
+`mart_stock_cards`; a test refuses a cap in any later migration. !122 (`fix/fundamentals-failure-
+gate`, issue #9 A3 follow-up): fundamentals failures above 5% of a market's requested tickers fail
+the ingest run; below, the failed tickers are named on stderr. !118 (`fix/price-ingest-
+visibility`, issue #9 A3): price- batch failures are counted, printed and warned on stderr; the
+run does not fail. Three owner questions from its contract remain open, item 0 (d) to (f) below.
+!119 (`docs/context-ownership`): every context file carries a DURABLE or DISPOSABLE header. !120
+(`ci/context-size-budget`): every governed context file has a byte budget in
+`docs/context_budget.yml`, checked in CI and at pre- commit.
 
 **Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
 describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
@@ -62,11 +69,6 @@ no path rules and runs nine more steps than Tier A names (`seed_ci_raw_fixtures`
 freshness, full `dbt build`, the eligibility and export gates, assessments dry-run, pytest, the
 yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
 task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
-
-**NEXT UI PIECE: mobile type scale** (owner, 2026-09-09: "completely crap"). Measured at
-375px: 101 of 123 text elements under 14px, body copy 11.5px, labels 10.9px. Tokens are
-centralised in `frontend/styles.py`. Changing them is a UX PR gate change
-(`docs/working_agreement.md`) needing the 480px checklist.
 
 ## Atomic card export (MR !115, merged `f98f4025`)
 
