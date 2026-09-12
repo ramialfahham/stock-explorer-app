@@ -4,31 +4,46 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 9279d1bec473f93292936353a82b8c18cd8f3a671dcf27d8f29626ade0ff62a7
+diff_sha256: 4b677cffc6c385f7e3e7c91598835a415297b091fb2f098ca6a0992f317a6900
 
-Three reviewers, by routing: scope-auditor (`always`), cto-reviewer (`scripts/*`, `tests/*`),
-equity-analyst-reviewer (`docs/data_contract.md`). Three rounds.
+Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`,
+`dbt_analytics/*.yml`), equity-analyst-reviewer (`docs/data_contract.md`), cto-reviewer
+(`docs/context_budget.yml`). Three rounds.
 
 ## What shipped
 
-The AI read's facts block names every metric the way the card face does on that row and
-renders every value with the same string the card renders. Four labels and the runway
-rendering changed. Operating margin is per row: "(annual)" when the mart fell back to the
-latest annual statement, so the loader now carries `ebit_margin_basis`. Three guards: brief
-labels equal the catalogue's; the read's renderer equals `card_copy.format_metric_value` for
-every metric in four currencies; the basis survives from DuckDB through the prompt and the
-validator. 676 tests. `INPUT_HASH_VERSION` not bumped, the owner's spend call.
+`int_stock__card_metrics` scales a raw `dividendYield` below 0.05 by 100; a warn-severity
+singular test lists those rows each run; the percent-scale flip guard reads the raw column
+for this metric so a wholesale provider flip still fails the build; seven descriptions and
+`docs/data_contract.md` state the rule as a fact about the data it was set on, with both
+failure modes named; eight stale column-status claims in `_intermediate.yml` corrected.
+`docs/data_contract.md`'s byte budget 58,000 to 59,000 (net +601 of contract text; the file
+was 210 under at HEAD). 676 tests; dbt build green.
 
-## Rounds
+## Round 1
 
-Round 1: the card's operating-margin label is not fixed text, which I had missed; the read
-would have said "(TTM)" beside a card saying "(annual)" (scope-auditor, cto). The tool
-schema's example label was the old wording (all three). Round 2: dropping the basis column
-from the loader escaped every test (cto); the doc sentence still said "the catalogue's label"
-(all three); the contract asserted a convergence rate nothing measures (scope-auditor). All
-fixed; the rate is now stated as unmeasured with the check in the handover.
+All three: correcting rows inside the model blinded the existing flip guard for yields under
+5%, and the contract's guard section still claimed detection. Fixed by re-pointing the guard's
+dividend branch at raw `fct_fundamentals_snapshot`; a simulated wholesale flip fails it.
+equity-analyst: "no real yield sits below 0.05%" was written as a law; now a dated fact with
+its failure modes. scope-auditor: five more "not in the Supabase export" claims stood in the
+same file; "passthrough above 0.05" contradicted "0.05 or above".
+
+## Round 2
+
+scope-auditor and analytics-engineer: my rewrite of `statement_roe_pct`'s status was wrong
+on every count (it is catalogued, in financial eligibility, and rendered). Fixed. cto passed
+the budget raise as contract text at the smallest round step.
 
 ## scope-auditor
+
+VERDICT: PASS
+
+## analytics-engineer-reviewer
+
+VERDICT: PASS
+
+## equity-analyst-reviewer
 
 VERDICT: PASS
 
@@ -36,14 +51,8 @@ VERDICT: PASS
 
 VERDICT: PASS
 
-## equity-analyst-reviewer
-
-Confirmed the "(annual)" label is honest on those rows: the number is the latest annual
-operating margin. Noted the four card labels carry abbreviations the gloss beside each still
-explains in plain words, so the read stays beginner-readable; owner's choice.
-
-VERDICT: PASS
-
 ## Owner decisions
 
-The card's wording wins, per row. No hash bump: reads converge as their inputs move.
+Correct on read at 0.05, chosen in chat over reject or leave. Recorded and NOT done: a
+decimals-based discriminator, which would catch a fraction row at any yield but mis-scale a
+genuine four-decimal percent.

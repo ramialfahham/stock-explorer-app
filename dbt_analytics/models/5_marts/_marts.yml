@@ -160,8 +160,9 @@ models:
         data_type: double
       - name: dividend_yield_pct
         description: >
-          Financial-card income metric — Yahoo dividend yield, already in percent (nullable; null
-          when no dividend). No longer catalogued; still computed and exported, not rendered, not part of eligibility.
+          Yahoo dividend yield as a percent, fraction-scale rows scaled by 100 upstream (issue #10);
+          nullable, null when no dividend. No longer catalogued; still computed and exported, not
+          rendered, not part of eligibility.
         data_type: double
       - name: net_cash_to_market_cap
         description: >

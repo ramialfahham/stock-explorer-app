@@ -14,7 +14,7 @@ budgets:
   docs/ui/discover_header.md: 8000
   docs/ui/discover_list.md: 10000
   docs/ui/saved_list.md: 7000
-  docs/data_contract.md: 58000
+  docs/data_contract.md: 59000
   docs/development_workflow.md: 7000
   docs/engineering_standards.md: 12000
   docs/handover_2026-05-24.md: 12000

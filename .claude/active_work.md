@@ -18,20 +18,22 @@ the detail._
 
 ## In flight
 
-**MR !129 open, awaiting owner merge** (`fix/read-labels-match-card`, issue #9 B2). The AI
-read names and renders every metric as the card face does on that row; operating margin is
-per row ("(annual)" on the annual fallback), so the assessment loader carries
-`ebit_margin_basis`. `INPUT_HASH_VERSION` NOT bumped (owner spend call): stored reads keep
-the old labels until each card's inputs move.
+**MR !130 open, awaiting owner merge** (`fix/dividend-yield-mixed-units`, issue #10). A raw
+`dividendYield` below 0.05 is scaled by 100 in `int_stock__card_metrics`; a warn test lists
+the raw suspects each run; the flip guard reads the raw column. Rule and its two failure
+modes: `docs/data_contract.md`, `dividend_yield_pct` definition. `docs/data_contract.md`'s
+budget rose to 59,000 (first time the budget gate fired; +601 of contract text).
 
-**CHECK on the first scheduled run after !129 merges:** the `data-pipeline` job log's
-`generate_assessments` summary, `generated=` vs `carried=`. That is the only measurement of
-how fast reads converge on the new labels without a bump; nothing in the repo predicts it.
-If most are carried run after run, the bump question returns to the owner with a number.
+**CHECK on the first scheduled run after !129 (merged) and !130:** (a) `generate_assessments`
+summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
+new labels without a hash bump; (b) `assert_dividend_yield_suspects` WARN count, expected 5.
 
-**NEXT, owner's pick:** issue #10 (mixed `dividendYield` units in production, invisible to the
-median guard) or issue #12 (catalogue applicability strings say "banks" for the whole
-`financial` type), or the learn panel's four Python re-implementations of catalogue formulas.
+**Owner question left open by !130:** a decimals-based discriminator for fraction-scale
+yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a
+genuine four-decimal percent. Definition territory; not done.
+
+**NEXT, owner's pick:** issue #12 (catalogue applicability strings say "banks" for the whole
+`financial` type) or the learn panel's four Python re-implementations of catalogue formulas.
 
 **Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
 
@@ -53,22 +55,23 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !128 (`ux/card-view-fold`): brand-only header and folded AI read while a
-card is open; first metric above the fold. !127 (`ux/mobile-type-scale`): body 14px, captions
-13px, 12px floor, every size a token. !126 (`test/metric-fill-floor`): fill floor, 50% per
-(market, company type, applicable metric) among eligible cards, five-row skip. !125 (`test/market-
-code-partition-c4`, issue #9 C4): a singular test fails the build when a raw file's `market_code`
-column differs from its folder. !124 (`test/mart- grain-c3`, issue #9 C3): a unit test pins the
-latest- snapshot `qualify`; the three downstream grain tests are `(market_code, ticker)`. !123
-(`fix/drop- numeric- precision-caps`, issue #9 A2): migration `019` widens the ten capped
-`numeric` columns on `mart_stock_cards`; a test refuses a cap in any later migration. !122
-(`fix/fundamentals-failure- gate`, issue #9 A3 follow-up): fundamentals failures above 5% of a
-market's requested tickers fail the ingest run; below, the failed tickers are named on stderr.
-!118 (`fix/price-ingest- visibility`, issue #9 A3): price- batch failures are counted, printed and
-warned on stderr; the run does not fail. Three owner questions from its contract remain open, item
-0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries a DURABLE or
-DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context file has a byte budget
-in `docs/context_budget.yml`, checked in CI and at pre- commit.
+**Merged this pass.** !129 (`fix/read-labels-match-card`, issue #9 B2): the AI read names and
+renders every metric as the card face does on that row. !128 (`ux/card-view-fold`): brand-only
+header and folded AI read while a card is open; first metric above the fold. !127 (`ux/mobile-
+type-scale`): body 14px, captions 13px, 12px floor, every size a token. !126 (`test/metric-fill-
+floor`): fill floor, 50% per (market, company type, applicable metric) among eligible cards, five-
+row skip. !125 (`test/market- code-partition-c4`, issue #9 C4): a singular test fails the build
+when a raw file's `market_code` column differs from its folder. !124 (`test/mart- grain-c3`, issue
+#9 C3): a unit test pins the latest- snapshot `qualify`; the three downstream grain tests are
+`(market_code, ticker)`. !123 (`fix/drop- numeric- precision-caps`, issue #9 A2): migration `019`
+widens the ten capped `numeric` columns on `mart_stock_cards`; a test refuses a cap in any later
+migration. !122 (`fix/fundamentals-failure- gate`, issue #9 A3 follow-up): fundamentals failures
+above 5% of a market's requested tickers fail the ingest run; below, the failed tickers are named
+on stderr. !118 (`fix/price-ingest- visibility`, issue #9 A3): price- batch failures are counted,
+printed and warned on stderr; the run does not fail. Three owner questions from its contract
+remain open, item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries
+a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context file has a
+byte budget in `docs/context_budget.yml`, checked in CI and at pre- commit.
 
 **Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
 describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
@@ -103,11 +106,9 @@ work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), th
 (!122), the precision caps (!123), the mart grain (!124), `market_code` vs folder (!125), the
 fill floor (!126), the AI read's labels and rendering (!129, open). Still open from the same
 audit: the learn panel re-implements four metric formulas in Python against a stated
-invariant. Issue
-#10: production holds `dividendYield` in MIXED units (fraction-scale rows in a percent-scale
-column); nothing user-visible is wrong and a per-market median guard structurally cannot see
-it. Issue #12: `metric_catalogue.csv` applicability strings say "banks" for rules covering the
-whole `financial` type.
+invariant. Issue #10 (mixed `dividendYield` units): !130, open. Issue #12:
+`metric_catalogue.csv` applicability strings say "banks" for rules covering the whole
+`financial` type.
 
 There are no `accepted_range` tests; the owner question on them is in the In flight section.
 

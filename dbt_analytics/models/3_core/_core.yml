@@ -235,7 +235,9 @@ models:
           dividends); data-only, feeds statement-based ROE against common equity.
       - name: info_dividend_yield
         description: >
-          Yahoo dividendYield (already in percent, e.g. 0.94 = 0.94%) on latest snapshot; data-only, returns/income lens.
+          Yahoo dividendYield on latest snapshot, usually a percent (0.94 = 0.94%),
+          fraction-scale for a few rows (issue #10); normalised in int_stock__card_metrics.
+          Data-only, returns/income lens.
       - name: info_payout_ratio
         description: >
           Yahoo payoutRatio (decimal) on latest snapshot; data-only.
