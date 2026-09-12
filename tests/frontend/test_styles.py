@@ -189,3 +189,60 @@ def test_the_direct_child_row_shape_is_actually_present():
         f">= 5) -- either a real fix regressed back to the bare `:has(.ss-row)` shape, or this "
         f"pattern has drifted from what frontend/styles.py actually uses now."
     )
+
+
+# --- Type scale ---------------------------------------------------------------------------
+# Owner-set mobile scale: body 14px, captions 13px, chips and small labels 12px and nothing
+# below. Two sizes stay literal on purpose: the brand wordmark and the icon-button glyph,
+# neither of which is reading text.
+
+FONT_SIZE_DECL = re.compile(r"\bfont-size\s*:\s*([^;]+);")
+# The `font:` shorthand sets a size without the word "font-size", so it is refused outright.
+FONT_SHORTHAND = re.compile(r"\bfont\s*:")
+TOKEN_DECL = re.compile(r"--ss-([\w-]+)\s*:\s*([\d.]+)(rem|px|em|%)\s*;")
+LITERAL_SIZES_ALLOWED = {"1.35rem", "1.05rem !important"}
+SMALLEST_TEXT_TOKEN_REM = 0.75
+SIZE_TOKENS = {"value", "title", "body", "label", "caption-size", "row-title"}
+
+
+def _stylesheet() -> str:
+    return STYLES_FILE.read_text(encoding="utf-8")
+
+
+def test_every_font_size_is_a_size_token_or_a_named_exception():
+    """A spacing or radius token, or a new token outside SIZE_TOKENS, would pass a bare
+    var(--ss-*) check and never meet the floor test; the name must be one of the six."""
+    offenders = []
+    for value in FONT_SIZE_DECL.findall(_stylesheet()):
+        if value in LITERAL_SIZES_ALLOWED:
+            continue
+        token = re.fullmatch(r"var\(--ss-([\w-]+)\)( !important)?", value)
+        if token is None or token.group(1) not in SIZE_TOKENS:
+            offenders.append(value)
+    assert offenders == [], f"font-size(s) not on a size token: {offenders}"
+    assert not FONT_SHORTHAND.search(_stylesheet()), "font: shorthand bypasses the size tokens"
+
+
+def test_no_text_size_token_falls_below_the_floor():
+    found = {name: (float(n), unit) for name, n, unit in TOKEN_DECL.findall(_stylesheet())}
+    missing = SIZE_TOKENS - set(found)
+    assert missing == set(), f"missing size tokens: {missing}"
+    not_rem = {n: u for n, (_, u) in found.items() if n in SIZE_TOKENS and u != "rem"}
+    assert not_rem == {}, f"size token(s) not in rem: {not_rem}"
+    sizes = {n: v for n, (v, _) in found.items() if n in SIZE_TOKENS}
+    too_small = {n: v for n, v in sizes.items() if v < SMALLEST_TEXT_TOKEN_REM}
+    assert too_small == {}, f"size token(s) under {SMALLEST_TEXT_TOKEN_REM}rem: {too_small}"
+
+
+def test_body_copy_uses_the_body_token_not_the_caption_token():
+    """The whole point of the scale: body copy was borrowing the caption size."""
+    sheet = _stylesheet()
+    for selector in (
+        ".ss-health-block .ss-verdict-fallback",
+        ".ss-card-identity .ss-company-summary",
+        ".ss-metric .ss-metric-gloss",
+        ".ss-metric-learn-item .ss-metric-learn-body",
+    ):
+        assert selector + " {" in sheet, f"{selector} rule is missing"
+        block = sheet.split(selector + " {", 1)[1].split("}", 1)[0]
+        assert "font-size: var(--ss-body)" in block, f"{selector} is not on the body token"

@@ -47,7 +47,7 @@
    close to the number or to the bullet graph." Both rules are scoped
    `.ss-metric .ss-metric-gloss` / `.ss-metric .ss-metric-range-unavailable`, not bare
    single-class selectors — see the anti-pattern below, this isn't cosmetic.
-   Typography (owner feedback on a live card): `0.78rem` / `--ss-muted` /
+   Typography (owner feedback on a live card): `--ss-body` / `--ss-muted` /
    `line-height: 1.35`, deliberately one step LARGER and LIGHTER than the range mark's own
    `.ss-metric-range-number` / `.ss-metric-range-word` (`--ss-caption-size` /
    `--ss-caption`). At matched size and colour the explanation read as a footnote to the
@@ -181,7 +181,8 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   absolute positioning) had no replacement, for a data shape this doc's own "Known
   data-quality interaction" note confirms is live today. This is a bounded cap, not an
   unconditional guarantee: it comfortably covers every real value seen in production
-  (including the -129,810.5% DYL outlier, ~60px rendered) with headroom to spare, but a
+  (including the -129,810.5% DYL outlier, ~68px rendered at the 13px axis size) with
+  headroom to spare, but a
   sufficiently more extreme *future* outlier could still ellipsis-truncate rather than
   overflow cleanly — that's the intended degradation (visibly truncated, not silently
   breaking layout), not a claim that no value can ever be too wide. Tightening the cap
@@ -225,7 +226,10 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   across all benchmarked metrics -- 5 when this floor was first verified, 4 by MR !87 itself,
   9 today (see "Range mark mechanics" above), incl. a sector with a -129,810.5% FCF-margin
   outlier -- see the data-quality note below) plus synthetic cases beyond today's real spread; the
-  tightest real numbers-row gap currently live is ~12px, comfortably non-colliding.
+  tightest real numbers-row gap was ~12px at the original 11.5px axis size; at the 13px
+  size labels are ~13% wider, so the widest real edge label (~44px) beside the widest median
+  label (~40px) at the floor leaves ~6px, and live cards re-measured at 13px showed 15px to
+  23px. Non-colliding, with less margin than before.
   This is a fixed floor, not width-aware — an even more extreme future data shape could
   in principle still crowd it. If a real case ever visibly collides, widen the floor
   (and re-verify against production data the same way) rather than special-casing one

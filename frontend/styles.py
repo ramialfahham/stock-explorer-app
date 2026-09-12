@@ -21,9 +21,10 @@ def inject_global_css() -> None:
     --ss-border: #27272a;
     --ss-track: #38383d;
     --ss-value: 1.5rem;
-    --ss-title: 1rem;
+    --ss-title: 1.0625rem;
+    --ss-body: 0.875rem;
     --ss-label: 0.75rem;
-    --ss-caption-size: 0.72rem;
+    --ss-caption-size: 0.8125rem;
     --ss-bottom-nav-h: 3.25rem;
     --ss-action-bar-h: 3.25rem;
 
@@ -34,7 +35,7 @@ def inject_global_css() -> None:
     --ss-space-4: 0.85rem;
     --ss-radius-control: 0.5rem;
     --ss-radius-surface: 0.75rem;
-    --ss-row-title: 0.85rem;
+    --ss-row-title: 0.9375rem;
 }
 
 html, body, [class*="css"] {
@@ -88,7 +89,7 @@ section[data-testid="stSidebar"] {
     margin: 0;
 }
 .ss-brand-tagline {
-    font-size: 0.74rem;
+    font-size: var(--ss-caption-size);
     color: var(--ss-muted);
     margin: 0.28rem 0 0.1rem;
     line-height: 1.35;
@@ -171,14 +172,14 @@ section[data-testid="stSidebar"] {
     border-bottom: none;
 }
 .ss-sector-context .ss-sector-headline {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     font-weight: 600;
     color: var(--ss-text);
     margin: 0 0 0.12rem;
     line-height: 1.3;
 }
 .ss-sector-context .ss-sector-gloss {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     color: var(--ss-caption);
     margin: 0;
     line-height: 1.35;
@@ -188,7 +189,7 @@ section[data-testid="stSidebar"] {
    build_card_html()'s `identity` section) -- see the .ss-metric .ss-metric-gloss comment
    below for why a bare class isn't enough. */
 .ss-card-identity .ss-company-summary {
-    font-size: 0.78rem;
+    font-size: var(--ss-body);
     color: var(--ss-text);
     margin: 0 0 0.55rem;
     line-height: 1.45;
@@ -204,7 +205,7 @@ section[data-testid="stSidebar"] {
    early-return branches that bypass disclosure_html() entirely for a short, non-truncated
    description -- and is scoped separately under .ss-card-identity instead, below. */
 .ss-disclosure-wrap .ss-disclosure-preview {
-    font-size: 0.78rem;
+    font-size: var(--ss-body);
     color: var(--ss-text);
     margin: 0 0 0.28rem;
     line-height: 1.45;
@@ -231,7 +232,7 @@ section[data-testid="stSidebar"] {
 
 .ss-disclosure-more,
 .ss-disclosure-less {
-    font-size: 0.72rem;
+    font-size: var(--ss-caption-size);
     font-weight: 600;
     color: var(--ss-accent);
     text-decoration: underline;
@@ -252,7 +253,7 @@ section[data-testid="stSidebar"] {
 
 .ss-disclosure-wrap .ss-company-summary-full {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: var(--ss-body);
     color: var(--ss-text);
     line-height: 1.45;
 }
@@ -286,7 +287,7 @@ section[data-testid="stSidebar"] {
    comment below for the full explanation. Same small-uppercase accent treatment as
    .ss-metric-group-heading, so the card has one labelling language rather than two. */
 .ss-card-identity .ss-block-label {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-label);
     font-weight: 600;
     color: var(--ss-accent);
     text-transform: uppercase;
@@ -318,7 +319,7 @@ section[data-testid="stSidebar"] {
    distinguishable in the DOM and in tests. */
 .ss-health-block .ss-ai-read,
 .ss-health-block .ss-verdict-fallback {
-    font-size: 0.78rem;
+    font-size: var(--ss-body);
     color: var(--ss-text);
     margin: 0 0 0.28rem;
     line-height: 1.45;
@@ -340,7 +341,7 @@ section[data-testid="stSidebar"] {
     border-top: 1px solid var(--ss-border);
 }
 .ss-learn-section .ss-learn-heading {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     font-weight: 600;
     color: var(--ss-text);
     margin: 0 0 0.3rem;
@@ -531,7 +532,7 @@ section[data-testid="stSidebar"] {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.65rem;
+    font-size: var(--ss-label);
     color: var(--ss-muted);
 }
 .ss-metric-range-offscale-low {
@@ -556,7 +557,7 @@ section[data-testid="stSidebar"] {
    back above for a deliberate section break, negative below so the heading reads as
    attached to its group rather than floating equidistant between both neighbors. */
 .ss-metrics-stack .ss-metric-group-heading {
-    font-size: 0.68rem;
+    font-size: var(--ss-label);
     margin: 0.45rem 0 -0.65rem;
 }
 .ss-metrics-stack .ss-metric-group-heading:first-child {
@@ -565,7 +566,7 @@ section[data-testid="stSidebar"] {
 /* Learn panel is plain block flow (no grid `gap`), so its margins are the real values
    directly, not grid-gap-offset like the card face above. */
 .ss-metric-learn-list .ss-metric-group-heading {
-    font-size: 0.68rem;
+    font-size: var(--ss-label);
     margin: 0.9rem 0 0.35rem;
 }
 .ss-metric-learn-list .ss-metric-group-heading:first-child {
@@ -578,10 +579,10 @@ section[data-testid="stSidebar"] {
 /* Deliberately a step LARGER and LIGHTER than the range mark's own min/median/max
    labels below it (--ss-caption-size / --ss-caption). This is the line that explains the
    metric; those are axis furniture. At the same size and colour the explanation read as
-   a footnote to the bar rather than the point of the cell. 0.78rem matches the card's
+   a footnote to the bar rather than the point of the cell. --ss-body matches the card's
    other body copy (.ss-ai-read, .ss-company-summary). */
 .ss-metric .ss-metric-gloss {
-    font-size: 0.78rem;
+    font-size: var(--ss-body);
     color: var(--ss-muted);
     margin: 0.5rem 0 0;
     line-height: 1.35;
@@ -619,13 +620,13 @@ section[data-testid="stSidebar"] {
     padding: 0;
 }
 .ss-explain-list dt {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     font-weight: 700;
     color: var(--ss-text);
     margin-top: 0.35rem;
 }
 .ss-explain-list dd {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     color: var(--ss-muted);
     margin: 0.1rem 0 0;
     line-height: 1.4;
@@ -638,19 +639,19 @@ section[data-testid="stSidebar"] {
     padding: 0.35rem 0;
 }
 .ss-metric-learn-item .ss-metric-learn-heading {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     font-weight: 700;
     color: var(--ss-text);
     margin: 0 0 0.2rem;
 }
 .ss-metric-learn-item .ss-metric-analogy {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     color: var(--ss-caption);
     margin: 0.35rem 0 0.2rem;
     line-height: 1.4;
 }
 .ss-metric-learn-item .ss-metric-learn-body {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     color: var(--ss-muted);
     margin: 0;
     line-height: 1.45;
@@ -781,7 +782,7 @@ section[data-testid="stSidebar"] {
    ancestor `p` rule actually zeroes, not just font-size. Confirmed live: without
    !important, margin-top silently computed to 0 instead of the declared value. */
 .ss-saved-news-heading {
-    font-size: var(--ss-caption-size) !important;
+    font-size: var(--ss-label) !important;
     font-weight: 600;
     color: var(--ss-muted);
     text-transform: uppercase;
@@ -808,7 +809,7 @@ section[data-testid="stSidebar"] {
    -- see the .ss-metric .ss-metric-gloss comment below for why. */
 .ss-saved-news-item .ss-saved-news-line,
 .ss-saved-news-item .ss-disclosure-full {
-    font-size: 0.78rem;
+    font-size: var(--ss-body);
     color: var(--ss-text);
     margin: 0;
     line-height: 1.45;
@@ -878,7 +879,7 @@ section[data-testid="stSidebar"] {
 /* All three scoped under .ss-menu-panel, their always-present wrapper (menu_context_html())
    -- see the .ss-metric .ss-metric-gloss comment below for why. */
 .ss-menu-panel .ss-menu-label {
-    font-size: 0.68rem;
+    font-size: var(--ss-label);
     font-weight: 600;
     color: var(--ss-muted);
     text-transform: uppercase;
@@ -892,7 +893,7 @@ section[data-testid="stSidebar"] {
     margin-top: 0.55rem;
 }
 .ss-menu-panel .ss-menu-body {
-    font-size: var(--ss-caption-size);
+    font-size: var(--ss-body);
     color: var(--ss-text);
     line-height: 1.4;
     margin: 0;
@@ -1005,7 +1006,7 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     width: 100%;
 }
 [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButtonGroup"] button {
-    font-size: 0.78rem !important;
+    font-size: var(--ss-body) !important;
     font-weight: 600 !important;
     min-height: 2.35rem !important;
 }
@@ -1068,7 +1069,7 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     color: var(--ss-text) !important;
 }
 [data-testid="stAlert"] {
-    font-size: 0.82rem;
+    font-size: var(--ss-body);
     padding: 0.55rem 0.75rem;
 }
 </style>

@@ -28,7 +28,17 @@ the row/button building blocks those specs assume. This doc is that missing laye
 | `--ss-space-4` | `0.85rem` | Row horizontal padding, page gutter |
 | `--ss-radius-control` | `0.5rem` (8px) | Buttons, icon-button trigger, metric-label chips, verdict badge |
 | `--ss-radius-surface` | `0.75rem` (12px) | The card, Saved/Search rows |
-| `--ss-row-title` | `0.85rem` | List-row primary text only — do not reuse `--ss-title` (reserved for in-card identity) or reuse this outside a row |
+| `--ss-row-title` | `0.9375rem` (15px) | List-row primary text only -- do not reuse `--ss-title` (reserved for in-card identity) or reuse this outside a row |
+| `--ss-title` | `1.0625rem` (17px) | In-card identity: company name and ticker |
+| `--ss-body` | `0.875rem` (14px) | Reading text: AI read, company summary, metric gloss, learn panel, menu body, alerts, nav buttons |
+| `--ss-caption-size` | `0.8125rem` (13px) | Meta lines, freshness, filter summary, range-mark axis labels, row subtitles, toggles |
+| `--ss-label` | `0.75rem` (12px) | Chips and small uppercase headings; the floor, nothing renders smaller |
+| `--ss-value` | `1.5rem` (24px) | The metric value |
+
+Every `font-size` in `frontend/styles.py` is one of these tokens; the brand wordmark and the
+icon-button glyph are the two literal exceptions, and `tests/frontend/test_styles.py` refuses
+any other. Which text is body and which is caption is decided by what the text is, not by
+where it sits: an explanation is body even inside a small panel.
 
 Two radius tiers, not one flat value: **control** (small interactive chrome — buttons,
 icon triggers) and **surface** (content containers — the card, rows). A row and the card
