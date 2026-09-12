@@ -96,3 +96,41 @@ def test_regenerated_json_matches_committed() -> None:
             cwd=str(REPO),
         )
         assert out.read_text(encoding="utf-8") == COMMITTED_JSON.read_text(encoding="utf-8")
+
+
+# --- Issue #12: a metric withheld from the whole financial type must say which type it is
+# shown for, never "banks" as shorthand for that type. The guard is structural: a row whose
+# applies_to excludes financial may not mention banks at all, except in the owner's sentence
+# for current_ratio_stmt, which is about what banks and insurers report. Rows shown for
+# financials may still name banks where the sentence is about them (net_margin_pct, roa_pct).
+_OWNER_BANK_SENTENCES = {
+    "current_ratio_stmt": (
+        "Banks and insurance companies do not provide a breakdown into current and non-current "
+        "liabilities, and the ratio does not have the same significance for the rest of the "
+        "financial sector."
+    ),
+}
+
+
+def _withheld_from_financials() -> list[dict[str, str]]:
+    return [r for r in _catalogue_rows() if "financial" not in r["applies_to"].split("|")]
+
+
+def test_metrics_withheld_from_financials_never_say_banks() -> None:
+    offenders = {}
+    for r in _withheld_from_financials():
+        text = r["applicability"].replace(_OWNER_BANK_SENTENCES.get(r["metric_id"], ""), "")
+        if re.search(r"\bbank", text, re.I):
+            offenders[r["metric_id"]] = r["applicability"]
+    assert offenders == {}, offenders
+
+
+def test_the_three_withheld_metrics_name_their_company_type() -> None:
+    by_id = {r["metric_id"]: r for r in _catalogue_rows()}
+    assert by_id["debt_to_equity"]["applies_to"] == "operating"
+    assert "Shown only for operating companies" in by_id["debt_to_equity"]["applicability"]
+    assert by_id["current_ratio_stmt"]["applies_to"] == "operating"
+    assert "Shown only for operating companies" in by_id["current_ratio_stmt"]["applicability"]
+    assert _OWNER_BANK_SENTENCES["current_ratio_stmt"] in by_id["current_ratio_stmt"]["applicability"]
+    assert by_id["working_capital"]["applies_to"] == "pre_revenue"
+    assert "businesses with no turnover" in by_id["working_capital"]["applicability"]
