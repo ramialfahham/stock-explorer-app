@@ -26,31 +26,31 @@ it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/p
 
 ---
 
-## CI tiers (economic)
+## CI tiers
 
-See [`.gitlab-ci.yml`](../.gitlab-ci.yml) — `validate:full` job.
+See [`.gitlab-ci.yml`](../.gitlab-ci.yml). The tier names are used across `docs/`.
 
-### Tier A — every PR (~2–5 min)
+### Tier A -- every pipeline except the schedule (`validate:full` job)
 
-Always runs:
+MR, push to `main` and web dispatch. One job, no path rules: a docs-only MR runs the same
+steps as a model change. In order:
 
-- `scripts/check_context_budget.py`
-- `scripts/check_layer_contract.py`
-- `scripts/check_registry_var_sync.py`
-- `scripts/check_dbt_sql_structure.py`
-- `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (after `profiles.yml` exists; see `profiles.yml.example`)
-- `dbt deps` + `dbt parse` + `scripts/check_dbt_tests.py`
-- After Tier B dbt build: `dbt docs generate`, then `scripts/check_dbt_documentation.py`
+1. `scripts/check_context_budget.py`, `check_layer_contract.py`, `check_registry_var_sync.py`,
+   `check_dbt_sql_structure.py`
+2. `scripts/seed_ci_raw_fixtures.py` (synthetic raw parquet for every active market)
+3. `dbt deps`, `dbt source freshness`, `dbt parse`, then `scripts/check_dbt_tests.py`
+4. `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (needs `profiles.yml`; CI copies
+   `profiles.yml.example`)
+5. `dbt build` (full, against the fixtures)
+6. `scripts/check_eligibility_baseline.py` against `scripts/eligibility_baseline.ci.json`
+7. `scripts/check_export_health.py` (fill rate 1.0, zero missing, `us_sp500:CI01` present)
+8. `scripts/generate_assessments.py --dry-run`, then `scripts/check_eligibility_gaps.py`
+9. `dbt docs generate`, then `scripts/check_dbt_documentation.py`
+10. `pytest tests/ -q`
+11. `scripts/audit_mart_vs_yfinance.py --offline --sample-size 5` (mart-side facts only, no fetch)
 
-### Tier B — path-triggered
-
-| Change area | Extra steps |
-|-------------|-------------|
-| `dbt_analytics/**` | `dbt build --select tag:staging`, `dbt build --select tag:base tag:core`, `check_dbt_documentation.py` |
-| `ingestion/**`, `scripts/run_ingestion.py`, `storage/seeds/**` | Python import smoke test |
-| `docs/market_registry.yml` | Registry sync (Tier A already covers) |
-
-Doc-only PRs (`docs/**` excluding registry) skip Tier B dbt builds.
+`validate:branch-guard` (MR from `main` is refused) and `validate:secret-scan` (gitleaks) run
+beside it. There is no path-triggered tier: the list above is the whole MR gate.
 
 ### Tier C — production (`data-pipeline` job)
 

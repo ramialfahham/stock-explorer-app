@@ -236,7 +236,7 @@ unit_tests:
 |------|------|----------------|
 | `check_dbt_tests.py` | Every PR (Tier A, after `dbt parse`) | Each model has ≥1 test; ≥3 singular SQL tests |
 | `dbt build` / `dbt test` | PR + Tier C | Tests execute against fixtures or full data |
-| `check_pipeline_completeness.py` | Tier C (`data_pipeline.yml`) | Eligible card counts per active market — not SQL style |
+| `check_pipeline_completeness.py` | Tier C (`data-pipeline` job) | Eligible card counts per active market, not SQL style |
 
 ### Python tests and gates
 

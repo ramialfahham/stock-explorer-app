@@ -94,17 +94,6 @@ Setup: [`supabase_setup.md`](supabase_setup.md).
 
 ---
 
-## CI extensions
-
-In addition to the gates in `engineering_standards.md` §8, every MR also runs:
-
-- `python scripts/check_layer_contract.py`
-- `python scripts/check_registry_var_sync.py`
-
-See [`.gitlab-ci.yml`](../.gitlab-ci.yml) — `validate:full` job.
-
----
-
 ## Naming (yfinance source)
 
 | Layer | Example |
