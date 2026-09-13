@@ -74,7 +74,6 @@ def seed_fcf_margin_playground(card: dict[str, Any]) -> tuple[float, float]:
 
 
 def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{metric_label('net_debt_to_ebitda', card)}**")
     ratio = card.get("net_debt_to_ebitda")
     default_debt, default_ebitda = seed_net_debt_playground(card)
     if ratio is not None and ratio < 0:
@@ -101,7 +100,6 @@ def _render_net_debt_playground(card: dict[str, Any], *, prefix: str) -> None:
 
 
 def _render_revenue_growth_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{metric_label('revenue_growth_yoy_pct', card)}**")
     revenue_prior, revenue_current = seed_revenue_growth_playground(card)
 
     revenue_prior = st.number_input(
@@ -124,7 +122,6 @@ def _render_revenue_growth_playground(card: dict[str, Any], *, prefix: str) -> N
 
 
 def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{metric_label('ebit_margin_pct', card)}**")
     revenue, operating = seed_ebit_margin_playground(card)
 
     rev = st.number_input(
@@ -148,7 +145,6 @@ def _render_ebit_margin_playground(card: dict[str, Any], *, prefix: str) -> None
 
 
 def _render_fcf_margin_playground(card: dict[str, Any], *, prefix: str) -> None:
-    st.markdown(f"**{metric_label('fcf_margin_pct', card)}**")
     revenue, fcf = seed_fcf_margin_playground(card)
 
     rev = st.number_input(
