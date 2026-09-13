@@ -114,7 +114,7 @@ files change on `main`, and before the data pipeline export step.
 
 ### Test a migration or export change before it ships
 
-Add `--target dev` to either script to write to a `dev` schema in the same Supabase
+Add `--target dev` to any of the three Supabase writers to write to a `dev` schema in the same
 project instead of `public` — no separate project, no new secret. See
 [`supabase_setup.md`](supabase_setup.md#3b-testing-against-a-dev-schema) for the one-time
 setup step and the `dev-schema-check` CI button.

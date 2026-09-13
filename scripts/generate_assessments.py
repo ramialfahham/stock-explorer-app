@@ -7,9 +7,11 @@ Two layers:
   card's input_hash changed or its stored ai_read is null (regenerate-on-change). The read
   is educational, never advice, and reasons only from the card's own numbers.
 
-Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape. --dry-run returns
+Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape and for --target
+(prod writes public.card_assessments, dev writes dev.card_assessments in the same project;
+dev needs the schema exposed to PostgREST, see docs/supabase_setup.md). --dry-run returns
 before any credential or LLM call, so CI can smoke it secret-free; the real path also skips
-the reads when ANTHROPIC_API_KEY is absent. A base record omits ai_read / read_model unless
+the reads when ANTHROPIC_API_KEY is absent or empty. A base record omits ai_read / read_model unless
 a fresh read was generated, so a re-run never clobbers a stored read (PostgREST upsert only
 sets the columns provided).
 """
@@ -27,6 +29,7 @@ import duckdb
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
+from supabase.lib.client_options import SyncClientOptions
 
 from assessment_rules import (
     INPUT_FIELDS_BY_TYPE,
@@ -292,7 +295,14 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Compute verdicts but do not write to Supabase (no credentials required)",
     )
+    parser.add_argument(
+        "--target",
+        choices=["prod", "dev"],
+        default="prod",
+        help="prod (default) writes to public.*; dev writes to dev.* in the same project",
+    )
     args = parser.parse_args(argv)
+    schema = "public" if args.target == "prod" else args.target
 
     load_dotenv()
 
@@ -321,7 +331,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env", file=sys.stderr)
         return 1
 
-    client = create_client(url, key)
+    client = create_client(url, key, options=SyncClientOptions(schema=schema))
 
     # Slice 5b: fill ai_read / read_model for changed cards only. Skipped when no
     # ANTHROPIC_API_KEY (verdicts still upsert, as in 5a) so the pipeline degrades
@@ -349,7 +359,7 @@ def main(argv: list[str] | None = None) -> int:
             batch, on_conflict="market_code,ticker"
         ).execute()
 
-    print(f"generate_assessments: upserted {len(records)} rows")
+    print(f"generate_assessments: upserted {len(records)} rows in '{schema}'")
     return 0
 
 

@@ -18,14 +18,14 @@ the detail._
 
 ## In flight
 
-**MR !135 open, awaiting owner merge** (`fix/sync-dbt-vars-exit-status`, issue #8).
-`sync_dbt_vars.py` exits 1 with "nothing written" when `dbt_project.yml` has no
-`active_market_codes` block, instead of "already in sync" and exit 0.
+**MR !136 open, awaiting owner merge** (`feat/assessments-target-dev`, issue #4 part 3,
+closes #4). `generate_assessments.py --target dev`; `dev-schema-check` runs it with an
+empty `ANTHROPIC_API_KEY` so the button writes verdicts only.
 
-**Portfolio-grade queue, owner-ranked 2026-09-13, in order:** #8 (!135), then issue #4 part
-3 (`generate_assessments.py --target dev`), then issue #11 (caveat placement, one owner
-answer), then hygiene: close #10 and #12 on GitLab (fixed, still open), `sources.yml` twin,
-the `## Do NOT` rules, dead `task/contract.md` pointers, dated comments.
+**Portfolio-grade queue, owner-ranked 2026-09-13, in order:** #4 (!136), then issue #11
+(caveat placement, one owner answer), then hygiene: close #10 and #12 on GitLab (fixed,
+still open), `sources.yml` twin, the `## Do NOT` rules, dead `task/contract.md` pointers,
+dated comments.
 
 **Stale twin, not touched (dbt file, its own reviewer):** `dbt_analytics/models/sources.yml:7`
 says "via `data_pipeline.yml`"; the job is `data-pipeline` in `.gitlab-ci.yml`.
@@ -60,31 +60,15 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !134 (`docs/ci-tiers-from-gitlab-ci`): Tier A lists every
-`validate:full` step; Tier B removed; the `project_context.md` copy deleted. !133 (`fix/owner-wording-roe-wc-playground-heading`): owner wording
-for `statement_roe_pct` and `working_capital`; playground tabs without the repeated heading.
-!132 (`fix/learn-playgrounds-follow-card`, issue #9 B1, the audit's
-last finding): playgrounds render one tab per metric the face shows, labelled as the face,
-inputs in the card's currency. !131 (`fix/catalogue-banks-wording`, issue #12): catalogue
-`applicability` says which company type a withheld metric is shown for; a test keyed off
-`applies_to` guards it. !130 (`fix/dividend-yield-mixed-units`, issue #10): raw `dividendYield`
-below 0.05 scaled by 100 on read; warn test lists raw suspects. !129 (`fix/read-labels-match-
-card`, issue #9 B2): the AI read names and
-renders every metric as the card face does on that row. !128 (`ux/card-view-fold`): brand-only
-header and folded AI read while a card is open; first metric above the fold. !127 (`ux/mobile-
-type-scale`): body 14px, captions 13px, 12px floor, every size a token. !126 (`test/metric-fill-
-floor`): fill floor, 50% per (market, company type, applicable metric) among eligible cards, five-
-row skip. !125 (`test/market- code-partition-c4`, issue #9 C4): a singular test fails the build
-when a raw file's `market_code` column differs from its folder. !124 (`test/mart- grain-c3`, issue
-#9 C3): a unit test pins the latest- snapshot `qualify`; the three downstream grain tests are
-`(market_code, ticker)`. !123 (`fix/drop- numeric- precision-caps`, issue #9 A2): migration `019`
-widens the ten capped `numeric` columns on `mart_stock_cards`; a test refuses a cap in any later
-migration. !122 (`fix/fundamentals-failure- gate`, issue #9 A3 follow-up): fundamentals failures
-above 5% of a market's requested tickers fail the ingest run; below, the failed tickers are named
-on stderr. !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failures counted and
-warned on stderr; run does not fail; owner questions item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries
-a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context file has a
-byte budget in `docs/context_budget.yml`, checked in CI and at pre- commit.
+**Merged this pass** (detail in each MR): !135 `sync_dbt_vars` exit status (#8). !134 CI
+tiers doc. !133 owner wording for ROE and working capital; playground heading. !132 playgrounds
+follow the card face (#9 B1, the audit's last finding). !131 catalogue "banks" wording (#12).
+!130 fraction-scale `dividendYield` scaled on read (#10). !129 AI read labels match the card
+(#9 B2). !128 card-view fold. !127 mobile type scale. !126 fill floor, 50% (#9). !125
+`market_code` vs folder test (#9 C4). !124 mart grain unit test (#9 C3). !123 migration `019`
+drops the numeric precision caps (#9 A2). !122 fundamentals failure gate at 5% (#9 A3). !118
+price-ingest visibility (#9 A3; owner questions item 0 (d) to (f) below). !119 context
+ownership headers. !120 context byte budgets in CI.
 
 ## Atomic card export (MR !115, merged `f98f4025`)
 
@@ -332,6 +316,9 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
   hook-enforced; the merge guard covers `gh pr merge` only.
 - Buy CI minutes, register a self-hosted runner, set CI/CD variable *values*, or touch
   protected-branch settings on GitLab -- all owner-only (§6 cost/config).
+- **Spend anything.** Owner rule, stated in chat repeatedly, no durable home yet: no paid
+  tier, no API token the owner did not ask for. A CI step that would call Claude runs with
+  `ANTHROPIC_API_KEY=` empty unless it is the scheduled production run (!136 is the example).
 - Emit buy/sell/hold/price-target/advice anywhere -- educational only.
 - Reword or author metric copy/definitions/caveats without owner sign-off (§6).
 - Add a catalogue row for a new metric before it has a per-type display assignment. The
