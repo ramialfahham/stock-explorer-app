@@ -34,7 +34,13 @@ def _registry_active_codes() -> list[str]:
     return sorted(out)
 
 
+class BlockNotFound(Exception):
+    """dbt_project.yml has no active_market_codes block to rewrite."""
+
+
 def _update_dbt_project(codes: list[str]) -> bool:
+    """Rewrite the block; True when the file changed, False when it already matched.
+    Raises BlockNotFound when there is no block, which is a failure, not a no-op."""
     text = DBT_PROJECT_PATH.read_text(encoding="utf-8")
 
     new_list = "\n".join(f"    - {c}" for c in codes)
@@ -46,12 +52,9 @@ def _update_dbt_project(codes: list[str]) -> bool:
     )
 
     if not pattern.search(text):
-        print(
-            "sync_dbt_vars: could not locate active_market_codes block "
-            "in dbt_analytics/dbt_project.yml",
-            file=sys.stderr,
+        raise BlockNotFound(
+            "could not locate active_market_codes block in dbt_analytics/dbt_project.yml"
         )
-        return False
 
     new_text = pattern.sub(new_block + "\n", text)
     if new_text == text:
@@ -75,7 +78,11 @@ def main() -> int:
         )
         return 1
 
-    changed = _update_dbt_project(codes)
+    try:
+        changed = _update_dbt_project(codes)
+    except BlockNotFound as e:
+        print(f"sync_dbt_vars: {e}; nothing written", file=sys.stderr)
+        return 1
     if changed:
         print(f"sync_dbt_vars: updated active_market_codes -> {codes}")
     else:
