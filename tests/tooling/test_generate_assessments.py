@@ -386,7 +386,7 @@ def test_main_without_anthropic_key_upserts_verdicts_only(tmp_path: Path, monkey
     _make_mart(db, _ROWS)
 
     fake_sb = _FakeSupabase(existing=[])
-    monkeypatch.setattr(gen, "create_client", lambda url, key: fake_sb)
+    monkeypatch.setattr(gen, "create_client", lambda url, key, options=None: fake_sb)
 
     assert gen.main(["--duckdb-path", str(db)]) == 0
     upserted = [rec for batch in fake_sb.upserts for rec in batch]
@@ -403,7 +403,7 @@ def test_main_with_anthropic_key_attaches_reads(tmp_path: Path, monkeypatch) -> 
     _make_mart(db, _ROWS)
 
     fake_sb = _FakeSupabase(existing=[])  # nothing stored -> every card regenerates
-    monkeypatch.setattr(gen, "create_client", lambda url, key: fake_sb)
+    monkeypatch.setattr(gen, "create_client", lambda url, key, options=None: fake_sb)
     monkeypatch.setattr(
         gen.anthropic,
         "Anthropic",
@@ -416,3 +416,56 @@ def test_main_with_anthropic_key_attaches_reads(tmp_path: Path, monkeypatch) -> 
     for rec in upserted:
         assert rec["ai_read"] == "A steady read, financially healthy on these figures."
         assert rec["read_model"] == "claude-haiku-4-5"
+
+
+def _main_with_captured_options(tmp_path: Path, monkeypatch, argv: list[str]) -> object:
+    monkeypatch.setattr(gen, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+    db = tmp_path / "mart.duckdb"
+    _make_mart(db, _ROWS)
+    seen = {}
+
+    def fake_create_client(url, key, options=None):
+        seen["options"] = options
+        return _FakeSupabase(existing=[])
+
+    monkeypatch.setattr(gen, "create_client", fake_create_client)
+    assert gen.main(["--duckdb-path", str(db), *argv]) == 0
+    return seen["options"]
+
+
+def test_target_dev_passes_dev_schema_to_create_client(tmp_path: Path, monkeypatch) -> None:
+    assert _main_with_captured_options(tmp_path, monkeypatch, ["--target", "dev"]).schema == "dev"
+
+
+def test_target_prod_is_the_default_schema(tmp_path: Path, monkeypatch) -> None:
+    assert _main_with_captured_options(tmp_path, monkeypatch, []).schema == "public"
+
+
+def test_options_passed_to_create_client_is_the_sync_variant(tmp_path: Path, monkeypatch) -> None:
+    """Same supabase-py==2.30.0 trap as export_to_supabase: the sync client reads
+    options.storage, which only SyncClientOptions defines."""
+    assert hasattr(_main_with_captured_options(tmp_path, monkeypatch, []), "storage")
+
+
+def test_empty_anthropic_key_skips_reads(tmp_path: Path, monkeypatch) -> None:
+    """dev-schema-check runs this script with ANTHROPIC_API_KEY set to the empty string so a
+    manual dev write never spends on prose reads; empty must mean absent."""
+    monkeypatch.setattr(gen, "load_dotenv", lambda *a, **k: None)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+    db = tmp_path / "mart.duckdb"
+    _make_mart(db, _ROWS)
+    fake_sb = _FakeSupabase(existing=[])
+    monkeypatch.setattr(gen, "create_client", lambda url, key, options=None: fake_sb)
+
+    def no_client(*a, **k):
+        raise AssertionError("Anthropic client constructed with an empty key")
+
+    monkeypatch.setattr(gen.anthropic, "Anthropic", no_client)
+
+    assert gen.main(["--duckdb-path", str(db)]) == 0
+    assert all("ai_read" not in rec for batch in fake_sb.upserts for rec in batch)

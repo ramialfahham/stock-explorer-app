@@ -303,6 +303,8 @@ dev-schema-check:
     - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - python scripts/apply_supabase_migrations.py --target dev
     - python scripts/export_to_supabase.py --target dev --duckdb-path /tmp/stock_data_dev_check.db
+    # Empty key: verdicts land in dev.card_assessments, no prose reads, so the button never spends.
+    - ANTHROPIC_API_KEY= python scripts/generate_assessments.py --target dev --duckdb-path /tmp/stock_data_dev_check.db
   # `web` ONLY, same shape as supabase-migrate/data-pipeline's manual dispatch — never
   # reachable from an MR, a push, or a schedule. The `when: never` fallback is what makes
   # this a scope rather than a bare `when: manual`, which would appear on every MR/push.
