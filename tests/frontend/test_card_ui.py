@@ -540,32 +540,38 @@ def test_health_block_ignores_unrecognized_verdict_token() -> None:
     assert _health_block_html(card) == ""
 
 
-def test_health_block_shows_capital_adequacy_caveat_on_financial_card_with_ai_read() -> None:
-    card = _card_with_all_metrics("financial")
-    card["health_verdict"] = "green"
-    card["ai_read"] = "Turns sales into profit at a healthy rate."
-    html = _health_block_html(card)
-    assert "ss-financial-caveat" in html
-    assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in html
+def _caveat_count(html: str) -> int:
+    return html.count(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)
 
 
-def test_health_block_shows_capital_adequacy_caveat_on_financial_card_with_fallback() -> None:
-    card = _card_with_all_metrics("financial")
-    card["health_verdict"] = "yellow"
-    card["ai_read"] = None
-    html = _health_block_html(card)
-    assert "ss-financial-caveat" in html
-    assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in html
+def test_financial_card_shows_the_capital_adequacy_caveat_in_every_health_block_state() -> None:
+    """Issue #11: the caveat used to live inside the health block, so a card whose block was
+    withheld (no assessment row, or one from another snapshot) showed bank metrics with no
+    caveat. It now renders once, under the metrics, in all four states."""
+    states = [
+        {"health_verdict": "green", "ai_read": "Turns sales into profit at a healthy rate."},
+        {"health_verdict": "yellow", "ai_read": None},
+        {"health_verdict": None, "ai_read": None},
+        {},
+    ]
+    for state in states:
+        card = _card_with_all_metrics("financial")
+        card.update(state)
+        html = build_card_html(card)
+        assert _caveat_count(html) == 1, state
+        assert 'class="ss-financial-caveat"' in html
+        assert html.index(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT) > html.index("ss-card-metrics")
+        assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT not in _health_block_html(card)
 
 
-def test_health_block_omits_capital_adequacy_caveat_on_non_financial_cards() -> None:
+def test_caveat_is_absent_on_non_financial_cards() -> None:
     """The actual regression this guards: a company_type check that silently stops firing
     would make every card show a bank-specific caveat, or no card ever show it again."""
     for company_type in ("operating", "pre_revenue"):
         card = _card_with_all_metrics(company_type)
         card["health_verdict"] = "green"
         card["ai_read"] = "Turns sales into profit at a healthy rate."
-        html = _health_block_html(card)
+        html = build_card_html(card)
         assert "ss-financial-caveat" not in html
         assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT not in html
 
@@ -688,15 +694,12 @@ def test_a_short_ai_read_renders_plain() -> None:
 
 def test_the_financial_caveat_stays_outside_the_fold() -> None:
     """The caveat is the most important line on a financial card; folding it with the read
-    would hide it by default."""
+    would hide it by default. It sits after the whole health block, so after the fold."""
     card = _card_with_all_metrics("financial")
-    card["company_type"] = "financial"
     card["health_verdict"] = "yellow"
     card["ai_read"] = " ".join(f"word{i}" for i in range(60))
-    html = _health_block_html(card)
-    assert FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in html
-    details_end = html.index("</details>")
-    assert html.index(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT) > details_end
+    html = build_card_html(card)
+    assert html.index(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT) > html.index("</details>")
 
 
 def test_the_verdict_badge_and_label_stay_outside_the_fold() -> None:

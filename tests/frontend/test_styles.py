@@ -246,3 +246,14 @@ def test_body_copy_uses_the_body_token_not_the_caption_token():
         assert selector + " {" in sheet, f"{selector} rule is missing"
         block = sheet.split(selector + " {", 1)[1].split("}", 1)[0]
         assert "font-size: var(--ss-body)" in block, f"{selector} is not on the body token"
+
+
+def test_financial_caveat_is_styled_where_it_renders():
+    """The caveat moved out of the health block into the metrics section (issue #11). A rule
+    still scoped under .ss-health-block would match nothing and the line would render as an
+    unstyled paragraph, which no render test can see."""
+    sheet = _stylesheet()
+    assert ".ss-card-metrics .ss-financial-caveat {" in sheet
+    assert ".ss-health-block .ss-financial-caveat" not in sheet
+    block = sheet.split(".ss-card-metrics .ss-financial-caveat {", 1)[1].split("}", 1)[0]
+    assert "font-size: var(--ss-caption-size)" in block

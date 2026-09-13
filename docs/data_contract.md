@@ -649,7 +649,8 @@ violation fails exactly the same way the numeric guard does -- fail closed, self
 `input_hash` change, no retry.
 
 **The whole health block is withheld when the assessment's `snapshot_date` differs from the
-card's** -- verdict, read and the financial caveat together, with no placeholder. That is a
+card's** -- verdict and read together, with no placeholder; the financial caveat is not in
+the block and stays. That is a
 different case from the four below, which all keep the verdict and drop only `ai_read`. It
 happens when the two jobs disagree about which snapshot the card is on: the assessments step
 failing after a successful export, or the export rolling a card back to an earlier snapshot
@@ -739,14 +740,11 @@ Conservative — one serious weakness caps it:
   card stays modest -- for a whole sector, of which banks are only the part CET1/Tier 1 names).
   This limit is shown card-face rather than only instructed in the AI-read prompt
   (`frontend/card_copy.py`'s `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by
-  `frontend/card_ui.py`'s `_health_block_html` whether or not `ai_read` is present) -- the
-  prompt only asks the model to mention it, never guarantees the model does. **It rides with
-  the health block, so a financial card that has no attached assessment shows its profitability
-  numbers with no capital-adequacy caveat.** True for every card whose block is withheld: one
-  awaiting its first assessment, and one whose assessment is on a different `snapshot_date`.
-  Known gap, owner-decided to leave as-is rather than render the caveat independently of the
-  verdict, which would be a card-composition change under the UX PR gate. Filed as gitlab
-  issue #11 (https://gitlab.com/rami.al-fahham/stock-swipe-app/-/work_items/11).
+  `frontend/card_ui.py`'s `_financial_caveat_html` under the metric stack of every financial
+  card, whether or not a health block or `ai_read` is present) -- the prompt only asks the
+  model to mention it, never guarantees the model does. It is independent of the health
+  block on purpose: a card awaiting its first assessment, or whose assessment is on a
+  different `snapshot_date`, has no block and still carries the caveat (gitlab issue #11).
 - **`revenue_growth_yoy_pct` — ONE-SIDED, on operating and financial cards**.
   Growth below `GROWTH_DECLINE_THRESHOLD_PCT` (0.0, any year-over-year decline, no tolerance
   band) **blocks green**. It can do nothing else: growth never earns green, and it never causes

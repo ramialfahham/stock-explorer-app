@@ -41,8 +41,9 @@ unrelated content.
 **The AI-written read folds to its first lines** (`_health_block_html`, preview length
 `AI_READ_PREVIEW_WORDS` in `frontend/card_copy.py`, about three lines at 375px) so the
 verdict badge, its first reasons and the first metric value share one phone screen. The
-badge, the block label and the financial caveat stay outside the toggle; a read short enough
-to fit renders plain. Owner composition call after the type scale pushed the first metric
+badge and the block label stay outside the toggle; a read short enough to fit renders
+plain. The financial caveat is not in this block at all: it sits under the metric stack on
+every financial-type card, present whether or not the block renders. Owner composition call after the type scale pushed the first metric
 below the fold on long cards.
 
 **Learn panel metric bodies also use this pattern now** (`_metric_learn_blocks()` in
