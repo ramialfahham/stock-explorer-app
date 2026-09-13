@@ -1,43 +1,32 @@
 # Task contract
 > DISPOSABLE. **Owns:** THIS task's objective, `scope_paths`, reserved decisions and
 > `done_when`.
-> **Never:** anything that outlives the task. Overwritten by the next one.
+> **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Three owner decisions from MR !131 and !132, taken in chat: two catalogue
-  `applicability` sentences reworded; the playground tabs drop the bold heading that
-  repeated the tab name.
+objective: `docs/development_workflow.md` describes `validate:full` as a short always-on list
+  plus path-triggered dbt builds; the job has no path rules and runs nine more steps. Rewrite
+  the tier from `.gitlab-ci.yml`, delete the partial copy in `docs/project_context.md`, fix
+  the two twins that named a tier or a file that no longer exists.
 
 scope_paths:
-  - dbt_analytics/seeds/metric_catalogue.csv
-  - frontend/metrics.json
-  - frontend/metric_school.py
-  - tests/tooling/test_metric_catalogue.py
-  - tests/frontend/test_metric_school.py
+  - docs/development_workflow.md
+  - docs/project_context.md
+  - docs/engineering_standards.md
+  - docs/operations_guide.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - Owner-set wording (chosen from options presented in chat, option A each):
-    `statement_roe_pct`: "Means something different for banks." becomes "For a bank, high
-    ROE mostly reflects regulated leverage, not a financing choice; compare banks with
-    banks."
-    `working_capital`: "businesses with no turnover" becomes "businesses with little or no
-    revenue".
-  - Owner-set composition: the playground tab name carries the metric label; the bold
-    heading inside each tab, which repeated it, is removed.
+  - None. Tier names kept (A for `validate:full`, C for `data-pipeline`); Tier B removed
+    because nothing implements it. No CI change.
 
 done_when:
-  - The two sentences replaced, CSV rewritten through the csv module and re-parsed at 21
-    columns per row; only those two rows differ.
-  - `frontend/metrics.json` regenerated; `test_regenerated_json_matches_committed` passes.
-  - The pinned `working_capital` phrase in `test_metric_catalogue.py` follows the new text;
-    `test_metrics_withheld_from_financials_never_say_banks` still passes (ROE is shown for
-    financials, so its bank sentence is allowed).
-  - No `st.markdown` heading inside a playground tab; the AppTest asserts no markdown on
-    the page and binds each tab to its metric through its input labels instead.
-  - `pytest tests/ -q` green.
+  - Tier A lists every `validate:full` step in the job's order, and every step listed is in
+    the job (reviewer diffs the list against `.gitlab-ci.yml`).
+  - No "Tier B", "path-triggered" or "CI extensions" text remains outside `docs/handover_*`.
+  - `docs/engineering_standards.md` names the `data-pipeline` job, not `data_pipeline.yml`;
+    `docs/operations_guide.md` says Tier A, not A/B.
+  - `scripts/check_context_budget.py` passes.
 
-impact_map: Two catalogue strings and their JSON export (no screen renders `applicability`);
-  four lines removed from the playground render path. No formula, format, `applies_to` or
-  eligibility change.
+impact_map: Docs only.

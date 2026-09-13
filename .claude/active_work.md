@@ -18,10 +18,12 @@ the detail._
 
 ## In flight
 
-**MR !133 open, awaiting owner merge** (`fix/owner-wording-roe-wc-playground-heading`).
-Three owner decisions: `statement_roe_pct` says how bank ROE differs (regulated leverage);
-`working_capital` says "little or no revenue"; playground tabs drop the heading that repeated
-the tab name. Nothing left open from !131 or !132.
+**MR !134 open, awaiting owner merge** (`docs/ci-tiers-from-gitlab-ci`, docs only).
+`docs/development_workflow.md` Tier A lists every `validate:full` step in the job's order;
+Tier B removed (nothing implements it); the `project_context.md` copy deleted.
+
+**Stale twin, not touched (dbt file, its own reviewer):** `dbt_analytics/models/sources.yml:7`
+says "via `data_pipeline.yml`"; the job is `data-pipeline` in `.gitlab-ci.yml`.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -53,7 +55,9 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !132 (`fix/learn-playgrounds-follow-card`, issue #9 B1, the audit's
+**Merged this pass.** !133 (`fix/owner-wording-roe-wc-playground-heading`): owner wording
+for `statement_roe_pct` and `working_capital`; playground tabs without the repeated heading.
+!132 (`fix/learn-playgrounds-follow-card`, issue #9 B1, the audit's
 last finding): playgrounds render one tab per metric the face shows, labelled as the face,
 inputs in the card's currency. !131 (`fix/catalogue-banks-wording`, issue #12): catalogue
 `applicability` says which company type a withheld metric is shown for; a test keyed off
@@ -75,13 +79,6 @@ on stderr. !118 (`fix/price-ingest-visibility`, issue #9 A3): price-batch failur
 warned on stderr; run does not fail; owner questions item 0 (d) to (f) below. !119 (`docs/context-ownership`): every context file carries
 a DURABLE or DISPOSABLE header. !120 (`ci/context-size-budget`): every governed context file has a
 byte budget in `docs/context_budget.yml`, checked in CI and at pre- commit.
-
-**Stale doc, found by the budget review, not fixed:** `docs/development_workflow.md` Tier A/B
-describe `validate:full` as a short always-on list plus path-triggered dbt builds. The job has
-no path rules and runs nine more steps than Tier A names (`seed_ci_raw_fixtures`, source
-freshness, full `dbt build`, the eligibility and export gates, assessments dry-run, pytest, the
-yfinance audit). `docs/project_context.md` §"every MR also runs" is a second partial list. One
-task: rewrite Tier A/B from `.gitlab-ci.yml` and delete the `project_context.md` copy.
 
 ## Atomic card export (MR !115, merged `f98f4025`)
 

@@ -30,7 +30,7 @@ Nothing in this path runs on a developer laptop in production.
 
 | Job | Trigger | Purpose |
 |-----|---------|---------|
-| [`validate:full`](../.gitlab-ci.yml) | Every MR + push to `main` | Fast integrity checks (Tier A/B) |
+| [`validate:full`](../.gitlab-ci.yml) | Every MR + push to `main` | Fast integrity checks (Tier A) |
 | [`data-pipeline`](../.gitlab-ci.yml) | 1st/15th 06:00 UTC pipeline schedule + manual web dispatch | Full ingest, dbt, completeness, export (Tier C) |
 
 ### Verify production pipeline
