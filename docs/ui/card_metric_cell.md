@@ -88,6 +88,12 @@ grouped and ordered by analytical lens, via `metrics_for_card()` /
 
 No hero/balance split; no side-by-side rows at any breakpoint.
 
+**Under the stack, financial-type cards only:** one caption line, `.ss-financial-caveat`
+(`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by `_financial_caveat_html()`), stating
+that the numbers above say nothing about capital adequacy. It belongs to the metrics
+section, not the health block, so it shows whether or not a health verdict is attached
+(issue #11). Other company types render nothing there.
+
 **Group heading spacing (`.ss-metric-group-heading` in `frontend/styles.py`):** the
 card face lays the stack out on a CSS grid (`.ss-metrics-grid { gap: 0.95rem }`), so a
 heading's own `margin` *adds to* that gap rather than replacing it. The card-face rule

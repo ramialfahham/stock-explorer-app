@@ -587,9 +587,9 @@ VERDICT_FALLBACK_READ = {
 # state, whether or not ai_read is present -- the LLM is only prompted, never required, to
 # state this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT,
 # "financial" company-type lens), so relying on the model to say it every time would silently
-# reintroduce the gap this exists to close. It renders inside card_ui.py's _health_block_html
-# though, so a card whose health block is withheld shows no caveat at all: a known gap, left
-# rather than rendering it separately (gitlab issue #11). Deliberately says "this company", not
+# reintroduce the gap this exists to close. It renders under the metrics (card_ui.py's
+# _financial_caveat_html), outside the health block, so withholding that block never withholds
+# the caveat (gitlab issue #11). Deliberately says "this company", not
 # "this bank" -- mirrors READ_SYSTEM_PROMPT's own already-reviewed "financial company" framing
 # rather than the bank-specific framing an earlier draft used, which was wrong for the non-bank
 # share of this sector (equity-analyst-reviewer finding). Deliberately states only what's

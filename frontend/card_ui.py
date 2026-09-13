@@ -280,14 +280,9 @@ def _health_block_html(card: dict) -> str:
     feedback); the fallback fills that gap under its own honest heading, never
     BLOCK_LABEL_ASSESSMENT's "AI-written", which the fallback text is not.
 
-    A financial-type card (the whole GICS "Financial Services" sector, not banks specifically)
-    carries FINANCIAL_CAPITAL_ADEQUACY_CAVEAT in every narrative state above -- the LLM is only
-    prompted, never required, to state this limit in its own prose
-    (scripts/assessment_rules.py's READ_SYSTEM_PROMPT), so relying on the model to say it every
-    time would silently reintroduce the gap this closes. But the caveat lives INSIDE this block
-    and so goes with it: the early return above drops the caveat along with the verdict, which
-    is a known gap the owner chose to leave rather than render the caveat separately
-    (gitlab issue #11).
+    FINANCIAL_CAPITAL_ADEQUACY_CAVEAT is NOT part of this block: it renders under the metrics
+    on every financial-type card (_financial_caveat_html), so withholding the block never
+    withholds the caveat (gitlab issue #11).
     """
     token = health_verdict_token(card)
     if not token:
@@ -298,11 +293,6 @@ def _health_block_html(card: dict) -> str:
         f'<span class="ss-verdict-label">{_esc(VERDICT_BADGE_LABEL[token])}</span>'
         f"</p>"
     )
-    caveat_html = ""
-    if (card.get("company_type") or DEFAULT_COMPANY_TYPE) == "financial":
-        caveat_html = (
-            f'<p class="ss-financial-caveat">{_esc(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)}</p>'
-        )
     # The badge comes FIRST, above the label, and that ordering is load-bearing: the
     # verdict is decided by fixed rules in scripts/assessment_rules.py, never by the model
     # (see that file's header, docs/data_contract.md and docs/north_star.md, which all say
@@ -312,8 +302,7 @@ def _health_block_html(card: dict) -> str:
     if read:
         label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
         # Folded to its first lines so the first metric value shares the phone screen with the
-        # verdict (owner composition call); the full read is one tap away, and the caveat sits
-        # outside the toggle so a financial card never hides it.
+        # verdict (owner composition call); the full read is one tap away.
         preview, folded = ai_read_preview(read)
         if folded:
             read_html = disclosure_html(
@@ -324,13 +313,24 @@ def _health_block_html(card: dict) -> str:
             )
         else:
             read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
-        return f'<div class="ss-health-block">{badge}{label}{read_html}{caveat_html}</div>'
+        return f'<div class="ss-health-block">{badge}{label}{read_html}</div>'
     fallback = VERDICT_FALLBACK_READ.get(token)
     if not fallback:
-        return f'<div class="ss-health-block">{badge}{caveat_html}</div>'
+        return f'<div class="ss-health-block">{badge}</div>'
     label = _block_label_html(BLOCK_LABEL_VERDICT_MEANING)
     fallback_html = f'<p class="ss-verdict-fallback">{_esc(fallback)}</p>'
-    return f'<div class="ss-health-block">{badge}{label}{fallback_html}{caveat_html}</div>'
+    return f'<div class="ss-health-block">{badge}{label}{fallback_html}</div>'
+
+
+def _financial_caveat_html(card: dict) -> str:
+    """FINANCIAL_CAPITAL_ADEQUACY_CAVEAT under the metrics of every financial-type card (the
+    whole GICS "Financial Services" sector, not banks specifically), in every state of the
+    health block including its absence. The LLM is only prompted, never required, to state
+    this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT), so the
+    card says it deterministically. "" for every other company type."""
+    if (card.get("company_type") or DEFAULT_COMPANY_TYPE) != "financial":
+        return ""
+    return f'<p class="ss-financial-caveat">{_esc(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)}</p>'
 
 
 def _metric_stack_with_groups(card: dict, cell_fn) -> str:
@@ -405,6 +405,7 @@ def build_card_html(
     metrics = (
         f'<section class="ss-card ss-card-metrics">'
         f'<div class="ss-metrics-grid ss-metrics-stack">{metrics_html}</div>'
+        f"{_financial_caveat_html(card)}"
         f"</section>"
     )
     return identity + metrics

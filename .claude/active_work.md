@@ -18,14 +18,13 @@ the detail._
 
 ## In flight
 
-**MR !136 open, awaiting owner merge** (`feat/assessments-target-dev`, issue #4 part 3,
-closes #4). `generate_assessments.py --target dev`; `dev-schema-check` runs it with an
-empty `ANTHROPIC_API_KEY` so the button writes verdicts only.
+**MR !137 open, awaiting owner merge** (`fix/financial-caveat-outside-health-block`,
+closes #11). The capital-adequacy caveat renders under the metric stack of every financial
+card, in every health-block state; owner chose this over a placeholder in the block.
 
-**Portfolio-grade queue, owner-ranked 2026-09-13, in order:** #4 (!136), then issue #11
-(caveat placement, one owner answer), then hygiene: close #10 and #12 on GitLab (fixed,
-still open), `sources.yml` twin, the `## Do NOT` rules, dead `task/contract.md` pointers,
-dated comments.
+**Portfolio-grade queue, owner-ranked 2026-09-13:** #11 (!137), then hygiene: close #10 and
+#12 on GitLab (fixed, still open), `sources.yml` twin, the `## Do NOT` rules, dead
+`task/contract.md` pointers, dated comments.
 
 **Stale twin, not touched (dbt file, its own reviewer):** `dbt_analytics/models/sources.yml:7`
 says "via `data_pipeline.yml`"; the job is `data-pipeline` in `.gitlab-ci.yml`.
@@ -60,7 +59,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !135 `sync_dbt_vars` exit status (#8). !134 CI
+**Merged this pass** (detail in each MR): !136 `generate_assessments --target dev` (#4).
+!135 `sync_dbt_vars` exit status (#8). !134 CI
 tiers doc. !133 owner wording for ROE and working capital; playground heading. !132 playgrounds
 follow the card face (#9 B1, the audit's last finding). !131 catalogue "banks" wording (#12).
 !130 fraction-scale `dividendYield` scaled on read (#10). !129 AI read labels match the card
@@ -226,21 +226,11 @@ Numbered defects and gaps:
 2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
    pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
    owner's call, not resolved.
-3. **The financial-type card's capital-adequacy blind spot, fixed and merged (MR !100).**
-   Previously survived only
-   as an LLM prompt instruction with no card-face caveat, so a card with a null `ai_read`
-   warned nobody. Fixed with a deterministic, owner-approved caveat ("These numbers do not
-   show whether this company holds enough capital to stay safe.") that shows on a
-   financial-type card in every `ai_read` state, since the prompt only asks the model to
-   mention the limit, never guarantees it does (`frontend/card_copy.py`'s
-   `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, rendered by `frontend/card_ui.py`). It renders inside
-   the health block, so a card whose block is withheld loses it too -- see the third owner
-   answer above, and issue #11. Two review rounds
-   caught the wording overclaiming what it excludes ("this bank" -- `company_type ==
-   "financial"` is the whole GICS Financial Services sector, not banks; "profitability only" /
-   "profitability and returns only" -- the card also shows a growth metric) before landing on
-   this final form, which states only the one invariant fact rather than enumerating card
-   contents that can drift independently of this string.
+3. **The financial-type card's capital-adequacy caveat: closed.** MR !100 made it a
+   deterministic card-face line (`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, owner wording); MR !137
+   moved it out of the health block so a withheld block no longer drops it (issue #11).
+   The wording states only the one invariant fact; "this bank" and "profitability only" were
+   both rejected in review as overclaims.
 4. **All 4 confirmed bugs from the Discover/Saved/Search UX findings fixed and merged**
    (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
    resurfacing on an unrelated later query, and the Search box / Discover filter both losing
