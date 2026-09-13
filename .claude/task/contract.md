@@ -3,30 +3,29 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: `docs/development_workflow.md` describes `validate:full` as a short always-on list
-  plus path-triggered dbt builds; the job has no path rules and runs nine more steps. Rewrite
-  the tier from `.gitlab-ci.yml`, delete the partial copy in `docs/project_context.md`, fix
-  the two twins that named a tier or a file that no longer exists.
+objective: `scripts/sync_dbt_vars.py` prints "already in sync" and exits 0 when
+  `dbt_project.yml` has no `active_market_codes` block to rewrite. Issue #8. A missing block
+  is a failure: say so on stderr, exit 1.
 
 scope_paths:
-  - docs/development_workflow.md
-  - docs/project_context.md
-  - docs/engineering_standards.md
-  - docs/operations_guide.md
+  - scripts/sync_dbt_vars.py
+  - tests/tooling/test_sync_dbt_vars.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - None. Tier names kept (A for `validate:full`, C for `data-pipeline`); Tier B removed
-    because nothing implements it. No CI change.
+  - None. The two gates that already catch the resulting state (`check_registry_var_sync.py`
+    in CI, `test_dbt_active_markets_match_the_registry`) are untouched; this fixes what the
+    operator is told.
 
 done_when:
-  - Tier A lists every `validate:full` step in the job's order, and every step listed is in
-    the job (reviewer diffs the list against `.gitlab-ci.yml`).
-  - No "Tier B", "path-triggered" or "CI extensions" text remains outside `docs/handover_*`.
-  - `docs/engineering_standards.md` names the `data-pipeline` job, not `data_pipeline.yml`;
-    `docs/operations_guide.md` says Tier A, not A/B.
-  - `scripts/check_context_budget.py` passes.
+  - `_update_dbt_project` raises `BlockNotFound` instead of returning False for a missing
+    block; `main` prints the reason on stderr and returns 1; nothing is written.
+  - Tests: missing block gives exit 1, stderr names the block, stdout never says "already in
+    sync", the file is untouched; an out-of-sync block is rewritten with exit 0; an in-sync
+    block is left alone with exit 0. The first test fails against HEAD's script.
+  - `pytest tests/ -q` green.
 
-impact_map: Docs only.
+impact_map: One script's exit status on one error path; `docs/data_contract.md`'s activation
+  checklist step 3 still holds (the script reads `ingest_active` and writes `dbt_project.yml`).

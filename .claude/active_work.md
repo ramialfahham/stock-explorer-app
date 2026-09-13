@@ -18,9 +18,14 @@ the detail._
 
 ## In flight
 
-**MR !134 open, awaiting owner merge** (`docs/ci-tiers-from-gitlab-ci`, docs only).
-`docs/development_workflow.md` Tier A lists every `validate:full` step in the job's order;
-Tier B removed (nothing implements it); the `project_context.md` copy deleted.
+**MR !135 open, awaiting owner merge** (`fix/sync-dbt-vars-exit-status`, issue #8).
+`sync_dbt_vars.py` exits 1 with "nothing written" when `dbt_project.yml` has no
+`active_market_codes` block, instead of "already in sync" and exit 0.
+
+**Portfolio-grade queue, owner-ranked 2026-09-13, in order:** #8 (!135), then issue #4 part
+3 (`generate_assessments.py --target dev`), then issue #11 (caveat placement, one owner
+answer), then hygiene: close #10 and #12 on GitLab (fixed, still open), `sources.yml` twin,
+the `## Do NOT` rules, dead `task/contract.md` pointers, dated comments.
 
 **Stale twin, not touched (dbt file, its own reviewer):** `dbt_analytics/models/sources.yml:7`
 says "via `data_pipeline.yml`"; the job is `data-pipeline` in `.gitlab-ci.yml`.
@@ -55,7 +60,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass.** !133 (`fix/owner-wording-roe-wc-playground-heading`): owner wording
+**Merged this pass.** !134 (`docs/ci-tiers-from-gitlab-ci`): Tier A lists every
+`validate:full` step; Tier B removed; the `project_context.md` copy deleted. !133 (`fix/owner-wording-roe-wc-playground-heading`): owner wording
 for `statement_roe_pct` and `working_capital`; playground tabs without the repeated heading.
 !132 (`fix/learn-playgrounds-follow-card`, issue #9 B1, the audit's
 last finding): playgrounds render one tab per metric the face shows, labelled as the face,
