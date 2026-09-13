@@ -4,17 +4,18 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: ab3a907f5eac302de87063c618df49c7c891bbe1e38347a344e403e4186ede2b
+diff_sha256: f1b3ecbe6c27ab3663aefbc4a98c8658f5cc2f891f13bf2e385d24b349942349
 
-Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`scripts/*`, `tests/*`).
-One round.
+Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`scripts/*`, `tests/*`,
+`.gitlab-ci.yml`). One round.
 
 ## What shipped
 
-Issue #8. `scripts/sync_dbt_vars.py` raises `BlockNotFound` when `dbt_project.yml` has no
-`active_market_codes` block; `main` prints the reason and "nothing written" on stderr and
-exits 1, where it printed "already in sync" and exited 0. Three tests over temp files; the
-missing-block test fails against the old script. 689 tests.
+Issue #4 part 3. `generate_assessments.py --target {prod,dev}`, wired as the export is
+(`SyncClientOptions(schema=...)`); `dev-schema-check` runs it after the export with
+`ANTHROPIC_API_KEY=` empty so the manual button writes verdicts only; docs say three
+writers. Four tests; four mutants (no options, `ClientOptions`, `schema = args.target`,
+`is not None` on the key) each fail one. 693 tests.
 
 ## scope-auditor
 
@@ -26,5 +27,7 @@ VERDICT: PASS
 
 ## Owner decisions
 
-None. No caller chains on the script's exit status (`.gitlab-ci.yml` does not run it;
-`check_registry_var_sync.py` only names it).
+The empty-key step applies the owner's zero-spend rule, given in chat and until now written
+nowhere durable; the handover commit records it under `## Do NOT`. cto confirmed the
+protected `ANTHROPIC_API_KEY` does reach `dev-schema-check`, so the prefix is what prevents
+spend, not a no-op.
