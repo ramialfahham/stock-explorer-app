@@ -4,30 +4,21 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 9b947e3ec4dd7b594eb59dac693a29044dca046181fea23dcbed8349fcd36f8a
+diff_sha256: f9e3f4afd9653f67207d4fc370920cc672d54cb30cb880db82c67c6882caf638
 
-Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `scripts/*`,
-`tests/*`, `requirements*.txt`). Three rounds.
+Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `tests/*`).
+Two rounds.
 
 ## What shipped
 
-The black screen on load. Header before the storage read and the deck fetch, with a
-"Loading cards" line; a splash written into Streamlit's index.html at deploy time so the
-first byte shows the product; the saved list moved from the streamlit_extras localStorage
-component to cookies Streamlit reads on the first run, written by a components.html script
-only in a run that saved or cleared, with a one-time verified migration of a legacy
-localStorage list. streamlit-extras removed; Streamlit telemetry off. Verified live on the
-local server: a save writes `ss_saved_0`, a fresh session reads "1 saved", no iframe on a
-plain load. 706 tests.
+`?timing=1` prints the page's own stage clock: entry-script start, main start, css, header,
+cookies, deck, page, run total, process age. One caption, only with the flag. 710 tests.
 
 ## Round 1
 
-cto: a crafted cookie (12-digit or 5000-digit epoch) raised out of the first run and left
-that browser on a traceback for the cookie's lifetime; the migration removed localStorage
-before checking the cookie landed and wrote one unchunked cookie (over about 140 saves,
-silent loss); nothing tested that `flush_storage_writes()` fires after a save. All three
-fixed and mutation-proven. scope-auditor: `docs/supabase_setup.md` still said localStorage;
-the Render build step is a new mechanism and is now recorded as one with its provenance.
+cto: the marks were module globals shared by every session's thread, so a concurrent visitor
+could corrupt the reading; moved into `st.session_state`, the entry mark consumed by the run
+that follows it. Two tests added.
 
 ## scope-auditor
 
@@ -39,6 +30,5 @@ VERDICT: PASS
 
 ## Owner decisions
 
-Cookies over a lighter component (A, chat). Open for the owner: the two new strings
-("Loading cards"; splash "Stock Explorer" / "Loading"), the migration (unrequested, kept so
-no saved list vanishes), the build step itself (proposed as step 2 before "Now solve it").
+The switch was proposed and approved in chat; keep or remove after the measurement is the
+owner's call.
