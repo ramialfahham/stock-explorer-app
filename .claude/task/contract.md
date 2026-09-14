@@ -3,30 +3,28 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: On the live site a return visit spends 2.1 s between Streamlit's JavaScript being
-  ready and the script starting, and 2.8 s between the script starting and its first
-  element, the header; locally both gaps are under 0.3 s. Render's logs are not readable
-  from here. `?timing=1` makes the page print its own stage clock so the gap can be named.
+objective: The live site's 2.8 s from script start to first element, named with the
+  `?timing=1` probe: our script runs in 26 to 102 ms warm; the gap is Streamlit's source
+  watcher, which after every new session scans every loaded module on the thread that
+  flushes messages to the browser (`LocalSourcesWatcher.update_watched_modules`, 3.0 s on
+  this machine for 2,097 modules). Turn the watcher off in production.
 
 scope_paths:
-  - frontend/timing.py
-  - frontend/app.py
-  - streamlit_app.py
-  - tests/frontend/test_timing.py
+  - render.yaml
+  - docs/streamlit_deploy.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - A diagnostic switch in production, visible to anyone who adds `?timing=1`: one caption
-    line of millisecond gaps and the process age, no data. Owner said go in chat to this
-    exact proposal; remove or keep after the measurement is the owner's call.
+  - Production only, via the Render start command (`--server.fileWatcherType none`); the
+    local launcher keeps live reload. The watcher serves editing; nothing changes on disk on
+    Render. No cost, no dependency, one flag on an existing command; the why sits beside it.
 
 done_when:
-  - `streamlit_app.py` marks when the entry script starts (before `import app`);
-    `app.main()` marks css, header, cookies, deck, page; the caption renders only with the
-    flag. Unit test over the report and the flag gate; live check locally: the caption shows
-    with the flag and not without.
-  - `pytest tests/ -q` green.
+  - `render.yaml`'s startCommand carries the flag; the file parses; the quoted command in
+    `docs/streamlit_deploy.md` matches it.
+  - Proven locally before the change: same server, same browser probe, full list at 4.5 to
+    5.4 s with the watcher, 1.4 s without. Live numbers after the deploy go in the handover.
 
-impact_map: Frontend only; a few perf_counter calls per run without the flag.
+impact_map: Deployed process only. Local dev unchanged.

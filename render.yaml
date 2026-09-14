@@ -5,7 +5,11 @@ services:
     plan: free
     branch: main
     buildCommand: pip install -r frontend/requirements.txt && python scripts/patch_streamlit_splash.py
-    startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+    # fileWatcherType none: after every new session Streamlit's source watcher scans every
+    # loaded module (about 2,000 with pandas, duckdb and yfinance) on the thread that sends
+    # messages to the browser, about 3 s during which nothing paints. It exists for live
+    # editing; nothing changes on disk in production.
+    startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.fileWatcherType none
     envVars:
       - key: SUPABASE_URL
         sync: false
