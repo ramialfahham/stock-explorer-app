@@ -15,8 +15,8 @@ the detail._
 
 ## In flight
 
-**MR open, branch `ux/ai-read-bullets-and-saved-scope` (2026-09-14), awaiting push/MR/owner
-review.** Two card-face/UX fixes from a live screenshot: (1) the "What the numbers say ·
+**MR !145 open (2026-09-14), branch `ux/ai-read-bullets-and-saved-scope`, awaiting owner
+review/merge.** Two card-face/UX fixes from a live screenshot: (1) the "What the numbers say ·
 AI-written" block no longer folds behind Read more/Show less -- always-visible bullet list,
 one sentence per `<li>`, via `card_copy.py`'s new `ai_read_sentences()` and
 `card_ui.py`'s `_bullets_html()`. (2) "N saved" is now Saved-tab-only (owner decision,
