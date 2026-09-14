@@ -4,7 +4,7 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 2457bb4ad52c9bc7c89e08987d7dfa70eb4b8efa8d16f3052ac494d0609cd9e3
+diff_sha256: 79c169e202fda14d732c4d6343f694ca96fe7dc9c25107f623dcf24b83485c07
 
 Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`,
 `dbt_analytics/*.yml`), cto-reviewer (`frontend/*`, `scripts/*`, `tests/*`,
@@ -49,9 +49,19 @@ VERDICT: PASS
 
 VERDICT: PASS
 
+## Second commit on this branch (three reviewers, three rounds)
+
+`net_debt_to_ebitda` stays on Yahoo figures both sides, owner decision after a measurement
+(14 live tickers; statement-line version differed by a median 0.5 turns, because Yahoo's
+`totalCash` includes short-term investments and the landed statement cash does not). Written
+once, in the catalogue row's `calculation`; the data contract's two mentions are pointers.
+Round 1: scope-auditor found the contract edits had not applied (CRLF); applied. Round 2:
+equity-analyst found "one period" contradicted the row's own `description` ("periods may
+differ"); owner dropped it. Round 3: PASS from scope-auditor, analytics-engineer and
+equity-analyst at the hash above.
+
 ## Owner decisions
 
-None taken. Surfaced: `net_debt_to_ebitda`'s numerator reads `info_total_debt` /
-`info_total_cash` where `stmt_total_debt` / `stmt_cash_and_equivalents` are landed; moving it
-changes a shipped number. Options given to the owner in chat: leave and record as a decision;
-switch; measure the difference on production data first (recommended).
+The `calculation` sentence, owner-approved, quoted in the contract. Recorded for a later
+task: the data contract's formula table duplicates the catalogue for every metric, the same
+drift risk; generate it from the seed, or delete it.
