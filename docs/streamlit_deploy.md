@@ -17,8 +17,8 @@ connection and the two secrets need a human.
 2. **Connect GitLab** — Account Settings → Connected Accounts → GitLab OAuth, authorize access
    to `rami.al-fahham/stock-swipe-app`.
 3. **New → Blueprint** → select the repo. Render reads `render.yaml`: Python runtime,
-   `.python-version` (3.11), build command (`pip install -r frontend/requirements.txt`), start
-   command (`streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0`), free
+   `.python-version` (3.11), build command (`pip install -r frontend/requirements.txt && python scripts/patch_streamlit_splash.py`), start
+   command (`streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.fileWatcherType none`), free
    plan, auto-deploy on every push to `main`.
 4. **Secrets** — Render prompts for the two `sync: false` env vars declared in `render.yaml`,
    same values as [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example):
