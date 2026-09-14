@@ -9,6 +9,10 @@ objective: Two card-face/UX fixes flagged by the owner from a live screenshot. (
   sentence per bullet, nothing folded. (2) The "N saved" count currently renders on every
   tab's list header (Discover, Saved, Search) and again on the back-row when a card is open
   on Discover/Saved -- owner decided (2026-09-14) it should show on the Saved tab only.
+  Addendum, same session: removing the fold left `docs/north_star.md`'s "first metric value
+  above the fold" mobile success check contradicted by the now-always-full read -- owner
+  decided (2026-09-14) to retire that check rather than re-guard it; swept every doc/comment
+  that cited it.
 
 scope_paths:
   - frontend/card_copy.py
@@ -22,6 +26,9 @@ scope_paths:
   - docs/north_star.md
   - docs/ui/disclosure_pattern.md
   - docs/ui/discover_header.md
+  - docs/working_agreement.md
+  - docs/product_roadmap_2026-06.md
+  - tests/frontend/test_app.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
@@ -29,6 +36,8 @@ scope_paths:
 decisions_reserved:
   - "N saved" placement: owner chose Saved-tab-only (2026-09-14), over keeping it on
     Discover+Saved or de-duplicating it to once-per-screen on all three tabs.
+  - "First metric value above the fold" mobile success check: owner retired it (2026-09-14)
+    rather than re-guard it against the now-unfolded AI read.
 
 done_when:
   - `_health_block_html` renders the AI-written read and the deterministic fallback through
@@ -46,6 +55,8 @@ done_when:
     renders each of the three tabs and asserts "saved" appears in the Saved tab's output and
     not in Discover's or Search's).
   - `pytest tests/ -q` green.
+  - No remaining reference to "first metric value above the fold" (or the equivalent claim)
+    as an active, tracked check anywhere in the repo (docs or code comments) -- grep confirms.
 
 impact_map: Presentation-only in the Streamlit frontend -- no data contract, pipeline, or
   Supabase schema change. No new dependency, no cost.

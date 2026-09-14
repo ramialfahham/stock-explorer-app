@@ -103,15 +103,13 @@ Three tiers — never all expanded at once on first load:
 peers exist in the sector within that market, **hide benchmark UI entirely** — no orphan
 “unavailable” line on the card face.
 
-**Success check (mobile):** user can read company + sector + health verdict without scrolling,
-with at least the first metric's value visible above the fold; Save remains reachable. On
-Discover and Saved the header drops to the brand alone while a card is open, which still
-holds ([`ui/discover_header.md`](ui/discover_header.md)). The AI-written read no longer folds
-to its first lines -- it renders always-visible as a bullet list ([`ui/disclosure_pattern.md`](ui/disclosure_pattern.md))
--- so on a card whose read runs to three or more sentences the first metric value can now sit
-below the fold at 375-480px; not re-guarded after the owner's 2026-09-14 reversal of the fold
-(full legibility over the "first metric above the fold" check). The 480px checklist is in
-[`ui/card_metric_cell.md`](ui/card_metric_cell.md).
+**Success check (mobile):** user can read company + sector + health verdict without
+scrolling; Save remains reachable. On Discover and Saved the header drops to the brand alone
+while a card is open ([`ui/discover_header.md`](ui/discover_header.md)). The AI-written read
+renders always-visible as a bullet list, nothing folded
+([`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)) -- full legibility over keeping the
+first metric value above the fold (§6), which this app does not track as a success check.
+The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 
 ---
 

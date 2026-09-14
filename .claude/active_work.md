@@ -24,11 +24,10 @@ one sentence per `<li>`, via `card_copy.py`'s new `ai_read_sentences()` and
 Both reviewers passed after two rounds (scope-auditor caught a sentence-split regex bug on
 abbreviations like "U.S."; cto-reviewer caught a stale function name in
 `docs/ui/disclosure_pattern.md`) -- detail in this branch's own `contract.md`/`review.md`.
-**Flagging, not blocking:** removing the fold means a card with a 3+ sentence read can now
-push the first metric value below the fold on a phone, which used to be guarded by the fold
-itself (`docs/north_star.md`'s mobile success check); not re-guarded, owner traded that off
-deliberately for full legibility, but worth a real look on a live long-read card once
-deployed if it reads as a regression in practice.
+**Owner decision, 2026-09-14, same session:** "first metric value above the fold" is retired
+as a tracked mobile success check (it was already contradicted by the read no longer folding);
+`docs/north_star.md`, `docs/working_agreement.md`'s 480px smoke item, `docs/ui/discover_header.md`,
+and two stale code-comment citations in `frontend/styles.py`/`frontend/app.py` updated to match.
 
 **Nothing else in flight.** Load-time numbers below are final for this pass.
 

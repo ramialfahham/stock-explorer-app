@@ -245,9 +245,8 @@ def _clear_saved_session() -> None:
 
 def brand_header_html(*, compact: bool = False) -> str:
     """compact: brand only, while a card is open on Discover or Saved. The tagline and
-    disclosure stay on every list view, where each visit starts; on the card view they are the
-    header's share of what pushes the first metric value below the fold (owner composition
-    call, docs/ui/discover_header.md)."""
+    disclosure stay on every list view, where each visit starts; on the card view they drop
+    to save vertical space (owner composition call, docs/ui/discover_header.md)."""
     if compact:
         return (
             '<div class="ss-brand-header ss-brand-header--compact">'

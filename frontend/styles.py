@@ -277,10 +277,10 @@ section[data-testid="stSidebar"] {
    survives without adding a new colour to the palette. */
 .ss-health-block {
     /* Deliberately tight. Two new labels plus this panel's own padding cost real vertical
-       space on the card face, and docs/working_agreement.md's UX gate wants the first
-       metric value above the fold at 480px wide. Every value here was trimmed to the
-       smallest that still reads as a separate panel; do not pad this out without
-       re-running that check. */
+       space on the card face -- every value here was trimmed to the smallest that still
+       reads as a separate panel. (The first-metric-above-the-fold UX gate this used to cite
+       is retired, 2026-09-14, since the AI-written read now always renders in full; kept
+       tight anyway on its own merits.) */
     margin: 0 0 var(--ss-space-2);
     padding: var(--ss-space-1) var(--ss-space-2) var(--ss-space-2);
     background: var(--ss-bg);

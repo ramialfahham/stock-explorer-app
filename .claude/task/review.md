@@ -4,10 +4,10 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 8856beac593c6146fce4f40f41627647c88a2ba5d3954d8455bd176e33fdc5ed
+diff_sha256: 40416f1f359668f4f8ccc3484fbcc51e6221f1cc0e78d4fce980ec641d62857a
 
 Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `tests/*`).
-Two rounds.
+Two rounds on the original change; three more on a same-session addendum (below).
 
 ## What shipped
 
@@ -23,8 +23,17 @@ drops the " · N saved" suffix, Discover's card-open back row shows no count at 
 Search never renders a saved-count line. `frontend/app.py`'s `_render_scope_stats` split into
 `_render_discover_scope_stats` / `_render_saved_scope_stats`; `_render_back_row` takes
 `saved_count: int | None`. docs/north_star.md, docs/ui/disclosure_pattern.md and
-docs/ui/discover_header.md updated to match, including an honest note that a long AI read can
-now push the first metric below the fold on a phone (not re-guarded).
+docs/ui/discover_header.md updated to match.
+
+**Addendum, same session:** removing the fold left `docs/north_star.md`'s "first metric value
+above the fold" mobile success check contradicted by the now-always-full read. Owner decided
+(2026-09-14) to retire that check entirely rather than re-guard it. Swept:
+`docs/north_star.md`, `docs/working_agreement.md`'s "480px smoke" item,
+`docs/ui/discover_header.md` (two locations), `docs/ui/disclosure_pattern.md`,
+`docs/product_roadmap_2026-06.md`'s live "Verification checklist" (its dated "Success
+criteria" table left alone -- a point-in-time snapshot, not a living check),
+`tests/frontend/test_app.py`'s docstring, and two code comments (`frontend/styles.py`,
+`frontend/app.py`).
 
 718 tests (was 717; net +1 after replacing four fold-behavior tests with bullet-list ones and
 adding sentence-split and Saved-tab-only-placement coverage).
@@ -48,6 +57,39 @@ checklist (scope_paths, decisions_reserved, done_when, doc sync). PASS.
 
 cto-reviewer: re-verified the doc fix, grepped the repo for any other stale reference to the
 invented function name (none found), reconfirmed `pytest tests/ -q` green. PASS.
+
+## Round 3 (addendum)
+
+scope-auditor: PASS -- verified the retirement sweep's scope_paths and that the affected
+doc/comment locations no longer assert the retired check as active.
+
+cto-reviewer: FAIL. `docs/product_roadmap_2026-06.md`'s live "Verification checklist" item
+still asserted the retired check (missed -- distinct from that file's dated, frozen "Success
+criteria" table, which was correctly left alone). `tests/frontend/test_app.py`'s docstring
+made the equivalent stale claim. `docs/working_agreement.md`'s edited "480px smoke" line
+carried two em-dash characters forward from the pre-edit text -- this repo's "no em-dash on
+any line you add or edit" rule applies even to characters not newly typed once the line is
+touched. All three fixed.
+
+## Round 4 (addendum)
+
+cto-reviewer: FAIL. The round-3 fix to `docs/working_agreement.md` had appended a dated
+narrative parenthetical -- `(owner decision, 2026-09-14, made when the AI-written read
+stopped folding)` -- to a durable checklist file: the exact anti-pattern this repo's own
+working agreement (§2) prohibits, and the one MR !115 already burned six of eleven review
+rounds on. Swept every durable doc touched this session for the same pattern (not just the
+flagged line): `docs/north_star.md`, `docs/ui/discover_header.md` (two locations),
+`docs/ui/disclosure_pattern.md` reworded to drop the date, using this repo's existing `(§6)`
+decision-rights shorthand instead -- but the actual edit to `docs/working_agreement.md`
+itself was never applied in that pass, a real miss caught only by re-reading the staged diff
+directly in the next round, not by trusting the stated intent.
+
+scope-auditor: PASS (parallel round, before the working_agreement.md miss was caught).
+
+## Round 5 (addendum, `docs/working_agreement.md` actually fixed this time)
+
+scope-auditor: PASS. cto-reviewer: PASS -- re-read the staged diff directly, confirmed the
+dated parenthetical is gone and the other four locations are still correctly fixed.
 
 ## scope-auditor
 

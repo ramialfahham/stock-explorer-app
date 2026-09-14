@@ -30,9 +30,7 @@ Helper: `disclosure_html(preview, full_body_html, more_label=..., less_label=...
 **The AI-written read does NOT use this pattern.** It renders as an always-visible bullet
 list (`_bullets_html` in `frontend/card_ui.py`, one `<li>` per sentence, `.ss-ai-read-list` /
 `.ss-verdict-fallback-list` in `frontend/styles.py`) -- no preview, no toggle, nothing folded.
-Reversed from an earlier fold (owner decision, 2026-09-14): the fold traded full legibility
-for screen space, and the owner judged the wall-of-text-behind-a-tap tradeoff wrong the other
-way.
+Full legibility over the vertical space a fold would save (§6).
 
 **Company description (Discover/Saved card) uses this pattern directly on the card face**
 (`frontend/card_ui.py`'s `_company_summary_html`) — a real reversal of the Slice 6c
