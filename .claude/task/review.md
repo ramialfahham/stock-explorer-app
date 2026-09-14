@@ -4,31 +4,33 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 39c222b8e1b1c1e0a217214c6c32b3d6d13a8cace2b585c1702a44b194e283a9
+diff_sha256: a0f105b105a21159557fb45d3533646fcda76658c1497b1b8fb6338bce71630f
 
-One reviewer, by routing: scope-auditor (`always`; `render.yaml` and `docs/*` route nowhere
-else). Two rounds.
+Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `tests/*`).
+Three rounds.
 
 ## What shipped
 
-`--server.fileWatcherType none` on the Render start command, with the why beside it: after
-every new session Streamlit's source watcher scans every loaded module on the thread that
-flushes messages to the browser, about 3 s during which nothing paints. Proven locally: same
-server, full list at 4.5 to 5.4 s with the watcher, 1.4 s without. The deploy doc's quoted
-build and start commands match render.yaml again.
+`import yfinance` moves from the top of `frontend/saved_news.py` into `_fetch_news`, the only
+user; importing `app` no longer loads yfinance, pandas or numpy (subprocess test, fails
+against HEAD). Measured here, best of five: 6.72 s and 2,097 modules before, 5.26 s and
+1,572 after; cto reproduced 6.72 / 5.19 and the module counts. 712 tests.
 
-## Round 1
+## Rounds 1 and 2
 
-scope-auditor confirmed the three claims in the comment against Streamlit's source
-(`app_session.py` runs `update_watched_modules` on the event loop after each run; it walks
-`sys.modules` on a new session's first run; `none` skips creating the watcher) and found
-`docs/streamlit_deploy.md` quoting the old start command; the build command on the same
-line had been stale since !140. Both fixed.
+scope-auditor: the comment stated a Render number measured only here; number removed. cto:
+with the import moved, deleting it would be a NameError swallowed by `fetch_saved_news`'s
+except and no test ran that body; a unit test now calls `_fetch_news` against a fake
+yfinance in `sys.modules`, mutation-proven.
 
 ## scope-auditor
 
 VERDICT: PASS
 
+## cto-reviewer
+
+VERDICT: PASS
+
 ## Owner decisions
 
-None: a flag on an existing command, production only.
+A over B (lazy import before a faster host), in chat.
