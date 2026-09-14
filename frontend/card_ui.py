@@ -353,8 +353,9 @@ def _metric_stack_with_groups(card: dict, cell_fn) -> str:
 def _metric_cell_html(card: dict, metric: str) -> str:
     label = metric_label(metric, card)
     value = format_metric_value(metric, card.get(metric), card.get("currency"))
-    gloss = metric_gloss(metric, card.get(metric), card)
-    range_html = _metric_range_html(card, metric) or _metric_range_unavailable_html()
+    range_html = _metric_range_html(card, metric)
+    gloss = metric_gloss(metric, card.get(metric), card, benchmarked=bool(range_html))
+    range_html = range_html or _metric_range_unavailable_html()
     gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'
     value_row = (
         f'<p class="ss-metric-value-row">'

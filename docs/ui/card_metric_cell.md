@@ -161,6 +161,12 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   did, for exactly the metric (debt) `north_star.md`'s "Do not use naive... rankings"
   line already warns about. The cue being universal now (rather
   than mark-gated) is a direct extension of that same reasoning to every metric.
+- **When the mark IS drawn**, the gloss also names its population: `", vs sector"`
+  inserted before the direction cue (`metric_gloss(..., benchmarked=True)`, the caller
+  passes whether `_metric_range_html()` actually rendered for this metric+card). The
+  sector is otherwise only named once, higher up the card ("Industrials (74
+  companies)"); a reader who scrolls straight to a metric had no cue the min/median/max
+  bar was a sector comparison and not, say, this company's own history.
 
 ---
 

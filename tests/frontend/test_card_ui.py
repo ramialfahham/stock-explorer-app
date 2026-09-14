@@ -192,10 +192,20 @@ def test_range_mark_direction_cue_matches_higher_better_metric() -> None:
     their own "Lower is better." cue now that the rule is universal -- see
     test_card_copy.py -- so this checks the metric's own composed gloss line, not
     whole-page absence of that phrase.)"""
-    card = _card_with_benchmark_range()  # ebit_margin_pct, higher_better
+    card = _card_with_benchmark_range()  # ebit_margin_pct, higher_better, benchmarked
     html = build_card_html(card)
-    assert "Operating profit as share of sales (TTM). Higher is better." in html
-    assert "Operating profit as share of sales (TTM). Lower is better." not in html
+    assert "Operating profit as share of sales (TTM), vs sector. Higher is better." in html
+    assert "Operating profit as share of sales (TTM), vs sector. Lower is better." not in html
+
+
+def test_gloss_names_the_sector_only_when_the_range_mark_is_actually_drawn() -> None:
+    """Same metric, same card shape, only the peer count differs -- proves "vs sector" is
+    tied to whether the mark actually rendered, not to the metric being benchmarkable in
+    the abstract (the peer-count gate is per-card, not per-metric)."""
+    below = _card_with_benchmark_range(sector_peer_count=7)
+    above = _card_with_benchmark_range(sector_peer_count=20)
+    assert "vs sector" not in build_card_html(below)
+    assert "Operating profit as share of sales (TTM), vs sector. Higher is better." in build_card_html(above)
 
 
 def test_range_mark_direction_cue_suppressed_for_net_cash() -> None:
@@ -249,6 +259,7 @@ def test_range_mark_direction_cue_shown_even_when_range_mark_itself_unavailable(
     html = build_card_html(card)
     assert "ss-metric-range-marker" not in html  # no mark below the peer threshold...
     assert "Lower is better." in html  # ...but the cue still shows
+    assert "vs sector" not in html  # no mark drawn -> gloss doesn't claim a sector compare
 
 
 def test_build_card_omits_range_mark_below_peer_threshold() -> None:
