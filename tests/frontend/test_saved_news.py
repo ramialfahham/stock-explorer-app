@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import sys
+import types
+
+import saved_news
 from saved_news import (  # noqa: E402
     NewsHeadline,
     headline_item_html,
@@ -97,3 +101,25 @@ def test_headline_item_html_short_title_no_disclosure() -> None:
     )
     assert "Read full headline" not in html_out
     assert "Short title" in html_out
+
+
+def test_fetch_news_imports_yfinance_on_call_and_returns_the_raw_items(monkeypatch) -> None:
+    """yfinance is imported inside _fetch_news, not with the app. This runs the real body
+    against a fake yfinance in sys.modules, so a deleted or misspelt in-function import
+    fails here instead of being swallowed by fetch_saved_news's except into "Could not
+    load headlines"."""
+    seen: list[str] = []
+
+    class _Ticker:
+        def __init__(self, symbol: str) -> None:
+            seen.append(symbol)
+            self.news = [{"id": str(i)} for i in range(10)]
+
+    fake = types.ModuleType("yfinance")
+    fake.Ticker = _Ticker
+    monkeypatch.setitem(sys.modules, "yfinance", fake)
+    saved_news._fetch_news.clear()
+
+    items = saved_news._fetch_news("AAPL")
+    assert seen == ["AAPL"]
+    assert len(items) == saved_news._MAX_HEADLINES * 2

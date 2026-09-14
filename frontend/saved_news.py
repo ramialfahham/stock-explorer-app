@@ -6,7 +6,6 @@ import html
 from dataclasses import dataclass
 
 import streamlit as st
-import yfinance as yf
 
 from disclosure_html import disclosure_html, is_truncated, preview_words
 from live_quote import yfinance_symbol
@@ -141,6 +140,10 @@ def headlines_block_html(headlines: list[NewsHeadline]) -> str:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _fetch_news(symbol: str) -> list[dict]:
+    # Imported here, not at module level: yfinance brings pandas and numpy with it, a large
+    # share of the app's import time, and only the Saved tab's headlines use it.
+    import yfinance as yf  # noqa: PLC0415
+
     ticker = yf.Ticker(symbol)
     raw = ticker.news or []
     return raw[: _MAX_HEADLINES * 2]
