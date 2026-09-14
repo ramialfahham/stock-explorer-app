@@ -12,6 +12,7 @@ from card_copy import (  # noqa: E402
     METRIC_ANALOGY,
     METRIC_LEARN,
     STALE_SNAPSHOT_DAYS,
+    ai_read_sentences,
     benchmark_range,
     business_summary_is_truncated,
     business_summary_preview,
@@ -160,6 +161,43 @@ def test_truncate_words_adds_ellipsis() -> None:
     assert truncated is True
     assert preview.endswith("…")
     assert len(preview.split()) == 20
+
+
+def test_ai_read_sentences_splits_one_bullet_per_sentence() -> None:
+    text = "Revenue grew 6.5%. Margins held steady. Debt stayed low."
+    assert ai_read_sentences(text) == (
+        "Revenue grew 6.5%.",
+        "Margins held steady.",
+        "Debt stayed low.",
+    )
+
+
+def test_ai_read_sentences_does_not_split_on_a_decimal_point() -> None:
+    text = "Net debt to EBITDA is 9.44 times, which is high for this sector."
+    assert ai_read_sentences(text) == (text,)
+
+
+def test_ai_read_sentences_does_not_split_inside_an_abbreviation() -> None:
+    """scope-auditor's round-1 finding: a plain whitespace-after-terminator split breaks
+    "U.S. markets rose" into "U" / "S. markets rose" -- the text after the abbreviation's own
+    period is not capitalized, so the real sentence boundary (before "Margins") is the only
+    one that should split."""
+    text = "This is common in the U.S. markets rose this year. Margins held steady."
+    assert ai_read_sentences(text) == (
+        "This is common in the U.S. markets rose this year.",
+        "Margins held steady.",
+    )
+
+
+def test_ai_read_sentences_single_sentence_is_one_bullet() -> None:
+    assert ai_read_sentences("Turns sales into profit at a healthy rate.") == (
+        "Turns sales into profit at a healthy rate.",
+    )
+
+
+def test_ai_read_sentences_empty_text_is_no_bullets() -> None:
+    assert ai_read_sentences("") == ()
+    assert ai_read_sentences("   ") == ()
 
 
 def test_business_summary_preview_uses_original_wording() -> None:

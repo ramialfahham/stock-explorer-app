@@ -323,23 +323,41 @@ section[data-testid="stSidebar"] {
     padding: var(--ss-space-1) var(--ss-space-2);
     margin: 0 0 0.3rem;
 }
-/* .ss-verdict-fallback (frontend/card_ui.py's deterministic "What the verdict means"
-   one-liner, shown when ai_read is absent) styled identically to .ss-ai-read on purpose: it
-   should read as a natural, equally-weighted piece of card content, not visually flagged as
-   lesser than the AI-written narrative. Kept as a separate class, not reused, so the two are
-   distinguishable in the DOM and in tests. */
-.ss-health-block .ss-ai-read,
-.ss-health-block .ss-verdict-fallback {
+/* .ss-ai-read-list (AI-written read) and .ss-verdict-fallback-list (the deterministic "What
+   the verdict means" one-liner, shown when ai_read is absent) -- rendered through the same
+   `_bullets_html()` markup in frontend/card_ui.py, one `<li>` per sentence, always fully
+   visible, no fold. Two classes, styled identically on purpose (the fallback should read as
+   a natural, equally-weighted piece of card content, not visually flagged as lesser than the
+   AI-written narrative) but kept separate so the two stay distinguishable in the DOM and in
+   tests -- same reasoning as the plain-paragraph rule this replaced, just as a list now
+   instead of a `<p>`. */
+.ss-health-block .ss-ai-read-list,
+.ss-health-block .ss-verdict-fallback-list {
+    margin: 0 0 0.28rem;
+    padding-left: 1.1rem;
+    list-style: disc;
+}
+.ss-health-block .ss-ai-read-list li {
     font-size: var(--ss-body);
     color: var(--ss-text);
-    margin: 0 0 0.28rem;
     line-height: 1.45;
+    margin: 0 0 0.2rem;
+}
+.ss-health-block .ss-verdict-fallback-list li {
+    font-size: var(--ss-body);
+    color: var(--ss-text);
+    line-height: 1.45;
+    margin: 0 0 0.2rem;
+}
+.ss-health-block .ss-ai-read-list li:last-child,
+.ss-health-block .ss-verdict-fallback-list li:last-child {
+    margin-bottom: 0;
 }
 /* .ss-financial-caveat (frontend/card_ui.py, financial-type cards only): sits under the
    metric stack, outside the health block, so it shows whether or not that block does. A
    caveat about the card, not part of the narrative, so it gets the muted caption treatment
    already used for other secondary/qualifying card text (.ss-metric-sources,
-   .ss-benchmark-unavailable), not the equal weight .ss-ai-read/.ss-verdict-fallback share. */
+   .ss-benchmark-unavailable), not the equal weight .ss-ai-read-list bullets share. */
 .ss-card-metrics .ss-financial-caveat {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
@@ -600,7 +618,7 @@ section[data-testid="stSidebar"] {
    labels below it (--ss-caption-size / --ss-caption). This is the line that explains the
    metric; those are axis furniture. At the same size and colour the explanation read as
    a footnote to the bar rather than the point of the cell. --ss-body matches the card's
-   other body copy (.ss-ai-read, .ss-company-summary). */
+   other body copy (.ss-ai-read-list, .ss-company-summary). */
 .ss-metric .ss-metric-gloss {
     font-size: var(--ss-body);
     color: var(--ss-muted);

@@ -3,33 +3,49 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: The live site's cold start (after a deploy or Render's sleep) is 26 to 44 s, of
-  which 20 to 33 s is Python importing the app on Render's box. yfinance is the largest
-  piece the app does not need at start (4.3 s here, with pandas and numpy behind it) and
-  only the Saved tab's headlines use it. Import it there, not with the app.
+objective: Two card-face/UX fixes flagged by the owner from a live screenshot. (1) The
+  "What the numbers say - AI-written" block reads as one wall of text and hides most of it
+  behind a Read more/Show less fold; render it as an always-visible bullet list instead, one
+  sentence per bullet, nothing folded. (2) The "N saved" count currently renders on every
+  tab's list header (Discover, Saved, Search) and again on the back-row when a card is open
+  on Discover/Saved -- owner decided (2026-09-14) it should show on the Saved tab only.
 
 scope_paths:
-  - frontend/saved_news.py
-  - tests/frontend/test_import_cost.py
-  - tests/frontend/test_saved_news.py
+  - frontend/card_copy.py
+  - frontend/card_ui.py
+  - frontend/app.py
+  - frontend/styles.py
+  - tests/frontend/test_card_ui.py
+  - tests/frontend/test_card_copy.py
+  - tests/frontend/test_app_e2e.py
+  - tests/frontend/test_styles.py
+  - docs/north_star.md
+  - docs/ui/disclosure_pattern.md
+  - docs/ui/discover_header.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - Owner chose this (A) over a faster host first (B), 2026-09-14. No behaviour change: the
-    first Saved-news fetch pays the import once per process, inside a call already wrapped in
-    try/except and cached for an hour.
+  - "N saved" placement: owner chose Saved-tab-only (2026-09-14), over keeping it on
+    Discover+Saved or de-duplicating it to once-per-screen on all three tabs.
 
 done_when:
-  - `import yfinance` lives inside `_fetch_news`; importing `app` loads neither yfinance nor
-    pandas nor numpy (subprocess test; fails against HEAD).
-  - `_fetch_news` runs against a fake `yfinance` in `sys.modules` in a unit test, so a
-    deleted in-function import fails a test instead of being swallowed into "Could not load
-    headlines" (mutation-proven).
-  - Measured here, best of five: `import app` 6.72 s and 2,097 modules before, 5.26 s and
-    1,572 modules after. Live cold-start numbers after the deploy go in the handover.
+  - `_health_block_html` renders the AI-written read and the deterministic fallback through
+    the same `_bullets_html()` code path -- `<ul>` of `<li>` sentences, fully visible, two
+    classes (`ss-ai-read-list` / `ss-verdict-fallback-list`) so the two stay distinguishable
+    in the DOM; no `<details>`/Read more/Show less anywhere in the health block.
+  - A multi-sentence `ai_read` produces one `<li>` per sentence and the full text -- including
+    its last sentence -- is present in the rendered HTML with no truncating "..." (mutation
+    check: a test asserts the block contains zero "..." characters regardless of read length).
+  - `ai_read_preview` / `AI_READ_PREVIEW_WORDS` removed from card_copy.py (dead once the fold
+    is gone); `truncate_words` stays (business_summary_preview still uses it).
+  - "N saved" appears only inside the Saved tab (its list header and its card-open back row);
+    Discover's list header keeps "N match your filters" with no saved-count suffix; Discover's
+    back row and the Search tab render no saved-count text anywhere (mutation check: a test
+    renders each of the three tabs and asserts "saved" appears in the Saved tab's output and
+    not in Discover's or Search's).
   - `pytest tests/ -q` green.
 
-impact_map: One import moved; the Saved tab's first news fetch per process is slower by the
-  import it now carries.
+impact_map: Presentation-only in the Streamlit frontend -- no data contract, pipeline, or
+  Supabase schema change. No new dependency, no cost.

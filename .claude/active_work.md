@@ -15,7 +15,22 @@ the detail._
 
 ## In flight
 
-**Nothing in flight.** Load-time numbers below are final for this pass.
+**MR open, branch `ux/ai-read-bullets-and-saved-scope` (2026-09-14), awaiting push/MR/owner
+review.** Two card-face/UX fixes from a live screenshot: (1) the "What the numbers say ·
+AI-written" block no longer folds behind Read more/Show less -- always-visible bullet list,
+one sentence per `<li>`, via `card_copy.py`'s new `ai_read_sentences()` and
+`card_ui.py`'s `_bullets_html()`. (2) "N saved" is now Saved-tab-only (owner decision,
+2026-09-14), dropped from Discover's list header, Discover's back row, and Search entirely.
+Both reviewers passed after two rounds (scope-auditor caught a sentence-split regex bug on
+abbreviations like "U.S."; cto-reviewer caught a stale function name in
+`docs/ui/disclosure_pattern.md`) -- detail in this branch's own `contract.md`/`review.md`.
+**Flagging, not blocking:** removing the fold means a card with a 3+ sentence read can now
+push the first metric value below the fold on a phone, which used to be guarded by the fold
+itself (`docs/north_star.md`'s mobile success check); not re-guarded, owner traded that off
+deliberately for full legibility, but worth a real look on a live long-read card once
+deployed if it reads as a regression in practice.
+
+**Nothing else in flight.** Load-time numbers below are final for this pass.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;

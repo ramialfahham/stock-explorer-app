@@ -238,7 +238,7 @@ def test_body_copy_uses_the_body_token_not_the_caption_token():
     """The whole point of the scale: body copy was borrowing the caption size."""
     sheet = _stylesheet()
     for selector in (
-        ".ss-health-block .ss-verdict-fallback",
+        ".ss-health-block .ss-ai-read-list li",
         ".ss-card-identity .ss-company-summary",
         ".ss-metric .ss-metric-gloss",
         ".ss-metric-learn-item .ss-metric-learn-body",

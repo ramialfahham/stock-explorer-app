@@ -24,9 +24,15 @@ Helper: `disclosure_html(preview, full_body_html, more_label=..., less_label=...
 |---------|--------|--------|
 | Saved tab headlines | Shipped | Read full headline / Show less |
 | Company description (card face) | Shipped | Read more / Show less |
-| AI-written read (card face) | Shipped | Read more / Show less |
 | Learn panel metric bodies | Shipped | Read more / Show less |
 | Sector gloss long copy | Backlog | — |
+
+**The AI-written read does NOT use this pattern.** It renders as an always-visible bullet
+list (`_bullets_html` in `frontend/card_ui.py`, one `<li>` per sentence, `.ss-ai-read-list` /
+`.ss-verdict-fallback-list` in `frontend/styles.py`) -- no preview, no toggle, nothing folded.
+Reversed from an earlier fold (owner decision, 2026-09-14): the fold traded full legibility
+for screen space, and the owner judged the wall-of-text-behind-a-tap tradeoff wrong the other
+way.
 
 **Company description (Discover/Saved card) uses this pattern directly on the card face**
 (`frontend/card_ui.py`'s `_company_summary_html`) — a real reversal of the Slice 6c
@@ -37,14 +43,6 @@ only after opening the panel and scrolling past every metric's explanation. It n
 lives in the learn panel at all — the toggle sits inline, right where the truncated preview
 ends, so reading the rest of the description needs no navigation and no scrolling past
 unrelated content.
-
-**The AI-written read folds to its first lines** (`_health_block_html`, preview length
-`AI_READ_PREVIEW_WORDS` in `frontend/card_copy.py`, about three lines at 375px) so the
-verdict badge, its first reasons and the first metric value share one phone screen. The
-badge and the block label stay outside the toggle; a read short enough to fit renders
-plain. The financial caveat is not in this block at all: it sits under the metric stack on
-every financial-type card, present whether or not the block renders. Owner composition call after the type scale pushed the first metric
-below the fold on long cards.
 
 **Learn panel metric bodies also use this pattern now** (`_metric_learn_blocks()` in
 `frontend/card_ui.py`) — each metric's full explanation gets its own toggle instead of every
