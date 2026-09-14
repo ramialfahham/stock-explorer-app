@@ -3,28 +3,33 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: The live site's 2.8 s from script start to first element, named with the
-  `?timing=1` probe: our script runs in 26 to 102 ms warm; the gap is Streamlit's source
-  watcher, which after every new session scans every loaded module on the thread that
-  flushes messages to the browser (`LocalSourcesWatcher.update_watched_modules`, 3.0 s on
-  this machine for 2,097 modules). Turn the watcher off in production.
+objective: The live site's cold start (after a deploy or Render's sleep) is 26 to 44 s, of
+  which 20 to 33 s is Python importing the app on Render's box. yfinance is the largest
+  piece the app does not need at start (4.3 s here, with pandas and numpy behind it) and
+  only the Saved tab's headlines use it. Import it there, not with the app.
 
 scope_paths:
-  - render.yaml
-  - docs/streamlit_deploy.md
+  - frontend/saved_news.py
+  - tests/frontend/test_import_cost.py
+  - tests/frontend/test_saved_news.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - Production only, via the Render start command (`--server.fileWatcherType none`); the
-    local launcher keeps live reload. The watcher serves editing; nothing changes on disk on
-    Render. No cost, no dependency, one flag on an existing command; the why sits beside it.
+  - Owner chose this (A) over a faster host first (B), 2026-09-14. No behaviour change: the
+    first Saved-news fetch pays the import once per process, inside a call already wrapped in
+    try/except and cached for an hour.
 
 done_when:
-  - `render.yaml`'s startCommand carries the flag; the file parses; the quoted command in
-    `docs/streamlit_deploy.md` matches it.
-  - Proven locally before the change: same server, same browser probe, full list at 4.5 to
-    5.4 s with the watcher, 1.4 s without. Live numbers after the deploy go in the handover.
+  - `import yfinance` lives inside `_fetch_news`; importing `app` loads neither yfinance nor
+    pandas nor numpy (subprocess test; fails against HEAD).
+  - `_fetch_news` runs against a fake `yfinance` in `sys.modules` in a unit test, so a
+    deleted in-function import fails a test instead of being swallowed into "Could not load
+    headlines" (mutation-proven).
+  - Measured here, best of five: `import app` 6.72 s and 2,097 modules before, 5.26 s and
+    1,572 modules after. Live cold-start numbers after the deploy go in the handover.
+  - `pytest tests/ -q` green.
 
-impact_map: Deployed process only. Local dev unchanged.
+impact_map: One import moved; the Saved tab's first news fetch per process is slower by the
+  import it now carries.
