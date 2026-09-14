@@ -11,6 +11,7 @@ from browser_storage import (
     append_interaction,
     clear_interactions,
     ensure_interactions_loaded,
+    flush_storage_writes,
     get_interactions,
     storage_sync_pending,
 )
@@ -630,16 +631,15 @@ def _discovery_page(client) -> None:
     if storage_sync_pending():
         _sync_eligible_counts(client)
 
+    loading = st.empty()
+    if not st.session_state.get("all_cards"):
+        loading.markdown('<p class="ss-loading">Loading cards</p>', unsafe_allow_html=True)
     _ensure_all_cards(client)
+    loading.empty()
     saved_count = _saved_count(interactions)
 
-    # The brand header renders above the nav, so the page it belongs to is read from session
-    # state before the nav widget confirms it; the widget's own key is what it reads too.
-    _render_brand_header(compact=_card_open(
-        normalize_nav_page(
-            st.session_state.get("bottom_nav") or st.session_state.get("active_page")
-        )
-    ))
+    # The brand header is already on screen (main() renders it first); the nav reads the same
+    # session-state page the header's compact flag was computed from.
     active = _render_bottom_nav(saved_count=saved_count, client=client)
 
     discover_focused = active == "Discover" and bool(
@@ -675,6 +675,14 @@ def _discovery_page(client) -> None:
 def main() -> None:
     _init_state()
     inject_global_css()
+    # First pixels before anything that can wait: the storage gate below may force a full
+    # rerun and the deck fetch can take seconds, and Streamlit paints nothing until the first
+    # element arrives. The header depends only on session state, so it goes out first.
+    _render_brand_header(compact=_card_open(
+        normalize_nav_page(
+            st.session_state.get("bottom_nav") or st.session_state.get("active_page")
+        )
+    ))
 
     if not get_supabase_url() or not get_supabase_anon_key():
         st.error(
@@ -687,6 +695,7 @@ def main() -> None:
 
     client = get_anon_client()
     _discovery_page(client)
+    flush_storage_writes()
 
 
 if __name__ == "__main__":

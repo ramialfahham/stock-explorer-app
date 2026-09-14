@@ -249,7 +249,7 @@ Use the **anon** key — not the service role key.
 
 ## 6. Auth (Streamlit) — deferred
 
-v1 Streamlit does **not** require login. The app reads `mart_stock_cards` with the anon key (public read RLS). Save and skip are stored in **browser localStorage** on the device.
+v1 Streamlit does **not** require login. The app reads `mart_stock_cards` with the anon key (public read RLS). The saved list is stored in a **browser cookie** on the device.
 
 The `user_interactions` table and auth-backed RLS remain in the schema for a future release when accounts are added. No Supabase Auth provider setup is required to deploy v1.
 

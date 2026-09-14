@@ -78,7 +78,7 @@ The reasoning and trade-offs behind the core — deeper context lives in
   the UI is intentionally decoupled — it consumes the Supabase card marts through a stable
   data contract, so it can be replaced (a different framework, another language) without
   touching the engine. The frontend is treated as the least permanent part of the system.
-- **No accounts in v1.** Save / not-now persist in the browser's localStorage. Zero signup
+- **No accounts in v1.** The saved list persists in a browser cookie. Zero signup
   friction and no personal data to hold, traded against no cross-device sync — deferred,
   not designed out (the `user_interactions` table is reserved for it).
 
@@ -171,7 +171,7 @@ stock-swipe-app/
    streamlit run streamlit_app.py
    ```
 
-   Reads Supabase via the anon key; save / not-now persist in browser localStorage.
+   Reads Supabase via the anon key; the saved list persists in a browser cookie.
    No login required.
 
 ## Standards (non-negotiable)

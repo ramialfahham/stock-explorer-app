@@ -6,9 +6,8 @@ session_state flow (save a card, remove a saved card, search by ticker) that pur
 tests structurally cannot reach, since they never instantiate a real script or session.
 
 Three real I/O boundaries are stubbed at their module attribute (frontend/supabase_client.py,
-frontend/supabase_cards.py, frontend/saved_news.py); browser localStorage sync is faked the
-same way test_browser_storage.py already established -- a live browser never attaches under
-AppTest, so `local_storage_manager` never reports ready on its own.
+frontend/supabase_cards.py, frontend/saved_news.py); the saved-list cookie is faked at
+browser_storage._request_cookies, since AppTest carries no request headers.
 """
 
 from __future__ import annotations
@@ -55,22 +54,6 @@ FIXTURE_CARDS: list[dict[str, Any]] = [
 
 def _fixture_cards() -> list[dict[str, Any]]:
     return [dict(card) for card in FIXTURE_CARDS]
-
-
-class _FakeLocalStorage:
-    """Mirrors test_browser_storage.py's _FakeManager -- see that file's module docstring for
-    why: local_storage_manager is a real custom component that only responds inside a live
-    browser session, and AppTest never attaches one."""
-
-    def __init__(self, *, ready: bool = True, stored: Any = None) -> None:
-        self._ready = ready
-        self._stored = stored
-
-    def ready(self) -> bool:
-        return self._ready
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._stored if self._stored is not None else default
 
 
 def _assert_clean(at: AppTest) -> None:
@@ -129,10 +112,17 @@ def app_test(monkeypatch: pytest.MonkeyPatch) -> AppTest:
     st.cache_data.clear()
     monkeypatch.setattr(supabase_client, "get_anon_client", lambda: object())
     monkeypatch.setattr(saved_news, "_fetch_news", lambda symbol: [])
-    monkeypatch.setattr(
-        browser_storage, "_mount_manager", lambda: _FakeLocalStorage(ready=True, stored=[])
-    )
+    monkeypatch.setattr(browser_storage, "_request_cookies", lambda: {})
     return AppTest.from_file(str(APP_PATH), default_timeout=15)
+
+
+@pytest.fixture
+def cookie_scripts(monkeypatch) -> list[str]:
+    """Every body app.py hands to components.html: the cookie write and the one-time
+    localStorage migration. AppTest never executes them; the test reads them."""
+    out: list[str] = []
+    monkeypatch.setattr(browser_storage.components, "html", lambda body, height=0: out.append(body))
+    return out
 
 
 def test_discover_pool_shows_fixture_cards(app_test: AppTest) -> None:
@@ -143,12 +133,20 @@ def test_discover_pool_shows_fixture_cards(app_test: AppTest) -> None:
         assert _row_button(at, key) is not None
 
 
-def test_save_card_from_discover_appears_in_saved(app_test: AppTest) -> None:
+def test_save_card_from_discover_appears_in_saved(app_test: AppTest, cookie_scripts) -> None:
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     _assert_clean(at)
+    writes_before = [b for b in cookie_scripts if "ss_saved_" in b and "localStorage" not in b]
+    assert writes_before == []
     at = at.button(key="discover_save").click().run()
     _assert_clean(at)
+    # The save ends its run with st.rerun(); the write is flushed by the run that follows,
+    # through main()'s flush_storage_writes(). Remove that call and this is the assertion
+    # that fails.
+    writes = [b for b in cookie_scripts if "ss_saved_" in b and "localStorage" not in b]
+    assert len(writes) == 1
+    assert "us_sp500:ALFA:" in writes[0]
 
     at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
     _assert_clean(at)

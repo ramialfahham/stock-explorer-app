@@ -14,7 +14,7 @@ One file in `tests/frontend/` is structurally different from the rest: `test_app
 `frontend/app.py` end-to-end via `streamlit.testing.v1.AppTest` (a full script run, not a direct
 import) -- covering the cross-tab session_state flow (save a card, remove a saved card, search
 by ticker) that the directory's other direct-import tests can't reach, since they never
-instantiate a real script or session. Supabase, yfinance news, and browser localStorage are
+instantiate a real script or session. Supabase, yfinance news, and the saved-list cookie are
 stubbed at their module boundary; everything else (interaction read/write, filtering,
 navigation) runs for real.
 

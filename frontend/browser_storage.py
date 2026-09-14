@@ -1,4 +1,18 @@
-"""Browser localStorage for save/skip interactions (v1, no auth)."""
+"""Browser-side persistence for save/skip interactions (v1, no auth): cookies.
+
+The saved list used to live in localStorage behind streamlit_extras' local_storage_manager,
+a components-v2 widget. Mounting it froze the browser for about 3.5 s on every page load and
+forced a second script run before anything past it rendered (measured: rows at 0.6 s with
+the component absent, 4.7 s with it present). Cookies need no component: Streamlit hands
+the request's cookies to the first script run (st.context.cookies), so the saved list is
+known before the first element is drawn, and a write is a few lines of JavaScript rendered
+only in the run that changes something.
+
+What persists is the current state, not the event log: the saved (market_code, ticker) keys
+with the epoch second of their save. Skips have no effect on any screen
+(explore_filters.saved_keys_with_order ignores them), so they stay in session state only.
+One cookie holds about 130 saves; beyond that the value is split across numbered cookies.
+"""
 
 from __future__ import annotations
 
@@ -7,105 +21,122 @@ from datetime import datetime, timezone
 from typing import Any
 
 import streamlit as st
-from streamlit_extras.local_storage_manager import local_storage_manager
+import streamlit.components.v1 as components
 
-STORAGE_ITEM_KEY = "interactions"
-_MANAGER_KEY = "stock_swipe_interactions"
-_MANAGER_INSTANCE_KEY = "_local_storage_manager_instance"
-_MANAGER_RUN_KEY = "_local_storage_manager_run_id"
-_STORE_KEY = f"{_MANAGER_KEY}__local_storage_state"
+COOKIE_PREFIX = "ss_saved_"
+COOKIE_MAX_AGE_SECONDS = 365 * 24 * 3600
+# Browsers refuse a cookie whose name plus value passes 4096 bytes; the budget below leaves
+# room for the name and the attributes. Entries are "market:ticker:epoch" joined by "|",
+# characters a cookie value may carry raw and that no market code or ticker contains.
+COOKIE_CHUNK_BYTES = 3800
+_ENTRY_SEP = "|"
+_FIELD_SEP = ":"
+# An epoch second fits in ten digits until the year 2286; anything longer is not ours.
+_MAX_EPOCH_DIGITS = 10
+# streamlit_extras namespaced its localStorage keys as "st_extras_" + sanitised pathname +
+# "_" + item key; at the app root the pathname "/" sanitises to "_".
+LEGACY_LOCAL_STORAGE_KEY = "st_extras___interactions"
 _LOADED_FLAG = "_interactions_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
-_BOOT_RERUN_FLAG = "_storage_boot_rerun_done"
+_WRITE_PENDING_KEY = "_cookie_write_pending"
+_MIGRATION_CHECKED_FLAG = "_cookie_migration_checked"
 
 
-def _pending_store() -> dict[str, Any]:
-    return st.session_state.setdefault(
-        _STORE_KEY,
-        {"next_operation_id": 1, "pending_operations": []},
-    )
-
-
-def _queue_storage_write(key: str, value: Any) -> None:
-    """Queue a localStorage set without mounting a second component instance."""
-    store = _pending_store()
-    operation_id = store["next_operation_id"]
-    store["next_operation_id"] = operation_id + 1
-    store["pending_operations"].append(
-        {
-            "id": operation_id,
-            "type": "set",
-            "name": key,
-            "value": value,
-        }
-    )
-
-
-def _queue_interactions_write(interactions: list[dict[str, Any]]) -> None:
-    _queue_storage_write(STORAGE_ITEM_KEY, interactions)
-
-
-def _current_run_id() -> str | None:
+def _iso(epoch: int) -> str | None:
     try:
-        from streamlit.runtime.scriptrunner import get_script_run_ctx
-
-        ctx = get_script_run_ctx()
-        if ctx is None:
-            return None
-        return str(ctx.script_run_id)
-    except Exception:
+        return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
+    except (OverflowError, OSError, ValueError):
         return None
 
 
-def _mount_manager():
-    """Mount localStorage component once per run (flushes pending writes + reads snapshot)."""
-    run_id = _current_run_id()
-    cached_manager = st.session_state.get(_MANAGER_INSTANCE_KEY)
-    cached_run = st.session_state.get(_MANAGER_RUN_KEY)
-    if cached_manager is not None and cached_run == run_id and run_id is not None:
-        return cached_manager
-
-    manager = local_storage_manager(key=_MANAGER_KEY)
-    st.session_state[_MANAGER_INSTANCE_KEY] = manager
-    st.session_state[_MANAGER_RUN_KEY] = run_id
-    return manager
-
-
-def _parse_interactions(raw: Any) -> list[dict[str, Any]]:
-    if raw is None:
-        return []
-    if isinstance(raw, list):
-        return raw
-    if isinstance(raw, str):
+def saved_state(interactions: list[dict[str, Any]]) -> list[list[Any]]:
+    """The persisted form: [market_code, ticker, epoch_second] per currently-saved key, in
+    save order. The latest save/unsave per key wins, as saved_keys_with_order decides."""
+    latest: dict[tuple[str, str], tuple[str, str]] = {}
+    for row in interactions:
+        action = row.get("action")
+        if action not in ("save", "unsave"):
+            continue
+        key = (row.get("market_code"), row.get("ticker"))
+        created = row.get("created_at") or ""
+        if key not in latest or created >= latest[key][0]:
+            latest[key] = (created, action)
+    out = []
+    for (market, ticker), (created, action) in sorted(latest.items(), key=lambda kv: kv[1][0]):
+        if action != "save":
+            continue
         try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            return []
-        return parsed if isinstance(parsed, list) else []
-    return []
+            epoch = int(datetime.fromisoformat(created).timestamp())
+        except ValueError:
+            epoch = 0
+        out.append([market, ticker, epoch])
+    return out
+
+
+def interactions_from_state(state: list[list[Any]]) -> list[dict[str, Any]]:
+    """The in-memory form the rest of the app reads: one save row per persisted key."""
+    rows = []
+    for item in state:
+        if not (isinstance(item, list) and len(item) == 3):
+            continue
+        market, ticker, epoch = item
+        if not (isinstance(market, str) and isinstance(ticker, str) and isinstance(epoch, int)):
+            continue
+        created = _iso(epoch)
+        if created is None:
+            continue
+        rows.append({"market_code": market, "ticker": ticker, "action": "save", "created_at": created})
+    return rows
+
+
+def encode_cookies(state: list[list[Any]]) -> list[str]:
+    """One string of "market:ticker:epoch" entries, split into chunks that each fit one
+    cookie. An empty state encodes to one empty chunk so a clear still overwrites the first
+    cookie. Chunks may cut an entry in two; decode joins them before splitting."""
+    if not state:
+        return [""]
+    encoded = _ENTRY_SEP.join(f"{m}{_FIELD_SEP}{t}{_FIELD_SEP}{e}" for m, t, e in state)
+    return [encoded[i : i + COOKIE_CHUNK_BYTES] for i in range(0, len(encoded), COOKIE_CHUNK_BYTES)]
+
+
+def decode_cookies(cookies: dict[str, str]) -> list[list[Any]]:
+    """Reassemble the numbered cookies; an entry that does not parse is skipped."""
+    parts = []
+    index = 0
+    while f"{COOKIE_PREFIX}{index}" in cookies:
+        parts.append(cookies[f"{COOKIE_PREFIX}{index}"])
+        index += 1
+    joined = "".join(parts)
+    if not joined:
+        return []
+    state: list[list[Any]] = []
+    for entry in joined.split(_ENTRY_SEP):
+        fields = entry.split(_FIELD_SEP)
+        if len(fields) != 3 or not fields[0] or not fields[1]:
+            continue
+        if not fields[2].isdigit() or len(fields[2]) > _MAX_EPOCH_DIGITS:
+            continue
+        state.append([fields[0], fields[1], int(fields[2])])
+    return state
+
+
+def _request_cookies() -> dict[str, str]:
+    try:
+        return dict(st.context.cookies)
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
-    """Load interactions from browser localStorage into session state."""
+    """Read the saved list from the request's cookies into session state, once per session.
+    No component, no rerun: the cookies arrive with the websocket handshake."""
     if "interactions" not in st.session_state:
         st.session_state["interactions"] = []
-
-    manager = _mount_manager()
-
     if st.session_state.get(_LOADED_FLAG):
-        return list(st.session_state.get("interactions", []))
-
-    if not manager.ready():
-        if not st.session_state.get(_BOOT_RERUN_FLAG):
-            st.session_state[_BOOT_RERUN_FLAG] = True
-            st.rerun()
         return list(st.session_state["interactions"])
-
-    stored = manager.get(STORAGE_ITEM_KEY, [])
-    interactions = _parse_interactions(stored)
+    interactions = interactions_from_state(decode_cookies(_request_cookies()))
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
-    st.session_state[_BOOT_RERUN_FLAG] = False
     if interactions:
         st.session_state[_SYNC_PENDING_FLAG] = True
     return interactions
@@ -119,6 +150,10 @@ def get_interactions() -> list[dict[str, Any]]:
     return list(st.session_state.get("interactions", []))
 
 
+def _queue_write() -> None:
+    st.session_state[_WRITE_PENDING_KEY] = encode_cookies(saved_state(get_interactions()))
+
+
 def append_interaction(card: dict[str, Any], action: str) -> None:
     row = {
         "market_code": card["market_code"],
@@ -130,11 +165,90 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
     interactions.append(row)
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
-    _queue_interactions_write(interactions)
+    if action in ("save", "unsave"):
+        _queue_write()
 
 
 def clear_interactions() -> None:
     st.session_state["interactions"] = []
     st.session_state[_LOADED_FLAG] = True
-    _queue_interactions_write([])
+    _queue_write()
     st.rerun()
+
+
+def _js_literal(value: object) -> str:
+    """JSON as a script-safe literal: a "</" inside a string would otherwise end the
+    <script> element early."""
+    return json.dumps(value).replace("</", "<" + chr(92) + "/")
+
+
+def write_script(chunks: list[str]) -> str:
+    """JavaScript that sets the numbered cookies to `chunks` and expires any leftover chunk
+    from a previously longer list. Runs inside Streamlit's component iframe; its srcdoc
+    origin is the page's own, so window.parent.document is reachable."""
+    attrs = f"path=/; max-age={COOKIE_MAX_AGE_SECONDS}; samesite=lax"
+    return (
+        "<script>(function(){"
+        "var d=window.parent.document;"
+        "var secure=window.parent.location.protocol==='https:'?'; secure':'';"
+        f"var chunks={_js_literal(chunks)};"
+        f"var prefix={json.dumps(COOKIE_PREFIX)};"
+        "for(var i=0;i<chunks.length;i++){"
+        f"d.cookie=prefix+i+'='+chunks[i]+'; {attrs}'+secure;}}"
+        "for(var j=chunks.length;j<chunks.length+20;j++){"
+        "if(d.cookie.indexOf(prefix+j+'=')===-1){break;}"
+        "d.cookie=prefix+j+'=; path=/; max-age=0'+secure;}"
+        "})();</script>"
+    )
+
+
+def migration_script() -> str:
+    """One-time move of a saved list left in localStorage by the previous storage. Runs only
+    when no cookie exists; when it finds saves it writes the cookies in the same chunks
+    encode_cookies would, and only if the browser accepted the first chunk does it remove
+    the localStorage copy and reload once so the server's first run sees them. A browser
+    that refuses the cookie keeps its localStorage list and does not reload."""
+    key = json.dumps(LEGACY_LOCAL_STORAGE_KEY)
+    prefix = json.dumps(COOKIE_PREFIX)
+    return (
+        "<script>(function(){"
+        "var d=window.parent.document; var w=window.parent;"
+        f"var prefix={prefix};"
+        "if(d.cookie.indexOf(prefix+'0=')!==-1) return;"
+        f"var raw=null; try{{raw=w.localStorage.getItem({key});}}catch(e){{return;}}"
+        "if(!raw) return;"
+        "var rows; try{rows=JSON.parse(raw);}catch(e){return;}"
+        "if(!Array.isArray(rows)) return;"
+        "var latest={};"
+        "for(var i=0;i<rows.length;i++){var r=rows[i];"
+        "if(!r||(r.action!=='save'&&r.action!=='unsave')) continue;"
+        "var k=r.market_code+'|'+r.ticker; var c=r.created_at||'';"
+        "if(!(k in latest)||c>=latest[k][0]) latest[k]=[c,r.action,r.market_code,r.ticker];}"
+        "var keys=Object.keys(latest).sort(function(a,b){return latest[a][0]<latest[b][0]?-1:1});"
+        "var state=[];"
+        "for(var j=0;j<keys.length;j++){var e=latest[keys[j]]; if(e[1]!=='save') continue;"
+        "var t=Math.floor(Date.parse(e[0])/1000)||0; state.push([e[2],e[3],t]);}"
+        "if(!state.length) return;"
+        "var enc=state.map(function(s){return s[0]+':'+s[1]+':'+s[2]}).join('|');"
+        "var secure=w.location.protocol==='https:'?'; secure':'';"
+        f"var attrs='; path=/; max-age={COOKIE_MAX_AGE_SECONDS}; samesite=lax'+secure;"
+        f"for(var n=0;n*{COOKIE_CHUNK_BYTES}<enc.length;n++){{"
+        f"d.cookie=prefix+n+'='+enc.substr(n*{COOKIE_CHUNK_BYTES},{COOKIE_CHUNK_BYTES})+attrs;}}"
+        "if(d.cookie.indexOf(prefix+'0=')===-1) return;"
+        f"try{{w.localStorage.removeItem({key});}}catch(e){{}}"
+        "w.location.reload();"
+        "})();</script>"
+    )
+
+
+def flush_storage_writes() -> None:
+    """Render the cookie-writing script when a save changed something this run, and the
+    one-time localStorage migration on a session's first run without a cookie. Called once
+    per run from app.main, after everything else, so it never delays a paint."""
+    chunks = st.session_state.pop(_WRITE_PENDING_KEY, None)
+    if chunks is not None:
+        components.html(write_script(chunks), height=0)
+    if not st.session_state.get(_MIGRATION_CHECKED_FLAG):
+        st.session_state[_MIGRATION_CHECKED_FLAG] = True
+        if not decode_cookies(_request_cookies()):
+            components.html(migration_script(), height=0)

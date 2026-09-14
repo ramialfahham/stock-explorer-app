@@ -360,6 +360,14 @@ section[data-testid="stSidebar"] {
     line-height: 1.3;
 }
 
+/* .ss-loading (frontend/app.py): the one line on screen between the header and the first
+   deck fetch; caption weight so it reads as status, not content. */
+.ss-loading {
+    font-size: var(--ss-caption-size);
+    color: var(--ss-caption);
+    margin: 0.5rem 0 0;
+}
+
 .ss-card-metrics {
     margin-top: 0.5rem;
 }

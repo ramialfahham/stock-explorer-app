@@ -15,14 +15,19 @@ the detail._
 
 ## In flight
 
-**MR !139 open, awaiting owner merge** (`docs/generated-metric-table`). The data contract's
-card-metrics table is generated from the seed by `scripts/render_metric_table.py` and locked
-by a test; the 13 data-only intermediates are listed by name, the model their only definition
-(owner: drop, not keep as prose). Adding a metric now runs two generators: the JSON and the
-table (`docs/metric_layer.md` "Adding a metric").
+**MR !140 open, awaiting owner merge** (`perf/first-paint`). Owner 2026-09-14: the black
+screen on load is not acceptable, zero spend, "solve it". Shipped: header before the storage
+read and the deck fetch; a splash written into Streamlit's index.html at deploy time (new
+render.yaml build step); the saved list moved from the streamlit_extras localStorage
+component to cookies (owner chose A over a lighter component), with a verified one-time
+migration. Owner's to reword: "Loading cards" and the splash "Stock Explorer" / "Loading".
 
-**NEXT:** nothing queued. Open owner questions: item 0 below and the parked list in this
-section.
+**NEXT, after !140 deploys: measure the live site again** (browser probe: first paint,
+header, rows; the numbers before were 0.35 s server, 5.3 s bundle, 11.6 s first pixel). What
+remains is Render free's 5 s bundle download; the zero-spend lever is a faster free host
+(Hugging Face Spaces, 2 vCPU) and needs the owner to create the Space (the agent cannot make
+accounts). The Windows-only asyncio stall seen locally (server done, frontend waits ~3 s) is
+not production; do not chase it.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -32,7 +37,6 @@ new labels without a hash bump; (b) `assert_dividend_yield_suspects` WARN count,
 yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a
 genuine four-decimal percent. Definition territory; not done.
 
-**NEXT:** nothing queued from issue #9; owner questions above and item 0 below.
 
 **Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
 
@@ -54,7 +58,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !138 standing rules to durable homes; net debt /
+**Merged this pass** (detail in each MR): !139 generated metric table in the data contract.
+!138 standing rules to durable homes; net debt /
 EBITDA defined once in its catalogue row. !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
 !135 `sync_dbt_vars` exit status (#8). !134 CI
 tiers doc. !133 owner wording for ROE and working capital; playground heading. !132 playgrounds
@@ -246,7 +251,7 @@ Numbered defects and gaps:
 7. **`supabase/migrations/001_initial_schema.sql`'s `user_interactions.action` CHECK
    constraint only allows `('save', 'skip')`**, stale as of 2026-09-05 against the app-level
    introduction of a third action, `'unsave'` (per-item Saved removal). No live path writes to
-   this table today (`browser_storage.py` only ever touches browser localStorage), so nothing
+   this table today (`browser_storage.py` only ever touches a browser cookie), so nothing
    is broken yet -- but whoever eventually builds the cross-device sync feature this table is
    reserved for will need to widen the constraint first.
 8. **`generate_assessments.py`'s AI-read step is the scheduled pipeline's actual dominant,

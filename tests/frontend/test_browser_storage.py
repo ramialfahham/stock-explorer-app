@@ -1,11 +1,9 @@
-"""Tests for browser_storage.py's session-state bookkeeping around localStorage.
+"""Tests for browser_storage.py: the saved list persisted in cookies.
 
-`local_storage_manager` (streamlit_extras) is a real custom component -- it only responds
-inside a live browser session, so it's faked here rather than exercised for real (matching
-this repo's own pure/render-split testing convention, see test_app.py's discover-pagination
-comment). `st.session_state` itself works standalone outside `streamlit run` (confirmed
-directly: it's a real dict-like object, just with a "bare mode" warning), so it's used as-is
-rather than mocked.
+The request's cookies are faked at `browser_storage._request_cookies` (AppTest and bare mode
+carry no request headers); the cookie-writing script is asserted as rendered HTML, never
+executed here. `st.session_state` works standalone outside `streamlit run`, so it is used
+as-is.
 """
 
 from __future__ import annotations
@@ -25,20 +23,6 @@ def _clear_session_state():
     st.session_state.clear()
 
 
-class _FakeManager:
-    """Stand-in for local_storage_manager's return value."""
-
-    def __init__(self, *, ready: bool = True, stored: Any = None) -> None:
-        self._ready = ready
-        self._stored = stored
-
-    def ready(self) -> bool:
-        return self._ready
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._stored if self._stored is not None else default
-
-
 @pytest.fixture
 def fake_reruns(monkeypatch):
     calls: list[None] = []
@@ -46,211 +30,211 @@ def fake_reruns(monkeypatch):
     return calls
 
 
-def _mock_manager(monkeypatch, manager: _FakeManager) -> None:
-    monkeypatch.setattr(bs, "_mount_manager", lambda: manager)
+@pytest.fixture
+def rendered_html(monkeypatch):
+    """Captures what flush_storage_writes hands to components.html."""
+    out: list[str] = []
+    monkeypatch.setattr(bs.components, "html", lambda body, height=0: out.append(body))
+    return out
 
 
-# --- _parse_interactions: pure function, no session_state or component involved ---
+def _row(ticker: str, action: str, created: str, market: str = "us_sp500") -> dict[str, Any]:
+    return {"market_code": market, "ticker": ticker, "action": action, "created_at": created}
 
 
-def test_parse_interactions_none_returns_empty_list() -> None:
-    assert bs._parse_interactions(None) == []
+# --- pure functions ---
 
 
-def test_parse_interactions_list_passed_through() -> None:
-    rows = [{"ticker": "AAPL", "action": "save"}]
-    assert bs._parse_interactions(rows) == rows
+def test_saved_state_keeps_the_latest_action_per_key_and_only_saves() -> None:
+    rows = [
+        _row("AAPL", "save", "2026-09-01T10:00:00+00:00"),
+        _row("MSFT", "save", "2026-09-02T10:00:00+00:00"),
+        _row("AAPL", "unsave", "2026-09-03T10:00:00+00:00"),
+        _row("SAP.DE", "skip", "2026-09-03T11:00:00+00:00", market="de_dax"),
+    ]
+    assert bs.saved_state(rows) == [["us_sp500", "MSFT", 1788343200]]
 
 
-def test_parse_interactions_valid_json_list_string_is_parsed() -> None:
-    raw = '[{"ticker": "AAPL", "action": "save"}]'
-    assert bs._parse_interactions(raw) == [{"ticker": "AAPL", "action": "save"}]
+def test_saved_state_orders_by_save_time() -> None:
+    rows = [
+        _row("B", "save", "2026-09-02T10:00:00+00:00"),
+        _row("A", "save", "2026-09-01T10:00:00+00:00"),
+    ]
+    assert [s[1] for s in bs.saved_state(rows)] == ["A", "B"]
 
 
-def test_parse_interactions_json_string_encoding_a_non_list_returns_empty() -> None:
-    """A stored value that's valid JSON but not a list (e.g. localStorage holding a stray
-    object) must not crash the read path -- it's not this app's own write shape."""
-    assert bs._parse_interactions('{"not": "a list"}') == []
+def test_interactions_from_state_round_trips_and_drops_malformed_entries() -> None:
+    state = [["us_sp500", "MSFT", 1788343200], ["bad"], ["x", 1, 2], "junk"]
+    rows = bs.interactions_from_state(state)
+    assert rows == [
+        {
+            "market_code": "us_sp500",
+            "ticker": "MSFT",
+            "action": "save",
+            "created_at": "2026-09-02T10:00:00+00:00",
+        }
+    ]
+    assert bs.saved_state(rows) == [["us_sp500", "MSFT", 1788343200]]
 
 
-def test_parse_interactions_invalid_json_string_returns_empty() -> None:
-    assert bs._parse_interactions("not json at all") == []
+def test_encode_decode_round_trip_including_dots_and_dashes_in_tickers() -> None:
+    state = [["de_dax", "SAP.DE", 1], ["uk_ftse100", "BA-B.L", 2], ["jp_nikkei225", "7203.T", 3]]
+    chunks = bs.encode_cookies(state)
+    assert chunks == ["de_dax:SAP.DE:1|uk_ftse100:BA-B.L:2|jp_nikkei225:7203.T:3"]
+    assert bs.decode_cookies({"ss_saved_0": chunks[0]}) == state
 
 
-def test_parse_interactions_unexpected_type_returns_empty() -> None:
-    assert bs._parse_interactions(42) == []
+def test_encode_splits_a_long_list_across_numbered_cookies_and_decode_rejoins() -> None:
+    state = [["us_sp500", f"T{i:04d}", 1789391499 + i] for i in range(400)]
+    chunks = bs.encode_cookies(state)
+    assert len(chunks) > 1
+    assert all(len(c) <= bs.COOKIE_CHUNK_BYTES for c in chunks)
+    cookies = {f"ss_saved_{i}": c for i, c in enumerate(chunks)}
+    assert bs.decode_cookies(cookies) == state
 
 
-# --- pending-write queue ---
+def test_empty_state_encodes_to_one_empty_chunk_and_decodes_to_nothing() -> None:
+    assert bs.encode_cookies([]) == [""]
+    assert bs.decode_cookies({"ss_saved_0": ""}) == []
+    assert bs.decode_cookies({}) == []
 
 
-def test_pending_store_initializes_on_first_access() -> None:
-    store = bs._pending_store()
-    assert store == {"next_operation_id": 1, "pending_operations": []}
+def test_decode_skips_entries_it_cannot_parse() -> None:
+    assert bs.decode_cookies({"ss_saved_0": "garbage|us_sp500:AAPL:12|x:y:z|:t:1"}) == [
+        ["us_sp500", "AAPL", 12]
+    ]
 
 
-def test_queue_storage_write_appends_operation_and_increments_id() -> None:
-    bs._queue_storage_write("interactions", [{"ticker": "AAPL"}])
-    bs._queue_storage_write("interactions", [{"ticker": "AAPL"}, {"ticker": "MSFT"}])
-    store = bs._pending_store()
-    assert store["next_operation_id"] == 3
-    assert [op["id"] for op in store["pending_operations"]] == [1, 2]
-    assert store["pending_operations"][-1] == {
-        "id": 2,
-        "type": "set",
-        "name": "interactions",
-        "value": [{"ticker": "AAPL"}, {"ticker": "MSFT"}],
-    }
+def test_decode_stops_at_the_first_missing_chunk_number() -> None:
+    assert bs.decode_cookies({"ss_saved_0": "a:b:1", "ss_saved_2": "c:d:2"}) == [["a", "b", 1]]
 
 
-def test_queue_interactions_write_uses_the_interactions_storage_key() -> None:
-    bs._queue_interactions_write([{"ticker": "AAPL"}])
-    op = bs._pending_store()["pending_operations"][0]
-    assert op["name"] == bs.STORAGE_ITEM_KEY
+# --- session-state behaviour ---
 
 
-# --- read helpers ---
-
-
-def test_get_interactions_is_empty_when_unset() -> None:
-    assert bs.get_interactions() == []
-
-
-def test_get_interactions_returns_a_copy_not_the_live_list() -> None:
-    st.session_state["interactions"] = [{"ticker": "AAPL"}]
-    result = bs.get_interactions()
-    result.append({"ticker": "MSFT"})
-    assert st.session_state["interactions"] == [{"ticker": "AAPL"}]
-
-
-def test_storage_sync_pending_defaults_false_and_clears_after_one_read() -> None:
-    assert bs.storage_sync_pending() is False
-    st.session_state[bs._SYNC_PENDING_FLAG] = True
+def test_ensure_loaded_reads_the_cookie_once_and_flags_a_sync(monkeypatch) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:MMM:1789392503"})
+    first = bs.ensure_interactions_loaded()
+    assert [r["ticker"] for r in first] == ["MMM"]
     assert bs.storage_sync_pending() is True
     assert bs.storage_sync_pending() is False
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:XXX:1"})
+    assert [r["ticker"] for r in bs.ensure_interactions_loaded()] == ["MMM"]
 
 
-# --- append / clear ---
+def test_ensure_loaded_with_no_cookie_gives_an_empty_list_and_no_rerun(
+    monkeypatch, fake_reruns
+) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {})
+    assert bs.ensure_interactions_loaded() == []
+    assert bs.storage_sync_pending() is False
+    assert fake_reruns == []
 
 
-def test_append_interaction_builds_the_expected_row_shape() -> None:
-    card = {"market_code": "us_sp500", "ticker": "AAPL"}
-    bs.append_interaction(card, "save")
-    [row] = bs.get_interactions()
-    assert row["market_code"] == "us_sp500"
-    assert row["ticker"] == "AAPL"
-    assert row["action"] == "save"
-    assert "created_at" in row
+def test_a_save_queues_a_cookie_write_a_skip_does_not(monkeypatch) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {})
+    bs.ensure_interactions_loaded()
+    bs.append_interaction({"market_code": "us_sp500", "ticker": "MMM"}, "skip")
+    assert bs._WRITE_PENDING_KEY not in st.session_state
+    bs.append_interaction({"market_code": "us_sp500", "ticker": "MMM"}, "save")
+    chunks = st.session_state[bs._WRITE_PENDING_KEY]
+    assert len(chunks) == 1 and chunks[0].startswith("us_sp500:MMM:")
 
 
-def test_append_interaction_queues_a_write_and_sets_the_loaded_flag() -> None:
-    bs.append_interaction({"market_code": "us_sp500", "ticker": "AAPL"}, "skip")
-    assert st.session_state[bs._LOADED_FLAG] is True
-    queued = bs._pending_store()["pending_operations"][-1]
-    assert queued["name"] == bs.STORAGE_ITEM_KEY
-    assert queued["value"] == bs.get_interactions()
+def test_unsave_queues_a_write_without_the_key(monkeypatch) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:MMM:1"})
+    bs.ensure_interactions_loaded()
+    bs.append_interaction({"market_code": "us_sp500", "ticker": "MMM"}, "unsave")
+    assert st.session_state[bs._WRITE_PENDING_KEY] == [""]
 
 
-def test_clear_interactions_empties_state_queues_an_empty_write_and_reruns(fake_reruns) -> None:
-    st.session_state["interactions"] = [{"ticker": "AAPL"}]
+def test_clear_queues_an_empty_write_and_reruns(monkeypatch, fake_reruns) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:MMM:1"})
+    bs.ensure_interactions_loaded()
     bs.clear_interactions()
-    assert st.session_state["interactions"] == []
-    assert st.session_state[bs._LOADED_FLAG] is True
-    queued = bs._pending_store()["pending_operations"][-1]
-    assert queued["value"] == []
+    assert bs.get_interactions() == []
+    assert st.session_state[bs._WRITE_PENDING_KEY] == [""]
     assert len(fake_reruns) == 1
 
 
-# --- ensure_interactions_loaded: the boot sequence ---
+# --- the rendered scripts ---
 
 
-def test_ensure_interactions_loaded_not_ready_triggers_exactly_one_rerun(
-    monkeypatch, fake_reruns
-) -> None:
-    """The manager needs a run before its JS side reports ready -- one rerun buys that,
-    but the boot flag must stop a second one from firing forever if it's still not ready."""
-    _mock_manager(monkeypatch, _FakeManager(ready=False))
-    result = bs.ensure_interactions_loaded()
-    assert result == []
-    assert len(fake_reruns) == 1
-    assert st.session_state[bs._BOOT_RERUN_FLAG] is True
-
-
-def test_ensure_interactions_loaded_does_not_rerun_again_once_boot_flag_is_set(
-    monkeypatch, fake_reruns
-) -> None:
-    st.session_state[bs._BOOT_RERUN_FLAG] = True
-    _mock_manager(monkeypatch, _FakeManager(ready=False))
-    result = bs.ensure_interactions_loaded()
-    assert result == []
-    assert len(fake_reruns) == 0
-
-
-def test_ensure_interactions_loaded_reads_and_parses_once_ready(monkeypatch) -> None:
-    stored = [{"ticker": "AAPL", "action": "save"}]
-    _mock_manager(monkeypatch, _FakeManager(ready=True, stored=stored))
-    result = bs.ensure_interactions_loaded()
-    assert result == stored
-    assert st.session_state["interactions"] == stored
-    assert st.session_state[bs._LOADED_FLAG] is True
-    assert st.session_state[bs._BOOT_RERUN_FLAG] is False
-
-
-def test_ensure_interactions_loaded_sets_sync_pending_only_when_non_empty(monkeypatch) -> None:
-    _mock_manager(monkeypatch, _FakeManager(ready=True, stored=[{"ticker": "AAPL"}]))
+def test_flush_renders_the_write_script_once_then_nothing(monkeypatch, rendered_html) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:MMM:1"})
+    st.session_state[bs._MIGRATION_CHECKED_FLAG] = True
     bs.ensure_interactions_loaded()
-    assert st.session_state[bs._SYNC_PENDING_FLAG] is True
+    bs.append_interaction({"market_code": "de_dax", "ticker": "SAP.DE"}, "save")
+    bs.flush_storage_writes()
+    assert len(rendered_html) == 1
+    script = rendered_html[0]
+    assert "window.parent.document" in script
+    assert '"ss_saved_"' in script
+    assert "us_sp500:MMM:1|de_dax:SAP.DE:" in script
+    assert f"max-age={bs.COOKIE_MAX_AGE_SECONDS}" in script
+    bs.flush_storage_writes()
+    assert len(rendered_html) == 1
 
 
-def test_ensure_interactions_loaded_leaves_sync_pending_unset_when_empty(monkeypatch) -> None:
-    _mock_manager(monkeypatch, _FakeManager(ready=True, stored=[]))
-    bs.ensure_interactions_loaded()
-    assert bs._SYNC_PENDING_FLAG not in st.session_state
-
-
-def test_ensure_interactions_loaded_returns_cached_value_without_touching_manager_again(
-    monkeypatch,
+def test_flush_renders_the_migration_only_on_a_cookieless_first_run(
+    monkeypatch, rendered_html
 ) -> None:
-    """Once loaded, later calls in the same session must not re-read the component --
-    proven by making a second read return something different and confirming it's ignored."""
-    st.session_state["interactions"] = [{"ticker": "AAPL"}]
-    st.session_state[bs._LOADED_FLAG] = True
-    _mock_manager(monkeypatch, _FakeManager(ready=True, stored=[{"ticker": "MSFT"}]))
-    result = bs.ensure_interactions_loaded()
-    assert result == [{"ticker": "AAPL"}]
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {})
+    bs.flush_storage_writes()
+    assert len(rendered_html) == 1
+    assert bs.LEGACY_LOCAL_STORAGE_KEY in rendered_html[0]
+    assert "location.reload()" in rendered_html[0]
+    bs.flush_storage_writes()
+    assert len(rendered_html) == 1
 
 
-# --- _mount_manager: one instance per script run ---
+def test_flush_skips_the_migration_when_a_cookie_exists(monkeypatch, rendered_html) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:MMM:1"})
+    bs.flush_storage_writes()
+    assert rendered_html == []
 
 
-def test_mount_manager_caches_the_same_instance_within_one_run(monkeypatch) -> None:
-    monkeypatch.setattr(bs, "_current_run_id", lambda: "run-1")
-    calls: list[None] = []
-
-    def fake_local_storage_manager(key: str):
-        calls.append(None)
-        return object()
-
-    monkeypatch.setattr(bs, "local_storage_manager", fake_local_storage_manager)
-    first = bs._mount_manager()
-    second = bs._mount_manager()
-    assert first is second
-    assert len(calls) == 1
+def test_write_script_expires_leftover_chunks_and_has_no_apostrophe_breaking_js() -> None:
+    script = bs.write_script(["a:b:1"])
+    assert "max-age=0" in script
+    assert script.count("<script>") == 1 and script.count("</script>") == 1
 
 
-def test_mount_manager_remounts_for_a_new_run_id(monkeypatch) -> None:
-    run_id = ["run-1"]
-    monkeypatch.setattr(bs, "_current_run_id", lambda: run_id[0])
-    instances: list[object] = []
+# --- crafted cookies must never raise out of the first run ---
 
-    def fake_local_storage_manager(key: str):
-        instance = object()
-        instances.append(instance)
-        return instance
 
-    monkeypatch.setattr(bs, "local_storage_manager", fake_local_storage_manager)
-    first = bs._mount_manager()
-    run_id[0] = "run-2"
-    second = bs._mount_manager()
-    assert first is not second
-    assert len(instances) == 2
+@pytest.mark.parametrize(
+    "value",
+    [
+        "us_sp500:AAPL:253402300800",
+        "us_sp500:AAPL:" + "9" * 5000,
+        "us_sp500:AAPL:99999999999999999999",
+        "|||:::",
+        "us_sp500:AAPL:-5",
+        "ü:é:1",
+    ],
+)
+def test_crafted_cookie_values_load_as_nothing_or_partial_never_raise(monkeypatch, value) -> None:
+    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": value + "|us_sp500:IBM:1"})
+    rows = bs.ensure_interactions_loaded()
+    assert [r["ticker"] for r in rows if r["market_code"] == "us_sp500" and r["ticker"] == "IBM"]
+
+
+def test_an_epoch_past_the_platform_range_is_skipped_not_raised() -> None:
+    assert bs.interactions_from_state([["a", "b", 10**12], ["a", "c", 1]]) == [
+        {"market_code": "a", "ticker": "c", "action": "save", "created_at": "1970-01-01T00:00:01+00:00"}
+    ]
+
+
+def test_write_script_cannot_be_closed_early_by_a_chunk() -> None:
+    script = bs.write_script(["a</script>b"])
+    assert script.count("</script>") == 1
+
+
+def test_migration_verifies_the_cookie_before_removing_localstorage_and_chunks() -> None:
+    script = bs.migration_script()
+    verify = script.index("if(d.cookie.indexOf(prefix+'0=')===-1) return;")
+    remove = script.index("localStorage.removeItem")
+    reload = script.index("location.reload()")
+    assert verify < remove < reload
+    assert f"enc.substr(n*{bs.COOKIE_CHUNK_BYTES},{bs.COOKIE_CHUNK_BYTES})" in script

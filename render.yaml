@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     branch: main
-    buildCommand: pip install -r frontend/requirements.txt
+    buildCommand: pip install -r frontend/requirements.txt && python scripts/patch_streamlit_splash.py
     startCommand: streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0
     envVars:
       - key: SUPABASE_URL
