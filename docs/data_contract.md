@@ -237,6 +237,16 @@ are missing, `net_debt_to_ebitda` is null → ineligible. Do not rebuild EBITDA 
 **No fallbacks:** if the primary field for a metric is null, the ticker is ineligible — do not
 substitute ROE, ROA, or hand-built ROIC.
 
+**Standing rules for metric work.** Compute from the period-matched statement line where one
+is landed, not the `info` scalar that duplicates it. Shipped exception: `net_debt_to_ebitda`'s
+numerator reads `info_total_debt` / `info_total_cash` though `stmt_total_debt` and
+`stmt_cash_and_equivalents` are landed and `net_cash` uses them; moving it changes a shipped
+number, owner's call. Do not clip or hide outlier magnitudes at the data layer; route to the
+right lens and let the display clamp compress ([`ui/card_metric_cell.md`](ui/card_metric_cell.md));
+the dividend-yield rescale corrects units, it caps nothing. Tier 1, CET1, NPL and ARR are not in
+yfinance, NIM has no landed inputs, ROIC and multi-year series are deliberately not built (no
+fallbacks; latest period only): leave the gap honest, never fake it.
+
 ---
 
 ## Card eligibility (dbt)

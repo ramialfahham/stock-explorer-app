@@ -4,7 +4,7 @@ sources:
   - name: yfinance
     description: >
       Raw yfinance parquet landed by Python ingestion under storage/raw/{market_code}/.
-      Loaded on the GitLab pipeline schedule via data_pipeline.yml; no derived metrics in ingestion.
+      Loaded on the GitLab pipeline schedule by the `data-pipeline` job; no derived metrics in ingestion.
     loader: python
     meta:
       owner: data

@@ -226,8 +226,8 @@ def build_learn_panel_body_html(card: dict) -> str:
 # Card-face section labels. These name the SOURCE of each block, not its topic: the
 # assessment is model-written prose, the description is the company's own text passed
 # through untouched. A reader who cannot tell those apart is the problem these solve.
-# Owner-chosen copy (§6). See .claude/task/contract.md decisions_reserved
-# before rewording either. "AI-written" deliberately, not "AI summary": the read is
+# Owner-chosen copy (§6), not to be reworded without the owner. "AI-written"
+# deliberately, not "AI summary": the read is
 # written from the card's figures, it does not condense a longer text.
 BLOCK_LABEL_ASSESSMENT = "What the numbers say · AI-written"
 BLOCK_LABEL_DESCRIPTION = "About the company"
@@ -235,7 +235,7 @@ BLOCK_LABEL_DESCRIPTION = "About the company"
 # BLOCK_LABEL_ASSESSMENT's "AI-written" -- this text is a deterministic, human-authored
 # one-liner naming what the verdict means, not model output, and labelling it "AI-written"
 # would be the same false attribution BLOCK_LABEL_ASSESSMENT already avoids in the other
-# direction. Owner-chosen (§6); see .claude/task/contract.md decisions_reserved.
+# direction. Owner-chosen (§6).
 BLOCK_LABEL_VERDICT_MEANING = "What the verdict means"
 
 

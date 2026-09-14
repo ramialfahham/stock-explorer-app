@@ -197,6 +197,16 @@ Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migration
 
 ---
 
+## Performance: where the time goes
+
+MR !111 cut the deck fetch to 1.46 MB and the owner still waited about 7 seconds warm, far
+longer cold. The dominant cost is Streamlit's own front end (dozens of JS files, slow on a
+starved free tier), which no change in this repo moves. Do not re-measure the data
+layer and conclude the app is fast: measure first paint in a browser, not time to first byte.
+The real options are a paid Render plan or not Streamlit (issue #2), both owner calls. The
+deck's cold path is `DECK_COLUMNS` in `frontend/supabase_cards.py`; every column added there is
+paid by every visitor, a column on the card face by nobody until that card opens.
+
 ## Monitoring (v1)
 
 **Pipeline failure email -- DONE.** Set via GitLab's built-in per-user notifications, not the

@@ -348,7 +348,7 @@ _VALUE_FORMATTERS = {
 
 # Mirrors scripts/assessment_rules.py so the read names the currency the card face shows. Not
 # every registry-driven market is here: CHF has no entry and falls back to the bare code, which
-# the owner settled on 2026-08-28 as correct, the rule being to use each currency's real-world
+# the owner settled as correct, the rule being to use each currency's real-world
 # form. Keep this map identical to the one in scripts/assessment_rules.py; a test pins it.
 _CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
 
@@ -564,7 +564,7 @@ VERDICT_BADGE_LABEL = {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
 # Deterministic fallback for the health block's narrative when ai_read is absent (5a wrote the
 # verdict; 5b's read is pending, a per-card API failure, or a hallucination-guard reject -- see
 # scripts/generate_assessments.py's validate_read_metrics). A bare badge with nothing else read
-# as broken to a reader, not "not yet written" (owner feedback, 2026-09-01) -- this fills that
+# as broken to a reader, not "not yet written" (owner feedback) -- this fills that
 # gap under its own honest heading ("What the verdict means" in frontend/card_ui.py, never
 # BLOCK_LABEL_ASSESSMENT's "AI-written", which this text is not). Owner-authored wording (§6): a
 # general one-line summary, not a description of the verdict engine's internal logic -- the

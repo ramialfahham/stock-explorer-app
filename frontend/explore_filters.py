@@ -114,7 +114,11 @@ def attach_assessments(
 
     One case does NOT self-heal, and the card stays verdict-less indefinitely: a ticker the
     export evicted from its newest snapshot keeps its old assessment row forever, because
-    generate_assessments.py builds records only from mart rows and never deletes."""
+    generate_assessments.py builds records only from mart rows and never deletes.
+
+    Do not "simplify" the gate. Comparing through _snapshot_sort_key is deliberate: a bare
+    str() would blank every badge app-wide, silently, if the column ever gained a time
+    component. Mutation-verified in both directions."""
     result: list[dict[str, Any]] = []
     for card in cards:
         row = assessments.get(_card_key(card))

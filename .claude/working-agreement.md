@@ -115,7 +115,10 @@ Each is the owner's call, escalated (§7) every time, however obvious it seems:
 - A NEW mechanism (new dependency, service, lifecycle hook, framework, workflow step).
 - Reinterpreting or extending a rule to a case it didn't cover.
 - Changing an already-shipped output or number.
-- Cost, schedule, scope (budget, run cadence, widening a task).
+- Cost, schedule, scope (budget, run cadence, widening a task). Concretely, here: the agent
+  spends nothing. No paid tier, no API token the owner did not ask for, no bought CI minutes,
+  no self-hosted runner, no CI/CD variable VALUE, no protected-branch setting. A CI step that
+  would call a paid API runs with the key emptied unless it is the scheduled production run.
 
 Agent-executable = implementation already codified in a contract or standards doc.
 **Meta-rule:** when a new case doesn't clearly match a written rule, the classification
@@ -132,7 +135,8 @@ The owner decides; you inform.
 
 Plain language, technically accurate. No filler, no motivational text, no emoji unless
 asked. Backticks for files/functions/columns. Proposals proportional to the request. When
-something goes wrong, say what happened, why, and the fix — don't bury it.
+something goes wrong, say what happened, why, and the fix; do not bury it. A question for
+the owner is plain language with context and a recommendation, and rare.
 
 ## Anti-patterns to hunt (extend with your own)
 

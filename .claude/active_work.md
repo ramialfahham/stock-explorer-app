@@ -4,9 +4,6 @@
 > must act on. Rewritten continuously and capped at 32,000 bytes.
 > **Never:** a definition, or a narrative of how work went. Those belong in a durable doc, in
 > git, or in the MR description. If a rule is only written here, it is lost on the next trim.
-> The `## Do NOT` section below is a KNOWN EXCEPTION and a debt: fourteen standing rules still
-> live there with no durable home. Migrating them is the next context task, not this one. **Do
-> not trim that section to make room** -- trimming it deletes rules, and nothing else holds them.
 
 _The next session is handed exactly this file. Keep it current. Full history through
 2026-09-03 is archived in [`docs/handover_2026-09-03.md`](../docs/handover_2026-09-03.md)
@@ -168,23 +165,9 @@ Live owner decisions a future session must act on, not numbered because they are
   agent process, `docs/working_agreement.md` holds the UX PR gate. They differ only by hyphen
   versus underscore, and a session cited the wrong one for a whole session before noticing. A
   rename touches every reference, so it is its own change.
-- **Context-file debt, from the ownership pass.** Three items, one task:
-  (a) the `## Do NOT` section below still holds fourteen standing rules with no durable home;
-  (b) code comments point at `.claude/task/contract.md`, which is per-task and overwritten, so
-  those pointers are already dead. Find them with
-  `git grep -n "task/contract.md" -- '*.py' '*.sql'` (7 hits), not from a
-  list: every list written on this branch was wrong in both directions. Each comment already
-  states its reasoning inline before the pointer, so deleting the trailing clause loses nothing;
-  (c) the deferred sweep of dated code
-  comments must strip the DATE, not the comment. Start from
-  `git grep -nE "^\s*(#|--).*(20[0-9]{2}-[0-9]{2}-[0-9]{2}|owner[- ](approved|decided|settled))"
-  -- '*.py' '*.sql'` (10 hits, minus `dbt_analytics/target/`). It anchors on comment-start, so a
-  date on a CONTINUATION line of a multi-line comment escapes it, and so does a docstring or a
-  `COMMENT ON` literal (five such sites in `frontend/` and `supabase/migrations/013_net_cash.sql`
-  at review time): read around each hit and search docstrings separately. And --
-  `scripts/assessment_rules.py`'s `_CURRENCY_SYMBOLS` comment is the designated durable home for
-  the currency rule and carries a date, so deleting it would kill the home the onboard-market
-  skill now points at.
+- **Context-file debt: closed** (the Do NOT rules have durable homes, dead
+  `task/contract.md` pointers deleted, dates stripped from code comments). Untouched on
+  purpose: dates inside `supabase/migrations/*.sql`, which are applied history.
 
 Numbered defects and gaps:
 
@@ -302,44 +285,17 @@ Sync local `main` before starting anything new if it's drifted behind `gitlab/ma
 
 ## Do NOT
 
-- Commit/push `main`, or merge any MR. See the working agreement §3 for what is and is not
-  hook-enforced; the merge guard covers `gh pr merge` only.
-- Buy CI minutes, register a self-hosted runner, set CI/CD variable *values*, or touch
-  protected-branch settings on GitLab -- all owner-only (§6 cost/config).
-- **Spend anything.** Owner rule, stated in chat repeatedly, no durable home yet: no paid
-  tier, no API token the owner did not ask for. A CI step that would call Claude runs with
-  `ANTHROPIC_API_KEY=` empty unless it is the scheduled production run (!136 is the example).
-- Emit buy/sell/hold/price-target/advice anywhere -- educational only.
-- Reword or author metric copy/definitions/caveats without owner sign-off (§6).
-- Add a catalogue row for a new metric before it has a per-type display assignment. The
-  catalogue is what renders a metric, so the row must know which company types see it.
-- Hand-roll a plan-back in prose -- use plan mode.
-- Ask the owner cryptic/jargon questions -- plain language, context, a recommendation,
-  sparingly.
-- Use ROIC/Tier 1/CET1/NIM/NPL/ARR/multi-year metrics -- yfinance can't source them; this is
-  the real ceiling on the financial-card lens, leave it honestly blank rather than fake it.
-- Clip or hide outlier magnitudes at the data layer -- route to the correct lens (the display
-  layer now handles visual compression via the Tukey-fence range-mark clamp, MR !87).
-- Compute from `info` scalars where a period-matched financial-statement line exists.
-- **"Simplify" the snapshot gate in `attach_assessments`.** It is the answer to the owner's "the
-  user must not be confused": a rolled-back card kept the verdict computed from a snapshot it is
-  no longer showing. Verdict and AI read are withheld unless the assessment's `snapshot_date`
-  matches the card's, compared through `_snapshot_sort_key` -- a bare `str()` would blank every
-  badge app-wide, silently, if the column ever gained a time component. Mutation-verified both
-  directions.
-- **Re-measure the data layer and conclude the app is fast.** MR !111 cut the deck fetch to
-  1.46 MB and the owner still waits ~7.4s warm, far longer cold: the dominant cost is
-  Streamlit's own front end (54 JS files, ~1.2 MB, last request ~20s on a starved free tier).
-  No change in this repo moves it. Measure FIRST PAINT in a browser, not TTFB. The real options
-  are a paid Render plan or not Streamlit (issue #2), both owner calls.
-- **Add a column to `DECK_COLUMNS` casually** -- it is the cold path's entire cost, paid by
-  every visitor. A column on the card face is paid by nobody until that card is opened. Still
-  reserved and unbuilt from MR !111's plan: a `DISTINCT ON` view to push deck deduplication
-  into Postgres. `_DECK_TTL_SECONDS`' approved 15-60 minute band is recorded beside the
-  constant in `frontend/app.py`.
-- **Push before running `validate:full` locally** (`sqlfluff lint dbt_analytics/models
-  dbt_analytics/tests` and the rest, not just pytest) -- a lint violation reaching CI is a
-  wasted round trip. Push mechanics themselves are in the working agreement §3.
+The standing rules live in durable docs now; this is the index. Agent process and decision
+rights, including spend nothing and no merge: `.claude/working-agreement.md` §3, §6, §8.
+Metric work (statement lines over `info` scalars, no data-layer clipping, the yfinance
+ceiling, no fallbacks): `docs/data_contract.md` "Card metrics". A catalogue row carries
+`applies_to` from the start: `docs/metric_layer.md` "Adding a metric". Educational only, no
+advice: `docs/north_star.md`. The snapshot gate in `attach_assessments` and why it is not
+simplified: its docstring in `frontend/explore_filters.py`. Performance, `DECK_COLUMNS` and
+why re-measuring the data layer proves nothing: `docs/operations_guide.md` "Performance".
+Run `validate:full`'s steps before pushing: `docs/development_workflow.md` "Definition of
+done". Reserved and unbuilt from MR !111: a `DISTINCT ON` view to push deck deduplication
+into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the constant.
 
 ## Context / operational notes
 

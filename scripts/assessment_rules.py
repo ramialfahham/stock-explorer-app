@@ -235,7 +235,7 @@ def _is_shrinking(row: Mapping[str, Any]) -> bool:
 CURRENT_RATIO_WEAK_TH = 1.0
 CURRENT_RATIO_GOOD_TH = 1.5
 
-# Owner-decided floor (2026-09-01): below this, current liabilities are more than double current
+# Owner-decided floor: below this, current liabilities are more than double current
 # assets -- the level where a company is fully dependent on uninterrupted cash inflow with zero
 # cushion, a real distress signal no amount of free cash flow should paper over. Relief only ever
 # raises a "weak" current ratio to "ok", never to "good": free cash flow covering the shortfall
@@ -362,7 +362,7 @@ def _verdict_pre_revenue(row: Mapping[str, Any]) -> str:
     # different sizes. Both thresholds collapse to zero, i.e. the axis now asks only "is there
     # more cash than debt". That makes green marginally easier to reach for a pre-revenue
     # card; the runway and working-capital axes still carry the rest of the judgement.
-    # Flagged to the owner rather than absorbed silently -- see .claude/task/contract.md.
+    # Flagged to the owner rather than absorbed silently.
     net_cash = _axis(row, "net_cash", weak_th=0.0, good_th=0.0)
     working_capital = _axis(row, "working_capital", weak_th=0.0, good_th=0.0)
     if runway == "weak" or net_cash == "weak" or working_capital == "weak":
@@ -597,7 +597,7 @@ READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
 # Currency symbols for the money-amount metrics; mirrors frontend/card_copy.py so the
 # read names the SAME currency the card face shows. Unknown code -> the code itself
 # (never a fake symbol). The app spans nine markets across six currencies, so "$" is not a safe
-# default. The owner's rule (2026-08-28) is to use whatever form that currency takes in real
+# default. The owner's rule is to use whatever form that currency takes in real
 # practice. CHF has no entry and renders as "CHF", which IS the practical form, so it stays.
 # When those markets land: CAD gets "C$", following AUD; SEK, DKK and NOK stay bare ISO codes,
 # because "kr" names three different currencies and this app shows markets side by side.

@@ -122,6 +122,10 @@ python scripts/check_supabase_connection.py
 | New market | Every step of the activation checklist done, including the `public.markets` migration. "Vars synced, seed exists, CI green" is NOT sufficient: that describes a market whose next production export fails on a foreign key |
 | Docs | `north_star` / `data_contract` updated if behavior or schema changed |
 
+Before pushing, run at least `sqlfluff lint dbt_analytics/models dbt_analytics/tests`,
+`pytest tests/ -q` and `scripts/check_context_budget.py`, not `pytest` alone: a lint violation
+reaching CI is a wasted round trip. The rest of Tier A when the change touches dbt or export.
+
 ---
 
 ## Ingestion skills
