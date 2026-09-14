@@ -95,7 +95,7 @@ Three tiers — never all expanded at once on first load:
 | Tier | Content | Goal |
 |------|---------|------|
 | **Scan** | Name, ticker, market, sector headline, health verdict badge, metric values for this company's type (lens-grouped, no hero/tier split) | Answer “what company?” in seconds |
-| **Gloss** | AI read when one exists (its first lines always visible, the rest behind an inline Read more), otherwise a deterministic verdict summary (always visible), sector one-liner, company blurb preview (expands inline to the full text when truncated), metric gloss lines under values | Plain-English context without clutter |
+| **Gloss** | AI read when one exists (always visible in full, as a bullet list -- one sentence per bullet, nothing folded), otherwise a deterministic verdict summary (same bullet-list treatment, always visible), sector one-liner, company blurb preview (expands inline to the full text when truncated), metric gloss lines under values | Plain-English context without clutter |
 | **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?” (each metric behind its own Read more toggle), practice-number playgrounds — all in **one** learn panel. The full company summary has its own inline toggle on the card face instead (Gloss tier), not in this panel | Optional learning on demand |
 
 **Median primer and sector benchmarks** live inside **How we compare to similar companies**
@@ -103,13 +103,13 @@ Three tiers — never all expanded at once on first load:
 peers exist in the sector within that market, **hide benchmark UI entirely** — no orphan
 “unavailable” line on the card face.
 
-**Success check (mobile):** user can read company + sector + health verdict without scrolling,
-with at least the first metric's value visible above the fold; Save remains reachable. What makes
-it hold on a phone: on Discover and Saved the header drops to the brand alone while a card is
-open, and the AI-written read folds to its first lines (see
-[`ui/discover_header.md`](ui/discover_header.md) and
-[`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)); the 480px checklist is in
-[`ui/card_metric_cell.md`](ui/card_metric_cell.md).
+**Success check (mobile):** user can read company + sector + health verdict without
+scrolling; Save remains reachable. On Discover and Saved the header drops to the brand alone
+while a card is open ([`ui/discover_header.md`](ui/discover_header.md)). The AI-written read
+renders always-visible as a bullet list, nothing folded
+([`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)) -- full legibility over keeping the
+first metric value above the fold (§6), which this app does not track as a success check.
+The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 
 ---
 

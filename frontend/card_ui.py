@@ -17,7 +17,7 @@ from card_copy import (
     VERDICT_EMOJI,
     VERDICT_FALLBACK_READ,
     ai_read,
-    ai_read_preview,
+    ai_read_sentences,
     benchmark_compare_available,
     benchmark_compare_unavailable_learn,
     benchmark_indicator_label,
@@ -301,25 +301,25 @@ def _health_block_html(card: dict) -> str:
     read = ai_read(card)
     if read:
         label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
-        # Folded to its first lines so the first metric value shares the phone screen with the
-        # verdict (owner composition call); the full read is one tap away.
-        preview, folded = ai_read_preview(read)
-        if folded:
-            read_html = disclosure_html(
-                _esc(preview),
-                f'<p class="ss-ai-read">{_esc(read)}</p>',
-                more_label="Read more",
-                less_label="Show less",
-            )
-        else:
-            read_html = f'<p class="ss-ai-read">{_esc(read)}</p>'
+        read_html = _bullets_html(read, list_class="ss-ai-read-list")
         return f'<div class="ss-health-block">{badge}{label}{read_html}</div>'
     fallback = VERDICT_FALLBACK_READ.get(token)
     if not fallback:
         return f'<div class="ss-health-block">{badge}</div>'
     label = _block_label_html(BLOCK_LABEL_VERDICT_MEANING)
-    fallback_html = f'<p class="ss-verdict-fallback">{_esc(fallback)}</p>'
+    fallback_html = _bullets_html(fallback, list_class="ss-verdict-fallback-list")
     return f'<div class="ss-health-block">{badge}{label}{fallback_html}</div>'
+
+
+def _bullets_html(text: str, *, list_class: str) -> str:
+    """One `<li>` per sentence, always fully visible -- no fold, no truncation. Used for
+    both the AI-written read (`ss-ai-read-list`) and the deterministic fallback
+    (`ss-verdict-fallback-list`) -- two distinct classes styled identically (same
+    `.ss-health-block .ss-ai-read-list, .ss-health-block .ss-verdict-fallback-list` rule in
+    styles.py) so the two stay distinguishable in the DOM and in tests, matching how
+    `.ss-ai-read`/`.ss-verdict-fallback` worked before this became a bullet list."""
+    items = "".join(f"<li>{_esc(sentence)}</li>" for sentence in ai_read_sentences(text))
+    return f'<ul class="{list_class}">{items}</ul>'
 
 
 def _financial_caveat_html(card: dict) -> str:

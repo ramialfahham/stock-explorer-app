@@ -245,9 +245,8 @@ def _clear_saved_session() -> None:
 
 def brand_header_html(*, compact: bool = False) -> str:
     """compact: brand only, while a card is open on Discover or Saved. The tagline and
-    disclosure stay on every list view, where each visit starts; on the card view they are the
-    header's share of what pushes the first metric value below the fold (owner composition
-    call, docs/ui/discover_header.md)."""
+    disclosure stay on every list view, where each visit starts; on the card view they drop
+    to save vertical space (owner composition call, docs/ui/discover_header.md)."""
     if compact:
         return (
             '<div class="ss-brand-header ss-brand-header--compact">'
@@ -275,29 +274,36 @@ def _card_open(active: str) -> bool:
     return False
 
 
-def _render_back_row(*, key: str, saved_count: int, on_back) -> None:
-    """Back button and saved count on one row, replacing the separate stats line while a
-    card is open."""
+def _render_back_row(*, key: str, saved_count: int | None, on_back) -> None:
+    """Back button, replacing the separate stats line while a card is open. saved_count is
+    shown next to the button only on the Saved tab -- None on Discover, where the saved
+    tally is not this screen's subject (owner decision, 2026-09-14)."""
     st.markdown('<div class="ss-back-row-marker"></div>', unsafe_allow_html=True)
     with st.container(horizontal=True, vertical_alignment="center", gap="small"):
         if st.button("← Back to list", key=key, use_container_width=False):
             on_back()
             st.rerun()
-        with st.container(width="stretch"):
-            st.markdown(
-                f'<div class="ss-header-stats ss-header-stats--inline">'
-                f"{html.escape(f'{saved_count} saved')}</div>",
-                unsafe_allow_html=True,
-            )
+        if saved_count is not None:
+            with st.container(width="stretch"):
+                st.markdown(
+                    f'<div class="ss-header-stats ss-header-stats--inline">'
+                    f"{html.escape(f'{saved_count} saved')}</div>",
+                    unsafe_allow_html=True,
+                )
 
 
-def _render_scope_stats(*, remaining: int, saved_count: int, show_remaining: bool) -> None:
-    if show_remaining:
-        line = f"{remaining} match your filters · {saved_count} saved"
-    else:
-        line = f"{saved_count} saved"
+def _render_discover_scope_stats(*, remaining: int) -> None:
     st.markdown(
-        f'<div class="ss-header-stats ss-header-stats--solo">{html.escape(line)}</div>',
+        f'<div class="ss-header-stats ss-header-stats--solo">'
+        f"{html.escape(f'{remaining} match your filters')}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_saved_scope_stats(*, saved_count: int) -> None:
+    st.markdown(
+        f'<div class="ss-header-stats ss-header-stats--solo">'
+        f"{html.escape(f'{saved_count} saved')}</div>",
         unsafe_allow_html=True,
     )
 
@@ -492,7 +498,7 @@ def _render_discover_tab(client) -> dict | None:
 
     _render_back_row(
         key="discover_back_to_list",
-        saved_count=_saved_count(get_interactions()),
+        saved_count=None,
         on_back=lambda: st.session_state.update({"discover_focus_key": None}),
     )
 
@@ -655,11 +661,10 @@ def _discovery_page(client) -> None:
     _sync_eligible_counts(client)
     remaining = len(_discover_pool(client)) if active == "Discover" and not discover_focused else 0
     if not card_open:
-        _render_scope_stats(
-            remaining=remaining,
-            saved_count=saved_count,
-            show_remaining=active == "Discover" and not discover_focused,
-        )
+        if active == "Discover" and not discover_focused:
+            _render_discover_scope_stats(remaining=remaining)
+        elif active == "Saved":
+            _render_saved_scope_stats(saved_count=saved_count)
 
     focused_card = None
 

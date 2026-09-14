@@ -17,26 +17,28 @@
 ├─────────────────────────────────────────────┤
 │ [ Filters ▾ ]          All markets · All sectors │  5. Filters (Discover list only)
 ├─────────────────────────────────────────────┤
-│ 47 match your filters · 3 saved             │  6. Stats (Discover list only;
-├─────────────────────────────────────────────┤     3 saved alone once focused)
+│ 47 match your filters                        │  6. Stats (list views; Discover shown
+├─────────────────────────────────────────────┤     here -- see per-tab notes below)
 │ … tab body (card, list, or search) …        │
 └─────────────────────────────────────────────┘
 ```
 
 Rows 2, 3, 5 and 6 above depict the **list** views. Once a card is focused (Discover or
 Saved), rows 2 and 3 are not rendered, row 5 disappears entirely, and row 6 becomes one row
-with the back button: `[ ← Back to list ]` left, `{saved} saved` right. Every visit starts on
-a list view, so the tagline and the disclosure are still seen every visit; on the card view
-they are the header's share of what pushes the first metric value below the fold at 375px
-(the folded AI read is the larger share; see `disclosure_pattern.md`), and the north star's
-mobile success check wants that value above the fold.
+with just the back button (plus the saved count on Saved only -- see the table below). Every
+visit starts on a list view, so the tagline and the disclosure are still seen every visit;
+compacting to the brand alone on the card view keeps the header minimal. The AI-written read
+(always shown in full as a bullet list -- `disclosure_pattern.md`) can push later content
+well down a long card; not a tracked success check (`north_star.md`).
 
 ```
 │ Stock Explorer                              │  1. Brand only
 │ [ Discover | Saved | Search ]          [⋯] │  4. Nav
-│ [ ← Back to list ]                  3 saved │  6. Back row (`_render_back_row()`)
+│ [ ← Back to list ]                  3 saved │  6. Back row, Saved tab (`_render_back_row()`)
 │ … the card …                                │
 ```
+
+On Discover the same back row has no saved count: `[ ← Back to list ]` alone, nothing right-aligned.
 
 | # | Block | Source | Notes |
 |---|--------|--------|-------|
@@ -45,7 +47,7 @@ mobile success check wants that value above the fold.
 | 3 | Disclosure | `_render_brand_header()` | "Not investment advice." A permanent caption, not a one-time screen. Replaced the old first-run landing gate (removed) so the disclosure stays reachable every visit instead of appearing once and never again. List views only; the card view is never a visit's first screen |
 | 4 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
 | 5 | Filters | `_render_explore_filters()` | **Discover list view only**: one **Filters** popover (market + sector inside); closed row shows `filter_scope_summary()`. Hidden entirely once a card is focused -- a filter for a list that isn't currently on screen is dead chrome |
-| 6 | Stats | `_render_scope_stats()` / `_render_back_row()` | Discover list view: `{remaining} match your filters · {saved} saved`; Saved list and Search: `{saved} saved` only; a focused card (Discover or Saved): the back button and `{saved} saved` on one row |
+| 6 | Stats | `_render_discover_scope_stats()` / `_render_saved_scope_stats()` / `_render_back_row()` | The saved count is **Saved-tab only** (§6): Discover list view shows `{remaining} match your filters` with no saved count; Saved list shows `{saved} saved`; Search shows nothing at all; a focused card shows the back button alone on Discover, the back button plus `{saved} saved` on Saved |
 
 Sticky **Save** / **Not now** actions render **below** the card body on Discover — not in the header.
 
@@ -112,8 +114,8 @@ Popover content order:
 - [ ] Brand + tagline + disclosure + nav visible without scrolling
 - [ ] **⋯** menu inline with Discover / Saved / Search (not on its own row)
 - [ ] Discover list view: Filters row + stats + top of the list fit without horizontal scroll
-- [ ] Discover focus view: Filters row is gone, stats shows `{saved} saved` alone, no leftover
-      gap where the Filters row used to be
+- [ ] Discover focus view: Filters row is gone, back row shows just `[ ← Back to list ]`
+      with no leftover gap where the Filters row or a saved count used to be
 - [ ] Save / Not now reachable when a card is shown
 
 ---

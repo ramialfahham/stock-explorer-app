@@ -466,7 +466,7 @@ def test_ai_label_never_appears_without_ai_text() -> None:
     html = _health_block_html(card)
     assert VERDICT_BADGE_LABEL["green"] in html
     assert BLOCK_LABEL_ASSESSMENT not in html
-    assert "ss-ai-read" not in html
+    assert "ss-ai-read-list" not in html
     assert BLOCK_LABEL_VERDICT_MEANING in html
     assert VERDICT_FALLBACK_READ["green"] in html
 
@@ -525,10 +525,10 @@ def test_health_block_shows_badge_and_fallback_without_ai_read_when_null() -> No
     html = _health_block_html(card)
     assert "🟡" in html
     assert "Mixed" in html
-    assert "ss-ai-read" not in html
-    assert "ss-verdict-fallback" in html
+    assert "ss-ai-read-list" not in html
+    assert "ss-verdict-fallback-list" in html
     assert VERDICT_FALLBACK_READ["yellow"] in html
-    assert html.index("ss-verdict-badge") < html.index("ss-verdict-fallback"), (
+    assert html.index("ss-verdict-badge") < html.index("ss-verdict-fallback-list"), (
         "the fallback, like the AI read, must not precede the rules-computed verdict badge"
     )
 
@@ -662,51 +662,51 @@ def test_metric_groups_also_render_in_learn_panel() -> None:
     assert ">Profitability<" in html
 
 
-# --- AI read folds on the card face (ux/card-view-fold) ---
-# Owner composition call: the read opens at its first lines so the verdict, its first reasons
-# and the first metric value share one phone screen; the full read is one tap away.
+# --- AI read renders as an always-visible bullet list, nothing folded (owner reversal,
+# 2026-09-14, of the earlier ux/card-view-fold composition call: a wall of text hidden
+# behind Read more read worse in practice than the extra vertical space costs). ---
 
 
-def test_a_long_ai_read_folds_behind_read_more() -> None:
+def test_a_multi_sentence_ai_read_renders_as_one_bullet_per_sentence() -> None:
     card = _card_with_all_metrics("operating")
     card["health_verdict"] = "green"
-    card["ai_read"] = " ".join(f"word{i}" for i in range(60))
+    card["ai_read"] = "First sentence here. Second sentence here. Third sentence, word59."
     html = _health_block_html(card)
-    assert "<details" in html
-    assert "Read more" in html
-    assert "Show less" in html
-    assert "ss-disclosure-preview" in html
-    assert "word59" in html, "the full read must still be in the HTML, one tap away"
-    preview = html.split('class="ss-disclosure-preview">', 1)[1].split("</p>", 1)[0]
-    assert "word59" not in preview
-    assert preview.endswith("…")
+    assert "<details" not in html
+    assert "Read more" not in html
+    assert "Show less" not in html
+    assert "…" not in html, "no truncation marker: the full read is always fully visible"
+    assert html.count("<li>") == 3
+    assert "word59" in html, "the full read must be in the HTML unconditionally"
+    assert '<ul class="ss-ai-read-list">' in html
 
 
-def test_a_short_ai_read_renders_plain() -> None:
+def test_a_short_ai_read_renders_a_single_bullet() -> None:
     card = _card_with_all_metrics("operating")
     card["health_verdict"] = "green"
     card["ai_read"] = "Turns sales into profit at a healthy rate."
     html = _health_block_html(card)
     assert "<details" not in html
     assert "Read more" not in html
-    assert '<p class="ss-ai-read">' in html
+    assert html.count("<li>") == 1
+    assert '<ul class="ss-ai-read-list"><li>Turns sales into profit at a healthy rate.</li></ul>' in html
 
 
-def test_the_financial_caveat_stays_outside_the_fold() -> None:
-    """The caveat is the most important line on a financial card; folding it with the read
-    would hide it by default. It sits after the whole health block, so after the fold."""
+def test_the_financial_caveat_stays_outside_the_health_block() -> None:
     card = _card_with_all_metrics("financial")
     card["health_verdict"] = "yellow"
-    card["ai_read"] = " ".join(f"word{i}" for i in range(60))
+    card["ai_read"] = "First sentence here. Second sentence here. Third sentence here."
     html = build_card_html(card)
-    assert html.index(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT) > html.index("</details>")
+    list_start = html.index('<ul class="ss-ai-read-list">')
+    list_end = html.index("</ul>", list_start) + len("</ul>")
+    assert html.index(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT) > list_end
 
 
-def test_the_verdict_badge_and_label_stay_outside_the_fold() -> None:
+def test_the_verdict_badge_and_label_precede_the_bullet_list() -> None:
     card = _card_with_all_metrics("operating")
     card["health_verdict"] = "green"
-    card["ai_read"] = " ".join(f"word{i}" for i in range(60))
+    card["ai_read"] = "First sentence here. Second sentence here."
     html = _health_block_html(card)
-    details_start = html.index("<details")
-    assert html.index(VERDICT_BADGE_LABEL["green"]) < details_start
-    assert html.index(BLOCK_LABEL_ASSESSMENT) < details_start
+    list_start = html.index('<ul class="ss-ai-read-list">')
+    assert html.index(VERDICT_BADGE_LABEL["green"]) < list_start
+    assert html.index(BLOCK_LABEL_ASSESSMENT) < list_start

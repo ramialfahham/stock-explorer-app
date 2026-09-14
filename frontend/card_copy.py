@@ -7,6 +7,7 @@ source of truth; do not hand-edit metrics.json or reintroduce hardcoded metric d
 """
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 
@@ -496,9 +497,6 @@ STALE_SNAPSHOT_DAYS = 18
 
 # Yahoo longBusinessSummary preview length on the card face (tap to expand).
 BUSINESS_SUMMARY_PREVIEW_WORDS = 20
-# AI-written read preview on the card face: about three lines at 375px wide and 14px body
-# copy, so the verdict, its first reasons and the first metric value share one phone screen.
-AI_READ_PREVIEW_WORDS = 28
 
 
 def business_summary_full(card: dict) -> str | None:
@@ -534,10 +532,25 @@ def business_summary_preview(
     return preview or None
 
 
-def ai_read_preview(text: str, *, max_words: int = AI_READ_PREVIEW_WORDS) -> tuple[str, bool]:
-    """The read's first words for the card face; bool is True when the rest sits behind the
-    toggle."""
-    return truncate_words(text, max_words)
+# Requires whitespace after the terminator (a decimal point like "3.0%" has none, so a
+# percentage never breaks mid-number) AND a capital letter starting what follows (scope-
+# auditor's round-1 finding: an abbreviation like "U.S." has whitespace after its own period,
+# so the whitespace check alone still split "U.S. markets rose" into "U" / "S. markets rose").
+# A real sentence boundary is followed by a new sentence, which in READ_SYSTEM_PROMPT's plain,
+# properly-cased prose always starts capitalized; the text after an abbreviation inside the
+# same sentence almost never does ("U.S. markets", not "U.S. Markets"), so this one heuristic
+# -- no abbreviation dictionary needed -- resolves the case that mattered without adding the
+# complexity scripts/assessment_rules.py's own _SENTENCE_GAP comment already flags as a hazard.
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+
+
+def ai_read_sentences(text: str) -> tuple[str, ...]:
+    """Split the AI-written read (or the deterministic fallback, same shape) into one bullet
+    per sentence for the card face -- always shown in full, nothing folded."""
+    normalized = " ".join(text.split())
+    if not normalized:
+        return ()
+    return tuple(s for s in (p.strip() for p in _SENTENCE_SPLIT.split(normalized)) if s)
 
 
 def business_summary_is_truncated(

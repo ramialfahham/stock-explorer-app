@@ -252,13 +252,46 @@ def test_header_compacts_while_a_card_is_open_and_restores_on_back(app_test: App
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     _assert_clean(at)
     assert _header_is_compact(at)
-    assert not _scope_stats_line_present(at), "the count moved onto the back row"
-    assert any("saved" in v and "ss-header-stats--inline" in v for v in _rendered_markdown(at))
+    assert not _scope_stats_line_present(at), "the stats line is gone while a card is open"
+    assert not any("ss-header-stats--inline" in v for v in _rendered_markdown(at)), (
+        "Discover's back row shows no saved count -- Saved-tab only (owner decision, 2026-09-14)"
+    )
 
     at = at.button(key="discover_back_to_list").click().run()
     _assert_clean(at)
     assert not _header_is_compact(at)
     assert _scope_stats_line_present(at)
+
+
+def test_saved_count_shows_only_on_the_saved_tab(app_test: AppTest, cookie_scripts) -> None:
+    """Owner decision, 2026-09-14: "N saved" is Saved-tab-only chrome -- it used to also
+    render on Discover's list header, Discover's back row, and unconditionally on Search."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    at = at.button(key="discover_save").click().run()
+    _assert_clean(at)
+
+    at = at.segmented_control(key="bottom_nav").set_value("Discover").run()
+    _assert_clean(at)
+    assert not any("saved" in v for v in _rendered_markdown(at)), (
+        "Discover's list header must not mention the saved count"
+    )
+
+    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
+    _assert_clean(at)
+    assert not any("saved" in v for v in _rendered_markdown(at)), (
+        "Search must not render a saved count at all, even before a query is typed"
+    )
+
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    assert any("1 saved" in v and "ss-header-stats--solo" in v for v in _rendered_markdown(at))
+
+    at = at.button(key="saved_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    assert any("1 saved" in v and "ss-header-stats--inline" in v for v in _rendered_markdown(at)), (
+        "Saved's own back row keeps the saved count"
+    )
 
 
 def test_switching_to_saved_while_a_discover_card_is_open_restores_the_header(

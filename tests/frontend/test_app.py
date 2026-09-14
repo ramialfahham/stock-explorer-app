@@ -35,8 +35,8 @@ def test_brand_header_html_orders_name_then_tagline_then_disclaimer() -> None:
 
 
 def test_compact_brand_header_is_the_name_alone() -> None:
-    """While a card is open the tagline and disclosure give way to the first metric value;
-    both stay on every list view, where each visit starts (docs/ui/discover_header.md)."""
+    """While a card is open the tagline and disclosure drop to save vertical space; both
+    stay on every list view, where each visit starts (docs/ui/discover_header.md)."""
     html = brand_header_html(compact=True)
     assert PRODUCT_NAME in html
     assert PRODUCT_TAGLINE not in html
