@@ -98,6 +98,67 @@ def test_regenerated_json_matches_committed() -> None:
         assert out.read_text(encoding="utf-8") == COMMITTED_JSON.read_text(encoding="utf-8")
 
 
+DATA_CONTRACT = REPO / "docs" / "data_contract.md"
+
+
+def test_data_contract_metric_table_matches_seed() -> None:
+    """docs/data_contract.md's card-metrics table is generated from the seed between two
+    marker comments; a hand edit or a seed change without a re-render fails here, the same
+    lock frontend/metrics.json has."""
+    result = subprocess.run(
+        [sys.executable, str(REPO / "scripts" / "render_metric_table.py"), "--check"],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_render_metric_table_keeps_the_doc_line_endings(tmp_path: Path, monkeypatch) -> None:
+    """A Windows checkout holds data_contract.md as CRLF; rendering must not rewrite the
+    untouched lines to LF (read_text would strip every CR before the newline sniff)."""
+    import render_metric_table as rmt  # noqa: PLC0415
+
+    crlf, lf = chr(13) + chr(10), chr(10)
+    for newline in (crlf, lf):
+        doc = tmp_path / f"doc_{len(newline)}.md"
+        body = newline.join(["# Title", "", rmt.START, "stale", rmt.END, "tail", ""])
+        doc.write_bytes(body.encode("utf-8"))
+        monkeypatch.setattr(rmt, "DOC_PATH", doc)
+        assert rmt.main([]) == 0
+        raw = doc.read_bytes()
+        expected_crlf = raw.count(lf.encode()) if newline == crlf else 0
+        assert raw.count(crlf.encode()) == expected_crlf
+        assert b"stale" not in raw and b"| Card metric |" in raw
+        assert rmt.main(["--check"]) == 0
+
+
+def test_render_metric_table_escapes_pipes_in_cells() -> None:
+    """No seed cell carries a pipe today; a SQL `||` in a formula spec would otherwise split
+    the Markdown row."""
+    import render_metric_table as rmt  # noqa: PLC0415
+
+    escaped = chr(92) + "|"
+    assert rmt._cell("a || b") == "a " + escaped * 2 + " b"
+    assert rmt._formula({"numerator_expr": "x || y", "denominator_expr": ""}) == "`x " + escaped * 2 + " y`"
+
+
+def test_data_contract_data_only_list_names_real_uncatalogued_columns() -> None:
+    """The prose list of data-only intermediates is the one hand-written metric list left in
+    the contract. Each name must be a column the model computes, and none may be in the seed
+    (a catalogued metric belongs in the generated table, not the list)."""
+    doc = DATA_CONTRACT.read_text(encoding="utf-8")
+    para = doc.split("(the model is their only definition):", 1)[1].split("Nullable", 1)[0]
+    names = re.findall(r"`([a-z_][a-z0-9_]*)`", para)
+    assert names
+    sql = INT_MODEL.read_text(encoding="utf-8")
+    aliases = {m.lower() for m in re.findall(r"\bas\s+([a-z_][a-z0-9_]*)", sql, re.IGNORECASE)}
+    catalogued = set(_catalogue_ids())
+    for name in names:
+        assert name in aliases, f"{name} is listed as data-only but the model does not compute it"
+        assert name not in catalogued, f"{name} is catalogued; it belongs in the generated table"
+
+
 # --- Issue #12: a metric withheld from the whole financial type must say which type it is
 # shown for, never "banks" as shorthand for that type. The guard is structural: a row whose
 # applies_to excludes financial may not mention banks at all, except in the owner's sentence

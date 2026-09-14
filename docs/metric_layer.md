@@ -45,8 +45,9 @@ never a dash placeholder (`frontend/card_copy.py`, `frontend/card_ui.py`, pinned
 3. **Tests verify and guard.**
    - `dbt_analytics/seeds/_seeds.yml` — `not_null` / `unique` / `accepted_values` on the catalogue.
    - `tests/test_metric_catalogue.py` — every catalogue metric is computed in the model; the
-     regenerated `metrics.json` matches the committed file (the frontend-bridge no-drift lock); values
-     are well-formed.
+     regenerated `metrics.json` matches the committed file (the frontend-bridge no-drift lock); the
+     card-metrics table in `data_contract.md` matches a fresh render from the seed
+     (`scripts/render_metric_table.py`, the docs no-drift lock); values are well-formed.
 
 ## What it is NOT
 
@@ -68,7 +69,8 @@ start with `WITH`, which that jinja style can't satisfy — so the equivalent gu
    is what renders the metric, so it must carry its per-type `applies_to` from the start; a
    row without one puts the metric on no card (an empty `applies_to` excludes every type),
    which is not a decision anyone made.
-3. Regenerate the JSON: `python scripts/export_metric_definitions_json.py`.
+3. Regenerate the JSON and the contract table: `python scripts/export_metric_definitions_json.py`
+   and `python scripts/render_metric_table.py`.
 4. `dbt build` + `pytest tests/test_metric_catalogue.py` pass once all exist.
 
 ## Scope / follow-ups
