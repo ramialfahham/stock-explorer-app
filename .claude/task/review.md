@@ -4,33 +4,30 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: a25efe3d653166e81645c800572925551c7bb1c6ce48e1136530565583e1640b
+diff_sha256: 9b947e3ec4dd7b594eb59dac693a29044dca046181fea23dcbed8349fcd36f8a
 
-Four reviewers, by routing: scope-auditor (`always`), cto-reviewer (`scripts/*`, `tests/*`),
-equity-analyst-reviewer (`docs/data_contract.md`, `docs/metric_layer.md`),
-analytics-engineer-reviewer (`*.sql`, two comment lines in the model). Three rounds.
+Two reviewers, by routing: scope-auditor (`always`), cto-reviewer (`frontend/*`, `scripts/*`,
+`tests/*`, `requirements*.txt`). Three rounds.
 
 ## What shipped
 
-`docs/data_contract.md`'s card-metrics table is generated from `metric_catalogue.csv` by
-`scripts/render_metric_table.py` between two markers; `test_data_contract_metric_table_matches_seed`
-fails on a stale block. The 13 data-only intermediates are listed by name, the model their
-only definition, guarded by a test that each name is a model column and none is catalogued.
-Two "why" notes that had lived only in the deleted prose sit beside their formulas in
-`int_stock__card_metrics.sql`. 697 tests.
+The black screen on load. Header before the storage read and the deck fetch, with a
+"Loading cards" line; a splash written into Streamlit's index.html at deploy time so the
+first byte shows the product; the saved list moved from the streamlit_extras localStorage
+component to cookies Streamlit reads on the first run, written by a components.html script
+only in a run that saved or cleared, with a one-time verified migration of a legacy
+localStorage list. streamlit-extras removed; Streamlit telemetry off. Verified live on the
+local server: a save writes `ss_saved_0`, a fresh session reads "1 saved", no iframe on a
+plain load. 706 tests.
 
 ## Round 1
 
-scope-auditor: dropping the data-only formulas went beyond the owner's "generate the table";
-put to the owner as a two-way question, owner chose drop. equity-analyst: two definitional
-notes (`fcf_yield_pct`'s trailing FCF; `interest_coverage`'s `abs()`) lost their only home;
-moved into the model. cto: `read_text` strips CRs, so the script's line-ending sniff was dead
-code and a Windows checkout would have been rewritten to LF; fixed with `open(newline="")`
-and a unit test over CRLF and LF temp docs, mutation-proven; the `|` escape got a unit test.
-
-## Round 2 and 3
-
-All PASS; round 3 a one-character escape-sequence fix (cto nit).
+cto: a crafted cookie (12-digit or 5000-digit epoch) raised out of the first run and left
+that browser on a traceback for the cookie's lifetime; the migration removed localStorage
+before checking the cookie landed and wrote one unchunked cookie (over about 140 saves,
+silent loss); nothing tested that `flush_storage_writes()` fires after a save. All three
+fixed and mutation-proven. scope-auditor: `docs/supabase_setup.md` still said localStorage;
+the Render build step is a new mechanism and is now recorded as one with its provenance.
 
 ## scope-auditor
 
@@ -40,15 +37,8 @@ VERDICT: PASS
 
 VERDICT: PASS
 
-## equity-analyst-reviewer
-
-VERDICT: PASS
-
-## analytics-engineer-reviewer
-
-VERDICT: PASS
-
 ## Owner decisions
 
-Generate over delete (A); drop the data-only formulas rather than keep them as prose (A). Both
-in chat, recorded in the contract.
+Cookies over a lighter component (A, chat). Open for the owner: the two new strings
+("Loading cards"; splash "Stock Explorer" / "Loading"), the migration (unrequested, kept so
+no saved list vanishes), the build step itself (proposed as step 2 before "Now solve it").
