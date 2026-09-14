@@ -47,7 +47,7 @@
       "metric_id": "net_debt_to_ebitda",
       "label": "Net debt / EBITDA",
       "description": "Net debt (info_net_debt, or info_total_debt minus info_total_cash) divided by Yahoo EBITDA; periods may differ. A rough leverage signal, not a precise accounting ratio.",
-      "calculation": "(Total debt − cash) ÷ EBITDA: roughly how many years of earnings to clear net debt.",
+      "calculation": "(Total debt − cash) ÷ EBITDA: roughly how many years of earnings to clear net debt. Both figures are Yahoo's own summary numbers, from one source, and cash includes short-term investments.",
       "interpretation": "Lower = less leverage, safer. Negative = net cash. High = exposed in downturns or when rates rise.",
       "applicability": "Meaningless for financials (\"cash\" includes customer/policyholder assets); explodes when EBITDA ≈ 0 (distressed/pre-profit).",
       "format": "ratio_2",

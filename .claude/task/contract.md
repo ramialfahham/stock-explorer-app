@@ -3,7 +3,9 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Context debt, one task. The handover's `## Do NOT` rules move to durable homes and
+objective: Context debt, one task, plus the owner's decision on `net_debt_to_ebitda`'s source
+  (both sides Yahoo figures), written once in its catalogue row and pointed at from the data
+  contract. The handover's `## Do NOT` rules move to durable homes and
   the section becomes an index; dead code-comment pointers to `.claude/task/contract.md` go;
   dates come out of code comments, the comments stay; `sources.yml` names the `data-pipeline`
   job instead of `data_pipeline.yml`. Issue #10 closed on GitLab (fixed by !130).
@@ -17,6 +19,8 @@ scope_paths:
   - docs/development_workflow.md
   - docs/context_budget.yml
   - dbt_analytics/models/sources.yml
+  - dbt_analytics/seeds/metric_catalogue.csv
+  - frontend/metrics.json
   - dbt_analytics/models/2_base/yfinance/base_yf__constituents.sql
   - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
   - frontend/card_copy.py
@@ -30,7 +34,16 @@ scope_paths:
   - .claude/task/review.md
 
 decisions_reserved:
-  - None new. Every rule moved is an owner rule already in force; the move records it where
+  - `net_debt_to_ebitda` stays on Yahoo figures for both numerator and denominator (owner,
+    after measuring: on 14 live tickers the statement-line version differed by a median 0.5
+    turns of EBITDA, because Yahoo's `totalCash` includes short-term investments and the
+    landed statement cash does not; a different definition, not a staler copy). Owner-approved
+    `calculation` sentence: "(Total debt − cash) ÷ EBITDA: roughly how many years of earnings
+    to clear net debt. Both figures are Yahoo's own summary numbers, from one source, and
+    cash includes short-term investments." ("one period" dropped in review: the row's
+    `description` says periods may differ.) One home, the catalogue row; the data
+    contract's two mentions are pointers.
+  - Otherwise none new. Every rule moved is an owner rule already in force; the move records it where
     the thing it governs lives. Wording of moved rules is compressed, not changed in meaning.
   - `docs/data_contract.md`'s budget 59000 to 59500: the standing rules add about 800 bytes
     of contract text to a file that was 790 under its cap.
@@ -52,6 +65,9 @@ done_when:
     owner wording) are pointed at, not copied.
   - `sources.yml` no longer names `data_pipeline.yml`; `dbt parse` passes; `sqlfluff` passes
     on the two touched models.
+  - The catalogue row carries the sentence, `frontend/metrics.json` is regenerated, and no
+    other file states the definition (`git grep "from one source, and cash"` hits the seed
+    and the JSON only).
   - Every budget in `docs/context_budget.yml` still passes; `pytest tests/ -q` green.
 
 impact_map: Comments and docs only; no behaviour, no SQL logic, no test assertion changed.
