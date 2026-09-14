@@ -48,6 +48,7 @@ from supabase_cards import (
     fetch_deck,
 )
 from supabase_client import get_anon_client
+import timing
 
 load_dotenv()
 
@@ -636,6 +637,7 @@ def _discovery_page(client) -> None:
         loading.markdown('<p class="ss-loading">Loading cards</p>', unsafe_allow_html=True)
     _ensure_all_cards(client)
     loading.empty()
+    timing.mark("deck")
     saved_count = _saved_count(interactions)
 
     # The brand header is already on screen (main() renders it first); the nav reads the same
@@ -673,8 +675,10 @@ def _discovery_page(client) -> None:
 
 
 def main() -> None:
+    timing.start_run()
     _init_state()
     inject_global_css()
+    timing.mark("css")
     # First pixels before anything that can wait: the storage gate below may force a full
     # rerun and the deck fetch can take seconds, and Streamlit paints nothing until the first
     # element arrives. The header depends only on session state, so it goes out first.
@@ -683,6 +687,7 @@ def main() -> None:
             st.session_state.get("bottom_nav") or st.session_state.get("active_page")
         )
     ))
+    timing.mark("header")
 
     if not get_supabase_url() or not get_supabase_anon_key():
         st.error(
@@ -692,10 +697,13 @@ def main() -> None:
         return
 
     ensure_interactions_loaded()
+    timing.mark("cookies")
 
     client = get_anon_client()
     _discovery_page(client)
     flush_storage_writes()
+    timing.mark("page")
+    timing.render_report()
 
 
 if __name__ == "__main__":
