@@ -15,16 +15,17 @@ the detail._
 
 ## In flight
 
-**MR !137 open, awaiting owner merge** (`fix/financial-caveat-outside-health-block`,
-closes #11). The capital-adequacy caveat renders under the metric stack of every financial
-card, in every health-block state; owner chose this over a placeholder in the block.
+**MR !138 open, awaiting owner merge** (`chore/context-debt`, two reviewed commits). The
+standing rules that lived only in this file's Do NOT section now have durable homes (index
+below); dead `task/contract.md` pointers and comment dates gone; `sources.yml` twin fixed;
+#10 closed. Second commit: `net_debt_to_ebitda` stays on Yahoo figures both sides (owner,
+after measuring a median 0.5-turn gap to the statement-line version), stated once in its
+catalogue row; the data contract only points.
 
-**Portfolio-grade queue, owner-ranked 2026-09-13:** #11 (!137), then hygiene: close #10 and
-#12 on GitLab (fixed, still open), `sources.yml` twin, the `## Do NOT` rules, dead
-`task/contract.md` pointers, dated comments.
-
-**Stale twin, not touched (dbt file, its own reviewer):** `dbt_analytics/models/sources.yml:7`
-says "via `data_pipeline.yml`"; the job is `data-pipeline` in `.gitlab-ci.yml`.
+**NEXT, owner named the risk 2026-09-14:** `docs/data_contract.md`'s "Card metrics" formula
+table restates every catalogue row (label, formula, applicability) and has drifted from the
+seed three times this month. One task: generate it from the seed, or delete it and keep only
+what the seed cannot hold (eligibility rules, the no-fallbacks rule). Owner picks which.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -56,7 +57,7 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !136 `generate_assessments --target dev` (#4).
+**Merged this pass** (detail in each MR): !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
 !135 `sync_dbt_vars` exit status (#8). !134 CI
 tiers doc. !133 owner wording for ROE and working capital; playground heading. !132 playgrounds
 follow the card face (#9 B1, the audit's last finding). !131 catalogue "banks" wording (#12).
