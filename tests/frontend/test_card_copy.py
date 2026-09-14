@@ -119,6 +119,25 @@ def test_metric_gloss_net_cash_suppresses_the_cue() -> None:
     assert metric_gloss("net_debt_to_ebitda", -3.6) == "Net cash: cash on hand exceeds debt"
 
 
+# --- "vs sector" (benchmarked=True) -- names the range mark's population where a
+# reader is actually looking, since the sector is otherwise only stated once, higher up
+# the card. Owner decision: fold into the gloss line rather than a new word-labels row,
+# which was already tight on space (docs/ui/card_metric_cell.md's own collision notes).
+
+
+def test_metric_gloss_names_the_sector_when_benchmarked() -> None:
+    gloss = metric_gloss("ebit_margin_pct", 18.2, benchmarked=True)
+    assert gloss == "Operating profit as share of sales (TTM), vs sector. Higher is better."
+
+
+def test_metric_gloss_omits_vs_sector_when_not_benchmarked() -> None:
+    """Default (and what every metric without a range mark gets): no sector mentioned --
+    the "No sector comparison for this metric." line under the bar already says so."""
+    gloss = metric_gloss("ebit_margin_pct", 18.2)
+    assert "sector" not in gloss.lower()
+    assert gloss == "Operating profit as share of sales (TTM). Higher is better."
+
+
 def test_metric_perspective_label_title_cases_the_catalogue_lens() -> None:
     assert metric_perspective_label("ebit_margin_pct") == "Profitability"
     assert metric_perspective_label("net_debt_to_ebitda") == "Solvency"

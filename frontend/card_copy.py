@@ -200,8 +200,21 @@ def metric_direction(metric: str) -> str:
     return _DIRECTION_BY_METRIC.get(metric, "neutral")
 
 
-def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> str:
+def metric_gloss(
+    metric: str,
+    value: float | None,
+    card: dict | None = None,
+    *,
+    benchmarked: bool = False,
+) -> str:
     """Card-face gloss; value-aware where the story depends on the number.
+
+    `benchmarked=True` (the range mark actually rendered for this metric on this card --
+    the caller already knows this from `_metric_range_html()`'s own return) inserts ", vs
+    sector" before the direction cue, so the min/median/max bar's population is named where
+    a reader is actually looking, rather than only in the "Industrials (74 companies)" sector
+    line higher up the card, which a reader scrolling straight to a metric would miss. Not
+    the caller's job to recompute peer-count/benchmarkable eligibility a second time.
 
     Ends with a plain "Higher is better."/"Lower is better." for every metric with a
     known catalogue direction -- a ceteris-paribus statement about that metric's own
@@ -242,6 +255,8 @@ def metric_gloss(metric: str, value: float | None, card: dict | None = None) -> 
         base = "Operating profit as share of sales (latest annual)"
     else:
         base = METRIC_GLOSS[metric]
+    if benchmarked:
+        base = f"{base}, vs sector"
     direction = metric_direction(metric)
     if direction == "higher":
         return f"{base}. Higher is better."

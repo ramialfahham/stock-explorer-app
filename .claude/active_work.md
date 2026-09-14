@@ -15,7 +15,11 @@ the detail._
 
 ## In flight
 
-**Nothing in flight.** Load-time numbers below are final for this pass.
+**MR open (2026-09-14), branch `ux/metric-gloss-vs-sector`, awaiting owner review/merge.**
+The min/median/max range bar never named its own population; `metric_gloss()`'s new
+`benchmarked` param inserts ", vs sector" into the gloss line when the mark actually rendered
+for that metric+card (peer-count gate is per-card). Both reviewers passed round 1. Detail in
+this branch's own `contract.md`/`review.md`.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;

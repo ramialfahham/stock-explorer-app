@@ -3,60 +3,42 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Two card-face/UX fixes flagged by the owner from a live screenshot. (1) The
-  "What the numbers say - AI-written" block reads as one wall of text and hides most of it
-  behind a Read more/Show less fold; render it as an always-visible bullet list instead, one
-  sentence per bullet, nothing folded. (2) The "N saved" count currently renders on every
-  tab's list header (Discover, Saved, Search) and again on the back-row when a card is open
-  on Discover/Saved -- owner decided (2026-09-14) it should show on the Saved tab only.
-  Addendum, same session: removing the fold left `docs/north_star.md`'s "first metric value
-  above the fold" mobile success check contradicted by the now-always-full read -- owner
-  decided (2026-09-14) to retire that check rather than re-guard it; swept every doc/comment
-  that cited it.
+objective: A metric's min/median/max range bar never states its own population -- "sector"
+  only appears once, higher up the card (e.g. "Industrials (74 companies)"), or in the
+  fallback "No sector comparison for this metric." line when there is no mark at all. A
+  reader scrolling straight to a metric has no cue the bar is a sector comparison. Owner
+  decided (in chat): name it in the metric's own gloss line -- "..., vs sector." -- rather
+  than a new word-labels row (already tight on space per docs/ui/card_metric_cell.md's own
+  collision notes).
 
 scope_paths:
   - frontend/card_copy.py
   - frontend/card_ui.py
-  - frontend/app.py
-  - frontend/styles.py
-  - tests/frontend/test_card_ui.py
   - tests/frontend/test_card_copy.py
-  - tests/frontend/test_app_e2e.py
-  - tests/frontend/test_styles.py
-  - docs/north_star.md
-  - docs/ui/disclosure_pattern.md
-  - docs/ui/discover_header.md
-  - docs/working_agreement.md
-  - docs/product_roadmap_2026-06.md
-  - tests/frontend/test_app.py
+  - tests/frontend/test_card_ui.py
+  - docs/ui/card_metric_cell.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
 decisions_reserved:
-  - "N saved" placement: owner chose Saved-tab-only (2026-09-14), over keeping it on
-    Discover+Saved or de-duplicating it to once-per-screen on all three tabs.
-  - "First metric value above the fold" mobile success check: owner retired it (2026-09-14)
-    rather than re-guard it against the now-unfolded AI read.
+  - Wording and placement ("vs sector" folded into the gloss line, not a new row): owner's
+    call, in chat.
 
 done_when:
-  - `_health_block_html` renders the AI-written read and the deterministic fallback through
-    the same `_bullets_html()` code path -- `<ul>` of `<li>` sentences, fully visible, two
-    classes (`ss-ai-read-list` / `ss-verdict-fallback-list`) so the two stay distinguishable
-    in the DOM; no `<details>`/Read more/Show less anywhere in the health block.
-  - A multi-sentence `ai_read` produces one `<li>` per sentence and the full text -- including
-    its last sentence -- is present in the rendered HTML with no truncating "..." (mutation
-    check: a test asserts the block contains zero "..." characters regardless of read length).
-  - `ai_read_preview` / `AI_READ_PREVIEW_WORDS` removed from card_copy.py (dead once the fold
-    is gone); `truncate_words` stays (business_summary_preview still uses it).
-  - "N saved" appears only inside the Saved tab (its list header and its card-open back row);
-    Discover's list header keeps "N match your filters" with no saved-count suffix; Discover's
-    back row and the Search tab render no saved-count text anywhere (mutation check: a test
-    renders each of the three tabs and asserts "saved" appears in the Saved tab's output and
-    not in Discover's or Search's).
+  - `metric_gloss()` takes `benchmarked: bool = False`; when True, inserts ", vs sector"
+    before the direction cue (or bare, for the no-direction case).
+  - The caller (`_metric_cell_html` in card_ui.py) passes `benchmarked=True` only when
+    `_metric_range_html()` actually rendered a mark for that metric on that card -- not
+    merely because the metric is catalogue-benchmarkable in the abstract (peer count is
+    per-card).
+  - The two value-aware early-return branches (net_debt_to_ebitda's "Net cash", debt_to_
+    equity's "Negative equity") are untouched -- "vs sector" only applies past them, same as
+    the existing universal direction cue.
+  - Mutation-proof: a test with the SAME metric on two cards differing only in
+    `sector_peer_count` (above/below the peer threshold) asserts "vs sector" appears on one
+    and not the other.
   - `pytest tests/ -q` green.
-  - No remaining reference to "first metric value above the fold" (or the equivalent claim)
-    as an active, tracked check anywhere in the repo (docs or code comments) -- grep confirms.
 
 impact_map: Presentation-only in the Streamlit frontend -- no data contract, pipeline, or
   Supabase schema change. No new dependency, no cost.
