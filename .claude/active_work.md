@@ -15,19 +15,21 @@ the detail._
 
 ## In flight
 
-**MR !140 open, awaiting owner merge** (`perf/first-paint`). Owner 2026-09-14: the black
-screen on load is not acceptable, zero spend, "solve it". Shipped: header before the storage
-read and the deck fetch; a splash written into Streamlit's index.html at deploy time (new
-render.yaml build step); the saved list moved from the streamlit_extras localStorage
-component to cookies (owner chose A over a lighter component), with a verified one-time
-migration. Owner's to reword: "Loading cards" and the splash "Stock Explorer" / "Loading".
+**MR !141 open, awaiting owner merge** (`perf/timing-probe`): `?timing=1` prints the page's
+own stage clock (entry script, main, css, header, cookies, deck, page, process age). Keep or
+remove after the measurement: owner's call.
 
-**NEXT, after !140 deploys: measure the live site again** (browser probe: first paint,
-header, rows; the numbers before were 0.35 s server, 5.3 s bundle, 11.6 s first pixel). What
-remains is Render free's 5 s bundle download; the zero-spend lever is a faster free host
-(Hugging Face Spaces, 2 vCPU) and needs the owner to create the Space (the agent cannot make
-accounts). The Windows-only asyncio stall seen locally (server done, frontend waits ~3 s) is
-not production; do not chase it.
+**Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** !140 merged:
+header first, splash at first byte, saved list in cookies (owner: A), telemetry off. Live
+after !140, return visit: first byte 0.2 s (splash), JS 0.4 s, script starts 2.1 s, header
+4.9 s, list 5.3 s (was 11.6 s to first pixel). Right after a deploy or a Render spin-down the
+first visit is about 44 s: the process starting on Render's box. Two gaps to name with the
+probe: JS ready to script start (2.1 s) and script start to the first element (2.8 s; 0.2 s
+locally). **NEXT:** open the live site with `?timing=1` once !141 deploys, read the caption,
+name the gap. The zero-spend lever for the bundle download is a faster free host (Hugging
+Face Spaces); only the owner can create the Space. The Windows-only asyncio stall seen
+locally is not production; do not chase it. Owner's to reword: "Loading cards", the splash
+"Stock Explorer" / "Loading".
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -58,7 +60,7 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !139 generated metric table in the data contract.
+**Merged this pass** (detail in each MR): !140 first paint, cookies, splash. !139 generated metric table in the data contract.
 !138 standing rules to durable homes; net debt /
 EBITDA defined once in its catalogue row. !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
 !135 `sync_dbt_vars` exit status (#8). !134 CI
