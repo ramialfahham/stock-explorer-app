@@ -141,7 +141,7 @@ open, and the AI-written read folds to its first lines (see
 | Cards per session | **No limit** |
 | Ordering (list) | Alphabetical by company name: stable and re-findable, unlike a session-stateful walk order that could move a row for reasons unrelated to anything the reader just did |
 | Universe | **Card-eligible tickers only** (per company type's eligibility gate) |
-| Auth | **None in v1** — Save/Not now persist in browser localStorage on device |
+| Auth | **None in v1**; the saved list persists in a browser cookie on the device |
 
 ### Save
 
