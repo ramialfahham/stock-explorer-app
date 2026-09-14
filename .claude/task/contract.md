@@ -3,49 +3,71 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: The financial-type card's capital-adequacy caveat rendered inside the health
-  block, so a card whose block is withheld (no assessment row, or one from another snapshot)
-  showed bank metrics with no caveat. Issue #11. Owner chose A: the caveat is its own line
-  under the metrics on every financial card, whatever the health block does.
+objective: Context debt, one task, plus the owner's decision on `net_debt_to_ebitda`'s source
+  (both sides Yahoo figures), written once in its catalogue row and pointed at from the data
+  contract. The handover's `## Do NOT` rules move to durable homes and
+  the section becomes an index; dead code-comment pointers to `.claude/task/contract.md` go;
+  dates come out of code comments, the comments stay; `sources.yml` names the `data-pipeline`
+  job instead of `data_pipeline.yml`. Issue #10 closed on GitLab (fixed by !130).
 
 scope_paths:
-  - frontend/card_ui.py
-  - frontend/card_copy.py
-  - frontend/styles.py
-  - tests/frontend/test_card_ui.py
-  - docs/ui/card_metric_cell.md
-  - docs/ui/disclosure_pattern.md
+  - .claude/working-agreement.md
+  - .claude/active_work.md
   - docs/data_contract.md
+  - docs/metric_layer.md
+  - docs/operations_guide.md
+  - docs/development_workflow.md
+  - docs/context_budget.yml
+  - dbt_analytics/models/sources.yml
+  - dbt_analytics/seeds/metric_catalogue.csv
+  - frontend/metrics.json
+  - dbt_analytics/models/2_base/yfinance/base_yf__constituents.sql
+  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
+  - frontend/card_copy.py
+  - frontend/card_ui.py
+  - frontend/explore_filters.py
+  - frontend/row_ui.py
+  - frontend/styles.py
+  - scripts/assessment_rules.py
   - tests/frontend/test_styles.py
   - .claude/task/contract.md
   - .claude/task/review.md
-  - .claude/active_work.md
 
 decisions_reserved:
-  - Placement, owner-set in chat (option A over B): under the metric stack, inside the
-    metrics section, on every financial-type card. The wording
-    (`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`) is unchanged.
-  - Styling reuses the existing caption treatment; only the selector's scope and a top
-    margin change. No new token.
+  - `net_debt_to_ebitda` stays on Yahoo figures for both numerator and denominator (owner,
+    after measuring: on 14 live tickers the statement-line version differed by a median 0.5
+    turns of EBITDA, because Yahoo's `totalCash` includes short-term investments and the
+    landed statement cash does not; a different definition, not a staler copy). Owner-approved
+    `calculation` sentence: "(Total debt − cash) ÷ EBITDA: roughly how many years of earnings
+    to clear net debt. Both figures are Yahoo's own summary numbers, from one source, and
+    cash includes short-term investments." ("one period" dropped in review: the row's
+    `description` says periods may differ.) One home, the catalogue row; the data
+    contract's two mentions are pointers.
+  - Otherwise none new. Every rule moved is an owner rule already in force; the move records it where
+    the thing it governs lives. Wording of moved rules is compressed, not changed in meaning.
+  - `docs/data_contract.md`'s budget 59000 to 59500: the standing rules add about 800 bytes
+    of contract text to a file that was 790 under its cap.
+  - `supabase/migrations/*.sql` keep their dates: applied history, and `013`'s `COMMENT ON`
+    literal is the text production already holds.
 
 done_when:
-  - `_financial_caveat_html(card)` returns the caveat for `company_type == "financial"`
-    and "" otherwise; `build_card_html` appends it after the metric grid inside
-    `.ss-card-metrics`; `_health_block_html` no longer emits it.
-  - Tests over `build_card_html`: a financial card shows the caveat exactly once, after the
-    metrics section starts and outside the health block, in four states (AI read, fallback
-    read, no verdict, bare card); operating and pre-revenue cards never show it; with a
-    folded read the caveat comes after `</details>`. The four-state test fails against HEAD.
-  - `docs/ui/card_metric_cell.md` specifies the line; `docs/ui/disclosure_pattern.md` and
-    `docs/data_contract.md` (the financial verdict entry and the withheld-block paragraph)
-    no longer say the caveat is in the block; the `card_copy.py` and `card_ui.py` comments
-    that recorded issue #11 as a known gap describe the new placement.
-  - `tests/frontend/test_styles.py` pins the caveat rule to `.ss-card-metrics`, so a revert
-    of the selector cannot leave the line unstyled unnoticed.
-  - UX gate: 480px render of both states checked in the browser (one caveat each, under
-    the last metric, no horizontal scroll); first metric above the fold unaffected because
-    the line sits below the stack.
-  - `pytest tests/ -q` green.
+  - `git grep -n "task/contract.md" -- '*.py' '*.sql'` returns nothing.
+  - `git grep -nE "20[0-9]{2}-[0-9]{2}-[0-9]{2}"` over `frontend/`, `scripts/`, `ingestion/`,
+    `dbt_analytics/models`, `dbt_analytics/macros`, `dbt_analytics/tests` and `tests/` returns
+    only data (snapshot dates, fixtures), no comment or docstring.
+  - Each former Do NOT rule has one durable home and the handover's `## Do NOT` lists where:
+    spend and owner-only ops, plain questions (`.claude/working-agreement.md` §6, §8);
+    statement lines over `info` scalars, no data-layer clipping, the yfinance ceiling
+    (`docs/data_contract.md`); `applies_to` from the first row (`docs/metric_layer.md`);
+    the snapshot gate (`frontend/explore_filters.py` docstring); performance and
+    `DECK_COLUMNS` (`docs/operations_guide.md`); validate before push
+    (`docs/development_workflow.md`). Rules already durable (no merge, no advice, plan mode,
+    owner wording) are pointed at, not copied.
+  - `sources.yml` no longer names `data_pipeline.yml`; `dbt parse` passes; `sqlfluff` passes
+    on the two touched models.
+  - The catalogue row carries the sentence, `frontend/metrics.json` is regenerated, and no
+    other file states the definition (`git grep "from one source, and cash"` hits the seed
+    and the JSON only).
+  - Every budget in `docs/context_budget.yml` still passes; `pytest tests/ -q` green.
 
-impact_map: Card face HTML for financial-type cards only (one `<p>` moves from the health
-  block to the metrics section); one CSS rule rescoped. No data, no dbt, no export change.
+impact_map: Comments and docs only; no behaviour, no SQL logic, no test assertion changed.

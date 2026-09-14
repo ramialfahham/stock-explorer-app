@@ -232,10 +232,20 @@ audit-only.
 
 **Net debt / EBITDA:** dbt uses `coalesce(info_net_debt, info_total_debt - info_total_cash)` as the
 numerator when `info_ebitda` is non-null and non-zero. If both `netDebt` and the debt/cash pair
-are missing, `net_debt_to_ebitda` is null → ineligible. Do not rebuild EBITDA from statements in v1.
+are missing, `net_debt_to_ebitda` is null → ineligible. Why both sides are Yahoo figures: the
+catalogue row's `calculation`, the one statement of that definition.
 
 **No fallbacks:** if the primary field for a metric is null, the ticker is ineligible — do not
 substitute ROE, ROA, or hand-built ROIC.
+
+**Standing rules for metric work.** Compute from the period-matched statement line where one
+is landed, not the `info` scalar that duplicates it; the one metric defined otherwise,
+`net_debt_to_ebitda`, says so in its catalogue row. Do not clip or hide outlier magnitudes at
+the data layer; route to the
+right lens and let the display clamp compress ([`ui/card_metric_cell.md`](ui/card_metric_cell.md));
+the dividend-yield rescale corrects units, it caps nothing. Tier 1, CET1, NPL and ARR are not in
+yfinance, NIM has no landed inputs, ROIC and multi-year series are deliberately not built (no
+fallbacks; latest period only): leave the gap honest, never fake it.
 
 ---
 

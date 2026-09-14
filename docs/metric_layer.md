@@ -64,7 +64,10 @@ start with `WITH`, which that jinja style can't satisfy — so the equivalent gu
 
 1. Add the computation to `int_stock__card_metrics` (one place).
 2. Add the `metric_catalogue` row (id, label, formula spec, `calculation` / `interpretation` /
-   `applicability`, format, `perspective`/tier/order, direction, copy).
+   `applicability`, format, `perspective`/tier/order, direction, copy, `applies_to`). The row
+   is what renders the metric, so it must carry its per-type `applies_to` from the start; a
+   row without one puts the metric on no card (an empty `applies_to` excludes every type),
+   which is not a decision anyone made.
 3. Regenerate the JSON: `python scripts/export_metric_definitions_json.py`.
 4. `dbt build` + `pytest tests/test_metric_catalogue.py` pass once all exist.
 

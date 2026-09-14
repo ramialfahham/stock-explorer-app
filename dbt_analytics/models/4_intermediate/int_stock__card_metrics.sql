@@ -125,8 +125,7 @@ metrics as (
         -- can tell a genuine net-cash position (net_debt negative, ebitda positive) apart from
         -- a sign flip caused by negative earnings (ebitda <= 0) -- the ratio's own sign can't
         -- distinguish these, since either net_debt or ebitda going negative flips it the same
-        -- way. Data-only -- not in the metric catalogue or the Supabase export; see
-        -- .claude/task/contract.md.
+        -- way. Data-only -- not in the metric catalogue or the Supabase export.
         s.info_ebitda,
         case
             when coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash) is not null
@@ -140,7 +139,7 @@ metrics as (
         -- basis (does free cash flow actually cover the working-capital shortfall) rather than
         -- fcf_margin_pct's revenue-scaled proxy, which doesn't track the SIZE of a liquidity
         -- gap that isn't proportional to revenue (e.g. a near-term debt-maturity wall). Data-only
-        -- -- not in the metric catalogue or the Supabase export; see .claude/task/contract.md.
+        -- -- not in the metric catalogue or the Supabase export.
         s.stmt_free_cash_flow,
         case
             when s.stmt_free_cash_flow is not null
@@ -163,7 +162,7 @@ metrics as (
         -- zero, and 0 divided by a negative equity is 0, not negative -- so a debt-free company
         -- with negative equity would silently evade a check on the ratio's own sign.
         -- scripts/assessment_rules.py checks this column's sign directly instead. Data-only --
-        -- not in the metric catalogue or the Supabase export; see .claude/task/contract.md.
+        -- not in the metric catalogue or the Supabase export.
         s.stmt_stockholders_equity,
         case
             when s.stmt_total_debt is not null
@@ -254,7 +253,7 @@ metrics as (
         -- card because the ratio moves with the share price, and this pipeline refreshes
         -- twice a month -- a price-derived figure goes stale in a way the statement-derived
         -- ones do not. net_cash_to_market_cap itself is KEPT in the warehouse (it is simply
-        -- no longer catalogued, so no card renders it); see .claude/task/contract.md.
+        -- no longer catalogued, so no card renders it).
         case
             when s.stmt_cash_and_equivalents is not null
                 and s.stmt_total_debt is not null

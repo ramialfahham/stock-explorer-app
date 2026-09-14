@@ -725,7 +725,7 @@ section[data-testid="stSidebar"] {
    not the bare `:has(.ss-row)` it might look like it should be: `:has()` matches at ANY
    descendant depth, not just the nearest one, so a bare `.ss-row` condition also matches the
    single big stVerticalBlock that wraps the *entire* list (every row is nested inside it, so
-   it too "has a .ss-row somewhere below it"). Confirmed live (2026-08-31, adding Discover's
+   it too "has a .ss-row somewhere below it"). Confirmed live (adding Discover's
    pagination controls): a later, unrelated st.button() rendered after the row loop, inside
    that same big wrapper, silently inherited the row-button rules below meant only for each
    row's own tap target -- position: absolute; inset: 0 resolved against the big wrapper
@@ -854,7 +854,7 @@ section[data-testid="stSidebar"] {
 /* Rich row variant (Discover list): one type-aware lead metric alongside the plain
    title/subtitle. Keeps the base .ss-row class above so it inherits every tap-target and
    hover rule unchanged; only the internal layout differs. Used to also carry a health-verdict
-   dot; removed by owner instruction (2026-08-31), see frontend/row_ui.py's build_rich_row_html
+   dot; removed by owner instruction, see frontend/row_ui.py's build_rich_row_html
    docstring for why. */
 .ss-row.ss-row-rich {
     display: flex;

@@ -154,7 +154,7 @@ def test_row_tap_target_neutralizes_its_own_element_container_position():
 # nearest one, so a bare `:has(.ss-row)` on `div[data-testid="stVerticalBlock"]` matches not
 # only each row's own small per-row container, but also the single big stVerticalBlock that
 # wraps the *entire* list (every row is nested inside it, so it too "has a .ss-row somewhere
-# below it"). Confirmed live 2026-08-31 while adding Discover's pagination controls: a later,
+# below it"). Confirmed live while adding Discover's pagination controls: a later,
 # unrelated st.button() rendered after the row loop, inside that same big wrapper, silently
 # inherited the row-tap-target's `position: absolute; inset: 0` -- meant only for each row's
 # own button -- and stretched to the full list's height (~2780px) instead of a normal button.

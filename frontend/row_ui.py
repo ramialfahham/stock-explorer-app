@@ -39,7 +39,7 @@ def build_rich_row_html(
     row already has (see styles.py); only the internal layout differs. `metric` is optional:
     a card with no value for its type's lead metric still renders the row, just without it.
 
-    Previously also carried a health-verdict dot; removed by owner instruction (2026-08-31)
+    Previously also carried a health-verdict dot; removed by owner instruction
     after it stayed visually misaligned even once its known emoji-glyph-metrics cause was
     fixed.
     """
