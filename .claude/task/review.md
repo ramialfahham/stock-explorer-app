@@ -4,40 +4,35 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 79c169e202fda14d732c4d6343f694ca96fe7dc9c25107f623dcf24b83485c07
+diff_sha256: a25efe3d653166e81645c800572925551c7bb1c6ce48e1136530565583e1640b
 
-Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer (`*.sql`,
-`dbt_analytics/*.yml`), cto-reviewer (`frontend/*`, `scripts/*`, `tests/*`,
-`docs/context_budget.yml`), equity-analyst-reviewer (`docs/data_contract.md`,
-`docs/metric_layer.md`). Two rounds.
+Four reviewers, by routing: scope-auditor (`always`), cto-reviewer (`scripts/*`, `tests/*`),
+equity-analyst-reviewer (`docs/data_contract.md`, `docs/metric_layer.md`),
+analytics-engineer-reviewer (`*.sql`, two comment lines in the model). Three rounds.
 
 ## What shipped
 
-Context debt. The handover's `## Do NOT` rules each have a durable home and the section is an
-index (spend and owner-only ops, plain questions: working agreement §6, §8; metric rules:
-`docs/data_contract.md`; `applies_to` from the first row: `docs/metric_layer.md`; the
-snapshot gate: `attach_assessments` docstring; performance and `DECK_COLUMNS`:
-`docs/operations_guide.md`; checks before push: `docs/development_workflow.md`). Seven dead
-`task/contract.md` pointers deleted; dates stripped from code comments, comments kept;
-`sources.yml` names the `data-pipeline` job. Issue #10 closed on GitLab. Comments and docs
-only; 693 tests; `dbt parse` and `sqlfluff` clean.
+`docs/data_contract.md`'s card-metrics table is generated from `metric_catalogue.csv` by
+`scripts/render_metric_table.py` between two markers; `test_data_contract_metric_table_matches_seed`
+fails on a stale block. The 13 data-only intermediates are listed by name, the model their
+only definition, guarded by a test that each name is a model column and none is catalogued.
+Two "why" notes that had lived only in the deleted prose sit beside their formulas in
+`int_stock__card_metrics.sql`. 697 tests.
 
 ## Round 1
 
-equity-analyst: my compression of the metric rules overstated three things: "never the info
-scalar" while `net_debt_to_ebitda`'s numerator does exactly that (now named as a shipped
-exception, owner's call); "ROIC and multi-year series not sourceable" when both are scope
-choices (now "deliberately not built"); a failure mode the code cannot produce ("or on every
-card"; an empty `applies_to` excludes every type). cto: "about 1.2 MB" for Streamlit's bundle
-was an unverifiable number; deleted. cto recommended naming the cheap pre-push checks instead
-of all of Tier A; done. The fixes put `docs/data_contract.md` 30 bytes over its budget; raised
-59000 to 59500, recorded in the contract.
+scope-auditor: dropping the data-only formulas went beyond the owner's "generate the table";
+put to the owner as a two-way question, owner chose drop. equity-analyst: two definitional
+notes (`fcf_yield_pct`'s trailing FCF; `interest_coverage`'s `abs()`) lost their only home;
+moved into the model. cto: `read_text` strips CRs, so the script's line-ending sniff was dead
+code and a Windows checkout would have been rewritten to LF; fixed with `open(newline="")`
+and a unit test over CRLF and LF temp docs, mutation-proven; the `|` escape got a unit test.
+
+## Round 2 and 3
+
+All PASS; round 3 a one-character escape-sequence fix (cto nit).
 
 ## scope-auditor
-
-VERDICT: PASS
-
-## analytics-engineer-reviewer
 
 VERDICT: PASS
 
@@ -49,19 +44,11 @@ VERDICT: PASS
 
 VERDICT: PASS
 
-## Second commit on this branch (three reviewers, three rounds)
+## analytics-engineer-reviewer
 
-`net_debt_to_ebitda` stays on Yahoo figures both sides, owner decision after a measurement
-(14 live tickers; statement-line version differed by a median 0.5 turns, because Yahoo's
-`totalCash` includes short-term investments and the landed statement cash does not). Written
-once, in the catalogue row's `calculation`; the data contract's two mentions are pointers.
-Round 1: scope-auditor found the contract edits had not applied (CRLF); applied. Round 2:
-equity-analyst found "one period" contradicted the row's own `description` ("periods may
-differ"); owner dropped it. Round 3: PASS from scope-auditor, analytics-engineer and
-equity-analyst at the hash above.
+VERDICT: PASS
 
 ## Owner decisions
 
-The `calculation` sentence, owner-approved, quoted in the contract. Recorded for a later
-task: the data contract's formula table duplicates the catalogue for every metric, the same
-drift risk; generate it from the seed, or delete it.
+Generate over delete (A); drop the data-only formulas rather than keep them as prose (A). Both
+in chat, recorded in the contract.

@@ -152,6 +152,8 @@ metrics as (
         s.info_price_to_book as price_to_book,
         s.info_price_to_sales as price_to_sales,
         s.info_ev_to_ebitda as ev_to_ebitda,
+        -- Yahoo's trailing free cash flow, not the annual stmt_free_cash_flow fcf_margin_pct
+        -- uses, so the cash figure matches the period of the current market cap under it.
         case
             when s.info_market_cap is not null
                 and s.info_market_cap != 0
@@ -170,6 +172,8 @@ metrics as (
                 and s.stmt_stockholders_equity != 0
                 then s.stmt_total_debt / s.stmt_stockholders_equity
         end as debt_to_equity,
+        -- abs() defends the landed sign: ingestion lands interest expense as a positive
+        -- magnitude, but a provider that reports it negative must not flip the ratio.
         case
             when s.eff_stmt_op is not null
                 and s.stmt_interest_expense is not null

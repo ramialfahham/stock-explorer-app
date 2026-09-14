@@ -15,17 +15,14 @@ the detail._
 
 ## In flight
 
-**MR !138 open, awaiting owner merge** (`chore/context-debt`, two reviewed commits). The
-standing rules that lived only in this file's Do NOT section now have durable homes (index
-below); dead `task/contract.md` pointers and comment dates gone; `sources.yml` twin fixed;
-#10 closed. Second commit: `net_debt_to_ebitda` stays on Yahoo figures both sides (owner,
-after measuring a median 0.5-turn gap to the statement-line version), stated once in its
-catalogue row; the data contract only points.
+**MR !139 open, awaiting owner merge** (`docs/generated-metric-table`). The data contract's
+card-metrics table is generated from the seed by `scripts/render_metric_table.py` and locked
+by a test; the 13 data-only intermediates are listed by name, the model their only definition
+(owner: drop, not keep as prose). Adding a metric now runs two generators: the JSON and the
+table (`docs/metric_layer.md` "Adding a metric").
 
-**NEXT, owner named the risk 2026-09-14:** `docs/data_contract.md`'s "Card metrics" formula
-table restates every catalogue row (label, formula, applicability) and has drifted from the
-seed three times this month. One task: generate it from the seed, or delete it and keep only
-what the seed cannot hold (eligibility rules, the no-fallbacks rule). Owner picks which.
+**NEXT:** nothing queued. Open owner questions: item 0 below and the parked list in this
+section.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -57,7 +54,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
+**Merged this pass** (detail in each MR): !138 standing rules to durable homes; net debt /
+EBITDA defined once in its catalogue row. !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
 !135 `sync_dbt_vars` exit status (#8). !134 CI
 tiers doc. !133 owner wording for ROE and working capital; playground heading. !132 playgrounds
 follow the card face (#9 B1, the audit's last finding). !131 catalogue "banks" wording (#12).

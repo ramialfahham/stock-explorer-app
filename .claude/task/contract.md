@@ -3,71 +3,44 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Context debt, one task, plus the owner's decision on `net_debt_to_ebitda`'s source
-  (both sides Yahoo figures), written once in its catalogue row and pointed at from the data
-  contract. The handover's `## Do NOT` rules move to durable homes and
-  the section becomes an index; dead code-comment pointers to `.claude/task/contract.md` go;
-  dates come out of code comments, the comments stay; `sources.yml` names the `data-pipeline`
-  job instead of `data_pipeline.yml`. Issue #10 closed on GitLab (fixed by !130).
+objective: `docs/data_contract.md`'s card-metrics section restated every catalogue row by
+  hand and drifted from the seed three times in a month. Owner chose A: generate the table
+  from the seed and lock it with a test, as `frontend/metrics.json` already is.
 
 scope_paths:
-  - .claude/working-agreement.md
-  - .claude/active_work.md
+  - scripts/render_metric_table.py
   - docs/data_contract.md
   - docs/metric_layer.md
-  - docs/operations_guide.md
-  - docs/development_workflow.md
-  - docs/context_budget.yml
-  - dbt_analytics/models/sources.yml
-  - dbt_analytics/seeds/metric_catalogue.csv
-  - frontend/metrics.json
-  - dbt_analytics/models/2_base/yfinance/base_yf__constituents.sql
+  - tests/tooling/test_metric_catalogue.py
   - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
-  - frontend/card_copy.py
-  - frontend/card_ui.py
-  - frontend/explore_filters.py
-  - frontend/row_ui.py
-  - frontend/styles.py
-  - scripts/assessment_rules.py
-  - tests/frontend/test_styles.py
   - .claude/task/contract.md
   - .claude/task/review.md
+  - .claude/active_work.md
 
 decisions_reserved:
-  - `net_debt_to_ebitda` stays on Yahoo figures for both numerator and denominator (owner,
-    after measuring: on 14 live tickers the statement-line version differed by a median 0.5
-    turns of EBITDA, because Yahoo's `totalCash` includes short-term investments and the
-    landed statement cash does not; a different definition, not a staler copy). Owner-approved
-    `calculation` sentence: "(Total debt − cash) ÷ EBITDA: roughly how many years of earnings
-    to clear net debt. Both figures are Yahoo's own summary numbers, from one source, and
-    cash includes short-term investments." ("one period" dropped in review: the row's
-    `description` says periods may differ.) One home, the catalogue row; the data
-    contract's two mentions are pointers.
-  - Otherwise none new. Every rule moved is an owner rule already in force; the move records it where
-    the thing it governs lives. Wording of moved rules is compressed, not changed in meaning.
-  - `docs/data_contract.md`'s budget 59000 to 59500: the standing rules add about 800 bytes
-    of contract text to a file that was 790 under its cap.
-  - `supabase/migrations/*.sql` keep their dates: applied history, and `013`'s `COMMENT ON`
-    literal is the text production already holds.
+  - Generate rather than delete: owner, in chat, option A over B.
+  - The table's columns are the seed's own fields (id, label, `applies_to`, formula spec,
+    format, direction), no editorial text. The model's fallbacks and scaling stay described
+    in the prose after the table because the seed does not hold them.
+  - The formulas of the 13 data-only intermediates (not in the seed) are no longer restated:
+    owner, in chat, after the scope-auditor flagged it as a step beyond option A (drop over
+    keep-as-prose). The model is their only definition; the contract lists their names,
+    guarded by a test that each name is a model column and none is catalogued. Two "why"
+    notes that had lived only in that prose (why `fcf_yield_pct` uses Yahoo's trailing FCF;
+    why `interest_coverage` takes `abs()`) move beside their formulas in the model. The
+    `dividend_yield_pct` scale rule stays as prose: it is about the raw data.
 
 done_when:
-  - `git grep -n "task/contract.md" -- '*.py' '*.sql'` returns nothing.
-  - `git grep -nE "20[0-9]{2}-[0-9]{2}-[0-9]{2}"` over `frontend/`, `scripts/`, `ingestion/`,
-    `dbt_analytics/models`, `dbt_analytics/macros`, `dbt_analytics/tests` and `tests/` returns
-    only data (snapshot dates, fixtures), no comment or docstring.
-  - Each former Do NOT rule has one durable home and the handover's `## Do NOT` lists where:
-    spend and owner-only ops, plain questions (`.claude/working-agreement.md` §6, §8);
-    statement lines over `info` scalars, no data-layer clipping, the yfinance ceiling
-    (`docs/data_contract.md`); `applies_to` from the first row (`docs/metric_layer.md`);
-    the snapshot gate (`frontend/explore_filters.py` docstring); performance and
-    `DECK_COLUMNS` (`docs/operations_guide.md`); validate before push
-    (`docs/development_workflow.md`). Rules already durable (no merge, no advice, plan mode,
-    owner wording) are pointed at, not copied.
-  - `sources.yml` no longer names `data_pipeline.yml`; `dbt parse` passes; `sqlfluff` passes
-    on the two touched models.
-  - The catalogue row carries the sentence, `frontend/metrics.json` is regenerated, and no
-    other file states the definition (`git grep "from one source, and cash"` hits the seed
-    and the JSON only).
-  - Every budget in `docs/context_budget.yml` still passes; `pytest tests/ -q` green.
+  - `scripts/render_metric_table.py` rewrites the block between the two markers from the seed;
+    `--check` exits 1 when the block is stale and 0 when current; the doc's line endings are
+    preserved on both a CRLF and an LF checkout (unit test over temp docs; `read_text` would
+    have stripped the CRs, proven by mutation); `|` in a cell is escaped (unit test).
+  - `test_data_contract_metric_table_matches_seed` fails on a hand edit inside the block;
+    `test_data_contract_data_only_list_names_real_uncatalogued_columns` fails on a name the
+    model does not compute or one that is catalogued (both proven by mutation).
+  - No formula of a catalogued metric is stated in the contract outside the generated block.
+  - `docs/metric_layer.md` names the render script in "Adding a metric" and the new lock in
+    "Tests verify and guard".
+  - `pytest tests/ -q` green; `check_context_budget.py` passes.
 
-impact_map: Comments and docs only; no behaviour, no SQL logic, no test assertion changed.
+impact_map: Docs and one generator script; no dbt, export or frontend change.
