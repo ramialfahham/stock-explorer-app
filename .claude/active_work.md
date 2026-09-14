@@ -15,25 +15,24 @@ the detail._
 
 ## In flight
 
-**MR !142 open, awaiting owner merge** (`perf/no-file-watcher`): `--server.fileWatcherType
-none` on the Render start command. The 2.8 s gap, named with the probe: our script runs in
-26 to 102 ms warm; Streamlit's source watcher scans every loaded module (about 2,000) on the
-message-flushing thread after each new session's first run, 3 s here, same shape on Render.
-Proven locally: full list at 1.4 s without the watcher, 4.5 to 5.4 s with it. What looked
-like a Windows-only asyncio stall earlier this session was this.
+**MR !143 open, awaiting owner merge** (`perf/lazy-yfinance`): yfinance (with pandas and
+numpy) imported only when the Saved tab fetches headlines. Here, best of five: `import app`
+6.72 s and 2,097 modules before, 5.26 s and 1,572 after.
 
-**Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** !140 merged:
-header first, splash at first byte, saved list in cookies (owner: A), telemetry off. !141
-merged: `?timing=1` stage clock (keep or remove: owner's call). Live after !140, return
-visit: first byte 0.2 s (splash), JS 0.4 s, script starts 2.1 s, header 4.9 s, list 5.3 s
-(was 11.6 s to first pixel). Cold process (after a deploy or a Render spin-down): `import
-app` alone takes 33 s on Render's box (pandas, duckdb, yfinance); the first visit is about
-44 s. **NEXT:** after !142 deploys, measure the live site again with the browser probe and
-`?timing=1`. Then the remaining levers, both needing the owner: a faster free host (Hugging
-Face Spaces; the agent cannot create accounts) for the bundle download and the cold start;
-lazy imports (yfinance is only needed for Saved news) to shorten the cold start, a code
-change to propose. Owner's to reword: "Loading cards", the splash "Stock Explorer" /
-"Loading".
+**Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
+!140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
+!141 `?timing=1` stage clock (keep or remove: owner's call); !142 Streamlit's source watcher
+off in production (it scanned every loaded module on the message-flushing thread after each
+new session's first run; 3 s here). Live after !142, five return visits, script itself 25 ms:
+first byte 0.2 s (splash), full list 2.9 / 4.2 / 3.8 / 6.7 / 4.9 s (was 11.6 s to first pixel
+this morning, 5.3 s after !140). The swing is Render's shared box, not the code. Cold process
+(after a deploy or Render's sleep): `import app` 20 to 33 s there, first visit 26 to 44 s.
+**NEXT:** after !143 deploys, read `?timing=1` on a cold process (the "main start" gap is the
+import) and the browser probe warm. Remaining levers: a faster free host (Hugging Face
+Spaces; the owner must create the Space) for the shared-CPU swing, the sleep and the bundle
+download; the Supabase client import (2.6 s here) could go if the deck were read over plain
+httpx, a mechanism change to put to the owner. Owner's to reword: "Loading cards", the
+splash "Stock Explorer" / "Loading".
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -64,7 +63,7 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !141 timing probe. !140 first paint, cookies, splash. !139 generated metric table in the data contract.
+**Merged this pass** (detail in each MR): !142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash. !139 generated metric table in the data contract.
 !138 standing rules to durable homes; net debt /
 EBITDA defined once in its catalogue row. !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
 !135 `sync_dbt_vars` exit status (#8). !134 CI
