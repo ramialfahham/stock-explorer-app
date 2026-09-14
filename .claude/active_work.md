@@ -15,24 +15,23 @@ the detail._
 
 ## In flight
 
-**MR !143 open, awaiting owner merge** (`perf/lazy-yfinance`): yfinance (with pandas and
-numpy) imported only when the Saved tab fetches headlines. Here, best of five: `import app`
-6.72 s and 2,097 modules before, 5.26 s and 1,572 after.
+**Nothing in flight.** Load-time numbers below are final for this pass.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
 !141 `?timing=1` stage clock (keep or remove: owner's call); !142 Streamlit's source watcher
 off in production (it scanned every loaded module on the message-flushing thread after each
-new session's first run; 3 s here). Live after !142, five return visits, script itself 25 ms:
-first byte 0.2 s (splash), full list 2.9 / 4.2 / 3.8 / 6.7 / 4.9 s (was 11.6 s to first pixel
-this morning, 5.3 s after !140). The swing is Render's shared box, not the code. Cold process
-(after a deploy or Render's sleep): `import app` 20 to 33 s there, first visit 26 to 44 s.
-**NEXT:** after !143 deploys, read `?timing=1` on a cold process (the "main start" gap is the
-import) and the browser probe warm. Remaining levers: a faster free host (Hugging Face
-Spaces; the owner must create the Space) for the shared-CPU swing, the sleep and the bundle
-download; the Supabase client import (2.6 s here) could go if the deck were read over plain
-httpx, a mechanism change to put to the owner. Owner's to reword: "Loading cards", the
-splash "Stock Explorer" / "Loading".
+new session's first run; 3 s here). !143 merged: yfinance (with pandas and numpy) imported only when Saved fetches headlines.
+Live after !143, five return visits, script itself 25 ms: first byte 0.2 s (splash), header
+2.6 to 2.9 s, full list 2.96 / 3.19 / 3.24 / 3.00 / 3.05 s (this morning: 11.6 s to first
+pixel). Cold process (after a deploy or Render's sleep): first visit 15.7 s (was 26 to 44 s),
+of which `import app` 9.1 s (was 20 to 33) and the first Supabase deck fetch 5.6 s. What
+remains is outside the code: about 2 s of connection and Streamlit session start on Render's
+box before our script runs, and the sleep. **NEXT, owner's calls:** a faster free host
+(Hugging Face Spaces; the owner must create the Space); reading the deck over plain httpx
+instead of the Supabase client library (2.6 s of the import here), a mechanism change.
+Owner's to reword: "Loading cards", the splash "Stock Explorer" / "Loading"; keep or remove
+`?timing=1`.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -63,7 +62,7 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash. !139 generated metric table in the data contract.
+**Merged this pass** (detail in each MR): !143 lazy yfinance. !142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash. !139 generated metric table in the data contract.
 !138 standing rules to durable homes; net debt /
 EBITDA defined once in its catalogue row. !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
 !135 `sync_dbt_vars` exit status (#8). !134 CI
