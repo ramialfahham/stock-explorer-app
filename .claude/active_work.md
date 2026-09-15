@@ -15,11 +15,7 @@ the detail._
 
 ## In flight
 
-**MR open (2026-09-14), branch `ux/metric-gloss-vs-sector`, awaiting owner review/merge.**
-The min/median/max range bar never named its own population; `metric_gloss()`'s new
-`benchmarked` param inserts ", vs sector" into the gloss line when the mark actually rendered
-for that metric+card (peer-count gate is per-card). Both reviewers passed round 1. Detail in
-this branch's own `contract.md`/`review.md`.
+**Nothing in flight.**
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -66,7 +62,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !145 AI-written read as always-visible bullets
+**Merged this pass** (detail in each MR): !147 names the sector in a benchmarked metric's own
+gloss line ("..., vs sector.") when its range bar is drawn. !145 AI-written read as always-visible bullets
 (reversing the earlier card-view fold), "N saved" scoped to the Saved tab only, and the
 now-contradicted "first metric above the fold" success check retired. !143 lazy yfinance.
 !142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash. !139 generated metric table in the data contract.
