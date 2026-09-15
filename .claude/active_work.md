@@ -15,19 +15,30 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress.** Six-phase plan, owner-approved in
-plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this
-repo; summarize here if that path is ever unreachable). Phase 1 (narrative/date-stamp guard)
-and Phase 2 (em-dash guard + `CLAUDE.md` doc-index completeness guard, both wired into
-pre-commit + CI) shipped, MR !161 open (Phase 1's !160 merged). Phase 3 (GitLab
-Issues/Milestones replace `docs/product_roadmap_2026-06.md` and `docs/backlog/*.md`, pattern
-copied from `football-data-pipeline`), Phase 4 (CI/config hygiene), Phase 5 (dbt YAML
-structure, asymmetric `accepted_range` coverage), Phase 6 (documentation architecture:
-handover chain, stale/contradicting docs) not yet started -- see the plan file for full detail
-on each. Both shipped phases each had a review round catch a real bug before merge (Phase 1:
-a false exemption rationale plus a markdown-scope blind spot; Phase 2: the em-dash CI check
-failing open on push/web-triggered pipelines) -- the review cycle is doing real work here, not
-rubber-stamping.
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 3.** Six-phase plan,
+owner-approved in plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`
+(outside this repo; summarize here if that path is ever unreachable). Phase 1 (narrative/
+date-stamp guard, `scripts/check_no_narrative_dates.py`) and Phase 2 (em-dash guard,
+`scripts/check_no_em_dash.py`; `CLAUDE.md` doc-index completeness guard,
+`scripts/check_docs_indexed.py`; all wired into pre-commit + CI) are MERGED (!160, !161).
+Local `main` is synced to that state.
+
+**Phase 3 not yet started -- do this next.** GitLab Issues/Milestones replace
+`docs/product_roadmap_2026-06.md` and `docs/backlog/*.md`, pattern copied from
+`football-data-pipeline` (a sibling project, same owner): project Milestones named `"N ·
+Theme"` as the epic-equivalent grouping (real GitLab Epics aren't available -- personal
+namespace, Free plan), issues with a `## What exactly` task-list + `## Why` body, assigned
+directly to a milestone. See the plan file's Phase 3 section for the full adoption steps
+(migrate the three genuinely-open backlog items into issues, retire the roadmap doc, point
+`.claude/working-agreement.md` §2 at issues instead of restating requirements inline). Phase
+4 (CI/config hygiene), Phase 5 (dbt YAML structure, asymmetric `accepted_range` coverage),
+Phase 6 (documentation architecture: handover chain, stale/contradicting docs) come after,
+in that order -- see the plan file for full detail on each.
+
+Both shipped phases each had a review round catch a real bug before merge (Phase 1: a false
+exemption rationale plus a markdown-scope blind spot; Phase 2: the em-dash CI check failing
+open on push/web-triggered pipelines) -- the review cycle is doing real work here, not
+rubber-stamping. Keep dispatching it with the same rigor for Phase 3 onward.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
