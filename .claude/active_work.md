@@ -197,18 +197,16 @@ Live owner decisions a future session must act on, not numbered because they are
 
 Numbered defects and gaps:
 
-0. **THREE OWNER DECISIONS RESERVED BY MR !116, moved here because a task `contract.md` is
-   rewritten per task and would have lost them.** None is urgent; none is agent-executable.
-   (a) `CONTRACT_TEMPLATE.md` and `REVIEW_TEMPLATE.md` live in the dbt-agent-kit plugin and
-   still prescribe the `amendments:` category !116 removed here. Editing them changes every
-   project using the plugin. (b) The merge guard matches `gh pr merge` only, so `glab mr merge`
-   is blocked by nothing; closing it means editing `~/.claude/hooks/branch_discipline.py`, a
-   per-machine file every project shares. The working agreement §3 states the gap rather than
-   overselling the guard. (c) `.claude/working-agreement.md` has no required reviewer in
-   `review_routing.json` beyond `always`, though it governs every agent action here.
-   cto-reviewer recommends routing it to itself, since `.claude/settings.json` and `*hooks/*`
-   already route there for carrying execution authority; the evidence is !116, whose only
-   blocking correctness finding came from the reviewer routing did not require.
+0. **THREE OWNER DECISIONS RESERVED BY MR !116.** (c) CLOSED 2026-09-15:
+   `.claude/working-agreement.md` now routes to `cto-reviewer` in `review_routing.json`
+   (project-local, no cross-repo reach). (a) and (b) **DECLINED 2026-09-15, not deferred --
+   do not re-raise without new owner instruction.** Both need editing a file OUTSIDE this
+   repo shared by every project on the machine (dbt-agent-kit's own `CONTRACT_TEMPLATE.md`/
+   `REVIEW_TEMPLATE.md` for (a), `~/.claude/hooks/branch_discipline.py` for (b), which would
+   also need to start blocking `glab mr merge` alongside the `gh pr merge` it already blocks).
+   Owner's reason: past global-file edits have broken sibling projects before (see Context /
+   operational notes below), and that risk isn't worth taking for either gap. The working
+   agreement §3 keeps stating (b)'s gap honestly rather than oversell the guard.
 
    **And three from MR !118, same reason, all data-contract questions (§6):** (d) the price
    counters cannot see a symbol yfinance returns as an all-NaN OHLCV block; closing it needs a
@@ -358,6 +356,12 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   update/reinstall from either dormant source would silently revert the cap. Not fixed at
   the plugin-source level (out of this repo's scope); if touching this again, update all
   three or accept the cap will drift back.
+- **Global/machine-shared file edits (`~/.claude/hooks/*`, the dbt-agent-kit plugin's own
+  files) have broken a sibling project before** -- a global hook change once broke
+  `football-data-pipeline`'s review gate. This is why MR !116's (a) and (b) sub-items were
+  declined outright (2026-09-15, item 0 above) rather than attempted: the owner's own
+  experience is that this category of edit costs more than it's worth. Don't propose one
+  without asking first, and expect "no" as the default answer.
 - **This handover has fallen behind actual `main` state before** (entries sitting "MR open"
   long after merging). If something here seems inconsistent with `git log main`, trust
   `git log main` and fix this file, don't assume the file is right.
