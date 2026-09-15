@@ -31,10 +31,10 @@ sector_medians as (
         median(ebit_margin_pct) as sector_median_ebit_margin_pct,
         min(ebit_margin_pct) as sector_min_ebit_margin_pct,
         max(ebit_margin_pct) as sector_max_ebit_margin_pct,
-        -- Q1/Q3 (Gemini feedback point 5, docs/backlog/gemini_verdict_feedback.md): the display
-        -- range clamp needs quartiles alongside min/median/max. quantile_cont is the same
-        -- continuous-interpolation family median() already uses -- no new statistical convention
-        -- introduced, just two more percentiles of it.
+        -- Q1/Q3: the outlier-aware display range clamp needs quartiles alongside
+        -- min/median/max. quantile_cont is the same continuous-interpolation family
+        -- median() already uses -- no new statistical convention introduced, just two
+        -- more percentiles of it.
         quantile_cont(ebit_margin_pct, 0.25) as sector_q1_ebit_margin_pct,
         quantile_cont(ebit_margin_pct, 0.75) as sector_q3_ebit_margin_pct,
         median(revenue_growth_yoy_pct) as sector_median_revenue_growth_yoy_pct,

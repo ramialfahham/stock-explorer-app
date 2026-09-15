@@ -15,30 +15,38 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 3.** Six-phase plan,
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 4.** Six-phase plan,
 owner-approved in plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`
-(outside this repo; summarize here if that path is ever unreachable). Phase 1 (narrative/
-date-stamp guard, `scripts/check_no_narrative_dates.py`) and Phase 2 (em-dash guard,
-`scripts/check_no_em_dash.py`; `CLAUDE.md` doc-index completeness guard,
-`scripts/check_docs_indexed.py`; all wired into pre-commit + CI) are MERGED (!160, !161).
-Local `main` is synced to that state.
+(outside this repo; summarize here if that path is ever unreachable). Phases 1-3 merged (!160,
+!161, and Phase 3's MR once it lands -- branch `docs/phase3-gitlab-issues-milestones`). Local
+`main` is synced through Phase 2; Phase 3 is on its branch pending merge.
 
-**Phase 3 not yet started -- do this next.** GitLab Issues/Milestones replace
-`docs/product_roadmap_2026-06.md` and `docs/backlog/*.md`, pattern copied from
-`football-data-pipeline` (a sibling project, same owner): project Milestones named `"N ·
-Theme"` as the epic-equivalent grouping (real GitLab Epics aren't available -- personal
-namespace, Free plan), issues with a `## What exactly` task-list + `## Why` body, assigned
-directly to a milestone. See the plan file's Phase 3 section for the full adoption steps
-(migrate the three genuinely-open backlog items into issues, retire the roadmap doc, point
-`.claude/working-agreement.md` §2 at issues instead of restating requirements inline). Phase
-4 (CI/config hygiene), Phase 5 (dbt YAML structure, asymmetric `accepted_range` coverage),
-Phase 6 (documentation architecture: handover chain, stale/contradicting docs) come after,
-in that order -- see the plan file for full detail on each.
+**Phase 3 (GitLab Issues/Milestones replace doc-based tracking): built, review round 2
+pending, not yet merged.** 2 Milestones ("1 · Discover depth", "2 · Data quality") and 7
+issues (#13-#19) created directly against the live GitLab project. `docs/backlog/` and
+`docs/product_roadmap_2026-06.md` deleted; `north_star.md`'s Phase 2 table points at the
+milestone. Two corrections to the plan's literal text, owner-caught mid-task, not silent:
+`gemini_verdict_feedback.md`'s 8 live citations got stripped in place (reasoning kept, file
+deleted) instead of relocating the file; `product_roadmap_2026-06.md`'s "Premortem
+guardrails" got checked against every DURABLE doc's own `Owns:` header instead of moved into
+`north_star.md` wholesale -- most were already-stated duplicates, one line migrated. Full
+reasoning in `.claude/task/contract.md`.
 
-Both shipped phases each had a review round catch a real bug before merge (Phase 1: a false
-exemption rationale plus a markdown-scope blind spot; Phase 2: the em-dash CI check failing
-open on push/web-triggered pipelines) -- the review cycle is doing real work here, not
-rubber-stamping. Keep dispatching it with the same rigor for Phase 3 onward.
+**Review round 1: scope-auditor + cto-reviewer both FAILED on the same miss** -- grep for
+dangling citations only covered `*.md`/`*.py`/`*.yml`, missing a SQL comment
+(`int_stock__sector_benchmarks.sql:34`). Fixed. cto-reviewer also caught this file not yet
+updated mid-task. Round 2 dispatched on both; do not merge Phase 3 before every required
+reviewer PASSes the round reflecting them.
+
+Phases 1-2 each had a review round catch a real bug too -- the cycle keeps finding things a
+solo pass misses. Keep dispatching it with the same rigor from Phase 4 on.
+
+**Phase 4 next, once Phase 3 merges.** CI/config hygiene: dedupe the `~/.dbt/profiles.yml`
+heredoc in `.gitlab-ci.yml` into `scripts/write_ci_dbt_profile.py`; confirm
+`scripts/check_not_on_main.py` is unused and delete it; remove `review_routing.json`'s dead
+`"*schema.yml"` entry; pin `pytest` in `requirements-dev.txt`; resolve
+`frontend/requirements.txt`'s floating `httpx` pin. See the plan file's Phase 4 section.
+Phase 5 (dbt YAML, `accepted_range` coverage) and Phase 6 (doc architecture) come after.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
@@ -111,18 +119,13 @@ silently capping at 1000 rows. !147 names the sector in a benchmarked metric's o
 gloss line ("..., vs sector.") when its range bar is drawn. !145 AI-written read as always-visible bullets
 (reversing the earlier card-view fold), "N saved" scoped to the Saved tab only, and the
 now-contradicted "first metric above the fold" success check retired. !143 lazy yfinance.
-!142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash. !139 generated metric table in the data contract.
-!138 standing rules to durable homes; net debt /
-EBITDA defined once in its catalogue row. !137 caveat under the metrics (#11). !136 `generate_assessments --target dev` (#4).
-!135 `sync_dbt_vars` exit status (#8). !134 CI
-tiers doc. !133 owner wording for ROE and working capital; playground heading. !132 playgrounds
-follow the card face (#9 B1, the audit's last finding). !131 catalogue "banks" wording (#12).
-!130 fraction-scale `dividendYield` scaled on read (#10). !129 AI read labels match the card
-(#9 B2). !128 card-view fold. !127 mobile type scale. !126 fill floor, 50% (#9). !125
-`market_code` vs folder test (#9 C4). !124 mart grain unit test (#9 C3). !123 migration `019`
-drops the numeric precision caps (#9 A2). !122 fundamentals failure gate at 5% (#9 A3). !118
-price-ingest visibility (#9 A3; owner questions item 0 (d) to (f) below). !119 context
-ownership headers. !120 context byte budgets in CI.
+!142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash.
+!118-!139 (excluding intervening handover-collapse MRs, e.g. !121): issue #9 pipeline-audit
+closure batch (fundamentals gate, precision caps, mart
+grain, market_code test, fill floor, AI-read labels/fold, catalogue wording, dividendYield
+scale, playgrounds, CI tiers doc, ROE/working-capital wording, sync_dbt_vars exit status,
+financial caveat placement, context ownership headers + byte budgets, generated metric table,
+standing rules to durable homes) -- detail in each MR's own contract.md/review.md.
 
 ## Atomic card export (MR !115, merged `f98f4025`)
 
@@ -273,23 +276,19 @@ Numbered defects and gaps:
    The wording states only the one invariant fact; "this bank" and "profitability only" were
    both rejected in review as overclaims.
 4. **All 4 confirmed bugs from the Discover/Saved/Search UX findings fixed and merged**
-   (`docs/backlog/discover_saved_search_ux_findings.md`): the stale Search selection
-   resurfacing on an unrelated later query, and the Search box / Discover filter both losing
-   their value on tab switch, fixed 2026-09-04 (root cause: a KEYED Streamlit widget's
-   session_state is evicted too when the widget isn't rendered for one script run, not just
-   unkeyed ones as first guessed -- the original doc's own candidate fix, a bare `key=` on the
-   Search box, would not have worked; fixed by making both widgets unkeyed and managing their
-   durable value as a plain session_state entry instead). "Clear saved" had no
-   confirmation/undo, fixed 2026-09-05 (in-place two-click popover swap; also added per-item
-   Saved removal, previously impossible). One item from that doc remains genuinely open, an
-   owner product call: Saved has no pagination (unconfirmed as a felt problem at today's
-   typical save counts).
-5. Three of the seven backlog docs in `docs/backlog/` are genuinely open (the other four are
-   closed/resolved -- see that directory): `discover_metric_filters_phase2.md` (a prior
-   attempt was built and reverted; needs redesign against its own stated revisit criteria),
-   `name_vs_yfinance_audit_guard.md` (needs owner decisions on live-fetch vs. cached snapshot,
-   fuzzy-match tolerance, market scope, and hard-fail vs. warn-only before it's build-ready),
-   and the new `discover_saved_search_ux_findings.md` from item 4 above.
+   (was `docs/backlog/discover_saved_search_ux_findings.md`, retired by Phase 3 -- its one open
+   tail is now issue #14): the stale Search selection resurfacing on an unrelated later query,
+   and the Search box / Discover filter both losing their value on tab switch, fixed 2026-09-04
+   (root cause: a KEYED Streamlit widget's session_state is evicted too when the widget isn't
+   rendered for one script run, not just unkeyed ones as first guessed -- the original doc's own
+   candidate fix, a bare `key=` on the Search box, would not have worked; fixed by making both
+   widgets unkeyed and managing their durable value as a plain session_state entry instead).
+   "Clear saved" had no confirmation/undo, fixed 2026-09-05 (in-place two-click popover swap;
+   also added per-item Saved removal, previously impossible).
+5. **CLOSED 2026-09-15 by Phase 3.** The 3 backlog docs that were genuinely open
+   (`discover_metric_filters_phase2.md`, `name_vs_yfinance_audit_guard.md`, and item 4's Saved
+   pagination tail) are retired; their content is now GitLab issues #13, #19, and #14
+   respectively, on milestones "1 · Discover depth" / "2 · Data quality".
 6. **Free-tier Supabase idle-pause: CLOSED 2026-09-08.** Two UptimeRobot monitors now exist,
    documented in `docs/operations_guide.md`: one on `stock-explorer-app.onrender.com` (Render
    sleeps the web service after ~15 min idle) and one hitting the Supabase REST API directly

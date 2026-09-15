@@ -59,7 +59,6 @@ and `docs/ui/` must have a line here; `scripts/check_docs_indexed.py` enforces i
 - **UX PR gate** (required for Streamlit layout / copy / interaction changes): [`docs/working_agreement.md`](docs/working_agreement.md)
 - Product behavior (north star): [`docs/north_star.md`](docs/north_star.md)
 - Pedagogy/UX principles for a beginner-facing finance app: [`docs/ux_principles_finanz_lern_apps.md`](docs/ux_principles_finanz_lern_apps.md)
-- Product roadmap: [`docs/product_roadmap_2026-06.md`](docs/product_roadmap_2026-06.md) (June 2026 snapshot, due a rework)
 - Production data flow + runbook for when it breaks: [`docs/operations_guide.md`](docs/operations_guide.md)
 - Supabase project setup, CI/CD variables, migrations ledger: [`docs/supabase_setup.md`](docs/supabase_setup.md)
 - Render deployment steps: [`docs/streamlit_deploy.md`](docs/streamlit_deploy.md)

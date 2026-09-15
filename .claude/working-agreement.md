@@ -31,6 +31,12 @@ Before a non-trivial change, write `.claude/task/contract.md` (template:
 branch so it is visible in the MR. The scope-auditor reviewer flags any edit outside
 `scope_paths` at review time.
 
+Open work lives in GitLab Issues and Milestones, not prose docs. When a task has a GitLab
+issue, `objective` links it (`Closes #N` / `Refs #N`) instead of restating the requirement
+inline -- the issue is the single source for what and why; `contract.md` stays about
+`scope_paths` and `done_when`. Reviewers check the diff against the linked issue's
+`## What exactly` checklist, the same way they check it against `scope_paths`.
+
 Before committing, run the review cycle (the commit gate enforces it):
 
 1. Stage the paths the change touches, explicitly. Never `git add -A`: it sweeps whatever

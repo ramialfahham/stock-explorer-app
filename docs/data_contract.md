@@ -758,8 +758,7 @@ Conservative — one serious weakness caps it:
   `debt_to_equity` / `current_ratio_stmt` / `statement_roe_pct` are supporting (tie-breakers).
 - **Sign-inversion guards.** Three metrics can flip sign when a denominator goes negative, and
   banding the flipped value by raw magnitude used to read a distressed or thin-equity company as
-  good on that axis (`docs/backlog/gemini_verdict_feedback.md` point 1 and its sibling-bug note).
-  All three guards check the ratio's own raw denominator directly, not the ratio's sign:
+  good on that axis. All three guards check the ratio's own raw denominator directly, not the ratio's sign:
   `net_debt_to_ebitda`'s sign alone cannot tell a genuine net-cash position apart from real debt
   divided by negative earnings, and `debt_to_equity`'s numerator (total debt) can be exactly
   zero, which divides out to a zero ratio regardless of equity's sign, so checking the ratio's
@@ -789,8 +788,8 @@ Conservative — one serious weakness caps it:
   other axis gets for information this app cannot actually determine -- is the honest choice.
 - **Joint liquidity evaluation, operating only.** `current_ratio_stmt` and free cash flow used
   to be graded fully independently, so a company with excellent free cash flow but a
-  merely-weak current ratio was capped at yellow regardless of how strong its cash generation was
-  (`docs/backlog/gemini_verdict_feedback.md` points 6/8). `current_ratio_stmt` now bands `ok`
+  merely-weak current ratio was capped at yellow regardless of how strong its cash generation was.
+  `current_ratio_stmt` now bands `ok`
   instead of `weak` when free cash flow (`stmt_free_cash_flow`, a raw dollar figure) covers the
   working-capital shortfall (`stmt_free_cash_flow >= -working_capital`, both carried through for
   exactly this check) AND `current_ratio_stmt` is at or above
