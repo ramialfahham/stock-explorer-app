@@ -90,6 +90,13 @@ models:
         description: >
           Card metric 2 — operating margin percent (0–100 scale).
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -100000
+                max_value: 100000
+              config:
+                severity: warn
       - name: ebit_margin_basis
         description: >
           Period basis for ebit_margin_pct — ttm_quarterly or annual_latest.
@@ -98,6 +105,13 @@ models:
         description: >
           Card metric 3 — revenue growth YoY percent (0–100 scale).
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -100
+                max_value: 15000
+              config:
+                severity: warn
       - name: info_ebitda
         description: >
           Raw EBITDA, passed through so scripts/generate_assessments.py can give
@@ -109,6 +123,13 @@ models:
         description: >
           Card metric 4 — net debt to EBITDA ratio.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -200
+                max_value: 200
+              config:
+                severity: warn
       - name: stmt_free_cash_flow
         description: >
           Raw free cash flow, passed through so scripts/generate_assessments.py can give
@@ -120,6 +141,13 @@ models:
         description: >
           Card metric 5 — free cash flow margin percent (0–100 scale).
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -150000
+                max_value: 150000
+              config:
+                severity: warn
       - name: stmt_stockholders_equity
         description: >
           Raw shareholders' equity, passed through so scripts/generate_assessments.py can give
@@ -132,6 +160,13 @@ models:
           Operating-card solvency metric — total debt / shareholders' equity (statement-based,
           nullable). Rendered per company_type; not part of is_card_eligible.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -200
+                max_value: 200
+              config:
+                severity: warn
       - name: current_ratio_stmt
         description: >
           Operating-card liquidity metric — current assets / current liabilities (statement-based,
@@ -143,6 +178,13 @@ models:
           (statement-based, period-end; nullable). On the operating and financial cards; required
           for financial-card eligibility.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -5000
+                max_value: 5000
+              config:
+                severity: warn
       - name: price_to_tangible_book
         description: >
           Market cap / tangible book value (nullable). No longer catalogued —
@@ -153,6 +195,13 @@ models:
           Financial-card profitability metric — net income / revenue × 100 (nullable). Required for
           financial-card eligibility.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -150000
+                max_value: 150000
+              config:
+                severity: warn
       - name: roa_pct
         description: >
           Financial-card returns metric — net income / total assets × 100 (statement-based,
@@ -184,6 +233,13 @@ models:
           Pre-revenue-card cash metric — months of cash left at the current burn (nullable; null when
           not burning). Rendered for pre_revenue; not part of eligibility.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100000
+              config:
+                severity: warn
       - name: burn_rate_monthly
         description: >
           Pre-revenue-card cash metric — average monthly cash burn, a currency amount (nullable; null

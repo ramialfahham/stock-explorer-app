@@ -471,8 +471,51 @@ exercised rather than skipped in either environment.
 
 **What this does NOT cover.** Per-row mixed units, which production currently has (issue #10):
 a market-median guard structurally cannot see them. A metric going entirely null, a provider
-dropping or renaming a field, is covered by the fill floor below, not by this guard. There are
-still no `accepted_range` tests.
+dropping or renaming a field, is covered by the fill floor below, not by this guard.
+
+**`accepted_range` sanity guard** (severity: warn, `_marts.yml`). Seven metrics prone to
+near-zero-denominator explosion per their own catalogue caveats -- `ebit_margin_pct`,
+`revenue_growth_yoy_pct`, `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`,
+`statement_roe_pct`, `net_margin_pct` -- get a wide bound, not a business-rule definition of a
+valid value. Measured against the full exported history (5,726 rows, 2026-09-15):
+`ebit_margin_pct` ranges -90,333.7% (DYL, a known accepted pre-revenue outlier) to 44,944.9%
+(IAG -- large, real, unexplained; flagged, not root-caused here); `net_margin_pct`, which
+shares `fcf_margin_pct`'s revenue denominator and the same "breaks for pre-revenue firms"
+catalogue caveat, ranges -66,685.5% (DYL again) to 203.9% (PNI). Bounds sit well past every
+measured extreme: `ebit_margin_pct` +-100000; `net_debt_to_ebitda`/`debt_to_equity` +-200;
+`fcf_margin_pct`/`net_margin_pct` +-150000; `statement_roe_pct` +-5000;
+`revenue_growth_yoy_pct` -100 to 15000 (floored, revenue cannot fall further). Warn-only:
+catches an orders-of-magnitude pipeline bug, not a business judgment about plausibility.
+
+An eighth metric, `cash_runway_months`, has no catalogue caveat naming this risk but the same
+underlying shape: `int_stock__card_metrics.sql` divides cash on hand by unfloored monthly
+burn (`-computed_fcf`, only required to be greater than zero, never bounded away from it), so
+a company sitting right at cash-flow breakeven can push the ratio arbitrarily high. The
+column is computed for every `company_type` (the SQL's only gate is `computed_fcf < 0`, no
+type filter), though only the `pre_revenue` card renders it -- and the test itself carries no
+`where` clause, so it runs over the full computed population, not just what's displayed. Not
+theoretical: measured range across that full population (599 non-null rows, 2026-09-15) is
+0.06 months (SRE, `operating`) to 1093.1 months (~91 years, LLOY, `financial`) -- a bank or a
+capital-heavy operating company having one period of small negative free cash flow, not a
+startup nearing breakeven. Within just the 11 rows the pre_revenue card actually renders, the
+range is far narrower: 1.50 to 41.31 months. Bound 0 to 100000 covers both populations with
+room to spare. The metric is structurally non-negative (cash and
+burn are both non-negative by construction), so the floor is a real fact, not a margin, and
+the ceiling sits ~90x past the measured extreme.
+
+Two other metrics with a revenue/liability-style denominator were checked and left out:
+`roa_pct` (divides by total assets, which a real operating company's balance sheet does not
+carry near zero) measured -94.9% to 169.3% with no sign of the explosion mode this guard
+targets; `current_ratio_stmt` (divides by current liabilities) measured 0.08 to 59.9, still
+bounded, unlike the ratio-of-thin-or-negative-equity/revenue metrics above -- both denominators
+stay structurally far from zero across the full measured history, not just by luck this run.
+Two more, `price_to_tangible_book` (denominator: tangible book value) and
+`net_cash_to_market_cap` (denominator: market cap), divide by figures that are rarely near
+zero for a real traded company, and are excluded for a second, independent reason: both are
+documented dead columns in `_marts.yml` -- `price_to_tangible_book`'s description says "no
+card renders it", `net_cash_to_market_cap`'s says "superseded by `net_cash`" -- still exported
+to Supabase, but nothing a user sees depends on either's value, so a guard here would not
+protect anything the eligibility/display layer trusts.
 
 **Fill floor** (`assert_metric_fill_floor.sql`). For every `(market_code, company_type,
 metric)` where the catalogue says the metric applies to that type, at least half of the

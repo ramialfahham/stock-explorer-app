@@ -3,27 +3,41 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: `docs/data_contract.md`'s "Supabase export -- `mart_stock_cards`" heading states
-  the Postgres TABLE's three-column grain, `(market_code, ticker, snapshot_date)`, under a
-  heading naming only the shared dbt-model/table name -- ambiguous now that the dbt MODEL's
-  own description (`dbt_analytics/models/5_marts/_marts.yml`) explicitly declares a narrower
-  grain, `(market_code, ticker)` at each market's latest snapshot only, and contrasts it with
-  the accumulating Postgres table. Three reviewers flagged this in an earlier MR, never fixed.
-  Owner decision: add the word "table" to the heading, per that earlier finding's exact fix.
+objective: MR !155 (`docs/mart-stock-cards-table-heading`) has a real merge conflict against
+  `main`: two other MRs from the same portfolio-grade push (!156, item 10's crash-risk close;
+  !158, `accepted_range` sanity guards) merged first, and all four branches touched the same
+  disposable state files (`.claude/active_work.md`, `.claude/task/contract.md`,
+  `.claude/task/review.md`). Resolving: `.claude/task/contract.md`/`review.md` take this
+  branch's own version (disposable, overwritten by whichever task merges last, per the
+  working agreement). `.claude/active_work.md` needed a real content merge -- MR !155's own
+  edit (dropping the stale "doc wording, three reviewers noted" line, since this MR is that
+  fix) combined with main's now-merged item 4/item 10 closures, without losing either side.
+  `docs/data_contract.md` auto-merged cleanly (the two changes touch different sections).
+  `dbt_analytics/models/5_marts/_marts.yml` and `docs/context_budget.yml` are pure pass-through
+  from `main` (item 4's already-reviewed and already-merged content, MR !158) -- untouched by
+  this resolution, just newly present in this branch's history.
 
 scope_paths:
-  - docs/data_contract.md
+  - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
-  - .claude/active_work.md
+  - docs/data_contract.md
+  - dbt_analytics/models/5_marts/_marts.yml
+  - docs/context_budget.yml
 
-decisions_reserved: none -- a doc-accuracy fix per an already-recorded owner-approved finding,
-  not a new decision.
+decisions_reserved: none -- a merge-conflict resolution, no new decision made.
 
 done_when:
-  - The heading reads "## Supabase export -- `mart_stock_cards` table".
-  - The Grain line explicitly distinguishes the table's grain from the dbt model's own
-    (narrower) grain, pointing at the model's own description for the model-side detail.
-  - `pytest tests/ -q` green; no test hardcodes the old heading text.
+  - No conflict markers remain in any file.
+  - `.claude/active_work.md` correctly reflects both sides: MR !155's own change and main's
+    already-merged item 4/item 10 closures, with nothing lost or duplicated.
+  - `docs/data_contract.md`'s two changes (MR !155's heading fix, main's `accepted_range`
+    documentation) both present and uncorrupted.
+  - `dbt_analytics/models/5_marts/_marts.yml` and `docs/context_budget.yml` match `main`
+    exactly (pure pass-through, nothing this branch should have changed).
+  - `pytest tests/ -q` and `pytest tests/tooling/test_check_context_budget.py -q` green.
+  - No em-dash/en-dash introduced on any line this resolution touched.
 
-impact_map: `docs/data_contract.md` only -- prose accuracy fix, no schema or code change.
+impact_map: no new logic, no new decision. The only genuinely new content is the merged
+  prose in `.claude/active_work.md`; everything else in the diff (relative to this branch's
+  pre-merge tip) is content already reviewed and merged into `main` on its own branch.
