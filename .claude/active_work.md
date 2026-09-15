@@ -25,7 +25,8 @@ explicitly declined, not deferred -- see item 0 and "Context / operational notes
 
 **Smaller open items, all done, MRs open awaiting merge:** doc wording nit (!155), item 2's
 growth-copy tension (!157), item 10's crash risk (!156), `accepted_range` tests decision
-(this task, see item 4 below).
+(!158, see item 4 below). All four "smaller open items" from the portfolio-grade push are now
+in MR, none merged yet.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -67,7 +68,7 @@ through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 `mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
 the dbt MODEL's name, now that the model declares two. Add the word "table" there.
 
-**CLOSED 2026-09-15.** `accepted_range` tests: owner chose the wide sanity guard
+**CLOSED 2026-09-15, MR !158 open.** `accepted_range` tests: owner chose the wide sanity guard
 (`severity: warn`) over a definitional hard-null bound. Added to eight metrics prone to
 near-zero-denominator explosion (`ebit_margin_pct`, `revenue_growth_yoy_pct`,
 `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`, `statement_roe_pct`,
