@@ -12,8 +12,10 @@ Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape and for -
 dev needs the schema exposed to PostgREST, see docs/supabase_setup.md). --dry-run returns
 before any credential or LLM call, so CI can smoke it secret-free; the real path also skips
 the reads when ANTHROPIC_API_KEY is absent or empty. A base record omits ai_read / read_model unless
-a fresh read was generated, so a re-run never clobbers a stored read (PostgREST upsert only
-sets the columns provided).
+a fresh read was generated, so a re-run never clobbers a stored read -- true only because
+_upsert_records() groups each upsert call by a record's exact set of present keys; a plain
+single upsert call mixing "has a read" and "omits it" records does NOT preserve the omitted
+one (see _upsert_records()'s own docstring -- a real production incident, not a hypothetical).
 """
 
 from __future__ import annotations
@@ -159,16 +161,32 @@ def _verdict_distribution(records: list[dict]) -> dict[str, int]:
 # --- Slice 5b: the Claude Haiku prose read (regenerate-on-change) -------------
 
 
+# PostgREST's default per-request row cap. A single unranged select silently returned
+# exactly 1000 of 1045 real rows on the 2026-09-15 scheduled run (confirmed by a direct
+# read-only query against production) -- every card past the cutoff would look
+# permanently new to attach_reads() on every run, since it would never appear in
+# existing_by_key at all. The deck was "tens of eligible cards" when this comment was
+# first written; it is over a thousand now.
+_SELECT_PAGE_SIZE = 1000
+
+
 def _fetch_existing_assessments(client) -> dict[tuple, dict]:
     """Read the stored (input_hash, ai_read, read_model) per card so we can skip
-    unchanged ones. At current scale (tens of eligible cards) a single select is well
-    under PostgREST's default row cap."""
-    resp = (
-        client.table("card_assessments")
-        .select("market_code,ticker,input_hash,ai_read,read_model")
-        .execute()
-    )
-    rows = resp.data or []
+    unchanged ones. Paginated past PostgREST's default row cap (_SELECT_PAGE_SIZE)."""
+    rows: list[dict] = []
+    start = 0
+    while True:
+        resp = (
+            client.table("card_assessments")
+            .select("market_code,ticker,input_hash,ai_read,read_model")
+            .range(start, start + _SELECT_PAGE_SIZE - 1)
+            .execute()
+        )
+        page = resp.data or []
+        rows.extend(page)
+        if len(page) < _SELECT_PAGE_SIZE:
+            break
+        start += _SELECT_PAGE_SIZE
     return {(r["market_code"], r["ticker"]): r for r in rows}
 
 
@@ -281,6 +299,44 @@ def attach_reads(
     return {"generated": generated, "carried": carried, "failed": failed}
 
 
+def _upsert_records(client, records: list[dict], *, batch_size: int = 500) -> int:
+    """Upsert records in batches grouped by their exact set of present keys.
+
+    Root-caused against production, 2026-09-15: a single upsert call's `columns` query
+    parameter is the UNION of keys across every record it carries (postgrest-py's
+    `_unique_columns`, called from `pre_upsert`; the client's own `default_to_null=True`
+    default never sends `Prefer: missing=default`). A record that omits a column present
+    on another record in the SAME call has that column explicitly nulled by PostgREST, not
+    left untouched -- the opposite of what `build_assessment_records()`'s module docstring
+    has always claimed ("a re-run never clobbers a stored read"). The scheduled run's own
+    summary line that day reported `carried=853` -- deliberately untouched, by design -- yet
+    839 of those came out of that exact run with `ai_read` nulled; the two numbers are close
+    enough, and the mechanism direct enough, to call this the actual defect, not a
+    coincidence. It also explains why the AI-read step looked like it needed to regenerate
+    nearly the whole deck every run (open item 8): a clobbered "carried" card's `ai_read`
+    reads as null next run, so `attach_reads()` treats it as needing a fresh read even
+    though its `input_hash` never changed.
+
+    Grouping every upsert call by `frozenset(record.keys())` before chunking guarantees each
+    call is internally homogeneous, so its `columns` union always matches exactly what every
+    record in that call provides -- no cross-record contamination, independent of exactly
+    how PostgREST or postgrest-py resolve a missing column on merge. Returns the number of
+    upsert calls made (test/diagnostic use).
+    """
+    groups: dict[frozenset, list[dict]] = {}
+    for record in records:
+        groups.setdefault(frozenset(record.keys()), []).append(record)
+    calls = 0
+    for group_records in groups.values():
+        for start in range(0, len(group_records), batch_size):
+            batch = group_records[start : start + batch_size]
+            client.table("card_assessments").upsert(
+                batch, on_conflict="market_code,ticker"
+            ).execute()
+            calls += 1
+    return calls
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate card_assessments verdicts + Claude Haiku reads from the DuckDB mart (Slice 5)"
@@ -352,12 +408,7 @@ def main(argv: list[str] | None = None) -> int:
             "generate_assessments: no ANTHROPIC_API_KEY, skipping prose reads (verdicts only)"
         )
 
-    batch_size = 500
-    for start in range(0, len(records), batch_size):
-        batch = records[start : start + batch_size]
-        client.table("card_assessments").upsert(
-            batch, on_conflict="market_code,ticker"
-        ).execute()
+    _upsert_records(client, records)
 
     print(f"generate_assessments: upserted {len(records)} rows in '{schema}'")
     return 0

@@ -3,42 +3,51 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: A metric's min/median/max range bar never states its own population -- "sector"
-  only appears once, higher up the card (e.g. "Industrials (74 companies)"), or in the
-  fallback "No sector comparison for this metric." line when there is no mark at all. A
-  reader scrolling straight to a metric has no cue the bar is a sector comparison. Owner
-  decided (in chat): name it in the metric's own gloss line -- "..., vs sector." -- rather
-  than a new word-labels row (already tight on space per docs/ui/card_metric_cell.md's own
-  collision notes).
+objective: While building a per-run cap on the AI-read step's cost (open item 8), a read-only
+  production check surfaced something bigger: 80.3% of `card_assessments` rows (839 of 1045)
+  have a NULL `ai_read` right now. The scheduled run's own log for 2026-09-15 reported
+  `generated=165 carried=853 failed=25` -- 853 cards `attach_reads()` deliberately left
+  untouched to PRESERVE their stored read -- yet 839 rows came out of that exact run with
+  `ai_read` null. Root cause, confirmed against the installed `postgrest` library source: a
+  bulk upsert call's `columns` query parameter is the union of keys across every record in
+  that ONE call; a "carried" record omitting `ai_read` shares a call with a "generated"
+  record that includes it, and PostgREST nulls the omitted column instead of leaving it
+  untouched. This also explains open item 8 itself: a clobbered "carried" card looks
+  read-null next run, so `attach_reads()` treats it as needing a fresh read even though its
+  `input_hash` never changed -- the AI-read step's ungoverned cost is very likely mostly this
+  bug, not genuine regeneration need. A second, related bug found in the same investigation:
+  `_fetch_existing_assessments()`'s unranged select silently returns only PostgREST's default
+  row cap (1000 of 1045 real rows today), so cards past that cutoff never appear in the
+  "already has a read" set at all.
+
+  Owner decision (in chat, 2026-09-15): investigate and fix the root cause now, before
+  resuming the `--max-reads` cap work (parked on branch `pipeline/ai-read-max-reads-cap`,
+  stashed -- not part of this task).
 
 scope_paths:
-  - frontend/card_copy.py
-  - frontend/card_ui.py
-  - tests/frontend/test_card_copy.py
-  - tests/frontend/test_card_ui.py
-  - docs/ui/card_metric_cell.md
+  - scripts/generate_assessments.py
+  - tests/tooling/test_generate_assessments.py
+  - docs/data_contract.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved:
-  - Wording and placement ("vs sector" folded into the gloss line, not a new row): owner's
-    call, in chat.
+decisions_reserved: none -- a bug fix restoring the pipeline's own already-documented,
+  already-relied-upon contract ("a re-run never clobbers a stored read"), not a new decision.
 
 done_when:
-  - `metric_gloss()` takes `benchmarked: bool = False`; when True, inserts ", vs sector"
-    before the direction cue (or bare, for the no-direction case).
-  - The caller (`_metric_cell_html` in card_ui.py) passes `benchmarked=True` only when
-    `_metric_range_html()` actually rendered a mark for that metric on that card -- not
-    merely because the metric is catalogue-benchmarkable in the abstract (peer count is
-    per-card).
-  - The two value-aware early-return branches (net_debt_to_ebitda's "Net cash", debt_to_
-    equity's "Negative equity") are untouched -- "vs sector" only applies past them, same as
-    the existing universal direction cue.
-  - Mutation-proof: a test with the SAME metric on two cards differing only in
-    `sector_peer_count` (above/below the peer threshold) asserts "vs sector" appears on one
-    and not the other.
+  - New `_upsert_records()` groups every upsert call by a record's exact `frozenset` of
+    present keys before chunking into `batch_size`, so no single upsert call ever mixes a
+    "carried" (omits `ai_read`/`read_model`) record with a "generated" one (includes them).
+  - `_fetch_existing_assessments()` paginates via `.range()` past `_SELECT_PAGE_SIZE` (1000)
+    instead of a single unranged select.
+  - Regression test proves the OLD single-call shape actually clobbers, using a fake that
+    accurately models PostgREST's real union-of-batch-columns semantics (not just asserting
+    the new code's own internal behavior) -- so the test would fail against a reversion to
+    the old code, not just against an obviously-different one.
   - `pytest tests/ -q` green.
 
-impact_map: Presentation-only in the Streamlit frontend -- no data contract, pipeline, or
-  Supabase schema change. No new dependency, no cost.
+impact_map: `scripts/generate_assessments.py` only -- no schema change, no new dependency.
+  Fixes a live data-integrity defect in the `card_assessments` write path; does not itself
+  change how many Claude API calls a run makes (that's the parked `--max-reads` task) beyond
+  whatever calls this bug was causing to be unnecessary.

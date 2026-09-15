@@ -179,14 +179,26 @@ class _FakeResponse:
         self.data = data
 
 
+# Simulates PostgREST's own real default row cap on an UNRANGED select -- independent of
+# whatever generate_assessments.py's client code does or doesn't ask for. Without this, the
+# fake would silently hand back every row of `existing` regardless, and a pagination
+# regression (deleting the .range() call) would slip straight past the tests below.
+_POSTGREST_ROW_CAP = 1000
+
+
 class _FakeSupabaseTable:
     def __init__(self, store: "_FakeSupabase") -> None:
         self._store = store
         self._op: str | None = None
         self._batch = None
+        self._range: tuple[int, int] | None = None
 
     def select(self, *_a, **_k) -> "_FakeSupabaseTable":
         self._op = "select"
+        return self
+
+    def range(self, start: int, end: int) -> "_FakeSupabaseTable":
+        self._range = (start, end)
         return self
 
     def upsert(self, batch, on_conflict=None) -> "_FakeSupabaseTable":
@@ -196,9 +208,16 @@ class _FakeSupabaseTable:
 
     def execute(self) -> _FakeResponse:
         if self._op == "select":
-            return _FakeResponse(list(self._store.existing))
+            data = list(self._store.existing)
+            if self._range is not None:
+                start, end = self._range
+                data = data[start : end + 1]
+            else:
+                data = data[:_POSTGREST_ROW_CAP]
+            return _FakeResponse(data)
         if self._op == "upsert":
             self._store.upserts.append(self._batch)
+            self._store.apply_upsert(self._batch)
         return _FakeResponse(None)
 
 
@@ -206,9 +225,27 @@ class _FakeSupabase:
     def __init__(self, existing: list[dict] | None = None) -> None:
         self.upserts: list[list[dict]] = []
         self.existing = existing or []
+        # Simulates the REAL PostgREST behavior this fake used to ignore: a bulk upsert
+        # call's `columns` query param is the union of keys across every record IN THAT ONE
+        # CALL (postgrest-py's `_unique_columns`); a record omitting a column present
+        # elsewhere in the same call gets it explicitly nulled, not left untouched. This is
+        # what generate_assessments._upsert_records() exists to avoid -- postgrest_state is
+        # what the database would actually end up holding after every upsert() call this
+        # fake has seen, keyed the same way generate_assessments.py keys records.
+        self.postgrest_state: dict[tuple, dict] = {
+            (r["market_code"], r["ticker"]): dict(r) for r in self.existing
+        }
 
     def table(self, _name: str) -> _FakeSupabaseTable:
         return _FakeSupabaseTable(self)
+
+    def apply_upsert(self, batch: list[dict]) -> None:
+        columns = {key for record in batch for key in record.keys()}
+        for record in batch:
+            key = (record["market_code"], record["ticker"])
+            row = self.postgrest_state.setdefault(key, {})
+            for column in columns:
+                row[column] = record.get(column)  # missing -> None, matching real PostgREST
 
 
 def _base_record(*, ticker: str = "OPX", input_hash: str = "h1", verdict: str = "green") -> dict:
@@ -373,6 +410,87 @@ def test_attach_reads_rejects_non_list_referenced_metrics(capsys) -> None:
     assert summary == {"generated": 0, "carried": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
     assert "malformed tool payload" in capsys.readouterr().err
+
+
+# --- _upsert_records: batches grouped by key-shape, root-caused against a real production
+# incident (2026-09-15): a single upsert call mixing "carried" (omits ai_read/read_model)
+# and "generated" (includes them) records nulled the carried ones' stored reads, because
+# PostgREST's `columns` param is the union of keys across the WHOLE call, not per-row.
+
+
+def test_fake_supabase_reproduces_the_real_clobbering_behavior() -> None:
+    """Sanity check for the fake itself, pinning the OLD/broken shape (a single upsert()
+    call for a mixed batch) so the fix's own test below has something real to fail
+    against."""
+    existing = [
+        {"market_code": "us_sp500", "ticker": "CARRIED", "ai_read": "old stored read.",
+         "read_model": "claude-haiku-4-5"},
+    ]
+    fake_sb = _FakeSupabase(existing=existing)
+    carried = _base_record(ticker="CARRIED", input_hash="h1")  # omits ai_read/read_model
+    generated = _base_record(ticker="GENERATED", input_hash="h1")
+    generated["ai_read"] = "fresh read on these figures."
+    generated["read_model"] = "claude-haiku-4-5"
+    fake_sb.table("card_assessments").upsert(
+        [carried, generated], on_conflict="market_code,ticker"
+    ).execute()
+    assert fake_sb.postgrest_state[("us_sp500", "CARRIED")]["ai_read"] is None  # clobbered
+
+
+def test_upsert_records_does_not_clobber_a_carried_read_across_a_mixed_batch() -> None:
+    """The fix: grouping by key-shape before chunking means a 'carried' record never shares
+    an upsert call with a 'generated' one, so its stored read survives."""
+    existing = [
+        {"market_code": "us_sp500", "ticker": "CARRIED", "ai_read": "old stored read.",
+         "read_model": "claude-haiku-4-5"},
+    ]
+    fake_sb = _FakeSupabase(existing=existing)
+    carried = _base_record(ticker="CARRIED", input_hash="h1")
+    generated = _base_record(ticker="GENERATED", input_hash="h1")
+    generated["ai_read"] = "fresh read on these figures."
+    generated["read_model"] = "claude-haiku-4-5"
+    calls = gen._upsert_records(fake_sb, [carried, generated])
+    assert calls == 2  # two distinct key-shapes -> two separate upsert calls
+    stored = fake_sb.postgrest_state[("us_sp500", "CARRIED")]
+    assert stored["ai_read"] == "old stored read."
+    assert stored["read_model"] == "claude-haiku-4-5"
+    assert fake_sb.postgrest_state[("us_sp500", "GENERATED")]["ai_read"] == "fresh read on these figures."
+
+
+def test_upsert_records_batches_within_each_key_shape_group() -> None:
+    """batch_size still applies inside each key-shape group, not just across the whole
+    record set."""
+    records = [_base_record(ticker=f"T{i}") for i in range(5)]  # all same shape
+    fake_sb = _FakeSupabase(existing=[])
+    calls = gen._upsert_records(fake_sb, records, batch_size=2)
+    assert calls == 3  # 2 + 2 + 1
+    assert sum(len(b) for b in fake_sb.upserts) == 5
+
+
+# --- _fetch_existing_assessments: paginates past PostgREST's default row cap -- a single
+# unranged select silently returned exactly 1000 of 1045 real rows on the 2026-09-15
+# scheduled run, so every card past the cutoff looked permanently new every run.
+
+
+def test_fetch_existing_assessments_paginates_past_the_default_row_cap() -> None:
+    existing = [
+        {"market_code": "us_sp500", "ticker": f"T{i}", "input_hash": "h",
+         "ai_read": "r", "read_model": "m"}
+        for i in range(gen._SELECT_PAGE_SIZE + 200)
+    ]
+    fake_sb = _FakeSupabase(existing=existing)
+    result = gen._fetch_existing_assessments(fake_sb)
+    assert len(result) == gen._SELECT_PAGE_SIZE + 200
+    assert ("us_sp500", f"T{gen._SELECT_PAGE_SIZE + 199}") in result  # last row, past the old cutoff
+
+
+def test_fetch_existing_assessments_single_page_when_under_the_cap() -> None:
+    existing = [
+        {"market_code": "us_sp500", "ticker": "OPX", "input_hash": "h", "ai_read": "r", "read_model": "m"}
+    ]
+    fake_sb = _FakeSupabase(existing=existing)
+    result = gen._fetch_existing_assessments(fake_sb)
+    assert result == {("us_sp500", "OPX"): existing[0]}
 
 
 def test_main_without_anthropic_key_upserts_verdicts_only(tmp_path: Path, monkeypatch) -> None:
