@@ -231,9 +231,14 @@ Numbered defects and gaps:
    the atomic export (MR !115) deletes the `(market, date)` pairs a payload covers, so a ticker
    leaves the deck when those take ALL its remaining rows. Whether it should evict BY SNAPSHOT
    AGE is still an owner call.
-2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
-   pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
-   owner's call, not resolved.
+2. **CLOSED 2026-09-15.** The growth metric's card copy told readers "one quarter can be
+   noisy, so look for a pattern over time" while the verdict's own growth gate
+   (`GROWTH_DECLINE_THRESHOLD_PCT = 0.0`) reacts to any single-quarter decline, no tolerance
+   -- a deliberate design the owner already confirmed by rejecting a -5% tolerance on this
+   exact argument. Owner decision: reword the catalogue copy (`revenue_growth_yoy_pct`'s
+   `interpretation`/`learn` fields) to state the genuine, verdict-consistent caveats
+   (selling off part of the business, currency swings, a contract landing in a different
+   quarter) instead of telling the reader to discount the signal.
 3. **The financial-type card's capital-adequacy caveat: closed.** MR !100 made it a
    deterministic card-face line (`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, owner wording); MR !137
    moved it out of the health block so a withheld block no longer drops it (issue #11).
