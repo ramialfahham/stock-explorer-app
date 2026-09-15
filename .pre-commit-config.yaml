@@ -40,6 +40,18 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: no-em-dash
+        name: no em-dash/en-dash on an added or edited line
+        entry: python scripts/check_no_em_dash.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: docs-indexed
+        name: every docs/*.md and docs/ui/*.md file is linked from CLAUDE.md
+        entry: python scripts/check_docs_indexed.py
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: gitleaks
         name: gitleaks (staged secret scan)
         entry: gitleaks git --pre-commit --staged --redact --config .gitleaks.toml

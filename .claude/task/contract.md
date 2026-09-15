@@ -3,81 +3,78 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Owner feedback (in chat): documents and code comments had accumulated
-  date-stamped, decision-history narrative -- the same fact restated 3-5 times across code
-  comments, docstrings, tests, and `docs/data_contract.md` (the upsert-clobbering root cause,
-  the MR #22 benchmark expansion, a 2026-09-14 UI decision). This directly violates
-  `engineering_standards.md` §1.2/§1.3 ("no dates, timestamps, approval markers... a comment
-  states what is true now; git records when and who") -- a rule that already existed but had
-  no enforcement, so review time never caught it. Built `scripts/check_no_narrative_dates.py`
-  to make the category impossible to reintroduce silently, wired into both pre-commit and CI
-  (Tier A), matching this repo's own `check_context_budget.py` precedent for how a written
-  rule becomes an enforced one. Two review rounds caught real gaps in the first pass: (1) the
-  checker's initial `supabase/migrations/` exemption claimed migrations are "never edited
-  after merge" -- disproved by this repo's own git history (`018_atomic_card_export.sql` was
-  edited by a later commit) -- so the exemption was removed and the two real violations it had
-  been hiding (`013_net_cash.sql`, `017_sector_benchmark_financial_operating.sql`) fixed; (2)
-  `docs/ui/*.md` uses a `**Scope:**`/`**Authority:**` header instead of `> DURABLE.`, so those
-  files were invisible to the checker's markdown scan despite `check_context_budget.py`
-  already governing them at the same tier -- fixed by scoping the checker to that directory
-  unconditionally, which surfaced and fixed 4 more real violations (`card_metric_cell.md`,
-  `design_system.md`, `discover_list.md`) plus one real information-loss regression in
-  `frontend/app.py` (a fix had stripped a genuine `_DECK_TTL_SECONDS` 15-60 minute bound along
-  with the date it was wrongly bundled with -- restored). This is Phase 1 of a larger
-  repo-cleanup plan; later phases (GitLab issue tracking, CI/YAML hygiene, doc architecture)
-  are separate, later tasks.
+objective: Phase 2 of the owner-approved six-phase repo-cleanup plan (plan-mode review,
+  2026-09-15). Two more written-but-unenforced rules get mechanical guards:
+  1. **Em-dash rule** (`engineering_standards.md` §1.3): previously "nothing enforces it;
+     it holds at review time only." Added `scripts/check_no_em_dash.py`, which diffs
+     (staged locally, MR-target-branch merge-base in CI) rather than scanning the whole
+     tree, since the rule is specifically about lines added or edited, not pre-existing ones
+     -- a genuinely new mechanism, not a rerun of Phase 1's `check_no_narrative_dates.py`
+     pattern, which whole-tree-scans unconditionally regardless of pipeline trigger. It
+     caught a real self-violation while being built (an em-dash written directly into its
+     own source instead of the intended U+2014 escape) and a second one in this task's own
+     `CLAUDE.md` edit -- both fixed. cto-reviewer's round-1 review caught that the first CI
+     design failed OPEN (silently skipped, exit 0) on every `push`-to-`main` and `web`
+     pipeline -- the steady-state for two of `validate:full`'s three real triggers, not an
+     edge case -- since `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` is only set on merge-request
+     pipelines. Fixed: added a `CI_COMMIT_BEFORE_SHA` fallback for push pipelines (guarded
+     against the all-zero sentinel for a branch's first push), and changed the genuinely
+     undeterminable case (a `web`-triggered manual run, a shallow clone missing history) to
+     fail CLOSED instead of open, since a CI job that cannot tell what changed must not
+     report green.
+  2. **Doc-index completeness**: `CLAUDE.md` calls itself "the map... which file owns what,"
+     but only 7 of 26 `docs/*.md`/`docs/ui/*.md` files had a line there. Added
+     `scripts/check_docs_indexed.py`, mirroring `check_context_budget.py`'s "governed file
+     with no entry fails" pattern. Since a new gate must ship already passing (the same
+     principle Phase 1 followed), `CLAUDE.md`'s index is rebuilt to cover all 26 files in
+     this same task, not deferred to Phase 6 as the plan file originally sketched --
+     Phase 6's own doc-index item is now just keeping it current as later phases
+     rename/delete files, not building it from nothing.
+  Also fixed: `.claude/review_routing.json`'s own `_comment_guard_paths` field carried a
+  date and an MR reference (the exact pattern Phase 1's checker targets, but JSON isn't a
+  scanned file type by design -- a structural mismatch, not a checker bug) -- reworded by
+  hand to state the current routing rationale without the date/MR-reference.
 
 scope_paths:
-  - scripts/check_no_narrative_dates.py
-  - tests/tooling/test_check_no_narrative_dates.py
+  - scripts/check_no_em_dash.py
+  - scripts/check_docs_indexed.py
+  - tests/tooling/test_check_no_em_dash.py
+  - tests/tooling/test_check_docs_indexed.py
   - .pre-commit-config.yaml
   - .gitlab-ci.yml
-  - docs/engineering_standards.md
-  - docs/data_contract.md
-  - docs/operations_guide.md
-  - docs/ui/card_metric_cell.md
-  - docs/ui/design_system.md
-  - docs/ui/discover_list.md
-  - dbt_analytics/models/2_base/yfinance/base_yf__constituents.sql
-  - dbt_analytics/models/4_intermediate/int_stock__sector_benchmarks.sql
-  - supabase/migrations/013_net_cash.sql
-  - supabase/migrations/017_sector_benchmark_financial_operating.sql
-  - frontend/app.py
-  - frontend/card_copy.py
-  - frontend/styles.py
-  - scripts/generate_assessments.py
-  - tests/frontend/test_app_e2e.py
-  - tests/frontend/test_card_copy.py
-  - tests/frontend/test_card_ui.py
-  - tests/frontend/test_styles.py
-  - tests/ingestion/test_market_onboarding.py
-  - tests/tooling/test_export_to_supabase.py
-  - tests/tooling/test_generate_assessments.py
+  - CLAUDE.md
+  - docs/context_budget.yml
+  - .claude/review_routing.json
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved: none -- a mechanical hygiene fix of an already-written, already-approved
-  rule, not a new rule or a product/content decision. The mechanism itself (a new pre-commit +
-  CI check) was scoped and approved in the owner's plan-mode review before this branch existed.
+decisions_reserved: none -- mechanical enforcement of two already-written rules
+  (`engineering_standards.md` §1.3, `CLAUDE.md`'s own "which file owns what" claim), plus a
+  one-time wording fix to an already-approved routing-comment field. The mechanisms
+  themselves were scoped and approved in the owner's plan-mode review before this branch
+  existed.
 
 done_when:
-  - `python scripts/check_no_narrative_dates.py` passes clean against the full repo tree,
-    with no directory or header-convention blind spot left unexamined.
-  - `pytest tests/ -q` green (includes the 16 guard tests, one added in round 2 to prove
-    migrations are no longer exempt).
-  - Every fix states the durable technical fact; no fix left a sentence that reads worse or
-    loses real information solely because a date was stripped (the one round-2 regression
-    found and fixed).
-  - `.pre-commit-config.yaml` and `.gitlab-ci.yml` both run the new check alongside
-    `check_context_budget.py`.
-  - No em-dash/en-dash introduced on any touched line; no dbt build regression on the two
-    touched SQL models (`base_yf__constituents`, `int_stock__sector_benchmarks`).
+  - `python scripts/check_no_em_dash.py` passes against the staged diff; its 14 unit tests
+    (hunk-header line tracking, context-vs-added distinction, multi-file diffs, the
+    MR-target-branch and `CI_COMMIT_BEFORE_SHA` CI fallbacks against real git repos, and the
+    fail-closed-in-CI / pass-locally split) all pass.
+  - `python scripts/check_docs_indexed.py` passes against the full repo tree; its 11 unit
+    tests pass.
+  - `python scripts/check_no_narrative_dates.py` and `check_context_budget.py` still pass
+    (unaffected by this task, checked for regression).
+  - `pytest tests/ -q` green (776: 751 from Phase 1 + 25 new guard tests).
+  - `.pre-commit-config.yaml` and `.gitlab-ci.yml` both run the two new checks alongside the
+    existing two.
+  - `.claude/review_routing.json` is still valid JSON; every routing pattern still matches
+    what it matched before (wording-only change to one comment field).
+  - No em-dash/en-dash introduced on any touched line (the two self-caught instances fixed).
+  - The em-dash CI path fails closed, not open, when it cannot determine what changed --
+    cto-reviewer's round-1 finding.
 
-impact_map: comment/docstring/doc text only across the fixed files -- no behavior change, no
-  schema change, no test assertion changed (test bodies untouched, only their docstrings/
-  comments). Two new files (the checker + its test). Two config files gain one new step each,
-  same shape as the existing `check_context_budget.py` step. `supabase/migrations/` is no
-  longer exempted -- scanned like any other SQL, since migrations are demonstrably editable
-  after merge in this repo. The two edited migration files (013, 017) only had comment text
-  changed; the DDL/DML statements themselves are untouched.
+impact_map: two new guard scripts + their tests -- no behavior change to the application, no
+  schema change. `CLAUDE.md` grows from 7 to 26 indexed docs (content-neutral -- links and
+  one-line descriptions, not a rewrite of what each doc says); its budget raised 5000 -> 6500
+  to fit. `.claude/review_routing.json`: one comment field reworded, routing patterns
+  (`always`, `paths`, `artifact_only`, `artifact_only_never`) byte-identical.
