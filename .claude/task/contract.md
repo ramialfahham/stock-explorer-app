@@ -11,11 +11,15 @@ objective: MR !155 (`docs/mart-stock-cards-table-heading`) has a real merge conf
   branch's own version (disposable, overwritten by whichever task merges last, per the
   working agreement). `.claude/active_work.md` needed a real content merge -- MR !155's own
   edit (dropping the stale "doc wording, three reviewers noted" line, since this MR is that
-  fix) combined with main's now-merged item 4/item 10 closures, without losing either side.
-  `docs/data_contract.md` auto-merged cleanly (the two changes touch different sections).
-  `dbt_analytics/models/5_marts/_marts.yml` and `docs/context_budget.yml` are pure pass-through
-  from `main` (item 4's already-reviewed and already-merged content, MR !158) -- untouched by
-  this resolution, just newly present in this branch's history.
+  fix) combined with main's now-merged `accepted_range`/item 10 closures, without losing
+  either side. `docs/data_contract.md` auto-merged cleanly (the two changes touch different
+  sections). `dbt_analytics/models/5_marts/_marts.yml` and `docs/context_budget.yml` are pure
+  pass-through from `main` (the `accepted_range` work's already-reviewed and already-merged
+  content, MR !158) -- untouched by this resolution, just newly present in this branch's
+  history. (A prior round of this same resolution called this work "item 4"; that was a
+  mislabeling -- the file's own numbered list already uses "item 4" for an unrelated,
+  pre-existing UX bug-fix item -- caught by equity-analyst-reviewer and fixed here and on MR
+  !157's identical conflict.)
 
 scope_paths:
   - .claude/active_work.md
@@ -30,7 +34,7 @@ decisions_reserved: none -- a merge-conflict resolution, no new decision made.
 done_when:
   - No conflict markers remain in any file.
   - `.claude/active_work.md` correctly reflects both sides: MR !155's own change and main's
-    already-merged item 4/item 10 closures, with nothing lost or duplicated.
+    already-merged `accepted_range`/item 10 closures, with nothing lost or duplicated.
   - `docs/data_contract.md`'s two changes (MR !155's heading fix, main's `accepted_range`
     documentation) both present and uncorrupted.
   - `dbt_analytics/models/5_marts/_marts.yml` and `docs/context_budget.yml` match `main`

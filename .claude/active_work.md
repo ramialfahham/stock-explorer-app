@@ -23,11 +23,11 @@ closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see
 pass); the other two sub-items (plugin templates, extending the global merge guard) were
 explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**Smaller open items, all done.** Item 10's crash risk (!156) and `accepted_range` tests
-decision (!158, see item 4 below) merged. Doc wording nit (!155) and item 2's growth-copy
-tension (!157) still open, both with merge conflicts against `main` from the other two
-merging first (all four touched `.claude/active_work.md`/`.claude/task/*`) -- need a
-`gitlab/main` merge into each branch before they can go in.
+**Smaller open items, all done.** Item 10's crash risk (!156) and the `accepted_range` tests
+question left open by A2 (!158, see below) merged. Doc wording nit (!155) and item 2's
+growth-copy tension (!157) still open, both had merge conflicts against `main` from the other
+two merging first (all four touched `.claude/active_work.md`/`.claude/task/*`) -- resolved on
+both branches, pushed, awaiting merge.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -71,8 +71,9 @@ pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
 **Merged this pass** (detail in each MR): !158 adds `dbt_utils.accepted_range` sanity guards
 (`severity: warn`) to eight card metrics prone to near-zero-denominator explosion, bounds
-measured against production (detail in `docs/data_contract.md`); closes item 4. !156 closes
-item 10 (latent `AppTest` crash risk), no action needed. !153 routes `.claude/working-agreement.md` to
+measured against production (detail in `docs/data_contract.md`); closes the `accepted_range`
+question left open by A2. !156 closes item 10 (latent `AppTest` crash risk), no action needed.
+!153 routes `.claude/working-agreement.md` to
 `cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
 the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
 capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
