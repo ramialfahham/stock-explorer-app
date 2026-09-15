@@ -23,10 +23,11 @@ closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see
 pass); the other two sub-items (plugin templates, extending the global merge guard) were
 explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**Smaller open items, all done, MRs open awaiting merge:** doc wording nit (!155), item 2's
-growth-copy tension (!157), item 10's crash risk (!156), `accepted_range` tests decision
-(!158, see item 4 below). All four "smaller open items" from the portfolio-grade push are now
-in MR, none merged yet.
+**Smaller open items, all done.** Item 10's crash risk (!156) and the `accepted_range` tests
+question left open by A2 (!158, see below) merged. Doc wording nit (!155) and item 2's
+growth-copy tension (!157) still open, both had merge conflicts against `main` from the other
+two merging first (all four touched `.claude/active_work.md`/`.claude/task/*`) -- resolved on
+both branches, pushed, awaiting merge.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -64,30 +65,15 @@ would trip the floor on correct data; only three pre-revenue companies exist tod
 `jinja2` is imported directly in `tests/tooling/test_metric_fill_floor.py` but pinned only
 through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 
-**Doc wording, three reviewers noted, not fixed:** `docs/data_contract.md` "Supabase export --
-`mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
-the dbt MODEL's name, now that the model declares two. Add the word "table" there.
-
-**CLOSED 2026-09-15, MR !158 open.** `accepted_range` tests: owner chose the wide sanity guard
-(`severity: warn`) over a definitional hard-null bound. Added to eight metrics prone to
-near-zero-denominator explosion (`ebit_margin_pct`, `revenue_growth_yoy_pct`,
-`net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`, `statement_roe_pct`,
-`net_margin_pct`, `cash_runway_months`) in `dbt_analytics/models/5_marts/_marts.yml`, bounds
-measured against the full exported history (5,726 rows, 2026-09-15) -- detail in
-`docs/data_contract.md`. Two gaps were caught by analytics-engineer-reviewer across two review
-rounds, both because the original selection method -- a keyword grep over the catalogue's
-`applicability` field -- only finds a caveat written in prose, not an unguarded division in
-the model SQL itself: `net_margin_pct` (same revenue denominator and catalogue caveat as the
-already-covered `fcf_margin_pct`, gates financial-card eligibility); `cash_runway_months`
-(divides by unfloored `-computed_fcf` in `int_stock__card_metrics.sql`, measured as high as
-1093.1 months for LLOY). Worth remembering next time a metric set is selected by grepping
-prose alone. `roa_pct`, `current_ratio_stmt`, `price_to_tangible_book`, and
-`net_cash_to_market_cap` were checked and excluded, with the measured reasoning recorded in
-`docs/data_contract.md`. **Side finding, not root-caused:**
+**Side finding, not root-caused (from the `accepted_range` work, !158):**
 `ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
 pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
-**Merged this pass** (detail in each MR): !153 routes `.claude/working-agreement.md` to
+**Merged this pass** (detail in each MR): !158 adds `dbt_utils.accepted_range` sanity guards
+(`severity: warn`) to eight card metrics prone to near-zero-denominator explosion, bounds
+measured against production (detail in `docs/data_contract.md`); closes the `accepted_range`
+question left open by A2. !156 closes item 10 (latent `AppTest` crash risk), no action needed.
+!153 routes `.claude/working-agreement.md` to
 `cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
 the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
 capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
