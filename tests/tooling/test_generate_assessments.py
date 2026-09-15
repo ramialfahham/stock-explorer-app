@@ -350,11 +350,10 @@ def test_attach_reads_negative_max_reads_is_clamped_to_fully_capped() -> None:
     assert client.messages.calls == []
 
 
-# --- --max-reads: bounds new Claude calls per run (owner decision, 2026-09-15: a per-run
-# cap, over a wall-clock time budget or visibility-only). Cards with no stored read are
-# filled before cards that only need a refresh -- a bare fallback line is a worse gap than a
-# stale read -- and whatever a tight cap can't reach this run is left exactly like `carried`
-# (keys absent), so it retries on the next run rather than being lost.
+# --- --max-reads: bounds new Claude calls per run with a per-run cap. Cards with no stored
+# read are filled before cards that only need a refresh -- a bare fallback line is a worse
+# gap than a stale read -- and whatever a tight cap can't reach this run is left exactly like
+# `carried` (keys absent), so it retries on the next run rather than being lost.
 
 
 def test_max_reads_none_is_unbounded_default() -> None:
@@ -516,10 +515,10 @@ def test_attach_reads_rejects_non_list_referenced_metrics(capsys) -> None:
     assert "malformed tool payload" in capsys.readouterr().err
 
 
-# --- _upsert_records: batches grouped by key-shape, root-caused against a real production
-# incident (2026-09-15): a single upsert call mixing "carried" (omits ai_read/read_model)
-# and "generated" (includes them) records nulled the carried ones' stored reads, because
-# PostgREST's `columns` param is the union of keys across the WHOLE call, not per-row.
+# --- _upsert_records: batches grouped by key-shape. A single upsert call mixing "carried"
+# (omits ai_read/read_model) and "generated" (includes them) records nulls the carried ones'
+# stored reads, because PostgREST's `columns` param is the union of keys across the WHOLE
+# call, not per-row.
 
 
 def test_fake_supabase_reproduces_the_real_clobbering_behavior() -> None:
@@ -602,9 +601,9 @@ def test_upsert_records_batches_within_each_key_shape_group() -> None:
     assert sum(len(b) for b in fake_sb.upserts) == 5
 
 
-# --- _fetch_existing_assessments: paginates past PostgREST's default row cap -- a single
-# unranged select silently returned exactly 1000 of 1045 real rows on the 2026-09-15
-# scheduled run, so every card past the cutoff looked permanently new every run.
+# --- _fetch_existing_assessments: paginates past PostgREST's default row cap -- an
+# unranged select silently truncates past that many rows, so every card past the cutoff
+# looks permanently new every run.
 
 
 def test_fetch_existing_assessments_paginates_past_the_default_row_cap() -> None:

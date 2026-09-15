@@ -199,8 +199,8 @@ Run SQL from `supabase/migrations/` via `python scripts/apply_supabase_migration
 
 ## Performance: where the time goes
 
-MR !111 cut the deck fetch to 1.46 MB and the owner still waited about 7 seconds warm, far
-longer cold. The dominant cost is Streamlit's own front end (dozens of JS files, slow on a
+The deck fetch alone is 1.46 MB, and a warm load still takes about 7 seconds, far longer
+cold. The dominant cost is Streamlit's own front end (dozens of JS files, slow on a
 starved free tier), which no change in this repo moves. Do not re-measure the data
 layer and conclude the app is fast: measure first paint in a browser, not time to first byte.
 The real options are a paid Render plan or not Streamlit (issue #2), both owner calls. The
@@ -210,13 +210,11 @@ paid by every visitor, a column on the card face by nobody until that card opens
 ## Monitoring (v1)
 
 **Pipeline failure email -- DONE.** Set via GitLab's built-in per-user notifications, not the
-"Pipeline emails" project integration this guide previously described. The owner reported that
-integration is not in the project's Settings → Integrations list (2026-09-08). The API is
-consistent with that but does not prove it: `GET /integrations` returns only ACTIVATED
-integrations (`[]` here) and the per-integration endpoint 404s for anything never configured,
-so the API evidence establishes only that it was never set up -- which the old instruction
-already admitted, having sat here as an unchecked pending action. The route that works: the
-project's
+"Pipeline emails" project integration this guide previously described -- that integration is
+not in the project's Settings → Integrations list. The API is consistent with that but does
+not prove it: `GET /integrations` returns only ACTIVATED integrations (`[]` here) and the
+per-integration endpoint 404s for anything never configured, so the API evidence establishes
+only that it was never set up. The route that works: the project's
 notification dropdown (bell icon) → **Custom** → tick **Failed pipeline** (and **Fixed
 pipeline**), reachable also at <https://gitlab.com/-/profile/notifications>.
 
@@ -239,17 +237,16 @@ alert from); no zero-dependency fix exists for that today.
 **The app monitor does not keep the database awake, and this is not obvious.** A plain HTTP
 request to a Streamlit app returns only the static page shell; Streamlit runs the app script
 (and therefore any Supabase query) when a browser opens a websocket, which a monitor never
-does. Verified 2026-09-08: the response body contains no card data at all. So an app-only
-ping leaves the database entirely uncovered, which was the state until the second monitor was
-added that day.
+does. The response body contains no card data at all, so an app-only ping leaves the database
+entirely uncovered -- the database monitor below exists for exactly this gap.
 
 The database monitor's configured check interval was not captured when it was set up; only
 the requirement above (well under 7 days) is known.
 
-**Not yet observed working.** The database monitor was added 2026-09-08 and its effect cannot
-show up for ~7 days. To verify: check that the Supabase project still serves a REST request
-more than 7 days after the last pipeline write (writes land on the 1st and 15th), without
-anyone having visited the app in between.
+**Not yet confirmed working.** The database monitor's effect cannot show up for ~7 days after
+setup. To verify: check that the Supabase project still serves a REST request more than 7 days
+after the last pipeline write (writes land on the 1st and 15th), without anyone having visited
+the app in between.
 
 The database URL carries the `sb_publishable_` key as a query parameter. That is acceptable
 because the key is publishable by design and because `mart_stock_cards` has row-level security

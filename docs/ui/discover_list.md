@@ -26,9 +26,9 @@ Saved and Search rows are picking rows, title and subtitle only, deliberately no
 filter narrows a large, unfamiliar pool (up to hundreds of companies), so the row carries one
 extra signal that helps a reader decide which company to open first: one glance metric.
 
-A verdict dot used to sit alongside the metric here; removed by owner instruction (2026-08-31)
-after it stayed visually misaligned even past its known emoji-glyph-metrics cause being fixed,
-see `frontend/row_ui.py`'s `build_rich_row_html` docstring.
+A verdict dot used to sit alongside the metric here; removed after it stayed visually
+misaligned even past its known emoji-glyph-metrics cause being fixed, see
+`frontend/row_ui.py`'s `build_rich_row_html` docstring.
 
 **The lead metric is not a free choice per row.** It's exactly the one metric that is a CORE,
 verdict-deciding axis for that company type's own verdict rule in `scripts/assessment_rules.py`,
@@ -85,7 +85,7 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
 |------|--------|
 | Row structure | Same tap mechanics as the plain row (`st.container` plus an invisible overlay `st.button`), different HTML via `build_rich_row_html`, see `design_system.md`'s row primitive |
 | Ordering | Alphabetical by company name, not the retired walk's round-robin/skip order: a list should be stable and re-findable |
-| Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Added 2026-08-31: mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measured at ~2.4s before Streamlit even registered a click; see `docs/backlog/discover_list_performance.md`. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
+| Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measures at ~2.4s before Streamlit even registers a click; see `docs/backlog/discover_list_performance.md`. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
 | Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and Search already use, unchanged |
 | Sticky actions | Save / Not now render on the **focus card only** (matching where they already lived), not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` already rejects |
 | Empty state | One `st.info`, no fake rows |

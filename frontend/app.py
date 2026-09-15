@@ -98,9 +98,8 @@ def _init_state() -> None:
 
 # Short enough that a pipeline export shows up the same day without a redeploy, and short
 # enough that ordinary traffic keeps querying Supabase -- the free tier pauses after ~7 idle
-# days, so a long TTL would turn the cache into an outage risk (open item 6). 30 minutes sits
-# inside the 15-60 minute band the owner approved for this value; moving outside that band is
-# a §6 decision, not a tuning choice.
+# days, so a long TTL would turn the cache into an outage risk (open item 6). Kept inside a
+# 15-60 minute band; moving outside that band is a §6 decision, not a tuning choice.
 _DECK_TTL_SECONDS = 30 * 60
 
 
@@ -171,7 +170,7 @@ def _hydrate(client, card: dict | None) -> dict | None:
     Falls back to the slim row on a fetch failure: a card missing its metrics still renders
     its name, sector and lead metric, which beats an exception on the only screen that
     matters. Reuses _load_cards' existing error wording rather than introducing a second
-    string -- user-visible copy is an owner decision (working agreement §6)."""
+    string -- user-visible copy changes go through working agreement §6."""
     if not card:
         return card
     try:
@@ -277,7 +276,7 @@ def _card_open(active: str) -> bool:
 def _render_back_row(*, key: str, saved_count: int | None, on_back) -> None:
     """Back button, replacing the separate stats line while a card is open. saved_count is
     shown next to the button only on the Saved tab -- None on Discover, where the saved
-    tally is not this screen's subject (owner decision, 2026-09-14)."""
+    tally is not this screen's subject."""
     st.markdown('<div class="ss-back-row-marker"></div>', unsafe_allow_html=True)
     with st.container(horizontal=True, vertical_alignment="center", gap="small"):
         if st.button("← Back to list", key=key, use_container_width=False):

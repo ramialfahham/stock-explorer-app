@@ -1,7 +1,6 @@
 -- Net cash as a money amount (cash minus total debt), replacing net_cash_to_market_cap on
 -- the pre-revenue card. The ratio divided by market cap, so it moved with the share price;
 -- this pipeline refreshes twice a month and cannot keep a price-derived figure current.
--- Owner's call, 2026-08-26.
 --
 -- net_cash_to_market_cap is deliberately NOT dropped. It is simply no longer catalogued, so
 -- no card renders it, and the column stays available in the warehouse. Dropping it would

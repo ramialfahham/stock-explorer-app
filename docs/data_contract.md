@@ -477,7 +477,7 @@ dropping or renaming a field, is covered by the fill floor below, not by this gu
 near-zero-denominator explosion per their own catalogue caveats -- `ebit_margin_pct`,
 `revenue_growth_yoy_pct`, `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`,
 `statement_roe_pct`, `net_margin_pct` -- get a wide bound, not a business-rule definition of a
-valid value. Measured against the full exported history (5,726 rows, 2026-09-15):
+valid value. Measured against the full exported history (5,726 rows):
 `ebit_margin_pct` ranges -90,333.7% (DYL, a known accepted pre-revenue outlier) to 44,944.9%
 (IAG -- large, real, unexplained; flagged, not root-caused here); `net_margin_pct`, which
 shares `fcf_margin_pct`'s revenue denominator and the same "breaks for pre-revenue firms"
@@ -494,7 +494,7 @@ a company sitting right at cash-flow breakeven can push the ratio arbitrarily hi
 column is computed for every `company_type` (the SQL's only gate is `computed_fcf < 0`, no
 type filter), though only the `pre_revenue` card renders it -- and the test itself carries no
 `where` clause, so it runs over the full computed population, not just what's displayed. Not
-theoretical: measured range across that full population (599 non-null rows, 2026-09-15) is
+theoretical: measured range across that full population (599 non-null rows) is
 0.06 months (SRE, `operating`) to 1093.1 months (~91 years, LLOY, `financial`) -- a bank or a
 capital-heavy operating company having one period of small negative free cash flow, not a
 startup nearing breakeven. Within just the 11 rows the pre_revenue card actually renders, the
@@ -671,9 +671,9 @@ meaning — regenerated only when `input_hash` changes or `ai_read` is null. The
 The write is `_upsert_records()`, batched **by each record's exact set of present keys**, never
 a single upsert of the whole batch -- PostgREST computes `columns` as the union of keys across
 every record in ONE call, so a "carried" record (omits `ai_read`/`read_model` to keep the
-stored value) sharing a call with a "generated" one gets that value nulled, not preserved
-(confirmed against production, 2026-09-15: `carried=853` in the run's own log, yet 839 of those
-rows came out null). `_fetch_existing_assessments()` paginates for the same reason -- an
+stored value) sharing a call with a "generated" one gets that value nulled, not preserved --
+production evidence: a run logging `carried=853` had 839 of those rows come out null.
+`_fetch_existing_assessments()` paginates for the same reason -- an
 unranged select silently caps at PostgREST's default 1000 rows, missing later cards.
 
 The AI-read step is the pipeline's dominant runtime cost (one sequential API call per
