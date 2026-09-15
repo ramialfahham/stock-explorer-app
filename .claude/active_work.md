@@ -15,19 +15,18 @@ the detail._
 
 ## In flight
 
-**Portfolio-grade push (owner 2026-09-15), in progress.** Item 8 (AI-read cost) closed: the
-root-cause upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this
-pass. **The actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's
-call, ideally after one clean scheduled run's real counts.** MR !116's guardrail gaps also
-closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see Merged this
-pass); the other two sub-items (plugin templates, extending the global merge guard) were
-explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
-
-**Smaller open items, three of four done.** Item 10's crash risk (!156), the doc wording nit
-(!155), and the `accepted_range` tests question left open by A2 (!158, see below) all merged.
-Item 2's growth-copy tension (!157) still open -- needed a `gitlab/main` merge to resolve a
-conflict from the other three merging first (all four touched `.claude/active_work.md`/
-`.claude/task/*`), resolved and pushed here.
+**Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
+upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
+actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's call,
+ideally after one clean scheduled run's real counts.** MR !116's guardrail gaps:
+`.claude/working-agreement.md` now routes to `cto-reviewer` (merged); the other two sub-items
+(plugin templates, extending the global merge guard) were explicitly declined, not deferred --
+see item 0 and "Context / operational notes" below. All four smaller open items merged: item
+10's crash risk (!156), the doc wording nit (!155), the `accepted_range` tests question left
+open by A2 (!158), item 2's growth-copy tension (!157). Two of those (!155, !157) each needed
+a `gitlab/main` merge to resolve a conflict from sharing `.claude/active_work.md`/
+`.claude/task/*` with the others -- resolved and merged. Nothing left open from this push
+except the `--max-reads` CI value above.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -69,7 +68,9 @@ through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 `ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
 pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
-**Merged this pass** (detail in each MR): !155 names the Postgres table explicitly in the
+**Merged this pass** (detail in each MR): !157 reworks `revenue_growth_yoy_pct`'s catalogue
+copy to state verdict-consistent caveats instead of telling readers to discount a decline the
+app's own rule treats as real; closes item 2. !155 names the Postgres table explicitly in the
 `mart_stock_cards` heading (three reviewers had flagged this in an earlier MR, never fixed
 until now). !158 adds `dbt_utils.accepted_range` sanity guards (`severity: warn`) to eight
 card metrics prone to near-zero-denominator explosion, bounds measured against production
