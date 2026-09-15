@@ -23,11 +23,11 @@ closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see
 pass); the other two sub-items (plugin templates, extending the global merge guard) were
 explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**Smaller open items, all done.** Item 10's crash risk (!156) and the `accepted_range` tests
-question left open by A2 (!158, see below) merged. Doc wording nit (!155) and item 2's
-growth-copy tension (!157, see item 2 below) still open, both needed a `gitlab/main` merge to
-resolve a conflict from the other two merging first (all four touched `.claude/active_work.md`/
-`.claude/task/*`).
+**Smaller open items, three of four done.** Item 10's crash risk (!156), the doc wording nit
+(!155), and the `accepted_range` tests question left open by A2 (!158, see below) all merged.
+Item 2's growth-copy tension (!157) still open -- needed a `gitlab/main` merge to resolve a
+conflict from the other three merging first (all four touched `.claude/active_work.md`/
+`.claude/task/*`), resolved and pushed here.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -65,19 +65,17 @@ would trip the floor on correct data; only three pre-revenue companies exist tod
 `jinja2` is imported directly in `tests/tooling/test_metric_fill_floor.py` but pinned only
 through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 
-**Doc wording, three reviewers noted, not fixed:** `docs/data_contract.md` "Supabase export --
-`mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
-the dbt MODEL's name, now that the model declares two. Add the word "table" there.
-
 **Side finding, not root-caused (from the `accepted_range` work, !158):**
 `ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
 pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
-**Merged this pass** (detail in each MR): !158 adds `dbt_utils.accepted_range` sanity guards
-(`severity: warn`) to eight card metrics prone to near-zero-denominator explosion, bounds
-measured against production (detail in `docs/data_contract.md`); closes the `accepted_range`
-question left open by A2. !156 closes item 10 (latent `AppTest` crash risk), no action needed.
-!153 routes `.claude/working-agreement.md` to
+**Merged this pass** (detail in each MR): !155 names the Postgres table explicitly in the
+`mart_stock_cards` heading (three reviewers had flagged this in an earlier MR, never fixed
+until now). !158 adds `dbt_utils.accepted_range` sanity guards (`severity: warn`) to eight
+card metrics prone to near-zero-denominator explosion, bounds measured against production
+(detail in `docs/data_contract.md`); closes the `accepted_range` question left open by A2.
+!156 closes item 10 (latent `AppTest` crash risk), no action needed. !153 routes
+`.claude/working-agreement.md` to
 `cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
 the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
 capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
