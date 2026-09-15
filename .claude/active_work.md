@@ -23,8 +23,10 @@ closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see
 pass); the other two sub-items (plugin templates, extending the global merge guard) were
 explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**NEXT, not yet started:** the smaller open items -- doc wording nit, `accepted_range` tests
-decision, item 2's growth-copy tension, item 10's crash risk.
+**Smaller open items, all done, MRs open awaiting merge:** doc wording nit (!155), item 2's
+growth-copy tension (!157), item 10's crash risk (!156), `accepted_range` tests decision
+(!158, see item 4 below). All four "smaller open items" from the portfolio-grade push are now
+in MR, none merged yet.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -66,10 +68,24 @@ through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 `mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
 the dbt MODEL's name, now that the model declares two. Add the word "table" there.
 
-**Owner question left open by A2:** `accepted_range` tests on the card metrics. A definitional
-bound (values beyond X are nulled on the card) is a metric definition, owner's. A wide sanity
-guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
-owner confirms in one line. Neither exists; decide which, or neither.
+**CLOSED 2026-09-15, MR !158 open.** `accepted_range` tests: owner chose the wide sanity guard
+(`severity: warn`) over a definitional hard-null bound. Added to eight metrics prone to
+near-zero-denominator explosion (`ebit_margin_pct`, `revenue_growth_yoy_pct`,
+`net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`, `statement_roe_pct`,
+`net_margin_pct`, `cash_runway_months`) in `dbt_analytics/models/5_marts/_marts.yml`, bounds
+measured against the full exported history (5,726 rows, 2026-09-15) -- detail in
+`docs/data_contract.md`. Two gaps were caught by analytics-engineer-reviewer across two review
+rounds, both because the original selection method -- a keyword grep over the catalogue's
+`applicability` field -- only finds a caveat written in prose, not an unguarded division in
+the model SQL itself: `net_margin_pct` (same revenue denominator and catalogue caveat as the
+already-covered `fcf_margin_pct`, gates financial-card eligibility); `cash_runway_months`
+(divides by unfloored `-computed_fcf` in `int_stock__card_metrics.sql`, measured as high as
+1093.1 months for LLOY). Worth remembering next time a metric set is selected by grepping
+prose alone. `roa_pct`, `current_ratio_stmt`, `price_to_tangible_book`, and
+`net_cash_to_market_cap` were checked and excluded, with the measured reasoning recorded in
+`docs/data_contract.md`. **Side finding, not root-caused:**
+`ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
+pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
 **Merged this pass** (detail in each MR): !153 routes `.claude/working-agreement.md` to
 `cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
@@ -121,8 +137,6 @@ work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), th
 fill floor (!126), the AI read's labels and rendering (!129). The learn panel's playgrounds
 (B1): !132, merged; issue #9 fully closed. Issue #10 (mixed `dividendYield` units): !130, merged. Issue #12
 (catalogue "banks" wording): !131, merged.
-
-There are no `accepted_range` tests; the owner question on them is in the In flight section.
 
 ## Recently merged (detail in each MR's own contract.md / review.md)
 
