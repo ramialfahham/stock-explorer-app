@@ -622,16 +622,21 @@ AI **health assessment** per card, written by `scripts/generate_assessments.py` 
 verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` with a **Claude Haiku**
 (`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and ends on the verdict's
 meaning — regenerated only when `input_hash` changes or `ai_read` is null. The card renders it in **Slice 6**.
-The write is `scripts/generate_assessments.py`'s `_upsert_records()`, batched **by each record's
-exact set of present keys**, never a plain single upsert of the whole set -- PostgREST's bulk
-upsert computes its `columns` parameter as the union of keys across every record in ONE call, so a
-"carried" record (omits `ai_read`/`read_model` on purpose, to keep the stored value) sharing a call
-with a "generated" one (includes them) has its stored read explicitly nulled, not preserved.
-Confirmed against production, 2026-09-15: the scheduled run's own summary reported `carried=853`,
-yet 839 of those rows came out of that exact run with `ai_read` null. `_fetch_existing_assessments()`
-paginates for the same reason -- an unranged select silently returns only PostgREST's default row
-cap (1000), so a deck past that size would find every later card missing from the "already have a
-read" set on every run.
+The write is `_upsert_records()`, batched **by each record's exact set of present keys**, never
+a single upsert of the whole batch -- PostgREST computes `columns` as the union of keys across
+every record in ONE call, so a "carried" record (omits `ai_read`/`read_model` to keep the
+stored value) sharing a call with a "generated" one gets that value nulled, not preserved
+(confirmed against production, 2026-09-15: `carried=853` in the run's own log, yet 839 of those
+rows came out null). `_fetch_existing_assessments()` paginates for the same reason -- an
+unranged select silently caps at PostgREST's default 1000 rows, missing later cards.
+
+The AI-read step is the pipeline's dominant runtime cost (one sequential API call per
+regenerating card, no retry). `--max-reads` caps new calls per run, unbounded by default;
+no-stored-read cards fill before refresh-only ones, and anything the cap misses is eligible
+again next run. A capped or failed card's stale stored read is explicitly cleared, not left
+showing under fresh numbers -- `attach_assessments()`'s snapshot_date guard
+(frontend/explore_filters.py) can't see `input_hash`. See `attach_reads()`'s docstring for
+both mechanisms.
 
 **Structured output + hallucination guard (Gemini feedback points 3/4).** The Haiku call forces
 tool-use (`tool_choice`, `write_card_read`): the model returns `read` (the prose) plus
@@ -661,7 +666,7 @@ violation fails exactly the same way the numeric guard does -- fail closed, self
 **The whole health block is withheld when the assessment's `snapshot_date` differs from the
 card's** -- verdict and read together, with no placeholder; the financial caveat is not in
 the block and stays. That is a
-different case from the four below, which all keep the verdict and drop only `ai_read`. It
+different case from the five below, which all keep the verdict and drop only `ai_read`. It
 happens when the two jobs disagree about which snapshot the card is on: the assessments step
 failing after a successful export, or the export rolling a card back to an earlier snapshot
 (see "Stale export policy"). It self-heals on the next healthy run except for a ticker that
@@ -671,15 +676,17 @@ rewritten and the mismatch is permanent. A ticker whose rows are ALL deleted is 
 case and not this one -- it renders no card at all, so it has no verdict to withhold.
 
 When `ai_read` is absent (a brand-new card, a per-card API failure, a hallucination-guard
-reject, or a style-guard reject), the card shows a deterministic,
-non-AI one-line summary under its own "What the verdict means" heading instead of the AI-written
-read (`frontend/card_copy.py`'s `VERDICT_FALLBACK_READ`), never AI-attributed, phrased as a
-general summary rather than a description of the rules below since neither the decisive-vs-
-supporting metric split nor the per-metric thresholds are shown anywhere on the card. Those four
-causes are all meant to be rare and quickly self-correcting. The upsert-clobbering bug above was
-neither: for some real stretch of time before it was fixed, roughly 80% of cards were in this
-state, not the rare edge case the design assumes -- most readers were seeing the fallback line,
-not a real read. It self-heals with no separate cleanup needed: `attach_reads()` regenerates
+reject, a style-guard reject, or a card `--max-reads` did not reach this run), the card shows
+a deterministic, non-AI one-line summary under its own "What the verdict means" heading
+instead of the AI-written read (`frontend/card_copy.py`'s `VERDICT_FALLBACK_READ`), never
+AI-attributed, phrased as a general summary rather than a description of the rules below
+since neither the decisive-vs-supporting metric split nor the per-metric thresholds are shown
+anywhere on the card. The first four causes are meant to be rare and self-correcting; a
+capped card is not -- once the owner sets a real `--max-reads` value, this is the expected,
+by-design outcome for every card past that run's cutoff. The upsert-clobbering bug above was
+neither rare nor by design: for some real stretch of time before it was fixed, roughly 80% of
+cards were in this state -- most readers saw the fallback line, not a real read. It self-heals
+with no separate cleanup needed: `attach_reads()` regenerates
 whenever `not existing.get("ai_read")`, independent of `input_hash`, so every clobbered row is
 eligible for a fresh read on the very next scheduled run once the fix ships.
 

@@ -19,15 +19,16 @@ the detail._
 cap (item 8), the upsert-clobbering bug it surfaced (merged, see Merged this pass), guardrail
 gaps from MR !116, and the smaller open items -- detail below.
 
-**NEXT: resume `--max-reads` (open item 8, the cost cap), parked on branch
-`pipeline/ai-read-max-reads-cap` (stashed there, not pushed) now that the upsert-clobbering
-fix has merged -- wait for a fresh scheduled run to confirm `carried` counts mean what they
-claim again before trusting any new cost measurement.** Owner decided per-run cap over a
-wall-clock budget or visibility-only. The stashed work already has: `--max-reads` CLI flag
-(unbounded default), no-stored-read-before-refresh priority, explicit-null clearing for
-capped/failed cards with a stale read (so a deferred card never shows old prose next to
-fresh numbers -- same underlying issue as the clobbering bug, caught and fixed independently
-in that branch before the bigger one surfaced), negative-value guard.
+**MR open (2026-09-15), branch `pipeline/ai-read-max-reads-cap-v2`, awaiting owner
+review/merge.** `--max-reads` caps new Claude calls per run in the AI-read step (unbounded
+default); no-stored-read cards fill before refresh-only ones; a capped/failed card's stale
+read is explicitly cleared, not left showing under fresh numbers. Owner decided to resume this
+now rather than wait 2 weeks for a scheduled run to re-measure cost first -- the cap's own
+correctness doesn't depend on that measurement. Reviewers passed after several rounds
+(the composition with MR !149's upsert fix needed its own pinning test; a doc cross-reference
+count went stale mid-review). Detail in this branch's own `contract.md`/`review.md`. **The
+actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's call,
+ideally after one clean scheduled run's real counts post-!149.**
 
 **Also still open, not yet started, both selected in scope for this push:** guardrail gaps
 from MR !116 (`glab mr merge` unguarded, `.claude/working-agreement.md` has no required
