@@ -4,35 +4,38 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 8d9d0f583c05ad11e95524ce8517123b42ad25db210a2d51b10272a94bc97494
+diff_sha256: 247f6691dd51bdf93ce30cec554a945ddb5ff11024fe5ca677f320d7b13718ba
 
-Both staged files (`.claude/active_work.md`, `.claude/task/contract.md`) are in
-`artifact_only` per `.claude/review_routing.json`, so only scope-auditor (`always`) is
-strictly required; equity-analyst-reviewer also dispatched given the content is squarely in
-its earlier finding's domain. One round.
+Two reviewers, by routing: scope-auditor (`always`), equity-analyst-reviewer
+(`docs/data_contract.md`). One round -- a second merge-conflict resolution, not new work.
 
 ## What shipped
 
-Follow-up to MR !155's own merge-conflict resolution (previous round, already recorded and
-superseded by this file). While resolving MR !157's identical conflict, equity-analyst-reviewer
-found `.claude/active_work.md` and `.claude/task/contract.md` on both branches had inherited
-a mislabeling: the `accepted_range` sanity-guard work (MR !158) was called "item 4", but the
-file's own numbered list already uses "item 4" for an unrelated, pre-existing UX bug-fix item.
-Fixed on MR !157's branch first; this commit applies the identical fix here, on MR !155's
-branch, so both branches converge to the same correct text and don't reintroduce the conflict
-for each other.
+MR !157 (`growth-copy-remove-noisy-framing`) had its first merge conflict against `main`
+resolved in a prior round (already recorded and superseded by this file). Before it could be
+merged, MR !155 (doc-wording nit) merged into `main`, touching the same disposable state
+files, causing a fresh conflict. `git merge gitlab/main --no-edit` surfaced conflicts in
+`.claude/active_work.md`, `.claude/task/contract.md`, `.claude/task/review.md`.
 
-735 tests pass (unaffected, wording-only); `pytest tests/tooling/test_check_context_budget.py -q`:
-17 passed.
+Task files resolved to this branch's own version (`git checkout --ours`), same convention as
+every prior round. `.claude/active_work.md` updated: "Smaller open items" now correctly says
+three of four merged (!155, !156, !158), only !157 (this branch's own task) still open; the
+now-stale "Doc wording, three reviewers noted, not fixed" note dropped (correctly, since !155
+fixed exactly that); !155 added to "Merged this pass". `docs/data_contract.md` auto-merged
+with no conflict, confirmed byte-identical to `main`.
+
+735 tests pass; `pytest tests/tooling/test_check_context_budget.py -q`: 17 passed.
 
 ## Round 1
 
-scope-auditor: PASS. Confirmed the fix is complete and correctly scoped -- only the two
-intended files changed, the genuine "item 4" reference (UX bug-fix item) untouched.
+scope-auditor: PASS. Confirmed via `glab mr view` that !155/!156/!158 are genuinely merged
+and !157 genuinely still open, matching the file's updated claims; confirmed
+`docs/data_contract.md` is pure pass-through.
 
-equity-analyst-reviewer: PASS. Confirmed all five wrong references fixed, item 10's
-references (genuinely correct) untouched, `docs/data_contract.md` unaffected, no em-dash
-introduced.
+equity-analyst-reviewer: PASS. Confirmed `docs/data_contract.md` byte-identical to `main`,
+confirmed MR !155 correctly recorded as merged, confirmed the earlier-session "item 4"
+mislabeling bug (the `accepted_range` work wrongly attributed to a numbered item that means
+something else) was not reintroduced by this merge, no em-dash on any touched line.
 
 ## scope-auditor
 
@@ -44,4 +47,4 @@ VERDICT: PASS
 
 ## Owner decisions
 
-None -- a wording-accuracy fix, no new decision made.
+None -- a merge-conflict resolution, no new decision made.

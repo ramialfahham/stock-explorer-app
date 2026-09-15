@@ -23,11 +23,11 @@ closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see
 pass); the other two sub-items (plugin templates, extending the global merge guard) were
 explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**Smaller open items, all done.** Item 10's crash risk (!156) and the `accepted_range` tests
-question left open by A2 (!158, see below) merged. Doc wording nit (!155) and item 2's
-growth-copy tension (!157) still open, both had merge conflicts against `main` from the other
-two merging first (all four touched `.claude/active_work.md`/`.claude/task/*`) -- resolved on
-both branches, pushed, awaiting merge.
+**Smaller open items, three of four done.** Item 10's crash risk (!156), the doc wording nit
+(!155), and the `accepted_range` tests question left open by A2 (!158, see below) all merged.
+Item 2's growth-copy tension (!157) still open -- needed a `gitlab/main` merge to resolve a
+conflict from the other three merging first (all four touched `.claude/active_work.md`/
+`.claude/task/*`), resolved and pushed here.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -69,11 +69,13 @@ through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 `ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
 pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
-**Merged this pass** (detail in each MR): !158 adds `dbt_utils.accepted_range` sanity guards
-(`severity: warn`) to eight card metrics prone to near-zero-denominator explosion, bounds
-measured against production (detail in `docs/data_contract.md`); closes the `accepted_range`
-question left open by A2. !156 closes item 10 (latent `AppTest` crash risk), no action needed.
-!153 routes `.claude/working-agreement.md` to
+**Merged this pass** (detail in each MR): !155 names the Postgres table explicitly in the
+`mart_stock_cards` heading (three reviewers had flagged this in an earlier MR, never fixed
+until now). !158 adds `dbt_utils.accepted_range` sanity guards (`severity: warn`) to eight
+card metrics prone to near-zero-denominator explosion, bounds measured against production
+(detail in `docs/data_contract.md`); closes the `accepted_range` question left open by A2.
+!156 closes item 10 (latent `AppTest` crash risk), no action needed. !153 routes
+`.claude/working-agreement.md` to
 `cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
 the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
 capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
@@ -231,9 +233,14 @@ Numbered defects and gaps:
    the atomic export (MR !115) deletes the `(market, date)` pairs a payload covers, so a ticker
    leaves the deck when those take ALL its remaining rows. Whether it should evict BY SNAPSHOT
    AGE is still an owner call.
-2. **The growth metric's card copy tension** ("One quarter can be noisy, so look for a
-   pattern over time") sits on cards the growth gate can downgrade on exactly one quarter --
-   owner's call, not resolved.
+2. **CLOSED 2026-09-15.** The growth metric's card copy told readers "one quarter can be
+   noisy, so look for a pattern over time" while the verdict's own growth gate
+   (`GROWTH_DECLINE_THRESHOLD_PCT = 0.0`) reacts to any single-quarter decline, no tolerance
+   -- a deliberate design the owner already confirmed by rejecting a -5% tolerance on this
+   exact argument. Owner decision: reword the catalogue copy (`revenue_growth_yoy_pct`'s
+   `interpretation`/`learn` fields) to state the genuine, verdict-consistent caveats
+   (selling off part of the business, currency swings, a contract landing in a different
+   quarter) instead of telling the reader to discount the signal.
 3. **The financial-type card's capital-adequacy caveat: closed.** MR !100 made it a
    deterministic card-face line (`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, owner wording); MR !137
    moved it out of the health block so a withheld block no longer drops it (issue #11).
