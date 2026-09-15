@@ -240,16 +240,13 @@ thresholds.
 - **News on Discover cards**
 - On-card **live quote** button (removed — Yahoo Finance footer link only)
 - **Metric range filters** in Filters popover until mobile-friendly design (#109)
+- dbt-side market/sector filters -- client-side filtering on the exported mart is sufficient at
+  today's row counts
 
 ---
 
 ## Phase 2 backlog (stickiness + depth)
 
-| Item | Status |
-|------|--------|
-| Saved-tab headlines (2–3 per company, on focus) | **Shipped** — on-demand yfinance, session cache; not a separate CI workflow |
-| Discover metric range filters | **Backlog** — [`backlog/discover_metric_filters_phase2.md`](backlog/discover_metric_filters_phase2.md) |
-| Richer saved-company updates when fundamentals refresh | Backlog |
-| Optional **Not now** review list | Backlog |
-| Optional filter persistence to localStorage | Backlog |
-| Two-company saved compare (vertical table) | Backlog |
+Tracked as GitLab issues on milestone
+["1 · Discover depth"](https://gitlab.com/rami.al-fahham/stock-swipe-app/-/milestones/1),
+not in this doc.

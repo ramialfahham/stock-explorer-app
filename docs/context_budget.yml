@@ -28,7 +28,6 @@ budgets:
   docs/metric_layer.md: 6000
   docs/north_star.md: 15000
   docs/operations_guide.md: 14000
-  docs/product_roadmap_2026-06.md: 8000
   docs/project_context.md: 6000
   docs/streamlit_deploy.md: 4000
   docs/supabase_setup.md: 14000

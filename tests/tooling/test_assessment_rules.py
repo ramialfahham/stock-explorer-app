@@ -191,9 +191,9 @@ def test_boundaries() -> None:
 
 
 # --- Ratio sign-inversion guards ----------------------------------------------------------
-# Gemini feedback point 1 (docs/backlog/gemini_verdict_feedback.md): net_debt_to_ebitda and
-# debt_to_equity can flip sign when a denominator goes negative, and banding the flipped value
-# by raw magnitude used to read a distressed company as good on that axis.
+# net_debt_to_ebitda and debt_to_equity can flip sign when a denominator goes negative, and
+# banding the flipped value by raw magnitude used to read a distressed company as good on that
+# axis.
 
 def test_net_debt_to_ebitda_guard_moves_a_green_card_to_yellow() -> None:
     """Core axis: net debt looks tiny relative to a *negative* EBITDA (info_ebitda <= 0), which

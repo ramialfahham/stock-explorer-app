@@ -129,8 +129,7 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 # cases are already named in metric_catalogue.csv's own applicability text: net_debt_to_ebitda
 # "explodes when EBITDA ~ 0 (distressed/pre-profit)"; debt_to_equity "flips or explodes and stops
 # being meaningful" when equity goes negative; statement_roe_pct "can read as a spuriously
-# positive percentage" over negative equity. Filed as Gemini feedback point 1 and its sibling-bug
-# note (docs/backlog/gemini_verdict_feedback.md). statement_roe_pct's guard is used from BOTH
+# positive percentage" over negative equity. statement_roe_pct's guard is used from BOTH
 # _verdict_operating and _verdict_financial, not operating only.
 #
 # All three guards check the RATIO'S OWN DENOMINATOR directly (info_ebitda,
@@ -226,8 +225,7 @@ def _is_shrinking(row: Mapping[str, Any]) -> bool:
 
 
 # --- Joint liquidity evaluation (current_ratio_stmt relief from FCF covering the shortfall) ----
-# Gemini feedback points 6/8 (docs/backlog/gemini_verdict_feedback.md): current_ratio_stmt and
-# fcf_margin_pct were graded fully independently, so strong free cash flow could never rescue a
+# current_ratio_stmt and fcf_margin_pct were graded fully independently, so strong free cash flow could never rescue a
 # merely-weak current ratio. Relief compares actual dollar amounts -- does free cash flow cover
 # the working-capital shortfall? -- rather than fcf_margin_pct, because that margin is scaled by
 # revenue, not by the size of the liquidity gap: a company with modest revenue but a large
@@ -473,8 +471,7 @@ VERDICT_MEANING: dict[str, str] = {
 }
 
 
-# Forces structured output instead of free text (Gemini feedback points 3/4,
-# docs/backlog/gemini_verdict_feedback.md): the model must name which facts it used, in the
+# Forces structured output instead of free text: the model must name which facts it used, in the
 # exact form it was given them, so scripts/generate_assessments.py can check the read against
 # the card's own numbers before storing it -- a numeric hallucination guard, not an LLM judge.
 # Pure data, no I/O; the actual API call lives in scripts/generate_assessments.py.

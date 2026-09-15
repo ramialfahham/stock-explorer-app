@@ -9,9 +9,11 @@ it is not exempt (not code or string-literal data -- a Python docstring is found
 SQL comment via a quote-aware `--`/`/* */` scan, so a dated test fixture value or a SQL `comment
 on column` string is never mistaken for a code comment); every Markdown file whose first 10
 lines declare a `> DURABLE.` header, outside fenced code blocks. A `DISPOSABLE` file (the
-handover, task contract/review) or an undeclared doc (the dated handover archives,
-`docs/backlog/*.md`) is out of scope by construction -- those are the sanctioned, point-in-time
-home for this content, per working-agreement.md §2.
+handover, task contract/review) or an undeclared doc (the dated handover archives) is out of
+scope by construction -- those are the sanctioned, point-in-time home for this content.
+Open/planned work with its own narrative lives in GitLab Issues instead, per
+working-agreement.md §2 -- outside this checker's file-scanning reach entirely, not an
+exemption it grants.
 
 Escape hatch for the rare case a rule needs to quote its own anti-pattern (engineering_standards.md
 quoting "not 'fixed in MR !115'" as an example): a `narrative-check: allow` marker

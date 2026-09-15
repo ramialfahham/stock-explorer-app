@@ -421,8 +421,7 @@ def benchmark_position(
 
 # Standard box-plot outlier-fence multiplier (Tukey, 1977) -- not a value picked to fit any
 # one card. Used by benchmark_range() to clamp the displayed range so one extreme peer no
-# longer dominates every other peer's marker position in the same sector (Gemini feedback
-# point 5, docs/backlog/gemini_verdict_feedback.md).
+# longer dominates every other peer's marker position in the same sector.
 _TUKEY_FENCE_MULTIPLIER = 1.5
 
 
