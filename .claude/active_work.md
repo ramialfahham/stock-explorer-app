@@ -18,13 +18,13 @@ the detail._
 **Portfolio-grade push (owner 2026-09-15), in progress.** Item 8 (AI-read cost) closed: the
 root-cause upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this
 pass. **The actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's
-call, ideally after one clean scheduled run's real counts.**
+call, ideally after one clean scheduled run's real counts.** MR !116's guardrail gaps also
+closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see Merged this
+pass); the other two sub-items (plugin templates, extending the global merge guard) were
+explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**NEXT, not yet started, both selected in scope for this push:** guardrail gaps from MR !116
-(`glab mr merge` unguarded, `.claude/working-agreement.md` has no required reviewer -- both
-need edits to the machine-shared `~/.claude/hooks/branch_discipline.py` and
-`.claude/review_routing.json`); the smaller open items (doc wording nit, `accepted_range`
-tests decision, item 2's growth-copy tension, item 10's crash risk).
+**NEXT, not yet started:** the smaller open items -- doc wording nit, `accepted_range` tests
+decision, item 2's growth-copy tension, item 10's crash risk.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -71,7 +71,8 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !151 `--max-reads` caps new Claude calls per run in
+**Merged this pass** (detail in each MR): !153 routes `.claude/working-agreement.md` to
+`cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
 the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
 capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
 upsert nulled "carried" cards' `ai_read` whenever a call also held a "generated" record
