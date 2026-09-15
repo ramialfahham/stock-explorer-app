@@ -23,8 +23,11 @@ closed: `.claude/working-agreement.md` now routes to `cto-reviewer` (merged, see
 pass); the other two sub-items (plugin templates, extending the global merge guard) were
 explicitly declined, not deferred -- see item 0 and "Context / operational notes" below.
 
-**NEXT, not yet started:** the smaller open items -- doc wording nit, `accepted_range` tests
-decision, item 2's growth-copy tension, item 10's crash risk.
+**Smaller open items, all done.** Item 10's crash risk (!156) and the `accepted_range` tests
+question left open by A2 (!158, see below) merged. Doc wording nit (!155) and item 2's
+growth-copy tension (!157, see item 2 below) still open, both needed a `gitlab/main` merge to
+resolve a conflict from the other two merging first (all four touched `.claude/active_work.md`/
+`.claude/task/*`).
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -66,12 +69,15 @@ through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 `mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
 the dbt MODEL's name, now that the model declares two. Add the word "table" there.
 
-**Owner question left open by A2:** `accepted_range` tests on the card metrics. A definitional
-bound (values beyond X are nulled on the card) is a metric definition, owner's. A wide sanity
-guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
-owner confirms in one line. Neither exists; decide which, or neither.
+**Side finding, not root-caused (from the `accepted_range` work, !158):**
+`ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
+pre-revenue explosion, this one has no obvious explanation and is worth a look.
 
-**Merged this pass** (detail in each MR): !153 routes `.claude/working-agreement.md` to
+**Merged this pass** (detail in each MR): !158 adds `dbt_utils.accepted_range` sanity guards
+(`severity: warn`) to eight card metrics prone to near-zero-denominator explosion, bounds
+measured against production (detail in `docs/data_contract.md`); closes the `accepted_range`
+question left open by A2. !156 closes item 10 (latent `AppTest` crash risk), no action needed.
+!153 routes `.claude/working-agreement.md` to
 `cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
 the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
 capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
@@ -121,8 +127,6 @@ work.** Its Tier-1 findings are all closed: the mixed-snapshot export (!115), th
 fill floor (!126), the AI read's labels and rendering (!129). The learn panel's playgrounds
 (B1): !132, merged; issue #9 fully closed. Issue #10 (mixed `dividendYield` units): !130, merged. Issue #12
 (catalogue "banks" wording): !131, merged.
-
-There are no `accepted_range` tests; the owner question on them is in the In flight section.
 
 ## Recently merged (detail in each MR's own contract.md / review.md)
 
@@ -297,19 +301,15 @@ Numbered defects and gaps:
    `docs/data_contract.md`'s Freshness section. Building per-market detection (e.g. a singular
    test grouped by `market_code`) is a new mechanism -- owner's call whether the gap is worth
    closing.
-10. **Possible latent crash risk in a normal, everyday flow: opening two different stock
-    cards' "Understand these numbers" panel in one session** (found while building item 4's
-    AppTest coverage, 2026-09-07, MR !104). Reliably crashes under Streamlit's own `AppTest`
-    harness with a `KeyError` on the next script rerun; a single manual pass against the real
-    dev server did NOT reproduce a user-visible crash. cto-reviewer traced the crashing code
-    path (`session_state.py`'s `_compact_state`, called via `on_script_will_rerun` inside
-    `ScriptRunner._run_script`) into real, shared production code, which wraps this exact case
-    in `except KeyError: pass` citing a known upstream Streamlit issue (`streamlit/issues/7206`)
-    -- consistent with, but not proof of, one-off manual testing simply not having hit whatever
-    narrower condition still lets it through in a real session. Full technical trace in MR
-    !104's own `contract.md`/`review.md`. Owner's call: worth a tracked follow-up issue (e.g. a
-    few real, repeated manual passes; or reading the upstream issue for whether it's fully
-    closed) or leave as-is given production wasn't observed to crash.
+10. **CLOSED 2026-09-15, no further action.** Possible latent crash risk (opening two
+    different stock cards' "Understand these numbers" panel in one session) reliably crashed
+    under Streamlit's own `AppTest` harness with a `KeyError`, but a manual pass against the
+    real dev server never reproduced it; cto-reviewer traced it into Streamlit's own
+    `except KeyError: pass` around this exact case, citing upstream issue
+    `streamlit/streamlit#7206`. Checked 2026-09-15: that issue is closed and confirmed
+    upstream; this repo runs Streamlit 1.57.0, far newer than the 1.25.0 it was reported
+    against. Owner decision: close it, no tracked follow-up. Full technical trace in MR
+    !104's own `contract.md`/`review.md` if this ever resurfaces.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 

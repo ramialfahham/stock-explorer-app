@@ -4,61 +4,65 @@
 > given against.
 > **Never:** a rule. Overwritten by the next task.
 
-diff_sha256: 2346ec0c980a4b95ab553dd700bde0404d9d7dfe85bc6d330c211f6e8783c778
+diff_sha256: 5792a569f23d450738cc7cab170d99f304f70b85e37a3fe9c3a3dfd3e6c04de8
 
-Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer (`*.csv`),
-equity-analyst-reviewer (`*metric_catalogue.csv`), cto-reviewer (`frontend/*` --
-`frontend/metrics.json`, missed in the initial routing pass, caught by the commit gate).
-Two rounds.
+Four reviewers, by routing: scope-auditor (`always`), analytics-engineer-reviewer
+(`dbt_analytics/*.yml`), equity-analyst-reviewer (`docs/data_contract.md`), cto-reviewer
+(`docs/context_budget.yml`). Two rounds -- a merge-conflict resolution, not new work, with
+one real finding caught along the way.
 
 ## What shipped
 
-`revenue_growth_yoy_pct`'s catalogue copy (`interpretation` and `learn` fields) told readers
-"one quarter can be noisy, so look for a pattern over time" -- contradicting the app's own
-verdict rule (`GROWTH_DECLINE_THRESHOLD_PCT = 0.0`, no tolerance band), which reacts to ANY
-single-quarter year-over-year decline by deliberate owner decision (a -5% tolerance proposed
-on exactly this argument was already rejected). The copy told readers to discount the very
-signal the verdict treats as real. Reworded to state the genuine, verdict-consistent caveats
-instead: selling off part of the business, currency swings, or a big contract landing in a
-different quarter, not just softer demand -- in plain language, no unglossed jargon.
-`frontend/metrics.json` regenerated from the seed. `.claude/active_work.md`'s item 2 closed.
+MR !157 (`growth-copy-remove-noisy-framing`, the card-copy fix already reviewed and approved
+across three rounds) had a real conflict against `main`: two other already-merged MRs (!156,
+!158) touched the same disposable state files first. `git merge gitlab/main --no-edit`
+surfaced conflicts in `.claude/task/contract.md` and `.claude/task/review.md` only --
+`.claude/active_work.md` and `docs/data_contract.md` auto-merged cleanly this time.
 
-735 tests, all pre-existing (copy-only change; the catalogue/JSON no-drift lock and
-`dbt parse` both confirm consistency, no new tests needed).
+`.claude/task/contract.md`/`review.md` resolved to this branch's own version (`git checkout
+--ours`), same convention as MR !155's identical conflict. `.claude/active_work.md` was
+further edited to collapse now-stale prose (a "none merged yet" line that was now false, and
+the full `accepted_range` write-up whose detail already lives in `docs/data_contract.md`) to
+one or two lines, matching the file's own documented convention and the identical collapse
+already applied on MR !155. `dbt_analytics/models/5_marts/_marts.yml` and
+`docs/context_budget.yml` are pure pass-through from `main`, confirmed byte-identical. This
+branch's own task files (`dbt_analytics/seeds/metric_catalogue.csv`, `frontend/metrics.json`)
+confirmed untouched by the merge.
+
+735 tests pass; `pytest tests/tooling/test_check_context_budget.py -q`: 17 passed.
 
 ## Round 1
 
-scope-auditor: PASS. analytics-engineer-reviewer: PASS -- verified CSV field-count integrity
-row by row, regenerated `metrics.json` independently and diffed byte-for-byte against the
-committed file, confirmed `dbt parse` succeeds.
+analytics-engineer-reviewer: PASS. Confirmed `_marts.yml`/`context_budget.yml` byte-identical
+to `main`, and this branch's own `metric_catalogue.csv`/`metrics.json` untouched by the merge.
 
-equity-analyst-reviewer: FAIL. The new caveat list ("divestment", "FX translation"/"FX
-swings", "contract timing") introduced unglossed jargon into beginner-facing copy, against
-this app's own "assume no finance vocabulary, gloss every term" standard
-(`docs/north_star.md`, `scripts/assessment_rules.py`'s `READ_SYSTEM_PROMPT`). Fixed: jargon
-replaced with plain phrasing directly ("selling off part of the business", "currency swings",
-"a big contract landing in a different quarter") rather than jargon-plus-gloss.
+cto-reviewer: PASS. Confirmed `context_budget.yml` byte-identical to `main`, budget test
+green; the third check it was asked for (`frontend/metrics.json` untouched) wasn't in its
+written report, verified independently instead -- empty diff, confirmed.
+
+scope-auditor: PASS.
+
+equity-analyst-reviewer: FAIL, a real defect. `.claude/active_work.md` and
+`.claude/task/contract.md` both claimed "!158 ... closes item 4" -- but the file's own
+numbered list (line ~250, "4. All 4 confirmed bugs from the Discover/Saved/Search UX
+findings fixed and merged") already uses "item 4" for something unrelated, a pre-existing
+item from weeks earlier. The `accepted_range` work was never actually that numbered item;
+"item 4" was a mislabeling that had been carried in session context since before this
+specific work started, and had already been written into MR !158's own merged commit history
+on `main` (not fixable there without rewriting merged history -- left as-is; this collision
+is now recorded here so a future session doesn't reintroduce it). Fixed on this branch by
+replacing every such reference with "the `accepted_range` question left open by A2" -- the
+item's actual original label, consistent with how the file refers to other lettered/numbered
+findings elsewhere. The identical mislabeling was also found and fixed on MR !155's own
+already-pushed branch as a direct follow-up.
 
 ## Round 2
 
-scope-auditor: FAIL on a process-timing note (`review.md` still held the prior task's
-verdicts, since this file -- the final step before commit -- had not been written yet).
-Resolved by writing this file now, the same point in the cycle every prior task in this
-session reached it at.
+equity-analyst-reviewer: PASS. Confirmed the fix is complete (only the genuine item-4
+reference remains), the new wording is internally consistent, `docs/data_contract.md`
+unaffected, no em-dash introduced.
 
-analytics-engineer-reviewer: not re-dispatched (its round-1 findings were mechanical/CSV-
-integrity checks unaffected by a copy-only jargon fix).
-
-equity-analyst-reviewer: PASS -- confirmed no jargon term remains unglossed anywhere in the
-row, confirmed the plain-language substitutions are still accurate restatements of the same
-four owner-approved causes, confirmed the copy reads naturally, full suite and em-dash scan
-green.
-
-## Round 3 (cto-reviewer, caught by the commit gate)
-
-cto-reviewer: PASS -- independently regenerated `frontend/metrics.json` from the current
-seed and diffed byte-for-byte against the committed file, confirmed only the two fields for
-`revenue_growth_yoy_pct` changed, full suite and em-dash scan green.
+scope-auditor: PASS. Confirmed the fix, re-confirmed pass-through files and scope boundary.
 
 ## scope-auditor
 
@@ -78,5 +82,4 @@ VERDICT: PASS
 
 ## Owner decisions
 
-Soften/remove the "noisy... look for a pattern" framing, replacing it with the real
-verdict-consistent caveats -- owner's call, in chat, 2026-09-15.
+None -- a merge-conflict resolution, no new decision made.
