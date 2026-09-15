@@ -15,31 +15,34 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 4.** Six-phase plan,
-owner-approved in plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`
-(outside this repo; summarize here if that path is ever unreachable). Phases 1-3 merged (!160,
-!161, and Phase 3's MR once it lands -- branch `docs/phase3-gitlab-issues-milestones`). Local
-`main` is synced through Phase 2; Phase 3 is on its branch pending merge.
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !163 CI + owner
+review, then start Phase 4.** Six-phase plan, owner-approved in plan-mode review:
+`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo; summarize here
+if that path is ever unreachable). Phases 1-2 merged (!160, !161). Phase 3 committed and
+pushed, MR !163 open against `main` from `docs/phase3-gitlab-issues-milestones` -- **not
+merged, do not treat as done until the owner merges it.**
 
-**Phase 3 (GitLab Issues/Milestones replace doc-based tracking): built, review round 2
-pending, not yet merged.** 2 Milestones ("1 · Discover depth", "2 · Data quality") and 7
-issues (#13-#19) created directly against the live GitLab project. `docs/backlog/` and
-`docs/product_roadmap_2026-06.md` deleted; `north_star.md`'s Phase 2 table points at the
-milestone. Two corrections to the plan's literal text, owner-caught mid-task, not silent:
-`gemini_verdict_feedback.md`'s 8 live citations got stripped in place (reasoning kept, file
-deleted) instead of relocating the file; `product_roadmap_2026-06.md`'s "Premortem
-guardrails" got checked against every DURABLE doc's own `Owns:` header instead of moved into
-`north_star.md` wholesale -- most were already-stated duplicates, one line migrated. Full
-reasoning in `.claude/task/contract.md`.
+**Phase 3 (GitLab Issues/Milestones replace doc-based tracking): MR !163 open, all review
+rounds passed locally, CI not yet checked.** 2 Milestones ("1 · Discover depth", "2 · Data
+quality") and 7 issues (#13-#19) created against the live GitLab project.
+`docs/product_roadmap_2026-06.md` and `docs/backlog/*.md` (7 files) deleted; `north_star.md`'s
+Phase 2 table points at the milestone; `.claude/working-agreement.md` §2 now points task
+contracts at GitLab issues instead of restating requirements inline. Two corrections to the
+plan's literal text, owner-caught mid-task, not silent: `gemini_verdict_feedback.md`'s 8 live
+citations got stripped in place (reasoning kept, file deleted) instead of relocating the file;
+`product_roadmap_2026-06.md`'s "Premortem guardrails" got checked against every DURABLE doc's
+own `Owns:` header instead of moved into `north_star.md` wholesale -- most were
+already-stated duplicates, one line migrated. Full reasoning in `.claude/task/contract.md`,
+full review history (5 rounds, every FAIL a real defect, not noise) in
+`.claude/task/review.md` -- both worth reading before starting Phase 4 if this handover ever
+falls behind.
 
-**Review round 1: scope-auditor + cto-reviewer both FAILED on the same miss** -- grep for
-dangling citations only covered `*.md`/`*.py`/`*.yml`, missing a SQL comment
-(`int_stock__sector_benchmarks.sql:34`). Fixed. cto-reviewer also caught this file not yet
-updated mid-task. Round 2 dispatched on both; do not merge Phase 3 before every required
-reviewer PASSes the round reflecting them.
-
-Phases 1-2 each had a review round catch a real bug too -- the cycle keeps finding things a
-solo pass misses. Keep dispatching it with the same rigor from Phase 4 on.
+**Recurring miss worth remembering for future multi-round reviews**: a file added to scope
+mid-task (here, a dbt SQL model whose comment needed the same citation strip as everything
+else) pulled in a reviewer (`analytics-engineer-reviewer`, routed by the `*.sql` pattern) that
+was never dispatched until the commit gate itself blocked on it. Re-check
+`.claude/review_routing.json` against the FULL current staged path list, not just the
+reviewers you started with, whenever scope grows mid-task.
 
 **Phase 4 next, once Phase 3 merges.** CI/config hygiene: dedupe the `~/.dbt/profiles.yml`
 heredoc in `.gitlab-ci.yml` into `scripts/write_ci_dbt_profile.py`; confirm
