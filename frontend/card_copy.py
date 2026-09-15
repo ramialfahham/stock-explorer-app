@@ -231,21 +231,15 @@ def metric_gloss(
     negative number is a better version of the same good news, when it's actually a
     different, broken state the ratio's normal direction no longer describes.
 
-    Re-confirmed. The owner asked for the cue to be dropped as clutter, then
-    reopened it: the honest tension is that "better" is only true ceteris paribus, and
-    this app never teaches that concept. Kept anyway, and deliberately on EVERY metric
-    rather than only the inverted ones -- a cue that appears on some metrics and not
-    others makes its own absence ambiguous, which is worse than not having it. The bar
-    itself carries no direction (right is only "bigger"), so for the two benchmarked inverted
-    metrics (net_debt_to_ebitda, debt_to_equity) a beginner has no way to read the mark without
-    this line -- and only 9 of the 13 catalogued metrics are benchmarkable at all, so for the other 4
-    (pre-revenue's working_capital, net_cash, cash_runway_months, burn_rate_monthly) this cue
-    is the ONLY direction signal anywhere on the card face. (Counts changed when the three
-    price-carrying metrics were dropped, and again when the 5-metric benchmark expansion --
-    owner-approved follow-up to MR #22 -- made every operating/financial metric benchmarkable;
-    forward_pe used to be the second inverted one.) The
-    clutter that prompted the question was addressed in presentation instead: the gloss
-    is now a step larger and lighter than the range mark's own axis labels.
+    Deliberately on EVERY metric rather than only the inverted ones -- a cue that appears on
+    some metrics and not others makes its own absence ambiguous, which is worse than not
+    having it. The bar itself carries no direction (right is only "bigger"), so for the two
+    benchmarked inverted metrics (net_debt_to_ebitda, debt_to_equity) a beginner has no way to
+    read the mark without this line -- and only 9 of the 13 catalogued metrics are
+    benchmarkable at all, so for the other 4 (pre-revenue's working_capital, net_cash,
+    cash_runway_months, burn_rate_monthly) this cue is the ONLY direction signal anywhere on
+    the card face. The gloss renders a step larger and lighter than the range mark's own axis
+    labels, to keep it from reading as clutter.
     """
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return "Net cash: cash on hand exceeds debt"

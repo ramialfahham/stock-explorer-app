@@ -165,12 +165,9 @@ def _verdict_distribution(records: list[dict]) -> dict[str, int]:
 # --- Slice 5b: the Claude Haiku prose read (regenerate-on-change) -------------
 
 
-# PostgREST's default per-request row cap. A single unranged select silently returned
-# exactly 1000 of 1045 real rows on the 2026-09-15 scheduled run (confirmed by a direct
-# read-only query against production) -- every card past the cutoff would look
-# permanently new to attach_reads() on every run, since it would never appear in
-# existing_by_key at all. The deck was "tens of eligible cards" when this comment was
-# first written; it is over a thousand now.
+# PostgREST's default per-request row cap. An unranged select silently truncates past this
+# many rows -- every card past the cutoff would look permanently new to attach_reads() on
+# every run, since it would never appear in existing_by_key at all.
 _SELECT_PAGE_SIZE = 1000
 
 
@@ -376,20 +373,13 @@ def attach_reads(
 def _upsert_records(client, records: list[dict], *, batch_size: int = 500) -> int:
     """Upsert records in batches grouped by their exact set of present keys.
 
-    Root-caused against production, 2026-09-15: a single upsert call's `columns` query
-    parameter is the UNION of keys across every record it carries (postgrest-py's
-    `_unique_columns`, called from `pre_upsert`; the client's own `default_to_null=True`
-    default never sends `Prefer: missing=default`). A record that omits a column present
-    on another record in the SAME call has that column explicitly nulled by PostgREST, not
-    left untouched -- the opposite of what `build_assessment_records()`'s module docstring
-    has always claimed ("a re-run never clobbers a stored read"). The scheduled run's own
-    summary line that day reported `carried=853` -- deliberately untouched, by design -- yet
-    839 of those came out of that exact run with `ai_read` nulled; the two numbers are close
-    enough, and the mechanism direct enough, to call this the actual defect, not a
-    coincidence. It also explains why the AI-read step looked like it needed to regenerate
-    nearly the whole deck every run (open item 8): a clobbered "carried" card's `ai_read`
-    reads as null next run, so `attach_reads()` treats it as needing a fresh read even
-    though its `input_hash` never changed.
+    A single upsert call's `columns` query parameter is the UNION of keys across every
+    record it carries (postgrest-py's `_unique_columns`, called from `pre_upsert`; the
+    client's own `default_to_null=True` default never sends `Prefer: missing=default`). A
+    record that omits a column present on another record in the SAME call has that column
+    explicitly nulled by PostgREST, not left untouched -- so a "carried" record (omits
+    `ai_read`/`read_model` to keep the stored value) sharing a call with a "generated" one
+    gets that value nulled too.
 
     Grouping every upsert call by `frozenset(record.keys())` before chunking guarantees each
     call is internally homogeneous, so its `columns` union always matches exactly what every

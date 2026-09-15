@@ -278,9 +278,7 @@ section[data-testid="stSidebar"] {
 .ss-health-block {
     /* Deliberately tight. Two new labels plus this panel's own padding cost real vertical
        space on the card face -- every value here was trimmed to the smallest that still
-       reads as a separate panel. (The first-metric-above-the-fold UX gate this used to cite
-       is retired, 2026-09-14, since the AI-written read now always renders in full; kept
-       tight anyway on its own merits.) */
+       reads as a separate panel. */
     margin: 0 0 var(--ss-space-2);
     padding: var(--ss-space-1) var(--ss-space-2) var(--ss-space-2);
     background: var(--ss-bg);

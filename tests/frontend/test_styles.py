@@ -76,16 +76,15 @@ def test_the_correct_sibling_shape_is_actually_present():
 # The OTHER recurring bug class in this file, distinct from the sibling-combinator one
 # above: a bare single-class `<p>` selector (`.ss-thing { font-size: ... }`) silently
 # loses font-size and any non-zero margin to a Streamlit emotion-cache `<ancestor> p`
-# reset at higher specificity. MR #29 fixed ~24 of these at once. Every such rule must
-# be scoped under an ancestor class (or use !important where no ancestor exists), which
-# is what these labels do via `.ss-card-identity .ss-block-label`.
+# reset at higher specificity. Every such rule must be scoped under an ancestor class
+# (or use !important where no ancestor exists), which is what these labels do via
+# `.ss-card-identity .ss-block-label`.
 CARD_FACE_P_CLASSES = ("ss-block-label",)
 
 
 def test_card_face_p_class_rules_are_scoped_not_bare():
     """A bare `.ss-block-label { font-size: ... }` would render at Streamlit's paragraph
-    size instead of ours, and look correct in the source while being wrong on screen --
-    the exact failure mode MR #29 had to fix across two dozen classes.
+    size instead of ours, and look correct in the source while being wrong on screen.
 
     Verified to fail against the broken form: temporarily rewrote
     `.ss-card-identity .ss-block-label` back to a bare `.ss-block-label` and confirmed

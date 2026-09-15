@@ -95,10 +95,9 @@ def test_export_columns_include_sector_quartiles() -> None:
 
 
 def test_export_columns_include_sector_financial_operating_expansion() -> None:
-    """Same regression guard as above, for the 5-metric benchmark expansion (owner-approved
-    follow-up to MR #22): debt_to_equity, current_ratio_stmt (operating) and
-    statement_roe_pct, net_margin_pct, roa_pct (financial). All 5 statistics per metric,
-    same as every other benchmarked metric."""
+    """Same regression guard as above, for the 5-metric benchmark expansion: debt_to_equity,
+    current_ratio_stmt (operating) and statement_roe_pct, net_margin_pct, roa_pct
+    (financial). All 5 statistics per metric, same as every other benchmarked metric."""
     for metric in (
         "debt_to_equity",
         "current_ratio_stmt",

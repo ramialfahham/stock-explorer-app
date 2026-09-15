@@ -15,6 +15,17 @@ the detail._
 
 ## In flight
 
+**Repo-cleanup push (owner 2026-09-15), in progress.** Six-phase plan, owner-approved in
+plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this
+repo; summarize here if that path is ever unreachable). Phase 1 (narrative/date-stamp guard,
+`scripts/check_no_narrative_dates.py`, wired into pre-commit + CI) shipped, MR !160 open.
+Phase 2 (em-dash guard, `.claude/review_routing.json`'s own dated `_comment_guard_paths`
+field, doc-index completeness check), Phase 3 (GitLab Issues/Milestones replace
+`docs/product_roadmap_2026-06.md` and `docs/backlog/*.md`, pattern copied from
+`football-data-pipeline`), Phase 4 (CI/config hygiene), Phase 5 (dbt YAML structure,
+asymmetric `accepted_range` coverage), Phase 6 (documentation architecture: handover chain,
+stale/contradicting docs) not yet started -- see the plan file for full detail on each.
+
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
 actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's call,

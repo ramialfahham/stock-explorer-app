@@ -121,8 +121,8 @@ def test_metric_gloss_net_cash_suppresses_the_cue() -> None:
 
 # --- "vs sector" (benchmarked=True) -- names the range mark's population where a
 # reader is actually looking, since the sector is otherwise only stated once, higher up
-# the card. Owner decision: fold into the gloss line rather than a new word-labels row,
-# which was already tight on space (docs/ui/card_metric_cell.md's own collision notes).
+# the card. Folded into the gloss line rather than a new word-labels row, which is
+# already tight on space (docs/ui/card_metric_cell.md's own collision notes).
 
 
 def test_metric_gloss_names_the_sector_when_benchmarked() -> None:

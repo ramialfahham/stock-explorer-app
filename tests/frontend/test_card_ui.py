@@ -247,9 +247,8 @@ def test_direction_cue_catalogue_assumptions_still_hold() -> None:
 def test_range_mark_direction_cue_shown_even_when_range_mark_itself_unavailable() -> None:
     """Below the peer threshold the range MARK is suppressed (no sector to compare
     against), but the direction cue is a ceteris-paribus statement about the metric's
-    own axis, independent of whether a mark is currently drawn (owner decision) -- so it
-    still shows. This is the opposite of the old (mark-gated) behavior; see
-    card_copy.metric_gloss()'s docstring."""
+    own axis, independent of whether a mark is currently drawn -- so it still shows.
+    See card_copy.metric_gloss()'s docstring."""
     card = _card_with_all_metrics("operating")
     card["sector_peer_count"] = 7
     card["net_debt_to_ebitda"] = 3.9
@@ -277,9 +276,7 @@ def test_build_card_shows_unavailable_placeholder_for_never_benchmarked_metric()
     below-threshold/degenerate cases, which start from a benchmarkable metric that
     becomes unavailable for a specific card) -- it must still get the placeholder, not
     a silent gap, on every card that shows it. Pre-revenue is the only company type with
-    a never-benchmarked metric left: the 5-metric benchmark expansion (owner-approved
-    follow-up to MR #22) made every operating/financial metric benchmarkable, so
-    debt_to_equity (this test's example before that change) no longer fits."""
+    a never-benchmarked metric left; every operating/financial metric is benchmarkable."""
     card = _card_with_all_metrics("pre_revenue")
     card["sector_peer_count"] = 20  # would be plenty for a benchmarkable metric
     html = build_card_html(card)
@@ -673,9 +670,8 @@ def test_metric_groups_also_render_in_learn_panel() -> None:
     assert ">Profitability<" in html
 
 
-# --- AI read renders as an always-visible bullet list, nothing folded (owner reversal,
-# 2026-09-14, of the earlier ux/card-view-fold composition call: a wall of text hidden
-# behind Read more read worse in practice than the extra vertical space costs). ---
+# --- AI read renders as an always-visible bullet list, nothing folded: a wall of text
+# hidden behind Read more reads worse in practice than the extra vertical space costs. ---
 
 
 def test_a_multi_sentence_ai_read_renders_as_one_bullet_per_sentence() -> None:

@@ -89,7 +89,8 @@ Do not write a comment when:
 One sentence per comment is almost always enough. No multi-line comment blocks.
 
 **No dates, timestamps, approval markers or authorship in a comment you add or edit.** Not
-"owner-approved 2026-09-09", not "fixed in MR !115", not "added by". A comment states what is
+"owner-approved 2026-09-09", not "fixed in MR !115", not "added by". <!-- narrative-check: allow -->
+A comment states what is
 true now; git records when and who. A dated comment cannot be checked against the code beside
 it, so it rots without anything noticing. Sites that predate this rule are not grandfathered in
 spirit, only in sequence.
@@ -107,7 +108,7 @@ mix is given here: it depends on what you count as prose, and it changes with ev
 review time.
 
 **No date-stamping a fix into doc prose that describes current behaviour**, the same rule §1.2
-applies to comments. "Fixed 2026-09-05" in a sentence about how something works today is a
+applies to comments. "Fixed 2026-09-05" in a sentence about how something works today is a <!-- narrative-check: allow -->
 changelog wearing a description's clothes.
 
 For where narrative belongs, and what a contract or handover may carry, see

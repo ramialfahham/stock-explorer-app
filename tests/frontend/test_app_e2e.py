@@ -254,7 +254,7 @@ def test_header_compacts_while_a_card_is_open_and_restores_on_back(app_test: App
     assert _header_is_compact(at)
     assert not _scope_stats_line_present(at), "the stats line is gone while a card is open"
     assert not any("ss-header-stats--inline" in v for v in _rendered_markdown(at)), (
-        "Discover's back row shows no saved count -- Saved-tab only (owner decision, 2026-09-14)"
+        "Discover's back row shows no saved count -- Saved-tab only"
     )
 
     at = at.button(key="discover_back_to_list").click().run()
@@ -264,8 +264,8 @@ def test_header_compacts_while_a_card_is_open_and_restores_on_back(app_test: App
 
 
 def test_saved_count_shows_only_on_the_saved_tab(app_test: AppTest, cookie_scripts) -> None:
-    """Owner decision, 2026-09-14: "N saved" is Saved-tab-only chrome -- it used to also
-    render on Discover's list header, Discover's back row, and unconditionally on Search."""
+    """The "N saved" chrome is Saved-tab-only: it does not render on Discover's list header,
+    Discover's back row, or Search."""
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     at = at.button(key="discover_save").click().run()

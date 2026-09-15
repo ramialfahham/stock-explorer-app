@@ -52,10 +52,10 @@ sector_medians as (
         max(fcf_margin_pct) as sector_max_fcf_margin_pct,
         quantile_cont(fcf_margin_pct, 0.25) as sector_q1_fcf_margin_pct,
         quantile_cont(fcf_margin_pct, 0.75) as sector_q3_fcf_margin_pct,
-        -- 5-metric benchmark expansion (owner-approved follow-up to MR #22): the 2 remaining
-        -- operating supporting axes plus the 3 financial-only metrics. Same 5-statistic set,
-        -- same quantile_cont() convention, as every metric above. Pre-revenue's 4 metrics are
-        -- deliberately excluded -- see docs/ui/card_metric_cell.md's Range mark mechanics.
+        -- The 2 remaining operating supporting axes plus the 3 financial-only metrics get
+        -- the same 5-statistic set, same quantile_cont() convention, as every metric above.
+        -- Pre-revenue's 4 metrics are deliberately excluded -- see docs/ui/card_metric_cell.md's
+        -- Range mark mechanics.
         --
         -- debt_to_equity and statement_roe_pct both divide by stmt_stockholders_equity, which
         -- scripts/assessment_rules.py's _axis_unless_denominator_nonpositive guard already treats

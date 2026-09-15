@@ -867,8 +867,8 @@ def test_company_name_overrides_have_no_duplicate_keys() -> None:
 
 
 def test_company_name_overrides_covers_the_audited_nikkei_defects() -> None:
-    """Pins the eleven tickers the 2026-08-28 yfinance audit found wrong, so the override
-    file can't silently lose a row on a future edit without a test noticing.
+    """Pins the eleven tickers the yfinance audit found wrong, so the override file can't
+    silently lose a row on a future edit without a test noticing.
     """
     audited_tickers = {
         "3407", "6908", "6976", "8005", "8804",
@@ -882,8 +882,8 @@ def test_company_name_overrides_covers_the_audited_nikkei_defects() -> None:
 
 
 def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
-    """Pins the nineteen tickers the owner approved a trade-name override for on 2026-08-28,
-    so the override file can't silently lose a row on a future edit without a test noticing.
+    """Pins the nineteen tickers approved for a trade-name override, so the override file
+    can't silently lose a row on a future edit without a test noticing.
 
     KNIN (Kuehne + Nagel) is deliberately absent: the seed already carries a trade name there.
     """
@@ -944,7 +944,7 @@ def test_ticker_overrides_have_no_duplicate_keys() -> None:
 
 
 def test_ticker_overrides_covers_the_known_au_asx200_defect() -> None:
-    """Pins the one ticker correction approved on 2026-08-29, so it can't silently disappear."""
+    """Pins the one approved ticker correction, so it can't silently disappear."""
     rows = [r for r in _ticker_override_rows() if r["market_code"] == "au_asx200"]
     assert [r["ticker"] for r in rows] == ["XYX"]
     assert rows[0]["corrected_ticker"] == "XYZ"

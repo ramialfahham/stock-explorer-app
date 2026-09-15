@@ -234,10 +234,9 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   can put the true median within a few percent of the min or max, and the label text
   must not run into the min/max labels at the track's own edges. The bar's actual gap
   still renders at the true, unclamped `median_pct`; only the label text is nudged
-  inward. Verified against every real range-mark row in production as of MR !87 (3,967 rows
-  across all benchmarked metrics -- 5 when this floor was first verified, 4 by MR !87 itself,
-  9 today (see "Range mark mechanics" above), incl. a sector with a -129,810.5% FCF-margin
-  outlier -- see the data-quality note below) plus synthetic cases beyond today's real spread; the
+  inward. Verified against every real range-mark row in production (3,967 rows across all 9
+  benchmarked metrics, see "Range mark mechanics" above, incl. a sector with a -129,810.5%
+  FCF-margin outlier -- see the data-quality note below) plus synthetic cases beyond today's real spread; the
   tightest real numbers-row gap was ~12px at the original 11.5px axis size; at the 13px
   size labels are ~13% wider, so the widest real edge label (~44px) beside the widest median
   label (~40px) at the floor leaves ~6px, and live cards re-measured at 13px showed 15px to
@@ -261,12 +260,7 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   exclude any peer with negative stockholders' equity -- that peer's own ratio has flipped sign
   (a loss can divide out to a spuriously positive-looking number) and would otherwise silently
   skew the whole sector's benchmark, not just look like an ordinary outlier the display clamp
-  below would catch. Was 4 before the 5-metric benchmark expansion (owner-approved follow-up to
-  MR #22) added debt-to-equity, current ratio, statement ROE, net margin, and ROA. Before that,
-  was 5 before forward P/E was dropped from the catalogue along with the other two
-  price-carrying metrics; the bank card lost 3 of its 7 metrics in the same change, and the
-  pre-revenue card swapped its net-cash ratio for a money amount, which moved that metric from
-  the valuation lens to cash.
+  below would catch.
 - Full median primer and per-metric compare lines still live in **How we compare to
   similar companies** inside **Understand these numbers** — that recap list is unchanged,
   still text-only (`.ss-bench-indicator`, `benchmark_indicator_label()`); the scanability

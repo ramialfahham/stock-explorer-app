@@ -149,6 +149,7 @@ validate:full:
   script:
     - mkdir -p /tmp/stock-swipe-raw
     - python scripts/check_context_budget.py
+    - python scripts/check_no_narrative_dates.py
     - python scripts/check_layer_contract.py
     - python scripts/check_registry_var_sync.py
     - python scripts/check_dbt_sql_structure.py
