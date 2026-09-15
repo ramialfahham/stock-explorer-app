@@ -5,7 +5,11 @@ Two layers:
   cards), computes a per-type health verdict + an input_hash per card.
 - 5b (Claude Haiku prose read): fills ai_read / read_model, calling Claude ONLY when a
   card's input_hash changed or its stored ai_read is null (regenerate-on-change). The read
-  is educational, never advice, and reasons only from the card's own numbers.
+  is educational, never advice, and reasons only from the card's own numbers. --max-reads
+  caps how many NEW calls a single run makes (unbounded by default); cards with no stored
+  read are filled first, anything the cap does not reach becomes eligible again next run. A
+  card the cap skips, or whose call fails, has any stale stored read explicitly cleared
+  rather than left showing under this run's fresh verdict and numbers.
 
 Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape and for --target
 (prod writes public.card_assessments, dev writes dev.card_assessments in the same project;
@@ -258,45 +262,115 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     return text, resp.model
 
 
+def _clear_stale_read_if_present(record: dict, existing_by_key: dict[tuple, dict]) -> None:
+    """A stored read from a PRIOR input_hash must never render next to this run's fresh
+    verdict and metrics as if it were current. build_assessment_records() (5a) always writes
+    a fresh verdict/snapshot_date/input_hash for every eligible card regardless of whether
+    5b's read succeeds -- and the frontend's only staleness guard, attach_assessments()'s
+    snapshot_date comparison (frontend/explore_filters.py), does not see input_hash at all,
+    so it cannot catch this (equity-analyst-reviewer finding). Leaving the keys merely ABSENT
+    -- fine when there was nothing stored -- would let that old prose sit under this run's
+    new numbers, silently contradicting them, exactly the "verdict printed over the wrong
+    snapshot" failure attach_assessments()'s own docstring calls worse than no verdict at
+    all, just on the read instead of the badge.
+
+    Explicit `None` (not an absent key) tells the upsert to actually null the stored columns,
+    so the card falls back to VERDICT_FALLBACK_READ -- the same honest, already-designed-for
+    "not yet written" state a brand-new card gets, never a placeholder. A no-op when nothing
+    was stored (an absent existing.ai_read means there is nothing stale to clear).
+
+    Covers both callers below: a record left behind by --max-reads' cap, and one whose
+    generation attempt failed outright -- the same stale-masking risk either way, not a
+    cap-specific one.
+    """
+    key = (record["market_code"], record["ticker"])
+    existing = existing_by_key.get(key)
+    if existing is not None and existing.get("ai_read"):
+        record["ai_read"] = None
+        record["read_model"] = None
+
+
 def attach_reads(
     records: list[dict],
     rows_by_key: dict[tuple, dict],
     existing_by_key: dict[tuple, dict],
     client,
+    *,
+    max_reads: int | None = None,
 ) -> dict[str, int]:
     """Fill ai_read / read_model on records that changed, in place.
 
     Regenerate a card's read when it is new, its input_hash differs from the stored
     one, or its stored ai_read is empty. Otherwise leave both keys ABSENT so the upsert
-    preserves the stored read (never clobbers). A per-card API failure also leaves the
-    keys absent, so the card stays null-read and retries next run (self-healing).
+    preserves the stored read (never clobbers). A per-card API failure, or a card the
+    --max-reads cap does not reach this run, clears any stale stored read instead
+    (_clear_stale_read_if_present) rather than leaving old prose under new numbers.
+
+    `max_reads` bounds how many NEW Claude calls this run makes -- the AI-read step is the
+    scheduled pipeline's dominant, previously-ungoverned runtime cost (~39 of ~65 minutes on
+    a 9-market run), the likely long-term driver toward the CI job's 2h timeout as more
+    markets are onboarded. `None` (the default) is unbounded -- unchanged behavior; the
+    actual production value is an owner call, set via --max-reads. A negative value is
+    clamped to 0 (fully capped -- the safe direction for a cost guard) rather than trusted:
+    Python slicing treats a negative stop index as "count back from the end", so an unguarded
+    `list[:-1]` on a typo would keep nearly everything, the opposite of what the flag exists
+    to prevent.
+
+    Cards with NO stored read (new, or a stored ai_read that is empty) are prioritized over
+    cards that only need a refresh (input_hash changed but a read already exists) -- a bare
+    verdict badge with the deterministic fallback text is a worse gap than a slightly stale
+    read, and every card in the fallback state already renders a plain, honest one-liner
+    (VERDICT_FALLBACK_READ in card_copy.py), never a placeholder. Both buckets keep the
+    records' own relative order, so which cards get capped under a tight budget is
+    deterministic, not run-to-run noise -- though a market whose rows sort later in the
+    DuckDB scan (no ORDER BY today) can end up consistently behind a market with heavier
+    new-card churn; not addressed here, a fair-share rotation across markets would be its own
+    design.
     """
-    generated = carried = failed = 0
+    no_stored_read: list[dict] = []  # new card, or a stored ai_read that is empty
+    needs_refresh: list[dict] = []  # a read exists, but input_hash changed
+    carried = 0
     for record in records:
         key = (record["market_code"], record["ticker"])
         existing = existing_by_key.get(key)
-        if existing is None:
-            regenerate = True
+        if existing is None or not existing.get("ai_read"):
+            no_stored_read.append(record)
+        elif existing.get("input_hash") != record["input_hash"]:
+            needs_refresh.append(record)
         else:
-            regenerate = (
-                existing.get("input_hash") != record["input_hash"]
-                or not existing.get("ai_read")
-            )
-        if not regenerate:
             carried += 1
-            continue
+
+    new_first = no_stored_read + needs_refresh
+    if max_reads is None:
+        selected, capped_records = new_first, []
+    else:
+        cutoff = max(max_reads, 0)
+        selected, capped_records = new_first[:cutoff], new_first[cutoff:]
+    for record in capped_records:
+        _clear_stale_read_if_present(record, existing_by_key)
+
+    generated = failed = 0
+    for record in selected:
+        key = (record["market_code"], record["ticker"])
         row = rows_by_key.get(key)
         if row is None:  # defensive: records derive from these rows, so shouldn't happen
             failed += 1
+            _clear_stale_read_if_present(record, existing_by_key)
             continue
         text, model = _generate_read(client, row, record["health_verdict"])
         if text is None:
             failed += 1
+            _clear_stale_read_if_present(record, existing_by_key)
             continue
         record["ai_read"] = text
         record["read_model"] = model
         generated += 1
-    return {"generated": generated, "carried": carried, "failed": failed}
+    return {
+        "generated": generated,
+        "carried": carried,
+        "capped": len(capped_records),
+        "failed": failed,
+    }
 
 
 def _upsert_records(client, records: list[dict], *, batch_size: int = 500) -> int:
@@ -357,7 +431,20 @@ def main(argv: list[str] | None = None) -> int:
         default="prod",
         help="prod (default) writes to public.*; dev writes to dev.* in the same project",
     )
+    parser.add_argument(
+        "--max-reads",
+        type=int,
+        default=None,
+        help=(
+            "Cap on NEW Claude calls this run (the AI-read step's dominant, previously-"
+            "ungoverned runtime cost). Unbounded by default -- unchanged behavior. Cards with "
+            "no stored read are filled before cards that only need a refresh; anything the "
+            "cap does not reach becomes eligible again next run."
+        ),
+    )
     args = parser.parse_args(argv)
+    if args.max_reads is not None and args.max_reads < 0:
+        parser.error("--max-reads must be 0 or greater")
     schema = "public" if args.target == "prod" else args.target
 
     load_dotenv()
@@ -397,11 +484,13 @@ def main(argv: list[str] | None = None) -> int:
         rows_by_key = {
             (r["market_code"], r["ticker"]): r for r in _latest_per_ticker(rows)
         }
-        summary = attach_reads(records, rows_by_key, existing, anthropic.Anthropic())
+        summary = attach_reads(
+            records, rows_by_key, existing, anthropic.Anthropic(), max_reads=args.max_reads
+        )
         print(
             "generate_assessments: reads "
             f"generated={summary['generated']} carried={summary['carried']} "
-            f"failed={summary['failed']}"
+            f"capped={summary['capped']} failed={summary['failed']}"
         )
     else:
         print(

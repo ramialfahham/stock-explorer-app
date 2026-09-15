@@ -267,7 +267,7 @@ def test_attach_reads_generates_for_new_card() -> None:
     rec = _base_record()
     client = _FakeAnthropic(text="Sturdy on these figures.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
     assert rec["ai_read"] == "Sturdy on these figures."
     assert rec["read_model"] == "claude-haiku-4-5"
     assert len(client.messages.calls) == 1
@@ -278,7 +278,7 @@ def test_attach_reads_carries_forward_unchanged() -> None:
     existing = {("us_sp500", "OPX"): {"input_hash": "h1", "ai_read": "old read", "read_model": "m"}}
     client = _FakeAnthropic()
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, existing, client)
-    assert summary == {"generated": 0, "carried": 1, "failed": 0}
+    assert summary == {"generated": 0, "carried": 1, "capped": 0, "failed": 0}
     # keys left ABSENT so the upsert preserves the stored read (never clobbers)
     assert "ai_read" not in rec and "read_model" not in rec
     assert client.messages.calls == []
@@ -309,9 +309,113 @@ def test_attach_reads_isolates_a_failed_card() -> None:
     rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
     client = _FakeAnthropic(text="ok read on these figures.", fail_calls={0})  # first card's call raises
     summary = gen.attach_reads([a, b], rows, {}, client)
-    assert summary == {"generated": 1, "carried": 0, "failed": 1}
-    assert "ai_read" not in a                     # failed card left null (retries next run)
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 1}
+    assert "ai_read" not in a                     # nothing was stored, nothing to clear
     assert b["ai_read"] == "ok read on these figures."   # the batch kept going
+
+
+def test_attach_reads_clears_a_stale_read_when_its_regeneration_attempt_fails() -> None:
+    """A card WITH an existing (now stale, hash-changed) read whose regeneration attempt
+    fails must not keep showing that old prose under this run's fresh verdict -- same
+    equity-analyst-reviewer finding as the cap case, different trigger."""
+    rec = _base_record(input_hash="h2")
+    existing = {("us_sp500", "OPX"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"}}
+    client = _FakeAnthropic(fail_calls={0})
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, existing, client)
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert rec["ai_read"] is None
+    assert rec["read_model"] is None
+
+
+def test_main_max_reads_negative_is_rejected() -> None:
+    """Rejected by argparse itself, before any file/credential access -- no duckdb/env setup
+    needed here."""
+    try:
+        gen.main(["--max-reads", "-1"])
+    except SystemExit as exc:
+        assert exc.code == 2  # argparse's own error exit code
+    else:
+        raise AssertionError("expected SystemExit from parser.error on a negative --max-reads")
+
+
+def test_attach_reads_negative_max_reads_is_clamped_to_fully_capped() -> None:
+    """Defense in depth for attach_reads() itself, called directly (not through main()'s CLI
+    guard): Python slicing treats a negative stop index as "count back from the end", so an
+    unguarded new_first[:-1] on a typo would keep nearly everything -- the opposite of what
+    the cap exists to prevent."""
+    rec = _base_record()
+    client = _FakeAnthropic()
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client, max_reads=-1)
+    assert summary == {"generated": 0, "carried": 0, "capped": 1, "failed": 0}
+    assert client.messages.calls == []
+
+
+# --- --max-reads: bounds new Claude calls per run (owner decision, 2026-09-15: a per-run
+# cap, over a wall-clock time budget or visibility-only). Cards with no stored read are
+# filled before cards that only need a refresh -- a bare fallback line is a worse gap than a
+# stale read -- and whatever a tight cap can't reach this run is left exactly like `carried`
+# (keys absent), so it retries on the next run rather than being lost.
+
+
+def test_max_reads_none_is_unbounded_default() -> None:
+    """Omitting --max-reads must not change today's behavior at all."""
+    a = _base_record(ticker="AAA")
+    b = _base_record(ticker="BBB")
+    rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
+    client = _FakeAnthropic(text="ok read on these figures.")
+    summary = gen.attach_reads([a, b], rows, {}, client)
+    assert summary == {"generated": 2, "carried": 0, "capped": 0, "failed": 0}
+
+
+def test_max_reads_caps_new_calls_and_reports_capped() -> None:
+    a = _base_record(ticker="AAA")
+    b = _base_record(ticker="BBB")
+    c = _base_record(ticker="CCC")
+    rows = {
+        ("us_sp500", "AAA"): _metric_row("AAA"),
+        ("us_sp500", "BBB"): _metric_row("BBB"),
+        ("us_sp500", "CCC"): _metric_row("CCC"),
+    }
+    client = _FakeAnthropic(text="ok read on these figures.")
+    summary = gen.attach_reads([a, b, c], rows, {}, client, max_reads=2)
+    assert summary == {"generated": 2, "carried": 0, "capped": 1, "failed": 0}
+    assert len(client.messages.calls) == 2
+    # deterministic: the records' own relative order decides who gets skipped, not
+    # something that could vary run to run.
+    assert "ai_read" in a and "ai_read" in b
+    assert "ai_read" not in c
+
+
+def test_max_reads_prioritizes_cards_with_no_stored_read_over_refreshes() -> None:
+    """A refresh candidate (a read already exists, only input_hash changed) must not steal
+    the run's budget from a card that has never had a read at all -- the fallback badge-only
+    state is the worse gap. Order in the input list is deliberately the opposite of the
+    expected priority, so this fails against an implementation that just takes records in
+    list order."""
+    stale = _base_record(ticker="STALE", input_hash="h2")  # refresh candidate, listed FIRST
+    fresh = _base_record(ticker="FRESH", input_hash="h1")  # no stored read at all
+    rows = {
+        ("us_sp500", "STALE"): _metric_row("STALE"),
+        ("us_sp500", "FRESH"): _metric_row("FRESH"),
+    }
+    existing = {("us_sp500", "STALE"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"}}
+    client = _FakeAnthropic(text="ok read on these figures.")
+    summary = gen.attach_reads([stale, fresh], rows, existing, client, max_reads=1)
+    assert summary == {"generated": 1, "carried": 0, "capped": 1, "failed": 0}
+    assert fresh["ai_read"] == "ok read on these figures."  # no-stored-read card wins the slot...
+    # ...the refresh is deferred; its stale H1 read is explicitly cleared, not left showing
+    # under this run's fresh verdict (equity-analyst-reviewer finding: the frontend's own
+    # staleness guard checks snapshot_date, not input_hash, so it can't catch this itself).
+    assert stale["ai_read"] is None
+    assert stale["read_model"] is None
+
+
+def test_max_reads_zero_generates_nothing_but_still_reports_the_gap() -> None:
+    rec = _base_record()
+    client = _FakeAnthropic()
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client, max_reads=0)
+    assert summary == {"generated": 0, "carried": 0, "capped": 1, "failed": 0}
+    assert client.messages.calls == []
 
 
 def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> None:
@@ -326,7 +430,7 @@ def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> No
         ],
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
 
 
@@ -339,7 +443,7 @@ def test_attach_reads_accepts_a_read_citing_a_number_that_matches() -> None:
         ],
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
     assert rec["ai_read"] == "Operating margin looks strong, financially healthy on these figures."
 
 
@@ -350,7 +454,7 @@ def test_attach_reads_rejects_a_style_violation(capsys) -> None:
     rec = _base_record()
     client = _FakeAnthropic(text="This is a great buy right now!")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
     err = capsys.readouterr().err
     assert "style" in err.lower()
@@ -363,7 +467,7 @@ def test_attach_reads_accepts_a_style_clean_read() -> None:
         text="Operating margin is strong and debt is low, financially healthy on these figures."
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
     assert rec["ai_read"] is not None
 
 
@@ -378,7 +482,7 @@ def test_attach_reads_style_check_call_site_is_actually_wired(monkeypatch) -> No
     rec = _base_record()
     client = _FakeAnthropic(text="This is a great buy right now!")  # style-dirty, metric-clean
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 1, "carried": 0, "failed": 0}
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
     assert rec["ai_read"] == "This is a great buy right now!"
 
 
@@ -389,7 +493,7 @@ def test_attach_reads_rejects_a_response_with_no_tool_use_block(capsys) -> None:
     rec = _base_record()
     client = _FakeAnthropic(content=[_FakeTextBlock()], stop_reason="end_turn")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
     assert "no tool_use block" in capsys.readouterr().err
 
@@ -398,7 +502,7 @@ def test_attach_reads_rejects_a_blank_read(capsys) -> None:
     rec = _base_record()
     client = _FakeAnthropic(text="   ")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
     assert "malformed tool payload" in capsys.readouterr().err
 
@@ -407,7 +511,7 @@ def test_attach_reads_rejects_non_list_referenced_metrics(capsys) -> None:
     rec = _base_record()
     client = _FakeAnthropic(text="Operating margin looks strong.", referenced_metrics="oops")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
-    assert summary == {"generated": 0, "carried": 0, "failed": 1}
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
     assert "malformed tool payload" in capsys.readouterr().err
 
@@ -455,6 +559,37 @@ def test_upsert_records_does_not_clobber_a_carried_read_across_a_mixed_batch() -
     assert stored["ai_read"] == "old stored read."
     assert stored["read_model"] == "claude-haiku-4-5"
     assert fake_sb.postgrest_state[("us_sp500", "GENERATED")]["ai_read"] == "fresh read on these figures."
+
+
+def test_a_capped_cards_cleared_read_and_a_generated_cards_fresh_read_both_survive_the_same_upsert_call() -> None:
+    """Pins the one composition path the two source features (--max-reads and !149's
+    upsert-clobbering fix) never got reviewed together: attach_reads() explicitly nulls a
+    capped/failed card's stale ai_read (_clear_stale_read_if_present), which gives it the
+    SAME key-shape (ai_read/read_model present, just None) as a genuinely generated card --
+    so _upsert_records() batches them together. That must not reopen the exact bug !149
+    fixed: neither record's write may bleed into the other's."""
+    existing = [
+        {"market_code": "us_sp500", "ticker": "STALE", "input_hash": "h1",
+         "ai_read": "old stored read.", "read_model": "claude-haiku-4-5"},
+    ]
+    stale = _base_record(ticker="STALE", input_hash="h2")   # hash changed -> needs_refresh
+    fresh = _base_record(ticker="FRESH", input_hash="h1")   # no stored read -> no_stored_read
+    rows = {
+        ("us_sp500", "STALE"): _metric_row("STALE"),
+        ("us_sp500", "FRESH"): _metric_row("FRESH"),
+    }
+    existing_by_key = {("us_sp500", "STALE"): existing[0]}
+    client = _FakeAnthropic(text="fresh read on these figures.")
+    summary = gen.attach_reads([stale, fresh], rows, existing_by_key, client, max_reads=1)
+    assert summary == {"generated": 1, "carried": 0, "capped": 1, "failed": 0}
+    assert stale["ai_read"] is None and stale["read_model"] is None  # cleared, not absent
+    assert fresh["ai_read"] == "fresh read on these figures."
+
+    fake_sb = _FakeSupabase(existing=existing)
+    calls = gen._upsert_records(fake_sb, [stale, fresh])
+    assert calls == 1  # same key-shape (both carry ai_read/read_model) -> one call
+    assert fake_sb.postgrest_state[("us_sp500", "STALE")]["ai_read"] is None
+    assert fake_sb.postgrest_state[("us_sp500", "FRESH")]["ai_read"] == "fresh read on these figures."
 
 
 def test_upsert_records_batches_within_each_key_shape_group() -> None:
@@ -534,6 +669,31 @@ def test_main_with_anthropic_key_attaches_reads(tmp_path: Path, monkeypatch) -> 
     for rec in upserted:
         assert rec["ai_read"] == "A steady read, financially healthy on these figures."
         assert rec["read_model"] == "claude-haiku-4-5"
+
+
+def test_main_max_reads_flag_caps_the_run_end_to_end(tmp_path: Path, monkeypatch) -> None:
+    """--max-reads threaded all the way from argv through to attach_reads: with 3 eligible
+    cards (OPX/FINX/PREX in _ROWS) and a cap of 1, exactly one upserted row gets a fresh
+    ai_read; the rest are left without the key, same as any other carried/capped card."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "svc")
+    db = tmp_path / "mart.duckdb"
+    _make_mart(db, _ROWS)
+
+    fake_sb = _FakeSupabase(existing=[])
+    monkeypatch.setattr(gen, "create_client", lambda url, key, options=None: fake_sb)
+    fake_client = _FakeAnthropic(text="A steady read, financially healthy on these figures.")
+    monkeypatch.setattr(gen.anthropic, "Anthropic", lambda *a, **k: fake_client)
+
+    assert gen.main(["--duckdb-path", str(db), "--max-reads", "1"]) == 0
+    upserted = [rec for batch in fake_sb.upserts for rec in batch]
+    assert len(upserted) == 3
+    with_read = [rec for rec in upserted if "ai_read" in rec]
+    without_read = [rec for rec in upserted if "ai_read" not in rec]
+    assert len(with_read) == 1
+    assert len(without_read) == 2
+    assert len(fake_client.messages.calls) == 1
 
 
 def _main_with_captured_options(tmp_path: Path, monkeypatch, argv: list[str]) -> object:
