@@ -292,19 +292,15 @@ Numbered defects and gaps:
    `docs/data_contract.md`'s Freshness section. Building per-market detection (e.g. a singular
    test grouped by `market_code`) is a new mechanism -- owner's call whether the gap is worth
    closing.
-10. **Possible latent crash risk in a normal, everyday flow: opening two different stock
-    cards' "Understand these numbers" panel in one session** (found while building item 4's
-    AppTest coverage, 2026-09-07, MR !104). Reliably crashes under Streamlit's own `AppTest`
-    harness with a `KeyError` on the next script rerun; a single manual pass against the real
-    dev server did NOT reproduce a user-visible crash. cto-reviewer traced the crashing code
-    path (`session_state.py`'s `_compact_state`, called via `on_script_will_rerun` inside
-    `ScriptRunner._run_script`) into real, shared production code, which wraps this exact case
-    in `except KeyError: pass` citing a known upstream Streamlit issue (`streamlit/issues/7206`)
-    -- consistent with, but not proof of, one-off manual testing simply not having hit whatever
-    narrower condition still lets it through in a real session. Full technical trace in MR
-    !104's own `contract.md`/`review.md`. Owner's call: worth a tracked follow-up issue (e.g. a
-    few real, repeated manual passes; or reading the upstream issue for whether it's fully
-    closed) or leave as-is given production wasn't observed to crash.
+10. **CLOSED 2026-09-15, no further action.** Possible latent crash risk (opening two
+    different stock cards' "Understand these numbers" panel in one session) reliably crashed
+    under Streamlit's own `AppTest` harness with a `KeyError`, but a manual pass against the
+    real dev server never reproduced it; cto-reviewer traced it into Streamlit's own
+    `except KeyError: pass` around this exact case, citing upstream issue
+    `streamlit/streamlit#7206`. Checked 2026-09-15: that issue is closed and confirmed
+    upstream; this repo runs Streamlit 1.57.0, far newer than the 1.25.0 it was reported
+    against. Owner decision: close it, no tracked follow-up. Full technical trace in MR
+    !104's own `contract.md`/`review.md` if this ever resurfaces.
 
 Sync local `main` before starting anything new if it's drifted behind `gitlab/main`.
 
