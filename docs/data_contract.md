@@ -519,9 +519,12 @@ registry `ingest_active: true` entries (CI on every PR).
 
 ---
 
-## Supabase export — `mart_stock_cards`
+## Supabase export -- `mart_stock_cards` table
 
-Grain: one row per `(market_code, ticker, snapshot_date)`.
+Grain: one row per `(market_code, ticker, snapshot_date)` -- the Postgres TABLE's grain,
+which accumulates snapshot dates per ticker. The dbt MODEL of the same name declares a
+narrower grain, `(market_code, ticker)` at each market's latest snapshot only (see its own
+description in `dbt_analytics/models/5_marts/_marts.yml`); this heading names the table.
 
 **Schema is dbt-contract-enforced** (`config: {contract: {enforced: true}}` in
 `dbt_analytics/models/5_marts/_marts.yml`): `dbt build` fails if a column's name, type, or

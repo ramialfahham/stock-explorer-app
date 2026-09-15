@@ -62,10 +62,6 @@ would trip the floor on correct data; only three pre-revenue companies exist tod
 `jinja2` is imported directly in `tests/tooling/test_metric_fill_floor.py` but pinned only
 through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
 
-**Doc wording, three reviewers noted, not fixed:** `docs/data_contract.md` "Supabase export --
-`mart_stock_cards`" states the Postgres TABLE's three-column grain under a heading that carries
-the dbt MODEL's name, now that the model declares two. Add the word "table" there.
-
 **Owner question left open by A2:** `accepted_range` tests on the card metrics. A definitional
 bound (values beyond X are nulled on the card) is a metric definition, owner's. A wide sanity
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the

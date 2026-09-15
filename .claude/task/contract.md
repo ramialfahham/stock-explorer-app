@@ -3,38 +3,27 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: `.claude/working-agreement.md` governs every agent action in this repo (the
-  Explore-Plan-Confirm-Implement-Verify protocol, branch rules, decision rights) yet had no
-  required reviewer beyond `always` (scope-auditor) -- a gap MR !116 itself exposed, since its
-  only blocking correctness finding came from the reviewer routing did not require at the
-  time. Owner decided (in chat, 2026-09-15): close this one gap only. The other two gaps
-  recorded alongside it in `.claude/active_work.md` item 0 -- editing the dbt-agent-kit
-  plugin's own `CONTRACT_TEMPLATE.md`/`REVIEW_TEMPLATE.md` (a separate repo entirely), and
-  extending `~/.claude/hooks/branch_discipline.py` to also block `glab mr merge` (a
-  machine-shared file affecting every project) -- are explicitly declined, not deferred: past
-  global-file edits have broken sibling projects before, and the owner does not want that risk
-  taken here.
+objective: `docs/data_contract.md`'s "Supabase export -- `mart_stock_cards`" heading states
+  the Postgres TABLE's three-column grain, `(market_code, ticker, snapshot_date)`, under a
+  heading naming only the shared dbt-model/table name -- ambiguous now that the dbt MODEL's
+  own description (`dbt_analytics/models/5_marts/_marts.yml`) explicitly declares a narrower
+  grain, `(market_code, ticker)` at each market's latest snapshot only, and contrasts it with
+  the accumulating Postgres table. Three reviewers flagged this in an earlier MR, never fixed.
+  Owner decision: add the word "table" to the heading, per that earlier finding's exact fix.
 
 scope_paths:
-  - .claude/review_routing.json
+  - docs/data_contract.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved:
-  - Close only the review_routing.json gap; explicitly decline the other two MR !116
-    sub-items (plugin templates, global merge-guard). Owner's call, in chat, 2026-09-15.
+decisions_reserved: none -- a doc-accuracy fix per an already-recorded owner-approved finding,
+  not a new decision.
 
 done_when:
-  - `.claude/working-agreement.md` is a key in `review_routing.json`'s `paths`, routed to
-    `["cto-reviewer"]`, matching the authority class of the other guard paths
-    (`.claude/settings.json`, `*hooks/*`, `.claude/review_routing.json` itself).
-  - The `_comment_guard_paths` rationale comment documents why, matching this file's own
-    established convention of explaining every guard path inline.
-  - `.claude/active_work.md`'s item 0 records (b) and (a) as declined, not left open, so a
-    future session does not keep re-raising them.
-  - `pytest tests/ -q` green; `.claude/review_routing.json` is still valid JSON.
+  - The heading reads "## Supabase export -- `mart_stock_cards` table".
+  - The Grain line explicitly distinguishes the table's grain from the dbt model's own
+    (narrower) grain, pointing at the model's own description for the model-side detail.
+  - `pytest tests/ -q` green; no test hardcodes the old heading text.
 
-impact_map: `.claude/review_routing.json` only -- a project-local config file, no code change,
-  no cross-project reach. The two declined sub-items (plugin templates, global hook) are
-  explicitly out of scope, not silently narrowed.
+impact_map: `docs/data_contract.md` only -- prose accuracy fix, no schema or code change.
