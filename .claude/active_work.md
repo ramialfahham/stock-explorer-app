@@ -15,24 +15,14 @@ the detail._
 
 ## In flight
 
-**Portfolio-grade push (owner 2026-09-15), in progress.** Scope selected: the AI-read cost
-cap (item 8), the upsert-clobbering bug it surfaced (merged, see Merged this pass), guardrail
-gaps from MR !116, and the smaller open items -- detail below.
+**Portfolio-grade push (owner 2026-09-15), in progress.** Item 8 (AI-read cost) closed: the
+root-cause upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this
+pass. **The actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's
+call, ideally after one clean scheduled run's real counts.**
 
-**MR open (2026-09-15), branch `pipeline/ai-read-max-reads-cap-v2`, awaiting owner
-review/merge.** `--max-reads` caps new Claude calls per run in the AI-read step (unbounded
-default); no-stored-read cards fill before refresh-only ones; a capped/failed card's stale
-read is explicitly cleared, not left showing under fresh numbers. Owner decided to resume this
-now rather than wait 2 weeks for a scheduled run to re-measure cost first -- the cap's own
-correctness doesn't depend on that measurement. Reviewers passed after several rounds
-(the composition with MR !149's upsert fix needed its own pinning test; a doc cross-reference
-count went stale mid-review). Detail in this branch's own `contract.md`/`review.md`. **The
-actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's call,
-ideally after one clean scheduled run's real counts post-!149.**
-
-**Also still open, not yet started, both selected in scope for this push:** guardrail gaps
-from MR !116 (`glab mr merge` unguarded, `.claude/working-agreement.md` has no required
-reviewer -- both need edits to the machine-shared `~/.claude/hooks/branch_discipline.py` and
+**NEXT, not yet started, both selected in scope for this push:** guardrail gaps from MR !116
+(`glab mr merge` unguarded, `.claude/working-agreement.md` has no required reviewer -- both
+need edits to the machine-shared `~/.claude/hooks/branch_discipline.py` and
 `.claude/review_routing.json`); the smaller open items (doc wording nit, `accepted_range`
 tests decision, item 2's growth-copy tension, item 10's crash risk).
 
@@ -81,7 +71,9 @@ bound (values beyond X are nulled on the card) is a metric definition, owner's. 
 guard at `severity: warn`, backed by the measured production max, is an engineer's proposal the
 owner confirms in one line. Neither exists; decide which, or neither.
 
-**Merged this pass** (detail in each MR): !149 fixed a live bug where the assessments batch
+**Merged this pass** (detail in each MR): !151 `--max-reads` caps new Claude calls per run in
+the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
+capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
 upsert nulled "carried" cards' `ai_read` whenever a call also held a "generated" record
 (root cause of item 8's cost, not just a symptom); also fixed `_fetch_existing_assessments()`
 silently capping at 1000 rows. !147 names the sector in a benchmarked metric's own
@@ -284,14 +276,14 @@ Numbered defects and gaps:
    this table today (`browser_storage.py` only ever touches a browser cookie), so nothing
    is broken yet -- but whoever eventually builds the cross-device sync feature this table is
    reserved for will need to widen the constraint first.
-8. **`generate_assessments.py`'s AI-read step is the scheduled pipeline's actual dominant,
-   ungoverned runtime cost** (~39 of ~65 minutes on the one measured 9-market run, 2026-09-01).
-   **Root cause found 2026-09-15, fixed and merged (!149):** a batch-upsert bug was nulling
-   most "carried" (should-be-unchanged) cards' `ai_read` every run, so nearly the whole deck
-   looked like it needed regeneration regardless of whether `input_hash` actually changed --
-   very likely most of the measured cost was this, not genuine need. A `--max-reads` per-run
-   cap is still in progress (parked, see In flight) as a bound for whatever real cost remains
-   once the fix's effect is measurable on a clean scheduled run.
+8. **CLOSED 2026-09-15.** `generate_assessments.py`'s AI-read step was the scheduled
+   pipeline's dominant, ungoverned runtime cost (~39 of ~65 minutes on the one measured
+   9-market run, 2026-09-01). Root cause: a batch-upsert bug was nulling most "carried"
+   (should-be-unchanged) cards' `ai_read` every run, so nearly the whole deck looked like it
+   needed regeneration regardless of whether `input_hash` actually changed -- fixed, !149. A
+   `--max-reads` per-run cap now bounds whatever real cost remains -- !151, value for the
+   `data-pipeline` CI job still unset (owner's call, ideally after one clean scheduled run's
+   real counts post-!149).
 
 9. **`dbt source freshness` is table-level across all active markets, not per-market**
    (found by data-engineer-reviewer while reviewing the dbt-contract-and-freshness task above,
