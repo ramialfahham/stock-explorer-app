@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from markets import MARKET_DISPLAY_NAMES, market_display_name
@@ -67,11 +67,16 @@ def _has_business_summary(card: dict[str, Any]) -> bool:
     return bool(str(raw or "").strip())
 
 
-def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep one row per (market_code, ticker) — latest snapshot_date wins."""
-    latest: dict[tuple[str, str], dict[str, Any]] = {}
+def _dedupe_by_latest_snapshot(
+    cards: list[dict[str, Any]], key_fn: Callable[[dict[str, Any]], Any]
+) -> list[dict[str, Any]]:
+    """Keep one row per key_fn(card) -- latest snapshot_date wins. Shared by
+    `dedupe_to_latest_snapshot` (key: market_code+ticker) and `_dedupe_by_ticker` (key:
+    ticker alone), so the business_summary backfill below stays in one place rather than
+    two copies that can silently drift apart."""
+    latest: dict[Any, dict[str, Any]] = {}
     for card in cards:
-        key = _card_key(card)
+        key = key_fn(card)
         prev = latest.get(key)
         if prev is None:
             latest[key] = card
@@ -89,6 +94,11 @@ def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any
             merged["business_summary"] = loser.get("business_summary")
         latest[key] = merged
     return list(latest.values())
+
+
+def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one row per (market_code, ticker) -- latest snapshot_date wins."""
+    return _dedupe_by_latest_snapshot(cards, _card_key)
 
 
 _ASSESSMENT_FIELDS = ("health_verdict", "ai_read")
@@ -154,6 +164,15 @@ def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str,
     return {key: created for key, (created, action) in latest.items() if action == "save"}
 
 
+def _dedupe_by_ticker(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one row per ticker -- latest snapshot_date wins. A company listed in two
+    indices (e.g. Airbus in both the DAX and CAC 40) resolves to the same yfinance ticker
+    and would otherwise appear as two cards differing only by market_code. Only meaningful
+    for the ALL_MARKETS scope -- a single-market filter never has two rows sharing a
+    ticker, since each market's constituent seed lists a ticker at most once."""
+    return _dedupe_by_latest_snapshot(cards, lambda card: card["ticker"])
+
+
 def filter_pool(
     cards: list[dict[str, Any]],
     interactions: list[dict[str, Any]],
@@ -174,6 +193,8 @@ def filter_pool(
         if sector != ALL_SECTORS and (card.get("sector") or "Unknown") != sector:
             continue
         pool.append(card)
+    if market_code == ALL_MARKETS:
+        pool = _dedupe_by_ticker(pool)
     return pool
 
 

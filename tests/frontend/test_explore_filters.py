@@ -126,6 +126,57 @@ def test_filter_pool_all_markets() -> None:
     assert {c["ticker"] for c in pool} == {"AAPL", "BHP"}
 
 
+def test_filter_pool_all_markets_collapses_dual_index_ticker() -> None:
+    """The bug this guards (issue #7): Airbus is a constituent of both the DAX and CAC 40,
+    both resolving to the same yfinance ticker (AIR.PA) -- "All markets" must show it once,
+    not once per index."""
+    cards = [
+        _card("AIR.PA", "Industrials", market="de_dax", snapshot_date="2026-06-09"),
+        _card("AIR.PA", "Industrials", market="fr_cac40", snapshot_date="2026-06-09"),
+        _card("AAPL", "Technology", market="us_sp500"),
+    ]
+    pool = filter_pool(
+        cards,
+        [],
+        market_code=ALL_MARKETS,
+        sector=ALL_SECTORS,
+    )
+    tickers = [c["ticker"] for c in pool]
+    assert tickers.count("AIR.PA") == 1
+    assert set(tickers) == {"AIR.PA", "AAPL"}
+
+
+def test_filter_pool_dual_index_ticker_keeps_latest_snapshot() -> None:
+    cards = [
+        _card("AIR.PA", "Industrials", market="de_dax", snapshot_date="2026-05-01"),
+        _card("AIR.PA", "Industrials", market="fr_cac40", snapshot_date="2026-06-09"),
+    ]
+    pool = filter_pool(
+        cards,
+        [],
+        market_code=ALL_MARKETS,
+        sector=ALL_SECTORS,
+    )
+    assert len(pool) == 1
+    assert pool[0]["market_code"] == "fr_cac40"
+
+
+def test_filter_pool_single_market_scope_unaffected_by_dedup() -> None:
+    """A market-scoped view must still show every eligible row for that market -- the
+    ticker dedup only fires for ALL_MARKETS, never for a single-market filter."""
+    cards = [
+        _card("AIR.PA", "Industrials", market="de_dax"),
+        _card("BMW", "Consumer Cyclical", market="de_dax"),
+    ]
+    pool = filter_pool(
+        cards,
+        [],
+        market_code="de_dax",
+        sector=ALL_SECTORS,
+    )
+    assert {c["ticker"] for c in pool} == {"AIR.PA", "BMW"}
+
+
 def test_filter_pool_excludes_saved() -> None:
     cards = [_card("AAPL", "Technology"), _card("MSFT", "Technology")]
     interactions = [{"market_code": "us_sp500", "ticker": "AAPL", "action": "save"}]
