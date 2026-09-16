@@ -15,27 +15,40 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
-!165, !167, !169).** Narrative/date-stamp guard, em-dash + doc-index guards, GitLab
-Issues/Milestones replacing doc-based backlog tracking, CI/config hygiene, dbt YAML
-structure + `accepted_range` coverage, documentation architecture cleanup. Local `main`
-synced through Phase 6. Detail in each phase's own MR (`contract.md`/`review.md` history);
-lasting process lessons folded into "Context / operational notes" below. Plan file
-(`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`, outside this repo) fully
-executed -- nothing further from it is outstanding.
+**GitLab issue backlog prioritization push (owner 2026-09-16), IN PROGRESS.** Plan file
+`C:\Users\Rami\.claude\plans\vivid-booping-lake.md` (outside this repo) has the full
+prioritized sequence across all 15 then-open GitLab issues, reasoned from "what would an
+outside reviewer judge first." Work one item at a time, five-step protocol per item, do not
+start item N+1 before N is merged.
 
-**Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
-upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
-actual `--max-reads` value for the `data-pipeline` CI job is still unset -- owner's call,
-ideally after one clean scheduled run's real counts.** MR !116's guardrail gaps:
-`.claude/working-agreement.md` now routes to `cto-reviewer` (merged); the other two sub-items
-(plugin templates, extending the global merge guard) were explicitly declined, not deferred --
-see item 0 and "Context / operational notes" below. All four smaller open items merged: item
-10's crash risk (!156), the doc wording nit (!155), the `accepted_range` tests question left
-open by A2 (!158), item 2's growth-copy tension (!157). Two of those (!155, !157) each needed
-a `gitlab/main` merge to resolve a conflict from sharing `.claude/active_work.md`/
-`.claude/task/*` with the others -- resolved and merged. Nothing left open from this push
-except the `--max-reads` CI value above.
+- **Phase 0, issue #2 (Streamlit Community Cloud migration): CLOSED 2026-09-16.** Verified
+  stale -- `render.yaml`/`docs/streamlit_deploy.md` already shipped the Render migration
+  this issue asked for (2026-09-14, before this issue's ~1-month-old open date). Live app
+  confirmed loading real data at `stock-explorer-app.onrender.com`.
+- **Phase 1, issue #3 (ANTHROPIC_API_KEY as Protected CI/CD var): flagged to owner, NOT
+  agent work** -- it's a credential value. Until set, the AI-written card read stays
+  silently skipped in the scheduled `data-pipeline` job even though the code is merged.
+  Not yet confirmed done.
+- **Phase 2 item 1, issue #7 (dual-index duplicate cards): MR !171 open, awaiting CI +
+  merge.** `frontend/explore_filters.py`'s `filter_pool()` now dedupes by ticker when
+  `market_code == ALL_MARKETS`; refactored `dedupe_to_latest_snapshot`'s tie-break logic
+  into a shared `_dedupe_by_latest_snapshot(cards, key_fn)` (cto-reviewer round-1 finding).
+- **Next action**: once !171 merges, sync `main` and start Phase 2 item 2, issue #4 (three
+  small hygiene items -- stale CI-tier doc, `.gitignore` encoding check, `--target dev` for
+  `generate_assessments.py`). Then Phase 3 (the centerpiece): issue #20 (persistent search
+  on the list), issue #6 (Discover entry ordering -- needs an owner decision on which of 4
+  named directions, ask when reached), issue #1 (Slice 6 card redesign, largest item).
+  Full remaining sequence (Phase 4 depth features, Phase 5 process/data-quality) is in the
+  plan file above -- do not re-derive the priority order, read it.
+
+**Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
+!165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
+"Context / operational notes" below. Plan file fully executed, nothing outstanding.
+
+**Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost) and MR !116's
+guardrail gaps resolved; detail in each MR. **The `--max-reads` value for the
+`data-pipeline` CI job is still unset -- owner's call**, ideally after one clean scheduled
+run's real counts. Nothing else open from this push.
 
 **Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
 !140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
@@ -340,7 +353,12 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   `[0-9a-fA-F]{64}` pattern can never match. The verdict parser needs the literal token
   `VERDICT:` at the START of its own line -- `Round 2 VERDICT: PASS` parses as no verdict at
   all, silently. In a multi-round `review.md`, write earlier rounds as prose and give ONLY the
-  final round a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line. Reviewer agents are NOT registered as
+  final round a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line. **The `##` section header itself
+  must be the literal required-reviewer name** (`## cto-reviewer`, `## scope-auditor` --
+  exactly as `review_routing.json` spells it), not a round label -- the gate maps headers to
+  reviewer names by exact string match, so a differently-named header reads as "no verdict"
+  even with a correct `VERDICT:` line inside it (hit 2026-09-16, issue #7's dedupe fix).
+  Reviewer agents are NOT registered as
   subagent_types in this frontend -- dispatch them as `general-purpose` agents with the role
   `.md` inlined (roles live in the `dbt-agent-kit` plugin's `agents/` dir, plus
   `.claude/agents/equity-analyst-reviewer.md`, the one role this repo keeps in its own tree).
