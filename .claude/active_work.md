@@ -15,12 +15,12 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for Phase 6's MR to merge,
-then the six-phase plan is COMPLETE.** Owner-approved in plan-mode review:
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !169 CI + owner
+review, then the six-phase plan is COMPLETE.** Owner-approved in plan-mode review:
 `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo). Phases 1-5
 MERGED (!160, !161, !163, !165, !167). Local `main` synced through Phase 5. Phase 6 committed
-on its branch, MR not yet opened as of this entry -- **not merged, do not treat as done until
-the owner merges it.**
+and pushed, MR !169 open from `docs/phase6-documentation-architecture` -- **not merged, do
+not treat as done until the owner merges it.**
 
 **Phase 6 (documentation architecture, the last phase): built, review clean (3/3 reviewers
 PASS first round), commit pending.** Deleted `docs/handover_2026-05-24.md`,
