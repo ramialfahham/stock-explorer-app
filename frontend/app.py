@@ -585,25 +585,47 @@ def _sync_search_query(query: str) -> None:
         st.session_state["search_selected"] = None
 
 
-def _render_search_tab(client) -> None:
-    """Unkeyed for the same reason as `_render_explore_filters`'s market/sector
-    selectboxes -- this tab's content only renders while Search is the active tab, so a
-    `key=`-bound text_input would lose its typed text on every visit to Discover or Saved.
-    Reading/writing `search_query` as a plain session_state value and seeding `value=` from it
-    survives that."""
+_SEARCH_QUERY_WIDGET_KEY = "search_query_widget"
+
+
+def _search_query_widget(*, placeholder: str) -> str:
+    """A `key=`-owned text_input, shared by the standalone Search tab and the persistent
+    Discover search box -- only one of the two ever renders in a given run, so they can't
+    collide on the key.
+
+    NOT a `value=`-seeded unkeyed widget, despite that being this file's usual pattern for
+    surviving cross-tab eviction (see `_render_explore_filters`). That pattern is wrong
+    here specifically: an unkeyed widget's identity is a function of its `value=` argument,
+    and this widget's seed (`search_query`) is written from the widget's OWN output on
+    every edit (`_sync_search_query`) -- so the identity moves out from under itself after
+    the very first keystroke, and Streamlit treats every following run as a brand-new
+    widget that ignores whatever the frontend is trying to submit. Confirmed as a real, live
+    bug against a running dev server, not an AppTest artifact: typing a second query, or
+    clearing the box, silently did nothing, in both the standalone Search tab (pre-existing,
+    unmodified by issue #20) and the new Discover box alike.
+
+    The fix: give the widget a stable `key=` so Streamlit owns its live value across edits
+    with no identity churn, and re-seed `st.session_state[key]` from `search_query` only
+    when the key is ABSENT (the tab-switch eviction case this file's usual pattern exists
+    to survive) -- never unconditionally, which would reintroduce the same churn."""
+    if _SEARCH_QUERY_WIDGET_KEY not in st.session_state:
+        st.session_state[_SEARCH_QUERY_WIDGET_KEY] = st.session_state.get("search_query", "")
     query = st.text_input(
         "Search",
-        value=st.session_state.get("search_query", ""),
-        placeholder="Ticker or company name",
+        key=_SEARCH_QUERY_WIDGET_KEY,
+        placeholder=placeholder,
         label_visibility="collapsed",
     ).strip()
     _sync_search_query(query)
+    return query
 
-    if not query:
-        return
 
+def _search_matches(cards: list[dict], query: str) -> list[dict]:
+    """Ticker/company-name substring match, case-insensitive, sorted by display name.
+    Global lookup across the full deck -- not scoped to Discover's market/sector filter or
+    its saved-ticker exclusion. Shared by the persistent Discover search box and the
+    standalone Search tab so the two entry points can't silently diverge (issue #20)."""
     needle = query.lower()
-    cards = _ensure_all_cards(client)
     matches = [
         c
         for c in cards
@@ -611,6 +633,14 @@ def _render_search_tab(client) -> None:
         or needle in (c.get("company_name") or "").lower()
     ]
     matches.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
+    return matches
+
+
+def _render_search_results(client, query: str, *, key_prefix: str) -> None:
+    """Matches for `query` plus the selected match's read-only card. Shared by the
+    persistent Discover search box and the standalone Search tab."""
+    cards = _ensure_all_cards(client)
+    matches = _search_matches(cards, query)
 
     if not matches:
         st.warning(f"No matches for “{query}”.")
@@ -618,7 +648,7 @@ def _render_search_tab(client) -> None:
 
     row_ui.render_row_list(
         matches[:20],
-        key_prefix="search",
+        key_prefix=key_prefix,
         row_key_fn=lambda c: f"{c['market_code']}_{c['ticker']}",
         title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
         subtitle_fn=saved_row_subtitle,
@@ -629,7 +659,24 @@ def _render_search_tab(client) -> None:
     if selected:
         match = next((c for c in matches if _card_key(c) == selected), None)
         if match:
-            render_stock_card(_hydrate(client, match), widget_key_prefix="search")
+            render_stock_card(_hydrate(client, match), widget_key_prefix=key_prefix)
+
+
+def _render_discover_search_box() -> str:
+    """Persistent search above Discover's list (issue #20) -- always visible on the list
+    view, not gated behind the standalone Search tab. Shares `search_query`/`search_selected`
+    and the widget key with the standalone Search tab, kept as a fallback entry point, so
+    switching between them keeps the same query and selection."""
+    return _search_query_widget(placeholder="Search ticker or company name")
+
+
+def _render_search_tab(client) -> None:
+    query = _search_query_widget(placeholder="Ticker or company name")
+
+    if not query:
+        return
+
+    _render_search_results(client, query, key_prefix="search")
 
 
 def _discovery_page(client) -> None:
@@ -653,6 +700,17 @@ def _discovery_page(client) -> None:
         st.session_state.get("discover_focus_key")
     )
     card_open = _card_open(active)
+
+    discover_search_query = ""
+    if active == "Discover" and not discover_focused:
+        discover_search_query = _render_discover_search_box()
+
+    if discover_search_query:
+        # Replaces Filters and the filtered pool entirely rather than showing alongside
+        # them -- a market/sector filter is meaningless once the query is searching
+        # globally (decided via AskUserQuestion, issue #20).
+        _render_search_results(client, discover_search_query, key_prefix="discover_search")
+        return
 
     if active == "Discover" and not discover_focused:
         _render_explore_filters(client)
