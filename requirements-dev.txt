@@ -2,3 +2,4 @@
 # Install: pip install -r requirements-dev.txt && pre-commit install
 -r requirements.txt
 pre-commit==4.0.1
+pytest==9.1.1
