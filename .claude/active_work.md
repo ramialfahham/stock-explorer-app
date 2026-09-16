@@ -15,26 +15,37 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 4.** Six-phase plan,
-owner-approved in plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`
-(outside this repo; summarize here if that path is ever unreachable). Phases 1-3 MERGED (!160,
-!161, !163). Local `main` synced through Phase 3.
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !165 CI + owner
+review, then start Phase 5.** Six-phase plan, owner-approved in plan-mode review:
+`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo; summarize here
+if that path is ever unreachable). Phases 1-3 MERGED (!160, !161, !163). Local `main` synced
+through Phase 3. Phase 4 committed and pushed, MR !165 open from `chore/ci-config-hygiene` --
+**not merged, do not treat as done until the owner merges it.**
 
-**Phase 3 (GitLab Issues/Milestones replace doc-based tracking), MERGED !163.** 2 Milestones
-("1 · Discover depth", "2 · Data quality") and 7 issues (#13-#19) created; `docs/backlog/*.md`
-(7 files) and `docs/product_roadmap_2026-06.md` deleted. Took 5 review rounds -- detail in
-that MR's own `contract.md`/`review.md` history if ever needed again. **Recurring miss worth
-remembering**: a file added to scope mid-task pulled in a reviewer
-(`analytics-engineer-reviewer`, routed by `*.sql`) that was never dispatched until the commit
-gate itself blocked on it -- re-check `.claude/review_routing.json` against the FULL current
-staged path list, not just the reviewers you started with, whenever scope grows mid-task.
+**Phase 4 (CI/config hygiene): MR !165 open, both required reviewers PASSed on the first
+round.** New `scripts/write_ci_dbt_profile.py` replaces 3 duplicated `~/.dbt/profiles.yml`
+heredocs; `scripts/check_not_on_main.py` deleted (confirmed unused); `review_routing.json`'s
+dead `"*schema.yml"` entry removed; `pytest==9.1.1` pinned in `requirements-dev.txt` and CI;
+`httpx` pinned `==0.28.1` in `frontend/requirements.txt`. Detail in that MR's own
+`contract.md`/`review.md` if ever needed again.
 
-**Phase 4 next.** CI/config hygiene: dedupe the `~/.dbt/profiles.yml`
-heredoc in `.gitlab-ci.yml` into `scripts/write_ci_dbt_profile.py`; confirm
-`scripts/check_not_on_main.py` is unused and delete it; remove `review_routing.json`'s dead
-`"*schema.yml"` entry; pin `pytest` in `requirements-dev.txt`; resolve
-`frontend/requirements.txt`'s floating `httpx` pin. See the plan file's Phase 4 section.
-Phase 5 (dbt YAML, `accepted_range` coverage) and Phase 6 (doc architecture) come after.
+**Phase 3, MERGED !163.** 2 Milestones ("1 · Discover depth", "2 · Data quality") and 7 issues
+(#13-#19) created; `docs/backlog/*.md` (7 files) and `docs/product_roadmap_2026-06.md`
+deleted. Took 5 review rounds -- **recurring miss worth remembering**: a file added to scope
+mid-task pulled in a reviewer (`analytics-engineer-reviewer`, routed by `*.sql`) that was
+never dispatched until the commit gate itself blocked on it -- re-check
+`.claude/review_routing.json` against the FULL current staged path list, not just the
+reviewers you started with, whenever scope grows mid-task. Phase 4 re-checked this
+proactively and needed no correction round for it.
+
+**Phase 5 next, once Phase 4 merges.** dbt YAML structure: split
+`dbt_analytics/models/4_intermediate/_intermediate.yml` (1,430 lines) into a separate
+`_intermediate_unit_tests.yml`, matching the pattern already used for `_core.yml` /
+`_yfinance_base.yml`; measure and add `accepted_range` guards for the asymmetric-coverage
+metrics (`current_ratio_stmt`, `price_to_tangible_book`, `roa_pct`, `dividend_yield_pct`,
+`net_cash_to_market_cap`, `net_cash`, `working_capital`, `burn_rate_monthly`), writing an
+evidenced reason in `docs/data_contract.md` for any left out. See the plan file's Phase 5
+section. Phase 6 (documentation architecture) comes after.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
