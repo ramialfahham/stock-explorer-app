@@ -99,11 +99,12 @@ workflow:
 # 'pull_request'` has no GitLab equivalent — a job is the smallest thing that can carry a
 # condition.
 #
-# The command changed, and that is a fix rather than a translation: check_not_on_main.py
-# reads `git rev-parse --abbrev-ref HEAD`, and a merge-request checkout is a detached HEAD,
-# which reports the literal string "HEAD". The script can therefore never see a branch name
-# here and the guard would pass unconditionally. CI_MERGE_REQUEST_SOURCE_BRANCH_NAME is the
-# branch, unambiguously. The script keeps its local pre-commit role untouched.
+# This job checks CI_MERGE_REQUEST_SOURCE_BRANCH_NAME rather than a git-branch-name lookup:
+# a merge-request checkout is a detached HEAD, and `git rev-parse --abbrev-ref HEAD` reports
+# the literal string "HEAD" there, so a script reading the current branch that way could
+# never see the real name in CI and the guard would pass unconditionally.
+# CI_MERGE_REQUEST_SOURCE_BRANCH_NAME is the branch, unambiguously. Local pre-commit uses the
+# generic no-commit-to-branch hook (.pre-commit-config.yaml), not a custom script.
 validate:branch-guard:
   image: python:3.11
   stage: validate
@@ -160,17 +161,7 @@ validate:full:
     # two profiles, and the second one only fails after the first has already passed — so
     # both are written. .sqlfluff is also what local development uses, which is why the
     # profile moves to it and not the other way around.
-    - mkdir -p "$HOME/.dbt"
-    - |
-      cat > "$HOME/.dbt/profiles.yml" <<'EOF'
-      dbt_analytics:
-        target: ci
-        outputs:
-          ci:
-            type: duckdb
-            path: /tmp/stock_data_ci.db
-            threads: 4
-      EOF
+    - python scripts/write_ci_dbt_profile.py --path /tmp/stock_data_ci.db
     - python scripts/seed_ci_raw_fixtures.py
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     # Fixture data is stamped with today's date/timestamp every run (seed_ci_raw_fixtures.py),
@@ -195,7 +186,8 @@ validate:full:
     - python scripts/check_eligibility_gaps.py --duckdb-path /tmp/stock_data_ci.db
     - dbt docs generate --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - python scripts/check_dbt_documentation.py
-    - pip install pytest && python -m pytest tests/ -q
+    # Pin matches requirements-dev.txt; keep both in sync if it's ever bumped.
+    - pip install pytest==9.1.1 && python -m pytest tests/ -q
     - python scripts/audit_mart_vs_yfinance.py --duckdb-path /tmp/stock_data_ci.db --offline --sample-size 5
   # A GitHub workflow with no path filter becomes `when: on_success` behind the schedule
   # guard — NOT an empty `rules:`, which would let schedules through.
@@ -247,17 +239,7 @@ data-pipeline:
   script:
     - python scripts/apply_supabase_migrations.py
     - python scripts/run_ingestion.py
-    - mkdir -p "$HOME/.dbt"
-    - |
-      cat > "$HOME/.dbt/profiles.yml" <<'EOF'
-      dbt_analytics:
-        target: ci
-        outputs:
-          ci:
-            type: duckdb
-            path: storage/stock_data.db
-            threads: 4
-      EOF
+    - python scripts/write_ci_dbt_profile.py --path storage/stock_data.db
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - dbt source freshness --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
@@ -290,17 +272,7 @@ dev-schema-check:
   stage: production
   script:
     - mkdir -p /tmp/stock-swipe-raw
-    - mkdir -p "$HOME/.dbt"
-    - |
-      cat > "$HOME/.dbt/profiles.yml" <<'EOF'
-      dbt_analytics:
-        target: ci
-        outputs:
-          ci:
-            type: duckdb
-            path: /tmp/stock_data_dev_check.db
-            threads: 4
-      EOF
+    - python scripts/write_ci_dbt_profile.py --path /tmp/stock_data_dev_check.db
     - python scripts/seed_ci_raw_fixtures.py
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - dbt build --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"

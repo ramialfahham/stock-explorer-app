@@ -3,104 +3,69 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Phase 3 of the owner-approved six-phase repo-cleanup plan
-  (`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`): GitLab Issues/Milestones
-  replace doc-based roadmap and backlog tracking.
+objective: Phase 4 of the owner-approved six-phase repo-cleanup plan
+  (`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`): CI/config hygiene, 5 items, all
+  fully specified in the plan file with no owner decision left open.
 
-  GitLab side (not committed, done via `glab`): create 2 project Milestones ("1 · Discover
-  depth", "2 · Data quality"); file 7 issues (What exactly / Why shape, football-data-pipeline
-  pattern) covering the 3 genuinely-open `docs/backlog/*.md` items plus the 4 still-open
-  one-line items from `north_star.md`'s Phase 2 table, assigned to the matching milestone.
-  Both the milestone set and the file-vs-drop call on the 4 one-liners were owner decisions
-  (AskUserQuestion, this session) -- not defaulted.
-
-  Repo side: delete `docs/product_roadmap_2026-06.md` and the 6 already-resolved/migrated
-  `docs/backlog/*.md` files; reword `north_star.md`'s Phase 2 table to point at the
-  milestone; point `.claude/working-agreement.md` §2 at issues (`Closes #N`/`Refs #N`
-  in `objective`) instead of restating requirements inline.
-
-  Two corrections to the plan file's literal text, found during Explore, refined again
-  during owner review before implementation -- stated here so review can check the final
-  shape, not just the plan file:
-  1. **`gemini_verdict_feedback.md` IS deleted, per the plan -- but not by just deleting
-     it.** 8 live citations by point number would have dangled (4 in `.py` files, 1 test, 2
-     in `data_contract.md`; an 8th, a `.sql` comment, was missed by the first grep and caught
-     by round-1 review). All 8 already carried the substantive reasoning inline -- the file
-     mention was decorative -- so all 8 got the citation stripped, reasoning kept, no new
-     content added. The one arguably-unique piece (point 9, why thresholds aren't
-     sector/size-calibrated) is already covered by `data_contract.md`'s existing "declined
-     twice" paragraph. File deleted outright, verified safe by grep rather than assumed.
-  2. **`product_roadmap_2026-06.md` is deleted, content checked against every DURABLE doc's
-     `Owns:` header first, not moved wholesale.** Owner pushback mid-task on an earlier draft
-     that would have dumped its "Premortem guardrails" into `north_star.md` unfiltered -- same
-     scattering-decisions problem this cleanup exists to fix. Of 5 guardrails, 3 duplicate
-     existing rules (`north_star.md`'s queue-counter line, `metric_layer.md`'s mandatory copy
-     field, working-agreement §4's no-scope-creep) -- dropped as duplicates. 2 (a Streamlit
-     button-label quirk, the Streamlit exit trigger) fit no doc's declared scope -- dropped,
-     not homed. 1 out-of-scope line (dbt-side filters unnecessary) fit `north_star.md`'s
-     existing out-of-scope list -- added. Backlog table, "Sequencing" table, and 2 stale
-     scope lines dropped (superseded by milestones / already contradicted by current state).
+  1. **Dedupe the `~/.dbt/profiles.yml` heredoc.** Verified 3 near-identical copies in
+     `.gitlab-ci.yml` (`validate:full`, `data-pipeline`, `dev-schema-check`), differing only
+     in `path:`. New `scripts/write_ci_dbt_profile.py --path <path>` replaces each
+     `mkdir -p "$HOME/.dbt"` + heredoc pair with one line.
+  2. **Delete `scripts/check_not_on_main.py`.** Confirmed genuinely unused: grep found only
+     `.gitlab-ci.yml`'s own stale comment (claiming it "keeps its local pre-commit role,"
+     false -- `.pre-commit-config.yaml` already uses the generic `no-commit-to-branch` hook
+     instead) and this task's own disposable files. No test file exists for it. Comment
+     rewritten to state why `validate:branch-guard` doesn't reuse its branch-detection
+     approach (detached HEAD in an MR checkout), without the now-false pre-commit claim.
+  3. **Remove `.claude/review_routing.json`'s dead `"*schema.yml"` entry.** Verified it
+     matches zero tracked files (`_marts.yml`/`_core.yml`/etc. are already covered by
+     `"dbt_analytics/*.yml"`). `"*hooks/*"` left as-is per the plan (not this cleanup's call).
+  4. **Pin `pytest` in `requirements-dev.txt`.** Added `pytest==9.1.1` (the version already
+     installed and in use). Also changed `.gitlab-ci.yml`'s `pip install pytest` (unpinned, ad
+     hoc) to `pip install pytest==9.1.1` so CI actually uses the pinned version, not just local
+     dev -- the plan's stated problem ("CI installs it ad hoc and unpinned") isn't fixed by
+     only adding the pin locally.
+  5. **Pin `frontend/requirements.txt`'s floating `httpx>=0.27.0`.** Checked git history for a
+     documented transitive-compatibility reason first (none found -- it's been floating since
+     an early commit with no explanation). Per the plan's own fallback, pinned to the version
+     currently resolved: `httpx==0.28.1`.
 
 scope_paths:
-  - docs/product_roadmap_2026-06.md
-  - docs/backlog/discover_metric_filters_phase2.md
-  - docs/backlog/name_vs_yfinance_audit_guard.md
-  - docs/backlog/discover_saved_search_ux_findings.md
-  - docs/backlog/discover_first_time_default.md
-  - docs/backlog/discover_list_performance.md
-  - docs/backlog/landing_onboarding_rework.md
-  - docs/backlog/gemini_verdict_feedback.md
-  - docs/north_star.md
-  - docs/ui/discover_list.md
-  - docs/data_contract.md
-  - frontend/card_copy.py
-  - scripts/assessment_rules.py
-  - tests/tooling/test_assessment_rules.py
-  - dbt_analytics/models/4_intermediate/int_stock__sector_benchmarks.sql
-  - scripts/check_no_narrative_dates.py
-  - CLAUDE.md
-  - docs/context_budget.yml
-  - .claude/working-agreement.md
+  - .gitlab-ci.yml
+  - scripts/write_ci_dbt_profile.py
+  - tests/tooling/test_write_ci_dbt_profile.py
+  - scripts/check_not_on_main.py
+  - .claude/review_routing.json
+  - requirements-dev.txt
+  - frontend/requirements.txt
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: milestone set and issue-filing scope for the 4 north_star one-liners --
-  ANSWERED this session via AskUserQuestion (2 milestones as previewed; file all 4 as
-  issues). The two plan-text corrections above are engineering judgment (grep-verified live
-  references / duplicated content), not product decisions, but are called out explicitly for
-  review rather than silently deviating from the approved plan file.
+decisions_reserved: none -- all 5 items and their resolution (including the httpx
+  pin-vs-document fallback) are already specified in the owner-approved plan file; this task
+  applies them, it does not choose among unresolved options.
 
 done_when:
-  - 2 GitLab Milestones exist ("1 · Discover depth", "2 · Data quality"); 7 issues exist,
-    each assigned to the correct milestone, each with a `## What exactly` task list and
-    `## Why` body.
-  - `docs/backlog/` no longer exists (all 7 files removed, none moved);
-    `scripts/check_no_narrative_dates.py`'s own docstring no longer cites that directory or
-    the now-false working-agreement.md §2 claim (round-4 cto-reviewer finding).
-  - All 8 code/doc/SQL comments citing `docs/backlog/gemini_verdict_feedback.md` by point
-    number (4 in `.py` files, 1 test, 2 in `data_contract.md`, 1 in a dbt SQL model, the last
-    found by round-1 review, not the original grep) keep their substantive reasoning, with the
-    now-dangling file citation stripped; no new content needed since `data_contract.md`'s
-    existing "declined twice" paragraph already covered the one otherwise-unique point.
-  - `docs/product_roadmap_2026-06.md` deleted; its still-relevant content (one out-of-scope
-    line) is in `north_star.md`, checked against that doc's own `Owns:` line rather than
-    moved wholesale; grep for `product_roadmap_2026-06` across the repo returns only the
-    one point-in-time archive (`docs/handover_2026-05-24.md`) allowed to keep it, plus this
-    task's own disposable contract/review files.
-  - `docs/ui/discover_list.md`'s dangling `docs/backlog/discover_list_performance.md`
-    pointer removed; the measurement fact it introduces stays inline.
-  - `.claude/working-agreement.md` §2 documents linking a task's `objective` to a GitLab
-    issue (`Closes #N`/`Refs #N`) when one exists.
+  - `scripts/write_ci_dbt_profile.py` replaces all 3 heredocs; each CI job's `path:` value is
+    unchanged from today (`/tmp/stock_data_ci.db`, `storage/stock_data.db`,
+    `/tmp/stock_data_dev_check.db`).
+  - `scripts/write_ci_dbt_profile.py`'s own tests pass (writes correct YAML, creates the
+    target directory if missing).
+  - `scripts/check_not_on_main.py` deleted; `.gitlab-ci.yml`'s comment above
+    `validate:branch-guard` no longer claims it has a live pre-commit role.
+  - `.claude/review_routing.json` has no `"*schema.yml"` entry; still valid JSON; every
+    remaining pattern still matches what it matched before.
+  - `requirements-dev.txt` declares `pytest==9.1.1`; `.gitlab-ci.yml`'s `validate:full`
+    installs that exact pin instead of unpinned `pytest`.
+  - `frontend/requirements.txt`'s `httpx` line is `==0.28.1`, not `>=0.27.0`.
+  - `pytest tests/ -q` green, no regression from the 776-test baseline (plus the new
+    `write_ci_dbt_profile.py` tests).
   - `python scripts/check_docs_indexed.py`, `check_context_budget.py`,
-    `check_no_narrative_dates.py`, `check_no_em_dash.py` (against staged diff) all pass.
-  - `pytest tests/ -q` green, no test count regression.
-  - Repo-wide grep for every deleted filename finds no live (non-archive) reference left
-    dangling.
+    `check_no_narrative_dates.py`, `check_no_em_dash.py` (staged diff) all pass.
+  - `.gitlab-ci.yml` is still valid YAML (parse-checked) and every job's script list is
+    behaviorally identical except the profile-writing lines.
 
-impact_map: doc + GitLab metadata change; no behavior/schema change. `frontend/card_copy.py`,
-  `scripts/assessment_rules.py`, and one `dbt_analytics/models/4_intermediate` SQL model each
-  lose one dangling comment citation, code/SQL otherwise byte-identical -- no dbt column,
-  compute, or output changes. `CLAUDE.md`'s doc index: -1 line (roadmap), net count -1. `north_star.md`'s
-  Phase 2 table (6 lines) replaced by a 2-line milestone pointer; one bullet added to its
-  existing out-of-scope list. No dbt/ingestion/Supabase files touched.
+impact_map: CI config + dependency-pin + tooling-script change; no application code, dbt
+  model, or schema change. `.gitlab-ci.yml` shrinks (3 heredocs -> 3 one-liners, ~24 lines
+  removed). No new external dependency -- `write_ci_dbt_profile.py` uses only the stdlib.
