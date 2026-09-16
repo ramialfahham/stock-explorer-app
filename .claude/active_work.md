@@ -21,23 +21,20 @@ prioritized sequence across all 15 then-open GitLab issues, reasoned from "what 
 outside reviewer judge first." Work one item at a time, five-step protocol per item, do not
 start item N+1 before N is merged.
 
-- **Phase 0, issue #2 (Streamlit Community Cloud migration): CLOSED 2026-09-16.** Verified
-  stale -- `render.yaml`/`docs/streamlit_deploy.md` already shipped the Render migration
-  this issue asked for (2026-09-14, before this issue's ~1-month-old open date). Live app
-  confirmed loading real data at `stock-explorer-app.onrender.com`.
-- **Phase 1, issue #3 (ANTHROPIC_API_KEY as Protected CI/CD var): flagged to owner, NOT
-  agent work** -- it's a credential value. Until set, the AI-written card read stays
-  silently skipped in the scheduled `data-pipeline` job even though the code is merged.
-  Not yet confirmed done.
-- **Phase 2 item 1, issue #7 (dual-index duplicate cards): MR !171 open, awaiting CI +
-  merge.** `frontend/explore_filters.py`'s `filter_pool()` now dedupes by ticker when
-  `market_code == ALL_MARKETS`; refactored `dedupe_to_latest_snapshot`'s tie-break logic
-  into a shared `_dedupe_by_latest_snapshot(cards, key_fn)` (cto-reviewer round-1 finding).
-- **Next action**: once !171 merges, sync `main` and start Phase 2 item 2, issue #4 (three
-  small hygiene items -- stale CI-tier doc, `.gitignore` encoding check, `--target dev` for
-  `generate_assessments.py`). Then Phase 3 (the centerpiece): issue #20 (persistent search
-  on the list), issue #6 (Discover entry ordering -- needs an owner decision on which of 4
-  named directions, ask when reached), issue #1 (Slice 6 card redesign, largest item).
+- **Phase 0, issue #2: CLOSED.** Stale -- Render migration already shipped. Phase 1, issue
+  #3 (ANTHROPIC_API_KEY): flagged to owner, not agent work, still unconfirmed. **Phase 2
+  item 1, issue #7: MERGED (!171).** Dedupe by ticker in `filter_pool()` for ALL_MARKETS.
+  **Phase 2 item 2, issue #4: CLOSED, no code change** -- all three items already fixed by
+  earlier merged work (`57b5877f`, `fd21df17`), verified before implementing.
+- **Phase 3 item 1, issue #20 (persistent search on Discover): MR !172 open, awaiting CI +
+  merge.** Persistent box always visible on Discover's list, replaces Filters/pool while a
+  query is active (read-only result, no Save -- decided via AskUserQuestion). Search tab
+  kept as fallback, shares state/logic via new `_search_matches()`/`_render_search_results()`.
+  **Found and fixed a real, live-browser-confirmed bug along the way** (old unkeyed search
+  widget silently discarded every edit after the first) -- see operational notes below.
+- **Next**: once !172 merges, sync `main`, continue Phase 3: issue #6 (Discover entry
+  ordering -- owner decision needed, ask when reached), then issue #1 (Slice 6 redesign).
+  Full remaining sequence in the plan file above.
   Full remaining sequence (Phase 4 depth features, Phase 5 process/data-quality) is in the
   plan file above -- do not re-derive the priority order, read it.
 
@@ -380,6 +377,14 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   auto-mode classifier blocks it by default ("Production Reads"), even a plain
   `SELECT MIN/MAX/COUNT`. `.env` credentials being present doesn't pre-authorize the query
   (repo-cleanup Phase 5, measuring `accepted_range` guard bounds).
+- **Never seed an unkeyed widget's `value=` from a session_state var the widget itself
+  writes.** Its identity is a function of `value=`; reseeding that from the widget's own
+  prior output (this file's usual cross-tab-eviction survival pattern, e.g.
+  `_render_explore_filters`) moves the identity out from under itself after the first edit
+  -- every following edit is silently discarded. Confirmed as a REAL bug on a running dev
+  server, not an AppTest artifact (issue #20, `_search_query_widget`); AppTest alone missed
+  the worst form (clearing to empty) -- always verify a widget fix live, not just via
+  tests. Fix: stable `key=`, reseed `st.session_state[key]` only when ABSENT.
 - **`handover_in.py`'s injection cap exists in three places that can silently diverge**: the
   live, wired copy at `~/.claude/hooks/handover_in.py` (32000 bytes), and two dormant plugin
   source copies (`~/.claude/plugins/cache/dbt-agent-kit/.../hooks/handover_in.py` and the
