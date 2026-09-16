@@ -15,39 +15,14 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !169 CI + owner
-review, then the six-phase plan is COMPLETE.** Owner-approved in plan-mode review:
-`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo). Phases 1-5
-MERGED (!160, !161, !163, !165, !167). Local `main` synced through Phase 5. Phase 6 committed
-and pushed, MR !169 open from `docs/phase6-documentation-architecture` -- **not merged, do
-not treat as done until the owner merges it.**
-
-**Phase 6 (documentation architecture, the last phase): built, review clean (3/3 reviewers
-PASS first round), commit pending.** Deleted `docs/handover_2026-05-24.md`,
-`docs/ingest_coverage_notes.md`, `docs/intl-quarterly-row-labels.md` (the latter two an
-explicit owner decision this session -- delete, not re-verify); fixed
-`docs/handover_2026-09-03.md`'s self-contradiction with a note above the stale section,
-archive content otherwise untouched; trimmed `docs/metric_layer.md`'s stale TODO to its one
-still-open item; removed `docs/metric_audit.md`'s wrong "Decision log" table; consolidated
-the CI/CD variables table into `docs/supabase_setup.md`; removed two phantom template-file
-citations from `.claude/working-agreement.md`. A repo-wide grep after the deletions (per
-working-agreement §2's own rule) caught 2 live dangling references neither the plan nor the
-initial scope listed (`docs/data_contract.md`, `docs/intl-balance-sheet-row-labels.md`) --
-fixed before review, not left for a reviewer to catch. Detail in this branch's own
-`contract.md`/`review.md`.
-
-**Phase 5, MERGED !167.** Split `_intermediate.yml` into models + unit-tests file; corrected
-the plan's stated 8-metric `accepted_range` gap to 4; added guards for
-`net_cash`/`working_capital`/`burn_rate_monthly` from a real production measurement.
-**Note for future production-data tasks**: a read-only Supabase query needs explicit approval
-each time -- the auto-mode classifier blocks it by default ("Production Reads"), even a plain
-`SELECT MIN/MAX/COUNT`.
-
-**Phase 4, MERGED !165.** CI/config hygiene, deduped `~/.dbt/profiles.yml`, deleted unused
-`check_not_on_main.py`, pinned `pytest`/`httpx`. **Recurring miss worth remembering**: a file
-added to scope mid-task can pull in a reviewer never dispatched until the commit gate blocks
-on it -- re-check `.claude/review_routing.json` against the FULL current staged path list
-whenever scope grows mid-task.
+**Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
+!165, !167, !169).** Narrative/date-stamp guard, em-dash + doc-index guards, GitLab
+Issues/Milestones replacing doc-based backlog tracking, CI/config hygiene, dbt YAML
+structure + `accepted_range` coverage, documentation architecture cleanup. Local `main`
+synced through Phase 6. Detail in each phase's own MR (`contract.md`/`review.md` history);
+lasting process lessons folded into "Context / operational notes" below. Plan file
+(`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`, outside this repo) fully
+executed -- nothing further from it is outstanding.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The
@@ -378,7 +353,15 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   patterns can both match one file (e.g. `*.sql` -> analytics-engineer-reviewer AND
   `supabase/*` -> data-engineer-reviewer both match a Supabase migration file), requiring
   both reviewers. The commit gate catches a missed one; re-check routing carefully for any
-  file touching more than one obvious category.
+  file touching more than one obvious category. **A file added to scope mid-task can pull in
+  a reviewer never dispatched until the commit gate itself blocks on it** (repo-cleanup
+  Phase 3: a `*.sql` file added late needed `analytics-engineer-reviewer`, missed until the
+  gate caught it) -- re-check the routing against the FULL current staged path list, not just
+  the reviewers you started with, whenever scope grows mid-task.
+- **A read-only Supabase production query needs explicit owner approval each time** -- the
+  auto-mode classifier blocks it by default ("Production Reads"), even a plain
+  `SELECT MIN/MAX/COUNT`. `.env` credentials being present doesn't pre-authorize the query
+  (repo-cleanup Phase 5, measuring `accepted_range` guard bounds).
 - **`handover_in.py`'s injection cap exists in three places that can silently diverge**: the
   live, wired copy at `~/.claude/hooks/handover_in.py` (32000 bytes), and two dormant plugin
   source copies (`~/.claude/plugins/cache/dbt-agent-kit/.../hooks/handover_in.py` and the
