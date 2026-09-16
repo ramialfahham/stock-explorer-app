@@ -15,28 +15,23 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !165 CI + owner
-review, then start Phase 5.** Six-phase plan, owner-approved in plan-mode review:
-`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo; summarize here
-if that path is ever unreachable). Phases 1-3 MERGED (!160, !161, !163). Local `main` synced
-through Phase 3. Phase 4 committed and pushed, MR !165 open from `chore/ci-config-hygiene` --
-**not merged, do not treat as done until the owner merges it.**
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 5.** Six-phase plan,
+owner-approved in plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`
+(outside this repo; summarize here if that path is ever unreachable). Phases 1-4 MERGED (!160,
+!161, !163, !165). Local `main` synced through Phase 4.
 
-**Phase 4 (CI/config hygiene): MR !165 open, both required reviewers PASSed on the first
-round.** New `scripts/write_ci_dbt_profile.py` replaces 3 duplicated `~/.dbt/profiles.yml`
-heredocs; `scripts/check_not_on_main.py` deleted (confirmed unused); `review_routing.json`'s
-dead `"*schema.yml"` entry removed; `pytest==9.1.1` pinned in `requirements-dev.txt` and CI;
-`httpx` pinned `==0.28.1` in `frontend/requirements.txt`. Detail in that MR's own
-`contract.md`/`review.md` if ever needed again.
+**Phase 4, MERGED !165.** CI/config hygiene: deduped the `~/.dbt/profiles.yml` heredoc into
+`scripts/write_ci_dbt_profile.py`; deleted unused `check_not_on_main.py`; removed
+`review_routing.json`'s dead `"*schema.yml"` entry; pinned `pytest`/`httpx`. 2 review rounds,
+clean. **Recurring miss worth remembering (from Phase 3, re-checked clean in Phase 4)**: a
+file added to scope mid-task can pull in a reviewer (routed by e.g. `*.sql`) never dispatched
+until the commit gate blocks on it -- re-check `.claude/review_routing.json` against the FULL
+current staged path list whenever scope grows mid-task, not just the reviewers you started
+with.
 
-**Phase 3, MERGED !163.** 2 Milestones ("1 · Discover depth", "2 · Data quality") and 7 issues
-(#13-#19) created; `docs/backlog/*.md` (7 files) and `docs/product_roadmap_2026-06.md`
-deleted. Took 5 review rounds -- **recurring miss worth remembering**: a file added to scope
-mid-task pulled in a reviewer (`analytics-engineer-reviewer`, routed by `*.sql`) that was
-never dispatched until the commit gate itself blocked on it -- re-check
-`.claude/review_routing.json` against the FULL current staged path list, not just the
-reviewers you started with, whenever scope grows mid-task. Phase 4 re-checked this
-proactively and needed no correction round for it.
+**Phase 3, MERGED !163.** GitLab Issues/Milestones replace doc-based backlog tracking; 2
+milestones, 7 issues (#13-#19); `docs/backlog/*.md` and `docs/product_roadmap_2026-06.md`
+deleted.
 
 **Phase 5 next, once Phase 4 merges.** dbt YAML structure: split
 `dbt_analytics/models/4_intermediate/_intermediate.yml` (1,430 lines) into a separate
