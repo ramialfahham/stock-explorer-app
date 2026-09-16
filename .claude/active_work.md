@@ -15,37 +15,29 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !167 CI + owner
-review, then start Phase 6.** Six-phase plan, owner-approved in plan-mode review:
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 6 (the last
+phase).** Six-phase plan, owner-approved in plan-mode review:
 `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo; summarize here
-if that path is ever unreachable). Phases 1-4 MERGED (!160, !161, !163, !165). Local `main`
-synced through Phase 4. Phase 5 committed and pushed, MR !167 open from
-`dbt/phase5-intermediate-split-and-range-guards` -- **not merged, do not treat as done until
-the owner merges it.**
+if that path is ever unreachable). Phases 1-5 MERGED (!160, !161, !163, !165, !167). Local
+`main` synced through Phase 5.
 
-**Phase 5 (dbt YAML structure): MR !167 open, all 4 required reviewers PASSed first round.**
-Split `_intermediate.yml` into models + `_intermediate_unit_tests.yml`, matching the existing
-`_core.yml`/`_yfinance_base.yml` pattern. Corrected the plan's stated 8-metric
-`accepted_range` gap to 4 (data_contract.md already had evidenced reasoning for the other 4);
-added guards for `net_cash`/`working_capital`/`burn_rate_monthly` from a real production
-measurement; excluded `dividend_yield_pct` with reasoning verified to hold structurally.
-`docs/data_contract.md`'s budget raised 64000 -> 65500. Detail in that MR's own
-`contract.md`/`review.md`.
-
-**Note for future production-data tasks**: a read-only Supabase query needs explicit
-approval each time -- the auto-mode classifier blocks it by default ("Production Reads"),
-even a plain `SELECT MIN/MAX/COUNT`. `.env` credentials being present doesn't pre-authorize
-the query.
+**Phase 5, MERGED !167.** Split `_intermediate.yml` into models + `_intermediate_unit_tests.yml`;
+corrected the plan's stated 8-metric `accepted_range` gap to 4 (data_contract.md already
+covered the other 4); added guards for `net_cash`/`working_capital`/`burn_rate_monthly` from
+a real production measurement; excluded `dividend_yield_pct` with reasoning. 4 reviewers,
+clean first round. **Note for future production-data tasks**: a read-only Supabase query
+needs explicit approval each time -- the auto-mode classifier blocks it by default
+("Production Reads"), even a plain `SELECT MIN/MAX/COUNT`; `.env` credentials being present
+doesn't pre-authorize the query.
 
 **Phase 4, MERGED !165.** CI/config hygiene: deduped the `~/.dbt/profiles.yml` heredoc,
 deleted unused `check_not_on_main.py`, removed a dead routing entry, pinned `pytest`/`httpx`.
 **Recurring miss worth remembering**: a file added to scope mid-task can pull in a reviewer
 never dispatched until the commit gate blocks on it -- re-check
 `.claude/review_routing.json` against the FULL current staged path list whenever scope grows
-mid-task. Phase 5 re-checked this proactively (4 reviewers dispatched up front) and needed no
-correction round.
+mid-task (Phase 5 re-checked this proactively and needed no correction round).
 
-**Phase 6 next, once Phase 5 merges -- the last phase.** Documentation architecture: delete
+**Phase 6 -- do this next, the last phase.** Documentation architecture: delete
 `docs/handover_2026-05-24.md` (its own stated delete condition has long been true); fix
 `docs/handover_2026-09-03.md`'s self-contradiction (a declined proposal presented as live
 later in the same archive); fix `docs/metric_layer.md`'s stale Phase 2 TODO (cites a script
