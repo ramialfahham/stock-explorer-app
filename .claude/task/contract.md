@@ -3,89 +3,105 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Phase 5 of the owner-approved six-phase repo-cleanup plan
-  (`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`): dbt YAML structure, 2 items.
+objective: Phase 6 (the last phase) of the owner-approved six-phase repo-cleanup plan
+  (`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`): documentation architecture.
+  9 items in the plan; every one checked against current state first (the pattern every
+  prior phase has hit at least once) -- 2 turned out already done, 1 partially stale.
 
-  1. **Split `dbt_analytics/models/4_intermediate/_intermediate.yml`** (1,430 lines) into
-     `_intermediate.yml` (563 lines, `version`/`models`) and a new
-     `_intermediate_unit_tests.yml` (866 lines, `unit_tests`), matching the `_core.yml` /
-     `_core_unit_tests.yml` and `_yfinance_base.yml` / `_yfinance_base_unit_tests.yml` split
-     already used elsewhere. Verified byte-identical at split time (PyYAML diff of the
-     `models`/`unit_tests` values). The em-dash guard then caught 3 pre-existing em-dashes in
-     moved comment lines -- never flagged in the original (untouched lines aren't violations)
-     but flagged once relocated, since `git diff --no-renames` (both this checker and the
-     commit gate use it) sees a new file's content as fully added regardless of origin. Fixed
-     rather than exempted, since the content violates the rule's intent either way. `dbt parse`
-     and `dbt test --select test_type:unit` (27/27 PASS, 0 errors) confirm the split is sound.
-
-  2. **Asymmetric `accepted_range` coverage, corrected scope.** The plan names 8 metrics as
-     uncovered (`current_ratio_stmt`, `price_to_tangible_book`, `roa_pct`,
-     `dividend_yield_pct`, `net_cash_to_market_cap`, `net_cash`, `working_capital`,
-     `burn_rate_monthly`). On inspection, `docs/data_contract.md` already carries evidenced
-     "checked and left out" reasoning for 4 of them (`current_ratio_stmt`,
-     `price_to_tangible_book`, `roa_pct`, `net_cash_to_market_cap`), written during the
-     earlier `accepted_range` work (MR !158) -- the plan text predates that entry. Only 4 were
-     genuinely unaddressed: `dividend_yield_pct`, `net_cash`, `working_capital`,
-     `burn_rate_monthly`. Owner explicitly approved a read-only production query
-     (`mart_stock_cards`, via the existing `.env` credentials `apply_supabase_migrations.py`
-     already uses) to measure these, after the auto-mode classifier blocked the first
-     attempt as a "Production Reads" action -- see the AskUserQuestion this session.
-
-     Measured against the full exported history (5,726 rows): `dividend_yield_pct`
-     0.0036% to 18.6% (4,946 non-null) -- no explosion pattern, and its real known defect
-     (per-row mixed units, issue #10) produces plausible-not-extreme values, so a range guard
-     would add no real protection; excluded, same as the dead-column pair above (also
-     no-longer-catalogued, unrendered). `net_cash`, `working_capital`, `burn_rate_monthly` are
-     NOT near-zero-denominator ratios (subtraction / divide-by-constant-12), so the plan's
-     framing of "same denominator-risk shape" doesn't hold -- but all three are computed for
-     every `company_type` and rendered/eligibility-gating on `pre_revenue`, the same
-     `cash_runway_months` pattern (full-population extremes come from mega-cap JPY companies
-     computed outside their intended context; the `pre_revenue`-rendered subset, measured
-     separately with a second query, is far narrower). Guards added, bounded to cover the full
-     unfiltered population with real headroom: `net_cash` -50T to 100T; `working_capital`
-     +-20T; `burn_rate_monthly` 0 to 2.5T (structurally non-negative). Full writeup with both
-     measured ranges (full population and `pre_revenue`-only) in `docs/data_contract.md`,
-     next to the existing seven/eight-metric entry. `docs/data_contract.md`'s budget raised
-     64000 -> 65500 for the real new content, after trimming the addition once already.
+  1. **Delete `docs/handover_2026-05-24.md`.** Its own stated delete condition ("delete or
+     archive this file once CI is green and docs are updated," line 276) has been true for
+     months. Checked `docs/handover_2026-08-18.md`'s "deliberately left alone" note first
+     (line 62) -- that was about not editing its GitHub-era content during a docs sweep, not
+     a decision to keep the file forever; no conflict with deleting it now.
+  2. **Fix `docs/handover_2026-09-03.md`'s self-contradiction.** The correction already
+     exists in the file's own preamble (lines 10-15) but a reader jumping straight to
+     "## Step 3: sector-calibrated verdict thresholds" (line 1668) would never see it. Added
+     a short note directly above that heading, without rewriting the archived content itself.
+  3. Accretion-pattern process note -- not a file edit, per the plan; skipped.
+  4. **`docs/metric_layer.md`'s Phase 2 TODO, corrected not deleted wholesale.** Verified:
+     `scripts/metric_formulas.py` doesn't exist (done), `audit_mart_vs_yfinance.py` already
+     rebuilds via dbt (done), and the "strict model->catalogue introspection guard" idea is
+     superseded by the doc's own already-existing "Why the drift guard is in Python" section
+     -- all three struck. But "folding the value-aware label/gloss variants (net-cash,
+     annual-basis) into the catalogue" is NOT done: `frontend/card_copy.py:228` still
+     hardcodes a value-aware branch outside the catalogue. Kept, as its own live TODO.
+  5. **Removed `docs/metric_audit.md`'s "Decision log" table.** Confirmed wrong as the plan
+     states: its `forward_pe` row says "Keep `info_forward_pe`; monitor," but
+     `docs/data_contract.md:606` documents it as dropped from the catalogue entirely,
+     superseded. Rest of the file (the runbook) is untouched, still accurate.
+  6. **Deleted `docs/ingest_coverage_notes.md` and `docs/intl-quarterly-row-labels.md`** --
+     owner decision (AskUserQuestion this session): delete, not re-verify. Confirmed their
+     findings are duplicated in `docs/data_contract.md`'s own coalesce/fallback documentation
+     (net-debt coalesce at lines 71-73/223-224; quarterly operating-profit fallback at lines
+     112-115/217-220) before asking, so the recommendation wasn't a guess.
+  7. **Consolidated the CI/CD variables table.** `docs/supabase_setup.md`'s table (6 rows)
+     was missing `ANTHROPIC_API_KEY`, present in `docs/operations_guide.md`'s copy (7 rows).
+     Added the missing row to `supabase_setup.md` (the file whose job this is per its own
+     scope line), replaced `operations_guide.md`'s table with a pointer.
+  8. **Three small fixes, one already done.** `CLAUDE.md`'s em-dash rule already links to
+     `engineering_standards.md` §1.2/§1.3 (added by an earlier phase, not this one) --
+     nothing to do. `docs/development_workflow.md`'s dangling "see the migration handover"
+     (line 25) now names `docs/handover_2026-08-18.md` specifically (confirmed it's the one
+     documenting "trap 9," the branch-protection-ordering issue, at line 66 there).
+     `.claude/working-agreement.md` §2 cited `CONTRACT_TEMPLATE.md`/`REVIEW_TEMPLATE.md`,
+     neither of which exists in this repo (confirmed via `find`) -- removed the citations
+     rather than inventing new template files this repo has never needed (five phases' worth
+     of contracts/reviews this session alone show the working-agreement's own prose already
+     specifies the shape without a separate template).
+  **Repo-wide grep after the 3 deletions (per working-agreement §2: grep for the claim, not
+  just the file named) found 2 live dangling references** neither the plan nor the initial
+  scope caught: `docs/data_contract.md:218` cited the now-deleted `intl-quarterly-row-labels.md`
+  for a fact the same paragraph already states inline -- citation stripped, fact kept.
+  `docs/intl-balance-sheet-row-labels.md:7` (a live, kept sibling doc) linked directly to the
+  deleted file -- redirected to `data_contract.md`'s own coverage of the same mechanism.
+  9. **`CLAUDE.md`'s doc index.** Already complete and current (rebuilt in Phase 2, kept
+     current by `check_docs_indexed.py` on every commit since) -- this task only removes the
+     3 entries for deleted files, no rebuild needed.
 
 scope_paths:
-  - dbt_analytics/models/4_intermediate/_intermediate.yml
-  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
-  - dbt_analytics/models/5_marts/_marts.yml
+  - docs/handover_2026-05-24.md
+  - docs/handover_2026-09-03.md
+  - docs/metric_layer.md
+  - docs/metric_audit.md
+  - docs/ingest_coverage_notes.md
+  - docs/intl-quarterly-row-labels.md
+  - docs/intl-balance-sheet-row-labels.md
   - docs/data_contract.md
+  - docs/supabase_setup.md
+  - docs/operations_guide.md
+  - docs/development_workflow.md
+  - .claude/working-agreement.md
+  - CLAUDE.md
   - docs/context_budget.yml
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: the corrected 4-metric scope (vs. the plan's stated 8) is a factual
-  correction backed by grep/doc evidence, not a product decision -- flagged for review, not
-  silently applied. The production-read permission itself was the one live decision this
-  session, answered by the owner via AskUserQuestion (allow the read-only query). Guard
-  bounds are engineering judgment from measured data, following the exact precedent
-  (`cash_runway_months`) already in the doc, not a new methodology.
+decisions_reserved: archive-vs-reverify for the 2 coverage docs (item 6) -- ANSWERED this
+  session via AskUserQuestion (delete both). The working-agreement.md template-citation fix
+  (item 8) is engineering judgment (remove a dangling reference to files that never existed
+  here, vs. inventing new ones this repo has never needed), not a product/mechanism decision,
+  but called out explicitly since the plan gave two options and this picks one.
 
 done_when:
-  - `dbt_analytics/models/4_intermediate/_intermediate.yml` and
-    `_intermediate_unit_tests.yml` together are content-identical to the pre-split file
-    (verified via PyYAML value comparison, not just line count), except 3 pre-existing
-    em-dashes in comments fixed to `--` per the em-dash guard's own finding.
-  - `dbt parse --project-dir dbt_analytics --profiles-dir .` succeeds.
-  - `dbt test --select test_type:unit --project-dir dbt_analytics --profiles-dir .` --
-    27/27 PASS, 0 errors (same count as before the split).
-  - `_marts.yml` has 3 new `dbt_utils.accepted_range` tests (`net_cash`, `working_capital`,
-    `burn_rate_monthly`), all `severity: warn`, matching the existing 8 tests' shape.
-  - `docs/data_contract.md`'s `accepted_range` section documents all 4 corrected-scope
-    metrics with measured evidence: 3 guarded (with full-population and `pre_revenue`-only
-    ranges), 1 excluded (`dividend_yield_pct`, with reasoning).
-  - `dbt build --project-dir dbt_analytics --profiles-dir .` against CI fixtures succeeds
-    with no new test failures (warn-only tests don't fail a build regardless, but the SQL
-    must be valid and execute without error).
-  - `pytest tests/ -q` green, no regression.
+  - `docs/handover_2026-05-24.md`, `docs/ingest_coverage_notes.md`,
+    `docs/intl-quarterly-row-labels.md` deleted; `CLAUDE.md`'s doc index has no entry for any
+    of the three.
+  - `docs/handover_2026-09-03.md`'s "## Step 3" section has a correction note directly above
+    it; the file's historical content below is otherwise untouched (this is an archive, not
+    rewritten).
+  - `docs/metric_layer.md`'s Phase 2 TODO states only the genuinely-open item (label/gloss
+    variant folding); the 3 done/superseded items are gone.
+  - `docs/metric_audit.md` has no "Decision log" section; the runbook content is unchanged.
+  - `docs/supabase_setup.md`'s CI/CD variables table includes `ANTHROPIC_API_KEY`;
+    `docs/operations_guide.md`'s own copy is replaced by a pointer to it.
+  - `docs/development_workflow.md:25` names `docs/handover_2026-08-18.md` specifically.
+  - `.claude/working-agreement.md` no longer cites `CONTRACT_TEMPLATE.md`/`REVIEW_TEMPLATE.md`.
+  - Repo-wide grep for every deleted filename finds no live (non-archive) reference left
+    dangling.
   - `python scripts/check_docs_indexed.py`, `check_context_budget.py`,
     `check_no_narrative_dates.py`, `check_no_em_dash.py` all pass.
+  - `pytest tests/ -q` green, no regression (this is a docs-only task; no new tests expected).
 
-impact_map: dbt schema/YAML + docs change; no model SQL, no compute, no column added or
-  removed. 3 new warn-only sanity tests on already-existing mart columns -- no behavior
-  change to what the app displays or how eligibility is computed. No new dependency, no CI
-  change.
+impact_map: docs-only change; no code, schema, or CI behavior change. `CLAUDE.md`'s doc
+  index: -3 entries. Net deletion of 3 files. No dbt/frontend/ingestion files touched.

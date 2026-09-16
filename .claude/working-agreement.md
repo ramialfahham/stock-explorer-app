@@ -25,11 +25,10 @@ At the end of a session, update `.claude/active_work.md` so the next one continu
 
 ## 2. The task contract + review cycle
 
-Before a non-trivial change, write `.claude/task/contract.md` (template:
-`CONTRACT_TEMPLATE.md`): objective, `scope_paths` (the files this task may touch),
-`decisions_reserved` (owner-only questions — §6), `done_when`. Commit it with the
-branch so it is visible in the MR. The scope-auditor reviewer flags any edit outside
-`scope_paths` at review time.
+Before a non-trivial change, write `.claude/task/contract.md`: objective, `scope_paths` (the
+files this task may touch), `decisions_reserved` (owner-only questions -- §6), `done_when`.
+Commit it with the branch so it is visible in the MR. The scope-auditor reviewer flags any
+edit outside `scope_paths` at review time.
 
 Open work lives in GitLab Issues and Milestones, not prose docs. When a task has a GitLab
 issue, `objective` links it (`Closes #N` / `Refs #N`) instead of restating the requirement
@@ -43,8 +42,7 @@ Before committing, run the review cycle (the commit gate enforces it):
    is untracked into a reviewed commit.
 2. Run the reviewers the routing requires (`.claude/review_routing.json`) against the
    staged diff — cold, read-only, adversarial.
-3. Write `.claude/task/review.md` (template: `REVIEW_TEMPLATE.md`) with each reviewer's
-   verdict and the staged-diff hash.
+3. Write `.claude/task/review.md` with each reviewer's verdict and the staged-diff hash.
 4. `git commit` — blocked until the review matches the staged change, every required
    reviewer passed, and any escalation has a recorded answer.
 

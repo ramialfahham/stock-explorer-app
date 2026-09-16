@@ -22,7 +22,8 @@ Never commit directly to `main`.
 
 **GitLab (recommended):** branch protection on `main` — require MR, disallow direct push. Read
 it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/protected_branches`
-(a GitLab project can end up with an unprotected default branch — see the migration handover).
+(a GitLab project can end up with an unprotected default branch -- see "trap 9" in
+[`handover_2026-08-18.md`](handover_2026-08-18.md)).
 
 ---
 

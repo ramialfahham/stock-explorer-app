@@ -3,8 +3,8 @@
 Yahoo `ticker.balance_sheet` normalises row labels to a fixed key set, so a single canonical
 label per line is consistent across markets (confirmed by the probe below). The balance sheet
 is **point-in-time** (a stock, not a flow), so ingestion lands the **latest annual column
-only** — no TTM summing (unlike the quarterly income-statement machinery in
-[`intl-quarterly-row-labels.md`](intl-quarterly-row-labels.md)).
+only** -- no TTM summing (unlike the quarterly income-statement row-label fallbacks
+documented in [`data_contract.md`](data_contract.md)'s "Operating margin" entry).
 
 ## Fallback order (ingestion)
 
