@@ -62,10 +62,8 @@ and `docs/ui/` must have a line here; `scripts/check_docs_indexed.py` enforces i
 - Production data flow + runbook for when it breaks: [`docs/operations_guide.md`](docs/operations_guide.md)
 - Supabase project setup, CI/CD variables, migrations ledger: [`docs/supabase_setup.md`](docs/supabase_setup.md)
 - Render deployment steps: [`docs/streamlit_deploy.md`](docs/streamlit_deploy.md)
-- yfinance field-coverage investigation (2026-06, point-in-time): [`docs/ingest_coverage_notes.md`](docs/ingest_coverage_notes.md)
 - Intl balance-sheet row-label fallback resolution: [`docs/intl-balance-sheet-row-labels.md`](docs/intl-balance-sheet-row-labels.md)
-- Intl quarterly-statement row-label fallback resolution: [`docs/intl-quarterly-row-labels.md`](docs/intl-quarterly-row-labels.md)
-- Prior session handovers, newest to oldest (point-in-time archives, not living docs): [`docs/handover_2026-09-03.md`](docs/handover_2026-09-03.md), [`docs/handover_2026-08-18.md`](docs/handover_2026-08-18.md), [`docs/handover_2026-05-24.md`](docs/handover_2026-05-24.md)
+- Prior session handovers, newest to oldest (point-in-time archives, not living docs): [`docs/handover_2026-09-03.md`](docs/handover_2026-09-03.md), [`docs/handover_2026-08-18.md`](docs/handover_2026-08-18.md)
 
 UI component specs, one file per component, each with its own `**Scope:**`/`**Authority:**`
 header pointing back at `north_star.md`: [`docs/ui/design_system.md`](docs/ui/design_system.md)

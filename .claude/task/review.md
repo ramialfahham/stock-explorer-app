@@ -2,98 +2,81 @@
 > DISPOSABLE. **Owns:** verdicts and `diff_sha256` for THIS task's staged diff.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-diff_sha256: 73f3155c44c36a9e0d5fbab14e851bbbc482b7209ab4273941d02b0ac8f784d9
+diff_sha256: 71ba5205cfbd97a422dd851633bce5de56ddbc0ec5167e184cfc4668ece7b482
 
 ## scope-auditor
 
-Verified the `_intermediate.yml` split is content-preserving (line counts and structure match
-the contract's claim) and that the 8-to-4 metric-scope correction is backed by explicit,
-pre-existing evidence in `docs/data_contract.md` (lines 506-518: `roa_pct`,
-`current_ratio_stmt`, `price_to_tangible_book`, `net_cash_to_market_cap` already "checked and
-left out" from the earlier `accepted_range` work). No owner-level decision taken silently --
-the production-read permission was answered by the owner this session (AskUserQuestion), not
-assumed.
+Round 1: FAIL -- `.claude/active_work.md` was in scope_paths but untouched by the diff,
+still containing 3 live (linked) references to files this same diff deletes -- violated
+`done_when`'s "no live reference" bar.
+
+Round 2 (final): verified the fix directly against the current file -- the handover-chain
+note now reads "`docs/handover_2026-05-24.md` deleted in Phase 6" as plain text, no Markdown
+link syntax, no live reference. Re-verified all 16 touched files are in scope_paths, the
+doc-index update in `CLAUDE.md` is complete, both repo-wide-grep-caught dangling references
+(`docs/data_contract.md`, `docs/intl-balance-sheet-row-labels.md`) are genuinely fixed, and
+every new line is em-dash-clean (including the one pre-existing em-dash swept into "added"
+status by a paragraph reflow in `working-agreement.md`, corrected to `--`).
 
 VERDICT: PASS
 risks_checked:
-- Split of `_intermediate.yml` into models (563 lines) and `_intermediate_unit_tests.yml`
-  (866 lines) preserves content except 3 pre-existing em-dash corrections per the guard's own
-  finding; no regression per the contract's `dbt parse` verification.
-- Four-metric scope correction (8 -> 4) is backed by explicit, dated evidence already in
-  `docs/data_contract.md`; the new 3 metrics' bounds are derived from production
-  measurements documented in the same file with full/`pre_revenue`-only splits, matching the
-  `cash_runway_months` precedent already there.
+- `.claude/active_work.md`'s handover-chain reference to the deleted `handover_2026-05-24.md`
+  uses plain-text historical notation, not a live Markdown link -- confirmed by reading the
+  current file directly, not trusting the round-1 fix's description.
+- Em-dash rule enforcement across every added line in the full diff: zero new violations;
+  the one pre-existing em-dash swept into "added" status by a reflow is corrected.
 
 ## cto-reviewer
 
-Measured `docs/data_contract.md` directly (independent of the contract's claim, replicating
-`check_context_budget.py`'s own byte-measurement method): 64738 bytes against the new 65500
-cap, 762 bytes headroom. Checked whether the cap raise was deliberate and proportionate:
-`git show HEAD:docs/data_contract.md` measures 63297 bytes against the OLD 64000 cap (703
-bytes headroom already tight before this diff); this diff adds 1441 bytes of real content,
-and the cap moved by exactly 1500 -- sized to the actual addition, not a padded round number.
+Verified `docs/context_budget.yml` loses exactly the 3 entries matching the 3 deleted files
+(no orphan, no missing entry); `check_context_budget.py` passes against the live tree.
+Verified the `CONTRACT_TEMPLATE.md`/`REVIEW_TEMPLATE.md` citations removed from
+`.claude/working-agreement.md` never existed anywhere in this repo (repo-wide grep, zero
+hits outside this task's own disposable files); confirmed no script or hook parses
+`working-agreement.md`'s prose programmatically, so this is a pure content edit with no
+guard/mechanism impact despite the file's routing weight. Confirmed the em-dash-to-`--` fix
+on that same file is mechanical (wording identical, only the dash character changed).
 
 VERDICT: PASS
 risks_checked:
-- Confirmed `check_context_budget.py` passes against the live tree, not just the contract's
-  say-so; the 65500 cap is deliberate and proportionate to the real content added, not a
-  reactive bump.
-- Scanned the full diff for anything touching CI, scripts, dependencies, or run cadence --
-  none found. The 3 new `dbt_utils.accepted_range` tests reuse an existing mechanism
-  (byte-for-byte identical structure to the 8 pre-existing tests in the same file), not a
-  new one. No credential/secret/token pattern found anywhere in the diff.
+- `docs/context_budget.yml`'s 3 removed entries match the diff's 3 deletions exactly;
+  `check_context_budget.py` passes; repo-wide grep for the 3 deleted filenames finds only
+  this task's own disposable files and one sanctioned archive reference
+  (`docs/handover_2026-08-18.md:62`, point-in-time, not live).
+- Enumerated every file in the full diff: all prose/config docs, no `.gitlab-ci.yml`, no
+  script logic, no dependency/lockfile, no hook -- confirms the docs-only classification
+  despite `docs/context_budget.yml` and `.claude/working-agreement.md` routing to this
+  reviewer.
 
 ## equity-analyst-reviewer
 
-Went beyond the contract's empirical framing: verified the `dividend_yield_pct` exclusion is
-not just true of today's sample but *mathematically forced* by the scaling heuristic itself
-(`int_stock__card_metrics.sql:218-225` caps any misclassification-driven distortion at a
-~100x factor applied only below 0.05, so the worst-case wrong output tops out around 5% --
-squarely inside real dividend-yield territory, meaning a range guard genuinely cannot
-distinguish a defective row from a correct one here). Verified the "not a near-zero-denominator
-ratio" framing for `net_cash`/`working_capital`/`burn_rate_monthly` directly against the SQL
-(two subtractions, one division by the constant 12) -- the plan's original framing is
-correctly rejected in the contract. Verified the new bounds are wide sanity checks, not
-narrow plausibility judgments, by computing headroom ratios and benchmarking against the
-already-accepted `ebit_margin_pct` guard's own headroom in the same doc.
+Verified `docs/metric_layer.md`'s narrowed TODO claim directly against
+`frontend/card_copy.py`: the hardcoded value-aware `net_debt_to_ebitda` "Net cash" branch and
+`ebit_margin_pct`'s `annual_latest` branch are both genuinely still outside the catalogue --
+the claim holds, not an invented gap. Verified `docs/data_contract.md`'s citation removal is
+character-identical to the original except for the dangling file reference -- no formula,
+fallback rule, or caveat changed. Checked every row of `docs/metric_audit.md`'s removed
+"Decision log" table against the current catalogue/mart source of truth: 4 of 5 non-dividend
+rows already match current behavior (decisions already executed elsewhere), and the one
+genuinely stale row (`forward_pe`) is confirmed wrong against `data_contract.md`'s own
+current statement.
 
 VERDICT: PASS
 risks_checked:
-- `dividend_yield_pct` exclusion holds structurally, not just empirically -- confirmed via
-  the scaling heuristic's own math, not just the measured 0.0036%-18.6% sample range.
-- New guard bounds (`net_cash` ~1.6x measured extreme, `working_capital` ~1.8-2.2x,
-  `burn_rate_monthly` ~1.25x) are at least as generous as the already-accepted
-  `ebit_margin_pct` precedent (~1.1-2.2x) -- consistent with the doc's stated philosophy, not
-  an outlier judgment call. No `metric_catalogue.csv` change, no card-facing wording changed
-  (every `description:` field in the diff is unchanged context, only `data_tests` blocks
-  added).
-
-## analytics-engineer-reviewer
-
-Independently re-derived the split's correctness via `git show HEAD:...` + PyYAML (not
-trusting the contract): `old['models'] == new_models['models']` and
-`old['unit_tests'] == new_tests['unit_tests']` both True; structure matches the
-`_core.yml`/`_yfinance_base.yml` precedent exactly. Independently ran `dbt build` (142/142
-PASS, 0 WARN, 0 ERROR -- the 3 new tests actually pass against CI fixture data, not just
-"wouldn't fail because warn-only"), `dbt test --select test_type:unit` (27/27 PASS), `dbt
-parse` (clean), `pytest tests/ -q` (780 passed), and all 4 guard scripts -- all matching the
-contract's claimed counts exactly, not merely asserted.
-
-VERDICT: PASS
-risks_checked:
-- File-split correctness verified independently via PyYAML value comparison against the
-  pre-split committed version, not the contract's claim; the 3 em-dash fixes traced to their
-  exact original line numbers (285/341/735) and confirmed as the only difference.
-- New `accepted_range` tests match the SQL and are not ratios -- read
-  `int_stock__card_metrics.sql` directly for all 3 (two subtractions, one division by a fixed
-  constant), confirming the plan's "same denominator-risk shape" framing is correctly
-  rejected. Ran the full local verification surface independently rather than trusting any
-  claimed count.
+- `metric_layer.md`'s "still open" TODO claim verified against the live frontend code, not
+  asserted -- the value-aware label/gloss variants really are still hardcoded outside the
+  catalogue.
+- `metric_audit.md`'s deleted table checked row-by-row against current catalogue/mart
+  behavior -- nothing actionable was lost; the one wrong row (`forward_pe`) is the reason
+  the plan flagged this table as "already wrong," not a reviewer-invented justification.
+- No metric definition, calculation, interpretation, direction, or applicability caveat
+  changed anywhere in this diff; no investment-advice language, no fabricated thresholds.
 
 ## Summary
 
-4 reviewers, all PASS on the first round -- no correction rounds needed, unlike Phase 3.
-Required reviewers per `.claude/review_routing.json`: `always`: scope-auditor; routed via
-`dbt_analytics/*.yml`: analytics-engineer-reviewer; routed via `docs/data_contract.md`:
-equity-analyst-reviewer; routed via `docs/context_budget.yml`: cto-reviewer. All PASS against
-the diff hashed above.
+3 required reviewers (`always`: scope-auditor; routed via `docs/context_budget.yml` and
+`.claude/working-agreement.md`: cto-reviewer; routed via `docs/metric_layer.md` and
+`docs/data_contract.md`: equity-analyst-reviewer), all PASS. scope-auditor's round-1 FAIL
+was the only correction needed -- a real gap (the handover file itself, in scope_paths, left
+untouched with live dangling references), caught before commit rather than after. This is
+Phase 6, the last phase of the repo-cleanup plan.

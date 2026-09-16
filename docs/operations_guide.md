@@ -54,20 +54,11 @@ session cache ~1 hour). Not part of the scheduled fundamentals pipeline and not 
 
 ## CI/CD variables (GitLab)
 
-Unlike GitHub Actions' per-step `secrets:` mapping, GitLab injects every project CI/CD
-variable into every job. These must be marked **Protected** — that's what limits them to
-the two jobs that actually use them (`supabase-migrate`, `data-pipeline`, both restricted to
-protected-branch pipelines), and it only works if `main` is genuinely a protected branch.
-
-| Variable | Used by |
-|--------|---------|
-| `SUPABASE_URL` | Migrate, data pipeline, export |
-| `SUPABASE_DB_PASSWORD` | Migrate, data pipeline |
-| `SUPABASE_DB_HOST` | Migrate, data pipeline (Session pooler hostname) |
-| `SUPABASE_DB_PORT` | Migrate, data pipeline (usually `5432`) |
-| `SUPABASE_ACCESS_TOKEN` | Migrate (optional Management API pooler fallback) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export (bypasses RLS — still needs the table-level `GRANT`s in `supabase/migrations/011_grant_roles.sql`; see `supabase_setup.md`) |
-| `ANTHROPIC_API_KEY` | Data pipeline (assessment prose reads; soft dependency — skipped when unset) |
+Full table (every variable, what uses it, Protected requirement): [`supabase_setup.md`](supabase_setup.md)
+§3. Unlike GitHub Actions' per-step `secrets:` mapping, GitLab injects every project CI/CD
+variable into every job -- **Protected** is what limits them to the two jobs that actually
+use them (`supabase-migrate`, `data-pipeline`, both restricted to protected-branch
+pipelines), and it only works if `main` is genuinely a protected branch.
 
 Streamlit uses the **anon** key in its own hosting secrets — not in the data pipeline.
 See [`supabase_setup.md`](supabase_setup.md) for local `.env` and pooler discovery.

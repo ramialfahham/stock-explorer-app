@@ -7,47 +7,47 @@
 
 _The next session is handed exactly this file. Keep it current. Full history through
 2026-09-03 is archived in [`docs/handover_2026-09-03.md`](../docs/handover_2026-09-03.md)
-(itself built on [`docs/handover_2026-08-18.md`](../docs/handover_2026-08-18.md) and
-[`docs/handover_2026-05-24.md`](../docs/handover_2026-05-24.md)) -- this file stays lean on
-purpose (it's injected whole at SessionStart by `handover_in.py`, capped at 32,000 bytes).
-When a slice/MR merges, collapse its entry here to one or two lines and let the archive keep
-the detail._
+(itself built on [`docs/handover_2026-08-18.md`](../docs/handover_2026-08-18.md);
+`docs/handover_2026-05-24.md` deleted in Phase 6, its own stated delete condition long since
+true) -- this file stays lean on purpose (it's injected whole at SessionStart by
+`handover_in.py`, capped at 32,000 bytes). When a slice/MR merges, collapse its entry here to
+one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 6 (the last
-phase).** Six-phase plan, owner-approved in plan-mode review:
-`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo; summarize here
-if that path is ever unreachable). Phases 1-5 MERGED (!160, !161, !163, !165, !167). Local
-`main` synced through Phase 5.
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for Phase 6's MR to merge,
+then the six-phase plan is COMPLETE.** Owner-approved in plan-mode review:
+`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo). Phases 1-5
+MERGED (!160, !161, !163, !165, !167). Local `main` synced through Phase 5. Phase 6 committed
+on its branch, MR not yet opened as of this entry -- **not merged, do not treat as done until
+the owner merges it.**
 
-**Phase 5, MERGED !167.** Split `_intermediate.yml` into models + `_intermediate_unit_tests.yml`;
-corrected the plan's stated 8-metric `accepted_range` gap to 4 (data_contract.md already
-covered the other 4); added guards for `net_cash`/`working_capital`/`burn_rate_monthly` from
-a real production measurement; excluded `dividend_yield_pct` with reasoning. 4 reviewers,
-clean first round. **Note for future production-data tasks**: a read-only Supabase query
-needs explicit approval each time -- the auto-mode classifier blocks it by default
-("Production Reads"), even a plain `SELECT MIN/MAX/COUNT`; `.env` credentials being present
-doesn't pre-authorize the query.
+**Phase 6 (documentation architecture, the last phase): built, review clean (3/3 reviewers
+PASS first round), commit pending.** Deleted `docs/handover_2026-05-24.md`,
+`docs/ingest_coverage_notes.md`, `docs/intl-quarterly-row-labels.md` (the latter two an
+explicit owner decision this session -- delete, not re-verify); fixed
+`docs/handover_2026-09-03.md`'s self-contradiction with a note above the stale section,
+archive content otherwise untouched; trimmed `docs/metric_layer.md`'s stale TODO to its one
+still-open item; removed `docs/metric_audit.md`'s wrong "Decision log" table; consolidated
+the CI/CD variables table into `docs/supabase_setup.md`; removed two phantom template-file
+citations from `.claude/working-agreement.md`. A repo-wide grep after the deletions (per
+working-agreement §2's own rule) caught 2 live dangling references neither the plan nor the
+initial scope listed (`docs/data_contract.md`, `docs/intl-balance-sheet-row-labels.md`) --
+fixed before review, not left for a reviewer to catch. Detail in this branch's own
+`contract.md`/`review.md`.
 
-**Phase 4, MERGED !165.** CI/config hygiene: deduped the `~/.dbt/profiles.yml` heredoc,
-deleted unused `check_not_on_main.py`, removed a dead routing entry, pinned `pytest`/`httpx`.
-**Recurring miss worth remembering**: a file added to scope mid-task can pull in a reviewer
-never dispatched until the commit gate blocks on it -- re-check
-`.claude/review_routing.json` against the FULL current staged path list whenever scope grows
-mid-task (Phase 5 re-checked this proactively and needed no correction round).
+**Phase 5, MERGED !167.** Split `_intermediate.yml` into models + unit-tests file; corrected
+the plan's stated 8-metric `accepted_range` gap to 4; added guards for
+`net_cash`/`working_capital`/`burn_rate_monthly` from a real production measurement.
+**Note for future production-data tasks**: a read-only Supabase query needs explicit approval
+each time -- the auto-mode classifier blocks it by default ("Production Reads"), even a plain
+`SELECT MIN/MAX/COUNT`.
 
-**Phase 6 -- do this next, the last phase.** Documentation architecture: delete
-`docs/handover_2026-05-24.md` (its own stated delete condition has long been true); fix
-`docs/handover_2026-09-03.md`'s self-contradiction (a declined proposal presented as live
-later in the same archive); fix `docs/metric_layer.md`'s stale Phase 2 TODO (cites a script
-that doesn't exist); remove `docs/metric_audit.md`'s wrong "Decision log" table; archive
-`docs/ingest_coverage_notes.md` and `docs/intl-quarterly-row-labels.md` (superseded by
-`data_contract.md`); consolidate the CI/CD variables table duplicated in `supabase_setup.md`
-and `operations_guide.md`; link (don't restate) the em-dash rule from `CLAUDE.md`; fix
-`working-agreement.md` §2's citation of template files that don't exist in this repo. See the
-plan file's Phase 6 section for full detail -- verify current doc state before applying the
-plan's text as written, the pattern every phase so far has hit at least once.
+**Phase 4, MERGED !165.** CI/config hygiene, deduped `~/.dbt/profiles.yml`, deleted unused
+`check_not_on_main.py`, pinned `pytest`/`httpx`. **Recurring miss worth remembering**: a file
+added to scope mid-task can pull in a reviewer never dispatched until the commit gate blocks
+on it -- re-check `.claude/review_routing.json` against the FULL current staged path list
+whenever scope grows mid-task.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The

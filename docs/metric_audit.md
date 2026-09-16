@@ -43,17 +43,6 @@ High `drift_pct_*` with **high** `snapshot_age_days` → the mart is simply stal
 
 Offline mode (`--offline`, the CI smoke) reports only the `mart_*`, `snapshot_age_days`, and `business_summary_present` columns — no fetch, no rebuild.
 
-## Decision log (metric-by-metric)
-
-| Metric | Audit finding | Decision | PR |
-|--------|---------------|----------|-----|
-| Forward P/E | ABNB ~22.1 aligns with Yahoo forward P/E | Keep `info_forward_pe`; monitor snapshot age | — |
-| Operating margin | ABNB mart ~3.2% matches `reference_operating_margin_info` (latest quarter); TTM reference ~15–21% | **Replace card metric with TTM** from quarterly Operating Income / Total Revenue | Pipeline PR |
-| Rev growth YoY | ABNB ~17.9% matches Yahoo quarterly YoY | Keep `info_revenue_growth`; relabel as quarter in UI PR | Labels PR |
-| Net debt / EBITDA | ABNB −3.62 plausible (net cash / EBITDA) | Keep info-based formula | — |
-| FCF margin | ABNB ~38% aligns with annual stmt / info trailing | Keep annual statement formula; label already says (annual) | — |
-| Dividend yield | Added to the comparison set, not from an audit finding | Compare it here too, so the set matches what the scale guard covers; the real guard is `assert_percent_scale_passthroughs.sql`, since this script cannot detect a settled flip | Scale-guard PR |
-
 ## Fail on drift (optional)
 
 After review, tighten thresholds for pilot tickers:

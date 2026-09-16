@@ -76,7 +76,5 @@ start with `WITH`, which that jinja style can't satisfy — so the equivalent gu
 ## Scope / follow-ups
 
 - Phase 1 (this layer): catalogue SSoT + compute-once + JSON bridge + the guards above.
-- Phase 2: retire the `scripts/metric_formulas.py` Python formula mirror and rework
-  `audit_mart_vs_yfinance.py` to compare the mart against live yfinance (no second formula). Also
-  candidate: a strict model→catalogue introspection guard, and folding the value-aware label/gloss
-  variants (net-cash, annual-basis) into the catalogue.
+- Open: folding the value-aware label/gloss variants (net-cash, annual-basis) into the
+  catalogue -- `frontend/card_copy.py` still hardcodes these branches outside it.

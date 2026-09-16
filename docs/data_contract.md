@@ -214,8 +214,8 @@ Supabase**. Always non-null — evaluated in order, first match wins:
 eligibility, and card display (the Sector/Lifecycle Router).
 
 **Operating margin:** prefer TTM — sum four quarters of operating profit and **Total Revenue**
-from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks (see
-`docs/intl-quarterly-row-labels.md`) and **Operating Revenue − Operating Expense** when needed.
+from `quarterly_income_stmt`. Operating profit coalesces Yahoo row-label fallbacks and
+**Operating Revenue − Operating Expense** when needed.
 When four quarters are incomplete, use latest annual operating profit / annual total revenue.
 `ebit_margin_basis` records `ttm_quarterly` vs `annual_latest`. `info_operating_margins` is
 audit-only.
