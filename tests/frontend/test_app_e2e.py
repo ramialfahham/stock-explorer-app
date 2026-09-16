@@ -210,12 +210,85 @@ def test_remove_from_saved_only_removes_that_card(app_test: AppTest) -> None:
 def test_search_by_ticker_finds_card(app_test: AppTest) -> None:
     at = app_test.run()
     at = at.segmented_control(key="bottom_nav").set_value("Search").run()
-    # The search box is the only st.text_input in the app, and deliberately unkeyed (see
-    # app.py's own docstring) -- addressed by index rather than key.
+    # The search box is the only st.text_input rendered on any given run (see
+    # _search_query_widget's docstring) -- addressed by index rather than key.
     at = at.text_input[0].set_value("ALFA").run()
     _assert_clean(at)
     assert _row_button(at, "search_us_sp500_ALFA") is not None
     assert _row_button(at, "search_us_sp500_BETA") is None
+
+
+def test_search_tab_accepts_a_second_edit(app_test: AppTest) -> None:
+    """The regression this guards: `_search_query_widget`'s predecessor derived an unkeyed
+    widget's identity from `value=`, reseeded from the widget's own prior output -- so the
+    identity moved out from under itself after the first edit and every following one was
+    silently discarded. Confirmed as a real bug against a running dev server, not an
+    AppTest artifact. A second, different query must actually take effect."""
+    at = app_test.run()
+    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
+    at = at.text_input[0].set_value("ALFA").run()
+    _assert_clean(at)
+    at = at.text_input[0].set_value("BETA").run()
+    _assert_clean(at)
+    assert _row_button(at, "search_us_sp500_BETA") is not None
+    assert _row_button(at, "search_us_sp500_ALFA") is None
+
+
+def test_discover_shows_persistent_search_box_by_default(app_test: AppTest) -> None:
+    """Issue #20: search must be visible on Discover's list view without switching tabs."""
+    at = app_test.run()
+    _assert_clean(at)
+    assert len(at.text_input) == 1
+
+
+def test_discover_persistent_search_hides_filters_and_pool(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    _assert_clean(at)
+    assert _row_button(at, "discover_search_us_sp500_ALFA") is not None
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is None
+    assert _row_button(at, "discover_row_us_sp500::BETA") is None
+    assert not _scope_stats_line_present(at)
+
+
+def test_discover_persistent_search_selected_card_has_no_save_button(app_test: AppTest) -> None:
+    """Decided via AskUserQuestion: a persistent-search hit renders read-only, matching the
+    standalone Search tab -- Save/Not now parity is a separately-scoped follow-up."""
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    at = at.button(key="discover_search_us_sp500_ALFA").click().run()
+    _assert_clean(at)
+    assert _row_button(at, "discover_save") is None
+    assert _row_button(at, "discover_skip") is None
+
+
+def test_discover_persistent_search_accepts_a_second_edit(app_test: AppTest) -> None:
+    """Same regression as test_search_tab_accepts_a_second_edit, for the other entry point
+    sharing `_search_query_widget`."""
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    _assert_clean(at)
+    at = at.text_input[0].set_value("BETA").run()
+    _assert_clean(at)
+    assert _row_button(at, "discover_search_us_sp500_BETA") is not None
+    assert _row_button(at, "discover_search_us_sp500_ALFA") is None
+
+
+def test_clearing_discover_persistent_search_restores_filters_and_pool(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    at = at.text_input[0].set_value("").run()
+    _assert_clean(at)
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
+    assert _row_button(at, "discover_row_us_sp500::BETA") is not None
+    assert _scope_stats_line_present(at)
+
+
+def test_discover_persistent_search_hidden_while_a_card_is_focused(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    assert len(at.text_input) == 0
 
 
 def test_search_with_no_match_shows_warning(app_test: AppTest) -> None:
