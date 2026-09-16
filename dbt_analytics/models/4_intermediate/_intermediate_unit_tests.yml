@@ -1,0 +1,866 @@
+unit_tests:
+  - name: card_metrics_eligible_when_all_inputs_present
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T1,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_return_on_equity: 0.18,
+              info_current_ratio: 1.5,
+              info_price_to_book: 8.0,
+              info_price_to_sales: 5.0,
+              info_ev_to_ebitda: 15.0,
+              info_free_cashflow: 50.0,
+              info_market_cap: 1000.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T1,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T1,
+            is_card_eligible: true,
+            forward_pe: 20.0,
+            ebit_margin_pct: 25.0,
+            revenue_growth_yoy_pct: 8.0,
+            net_debt_to_ebitda: 2.0,
+            fcf_margin_pct: 25.0,
+            roe_pct: 18.0,
+            current_ratio: 1.5,
+            price_to_book: 8.0,
+            price_to_sales: 5.0,
+            ev_to_ebitda: 15.0,
+            fcf_yield_pct: 5.0,
+            missing_metrics: [],
+          }
+  - name: card_metrics_ineligible_when_net_debt_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T2,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: null,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T2,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T2,
+            is_card_eligible: false,
+            net_debt_to_ebitda: null,
+            missing_metrics: [net_debt_to_ebitda],
+          }
+  - name: card_metrics_near_miss_one_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T_NEAR,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: null,
+              stmt_free_cash_flow: null,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T_NEAR,
+              company_name: Near Miss Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T_NEAR,
+            is_card_eligible: false,
+            fcf_margin_pct: null,
+            missing_metrics: [fcf_margin_pct],
+          }
+  - name: card_metrics_ineligible_when_ebitda_zero
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T3,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 0.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T3,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T3,
+            is_card_eligible: false,
+            net_debt_to_ebitda: null,
+            missing_metrics: [net_debt_to_ebitda],
+          }
+  - name: card_metrics_net_debt_from_total_debt_minus_cash
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T4,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_operating_margins: 0.25,
+              info_revenue_growth: 0.08,
+              info_net_debt: null,
+              info_total_debt: 3000.0,
+              info_total_cash: 1000.0,
+              info_ebitda: 1000.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: 25.0,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T4,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T4,
+            is_card_eligible: true,
+            net_debt_to_ebitda: 2.0,
+          }
+  - name: card_metrics_annual_margin_when_quarterly_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: HSBA,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 12.0,
+              info_revenue_growth: 0.05,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Financial Services,
+              info_currency: GBP,
+              stmt_total_revenue: 1000.0,
+              stmt_free_cash_flow: 100.0,
+              stmt_operating_income: 200.0,
+              qtr_operating_income_0: null,
+              qtr_operating_income_1: null,
+              qtr_operating_income_2: null,
+              qtr_operating_income_3: null,
+              qtr_total_revenue_0: null,
+              qtr_total_revenue_1: null,
+              qtr_total_revenue_2: null,
+              qtr_total_revenue_3: null,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: HSBA,
+              company_name: HSBC,
+              sector: Financial Services,
+              currency: GBP,
+            }
+    expect:
+      # HSBA is financial; per-type eligibility (4b) judges it on the financial required pair
+      # (statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs
+      # (it targets the annual ebit_margin fallback), so it lacks statement ROE and net margin and is
+      # ineligible -- but ebit_margin still falls back to the annual figure correctly.
+      rows:
+        - {
+            market_code: uk_ftse100,
+            ticker: HSBA,
+            is_card_eligible: false,
+            ebit_margin_pct: 20.0,
+            ebit_margin_basis: annual_latest,
+          }
+  - name: card_metrics_bank_quarterly_from_operating_revenue_expense
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: LLOY,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 10.0,
+              info_revenue_growth: 0.04,
+              info_net_debt: 500.0,
+              info_ebitda: 250.0,
+              info_sector: Financial Services,
+              info_currency: GBP,
+              stmt_total_revenue: 800.0,
+              stmt_free_cash_flow: 80.0,
+              qtr_operating_income_0: null,
+              qtr_operating_income_1: null,
+              qtr_operating_income_2: null,
+              qtr_operating_income_3: null,
+              qtr_operating_revenue_0: 30.0,
+              qtr_operating_revenue_1: 30.0,
+              qtr_operating_revenue_2: 30.0,
+              qtr_operating_revenue_3: 30.0,
+              qtr_operating_expense_0: 5.0,
+              qtr_operating_expense_1: 5.0,
+              qtr_operating_expense_2: 5.0,
+              qtr_operating_expense_3: 5.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: uk_ftse100,
+              ticker: LLOY,
+              company_name: Lloyds,
+              sector: Financial Services,
+              currency: GBP,
+            }
+    expect:
+      # This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
+      # inputs. Under per-type eligibility (4b) LLOY is financial and judged on the financial required pair
+      # (statement_roe_pct + net_margin_pct); lacking statement ROE and net margin it is
+      # ineligible -- but ebit_margin is still computed correctly from operating revenue - expense.
+      rows:
+        - {
+            market_code: uk_ftse100,
+            ticker: LLOY,
+            is_card_eligible: false,
+            ebit_margin_pct: 25.0,
+            ebit_margin_basis: ttm_quarterly,
+          }
+  - name: card_metrics_ineligible_when_ttm_quarters_missing
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T5,
+              snapshot_date: "2026-01-01",
+              info_forward_pe: 20.0,
+              info_revenue_growth: 0.08,
+              info_net_debt: 1000.0,
+              info_ebitda: 500.0,
+              info_sector: Technology,
+              info_currency: USD,
+              stmt_total_revenue: 200.0,
+              stmt_free_cash_flow: 50.0,
+              qtr_operating_income_0: 25.0,
+              qtr_operating_income_1: 25.0,
+              qtr_operating_income_2: null,
+              qtr_operating_income_3: 25.0,
+              qtr_total_revenue_0: 100.0,
+              qtr_total_revenue_1: 100.0,
+              qtr_total_revenue_2: 100.0,
+              qtr_total_revenue_3: 100.0,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: T5,
+              company_name: Test Co,
+              sector: Technology,
+              currency: USD,
+            }
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: T5,
+            is_card_eligible: false,
+            ebit_margin_pct: null,
+            missing_metrics: [ebit_margin_pct],
+          }
+  - name: card_metrics_company_type_classification
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: FIN, snapshot_date: "2026-01-01", info_sector: Financial Services, stmt_total_revenue: 5000.0}
+          - {market_code: us_sp500, ticker: FIN0, snapshot_date: "2026-01-01", info_sector: Financial Services, stmt_total_revenue: 0.0}
+          - {market_code: us_sp500, ticker: PRE, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0}
+          - {market_code: us_sp500, ticker: OPS, snapshot_date: "2026-01-01", info_sector: Technology, stmt_total_revenue: 200.0}
+          - {market_code: us_sp500, ticker: NUL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: null}
+          # DYL-like: revenue positive but 0.05% of market cap -- under the 0.1% floor, reclassifies.
+          - {market_code: au_asx200, ticker: MICRO, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0, info_market_cap: 2000000.0}
+          # Boundary: revenue 0.15% of market cap -- above the floor, stays operating. Pins both
+          # sides of the threshold, not just the one case that motivated it.
+          - {market_code: au_asx200, ticker: SMALL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 3000.0, info_market_cap: 2000000.0}
+          # Positive-but-negligible revenue with NO market cap to compare it against -- a data gap,
+          # not a signal, so this must stay operating rather than silently reclassifying on a
+          # ratio it can't actually compute.
+          - {market_code: au_asx200, ticker: NOMCAP, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: FIN, company_name: Bank Co, sector: Financial Services, currency: USD}
+          - {market_code: us_sp500, ticker: FIN0, company_name: Bank Zero Co, sector: Financial Services, currency: USD}
+          - {market_code: us_sp500, ticker: PRE, company_name: Biotech Co, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: OPS, company_name: Tech Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: NUL, company_name: Energy Co, sector: Energy, currency: USD}
+          - {market_code: au_asx200, ticker: MICRO, company_name: Micro Co, sector: Energy, currency: AUD}
+          - {market_code: au_asx200, ticker: SMALL, company_name: Small Co, sector: Energy, currency: AUD}
+          - {market_code: au_asx200, ticker: NOMCAP, company_name: No Mcap Co, sector: Energy, currency: AUD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: FIN, company_type: financial}
+        - {market_code: us_sp500, ticker: FIN0, company_type: financial}
+        - {market_code: us_sp500, ticker: PRE, company_type: pre_revenue}
+        - {market_code: us_sp500, ticker: OPS, company_type: operating}
+        - {market_code: us_sp500, ticker: NUL, company_type: operating}
+        - {market_code: au_asx200, ticker: MICRO, company_type: pre_revenue}
+        - {market_code: au_asx200, ticker: SMALL, company_type: operating}
+        - {market_code: au_asx200, ticker: NOMCAP, company_type: operating}
+  - name: sector_medians_null_when_seven_eligible_peers
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Technology,
+            sector_peer_count: 7,
+            sector_median_forward_pe: null,
+            sector_min_forward_pe: null,
+            sector_max_forward_pe: null,
+            sector_median_ebit_margin_pct: null,
+          }
+  - name: sector_medians_populated_when_eight_eligible_peers
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 13.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 14.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 15.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 16.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T8, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 17.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Technology,
+            sector_peer_count: 8,
+            sector_median_forward_pe: 13.5,
+            sector_min_forward_pe: 10.0,
+            sector_max_forward_pe: 17.0,
+            sector_median_ebit_margin_pct: 20.0,
+            # Every peer in this fixture reports the same ebit_margin_pct (20.0) -- the
+            # degenerate min == median == max case the frontend range mark must handle
+            # without dividing by zero (see test_benchmark_range_none_when_degenerate_min_equals_max).
+            sector_min_ebit_margin_pct: 20.0,
+            sector_max_ebit_margin_pct: 20.0,
+          }
+  - name: sector_benchmarks_computes_quartiles_with_real_spread
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # ebit_margin_pct evenly spaced 10..24 (step 2) across 8 peers, sorted by construction --
+          # Q1/Q3 hand-computed via linear interpolation (quantile_cont's own method, matching
+          # median()'s): h = (n-1)*p with n=8. Q1: h=7*0.25=1.75 -> a[1]+0.75*(a[2]-a[1])
+          # = 12+0.75*(14-12) = 13.5. Q3: h=7*0.75=5.25 -> a[5]+0.25*(a[6]-a[5])
+          # = 20+0.25*(22-20) = 20.5. Not derived from the SQL under test -- computed by hand
+          # against the standard linear-interpolation formula, per this doc's own anti-pattern
+          # warning against self-referential fixtures (docs/ui/card_metric_cell.md).
+          - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 10.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 12.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 14.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 16.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 18.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 22.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T8, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 24.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Industrials,
+            sector_peer_count: 8,
+            sector_min_ebit_margin_pct: 10.0,
+            sector_q1_ebit_margin_pct: 13.5,
+            sector_median_ebit_margin_pct: 17.0,
+            sector_q3_ebit_margin_pct: 20.5,
+            sector_max_ebit_margin_pct: 24.0,
+          }
+  - name: sector_benchmarks_quartiles_extend_to_the_5_new_metrics
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # Same evenly-spaced 10..24 spread and the same hand-verified quartiles as
+          # sector_benchmarks_computes_quartiles_with_real_spread above (min=10, Q1=13.5,
+          # median=17.0, Q3=20.5, max=24.0) -- not re-derived here, just applied to
+          # statement_roe_pct to prove the 5-metric benchmark expansion's aggregate columns
+          # use the identical, already-proven mechanism, not a new one.
+          - {market_code: us_sp500, ticker: T1, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 12.0}
+          - {market_code: us_sp500, ticker: T3, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 14.0}
+          - {market_code: us_sp500, ticker: T4, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 16.0}
+          - {market_code: us_sp500, ticker: T5, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 18.0}
+          - {market_code: us_sp500, ticker: T6, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 20.0}
+          - {market_code: us_sp500, ticker: T7, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 22.0}
+          - {market_code: us_sp500, ticker: T8, sector: "Financial Services", is_card_eligible: true, company_type: financial, statement_roe_pct: 24.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: "Financial Services",
+            sector_peer_count: 8,
+            sector_min_statement_roe_pct: 10.0,
+            sector_q1_statement_roe_pct: 13.5,
+            sector_median_statement_roe_pct: 17.0,
+            sector_q3_statement_roe_pct: 20.5,
+            sector_max_statement_roe_pct: 24.0,
+          }
+  - name: sector_benchmarks_excludes_negative_equity_peer_from_debt_to_equity_and_roe
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # 7 clean peers with a REAL spread (not degenerate -- a repeated single value can't
+          # distinguish "guard applied" from "guard removed" for quantile_cont's interpolated
+          # Q1/Q3: analytics-engineer-reviewer's round-2 catch, hand-verified below) and ordinary
+          # positive equity. debt_to_equity 1.0..7.0 step 1; statement_roe_pct 10.0..70.0 step 10,
+          # same relative shape so both metrics hand-verify the same way. The 8th peer has
+          # NEGATIVE stmt_stockholders_equity: its debt_to_equity (-100.0) and statement_roe_pct
+          # (-1000.0) are sign-flipped per assessment_rules.py's own documented failure mode, and
+          # must be excluded from ALL FIVE of these 2 metrics' statistics, not just min -- an
+          # extreme low value like this would otherwise become the new sector_min AND pull every
+          # other statistic (median, Q1, Q3) toward it too.
+          #
+          # Hand-computed via DuckDB's linear-interpolation formula (h = (n-1)*p), same method
+          # already used elsewhere in this file, not derived from the SQL under test:
+          # WITH the guard (n=7, contaminated peer excluded): sorted [1,2,3,4,5,6,7].
+          #   min=1.0, max=7.0, median: h=6*0.5=3 -> idx3=4.0 (exact).
+          #   Q1: h=6*0.25=1.5 -> idx1+0.5*(idx2-idx1) = 2+0.5*(3-2) = 2.5.
+          #   Q3: h=6*0.75=4.5 -> idx4+0.5*(idx5-idx4) = 5+0.5*(6-5) = 5.5.
+          #   statement_roe_pct is the same shape x10: min=10.0, median=40.0, Q1=25.0, Q3=55.0,
+          #   max=70.0.
+          # WITHOUT the guard (n=8, contaminated peer included): sorted [-100,1,2,3,4,5,6,7].
+          #   min=-100.0 (0-indexed idx0), median: h=7*0.5=3.5 -> idx3+0.5*(idx4-idx3) =
+          #   3+0.5*(4-3) = 3.5. Q1: h=7*0.25=1.75 -> idx1+0.75*(idx2-idx1) = 1+0.75*(2-1) = 1.75.
+          #   Q3: h=7*0.75=5.25 -> idx5+0.25*(idx6-idx5) = 5+0.25*(6-5) = 5.25.
+          # Every statistic but max differs between the two (max is unaffected either way since
+          # the contaminant is an extreme LOW value, never the max) -- so this fixture actually
+          # discriminates "guard applied" from "guard removed" on min, median, Q1, and Q3 alike,
+          # unlike the all-equal-clean-peer fixture this test used before.
+          - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T4, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 4.0, statement_roe_pct: 40.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T5, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 5.0, statement_roe_pct: 50.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T6, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 6.0, statement_roe_pct: 60.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T7, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 7.0, statement_roe_pct: 70.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T8, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: -100.0, statement_roe_pct: -1000.0, stmt_stockholders_equity: -5000.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Industrials,
+            sector_peer_count: 8,
+            sector_min_debt_to_equity: 1.0,
+            sector_q1_debt_to_equity: 2.5,
+            sector_median_debt_to_equity: 4.0,
+            sector_q3_debt_to_equity: 5.5,
+            sector_max_debt_to_equity: 7.0,
+            sector_min_statement_roe_pct: 10.0,
+            sector_q1_statement_roe_pct: 25.0,
+            sector_median_statement_roe_pct: 40.0,
+            sector_q3_statement_roe_pct: 55.0,
+            sector_max_statement_roe_pct: 70.0,
+          }
+  - name: card_metrics_statement_metrics_computed
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: SM1,
+              snapshot_date: "2026-01-01",
+              stmt_total_debt: 15000.0,
+              stmt_stockholders_equity: 40000.0,
+              stmt_current_assets: 30000.0,
+              stmt_current_liabilities: 20000.0,
+              stmt_cash_and_equivalents: 10000.0,
+              stmt_tangible_book_value: 50000.0,
+              stmt_total_assets: 80000.0,
+              stmt_net_income: 6000.0,
+              stmt_net_income_common: 5000.0,
+              stmt_total_revenue: 50000.0,
+              stmt_interest_expense: 500.0,
+              stmt_operating_income: 8000.0,
+              stmt_operating_cash_flow: 9000.0,
+              stmt_capital_expenditure: -2000.0,
+              info_market_cap: 100000.0,
+              info_dividend_yield: 2.5,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: SM1, company_name: SM Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: SM1,
+            debt_to_equity: 0.375,
+            interest_coverage: 16.0,
+            current_ratio_stmt: 1.5,
+            working_capital: 10000.0,
+            price_to_tangible_book: 2.0,
+            net_margin_pct: 12.0,
+            roa_pct: 7.5,
+            statement_roe_pct: 12.5,
+            dividend_yield_pct: 2.5,
+            computed_fcf: 7000.0,
+            cash_runway_months: null,
+            burn_rate_monthly: null,
+          }
+  - name: card_metrics_cash_runway_and_burn_when_fcf_negative
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: BURN,
+              snapshot_date: "2026-01-01",
+              stmt_operating_cash_flow: -1000.0,
+              stmt_capital_expenditure: -500.0,
+              stmt_cash_and_equivalents: 9000.0,
+              info_sector: Healthcare,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: BURN, company_name: Burn Co, sector: Healthcare, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: BURN,
+            computed_fcf: -1500.0,
+            cash_runway_months: 72.0,
+            burn_rate_monthly: 125.0,
+          }
+  - name: card_metrics_interest_coverage_uses_abs_interest
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: NEGI,
+              snapshot_date: "2026-01-01",
+              stmt_operating_income: 8000.0,
+              stmt_interest_expense: -500.0,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: NEGI, company_name: NegI Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: NEGI,
+            interest_coverage: 16.0,
+          }
+  - name: card_metrics_statement_metrics_null_on_bad_denominator
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: ZERO,
+              snapshot_date: "2026-01-01",
+              stmt_total_debt: 15000.0,
+              stmt_stockholders_equity: 0.0,
+              stmt_current_assets: 30000.0,
+              stmt_current_liabilities: 0.0,
+              stmt_tangible_book_value: -100.0,
+              stmt_total_assets: 0.0,
+              stmt_net_income: 6000.0,
+              info_market_cap: 100000.0,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: ZERO, company_name: Zero Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: ZERO,
+            debt_to_equity: null,
+            current_ratio_stmt: null,
+            price_to_tangible_book: null,
+            roa_pct: null,
+          }
+  - name: card_metrics_statement_metrics_negative_equity
+    # Negative equity is a legitimate (not clipped/nulled) signed output: debt_to_equity flips
+    # negative, and a loss over negative equity yields a spuriously POSITIVE ROE -- the exact case
+    # the catalogue applicability copy warns beginners about. Guards only exclude equity == 0.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {
+              market_code: us_sp500,
+              ticker: NEGE,
+              snapshot_date: "2026-01-01",
+              stmt_total_debt: 15000.0,
+              stmt_stockholders_equity: -30000.0,
+              stmt_net_income_common: -6000.0,
+              info_sector: Technology,
+            }
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: NEGE, company_name: NegE Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            ticker: NEGE,
+            debt_to_equity: -0.5,
+            statement_roe_pct: 20.0,
+          }
+  - name: card_metrics_financial_eligibility_required_pair
+    # Per-type eligibility (Router 4b): a financial is eligible on the required pair
+    # (statement_roe_pct + net_margin_pct). BANKOK has both -> eligible; BANKNO lacks revenue
+    # so net_margin_pct is null -> ineligible, even as a financial.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: BANKOK, snapshot_date: "2026-01-01", info_sector: 'Financial Services', info_forward_pe: 11.0, stmt_net_income_common: 11000.0, stmt_stockholders_equity: 60000.0, stmt_net_income: 12000.0, stmt_total_revenue: 80000.0}
+          - {market_code: us_sp500, ticker: BANKNO, snapshot_date: "2026-01-01", info_sector: 'Financial Services', info_forward_pe: 11.0, stmt_net_income_common: 11000.0, stmt_stockholders_equity: 60000.0, stmt_net_income: 12000.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: BANKOK, company_name: Bank OK, sector: 'Financial Services', currency: USD}
+          - {market_code: us_sp500, ticker: BANKNO, company_name: Bank No, sector: 'Financial Services', currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: BANKOK, company_type: financial, is_card_eligible: true}
+        - {market_code: us_sp500, ticker: BANKNO, company_type: financial, is_card_eligible: false}
+  - name: card_metrics_dividend_yield_pct_percent_passthrough
+    # Mocked input pins the transform only; live scale: dbt_analytics/tests/assert_percent_scale_passthroughs.sql.
+    # A percent-scale value passes through; a fraction-scale value (below 0.05) is scaled by 100;
+    # 0.05 itself passes through, the boundary being "below", not "at" (issue #10).
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: DIV, snapshot_date: "2026-01-01", info_dividend_yield: 3.5, info_sector: Technology}
+          - {market_code: us_sp500, ticker: AVB, snapshot_date: "2026-01-01", info_dividend_yield: 0.0387, info_sector: Real Estate}
+          - {market_code: us_sp500, ticker: EDGE, snapshot_date: "2026-01-01", info_dividend_yield: 0.05, info_sector: Technology}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: DIV, company_name: Div Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: AVB, company_name: Avalon, sector: Real Estate, currency: USD}
+          - {market_code: us_sp500, ticker: EDGE, company_name: Edge Co, sector: Technology, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
+        - {market_code: us_sp500, ticker: AVB, dividend_yield_pct: 3.87}
+        - {market_code: us_sp500, ticker: EDGE, dividend_yield_pct: 0.05}
+  - name: card_metrics_eligibility_no_longer_needs_forward_pe
+    # The headline effect of the change, pinned. Before it, an operating or financial
+    # company with a null forward_pe was INELIGIBLE and never reached a card; now it qualifies on
+    # the remaining metrics alone. Nothing else in the suite covers this: the CI fixture set has
+    # forward_pe populated on every row, so the eligibility change passed a green build without a
+    # single row exercising the difference. OPNOPE is operating with no forward P/E, FINNOPE is a
+    # bank with none; both must now be eligible. PRENOCAP is the pre-revenue half of the same
+    # story -- no market cap at all, which used to make net_cash_to_market_cap null and the card
+    # ineligible, and which net_cash does not need.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: OPNOPE, snapshot_date: "2026-01-01", info_sector: Technology, stmt_total_revenue: 1000.0, info_forward_pe: null, info_revenue_growth: 0.1, info_net_debt: 200.0, info_ebitda: 400.0, stmt_operating_income: 250.0, stmt_free_cash_flow: 150.0}
+          - {market_code: us_sp500, ticker: FINNOPE, snapshot_date: "2026-01-01", info_sector: "Financial Services", stmt_total_revenue: 1000.0, info_forward_pe: null, stmt_net_income: 200.0, stmt_net_income_common: 200.0, stmt_stockholders_equity: 1000.0}
+          - {market_code: us_sp500, ticker: PRENOCAP, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, stmt_cash_and_equivalents: 900.0, stmt_total_debt: 400.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: OPNOPE, company_name: Op No PE, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: FINNOPE, company_name: Fin No PE, sector: "Financial Services", currency: USD}
+          - {market_code: us_sp500, ticker: PRENOCAP, company_name: Pre No Cap, sector: Healthcare, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: OPNOPE, company_type: operating, is_card_eligible: true, net_cash: null}
+        - {market_code: us_sp500, ticker: FINNOPE, company_type: financial, is_card_eligible: true, net_cash: null}
+        - {market_code: us_sp500, ticker: PRENOCAP, company_type: pre_revenue, is_card_eligible: true, net_cash: 500.0}
+  - name: card_metrics_pre_revenue_eligibility_net_cash
+    # Per-type eligibility (Router 4c): a pre_revenue company is eligible when net_cash is computable
+    # (has cash + debt). PREOK has both -> eligible; PRENO lacks cash -> net_cash null -> ineligible.
+    # Both classify pre_revenue (Healthcare, revenue 0).
+    #
+    # Changed with the switch from net_cash_to_market_cap to net_cash. PRENO used to be the
+    # missing-MARKET-CAP case, because the old ratio divided by it. It no longer does, so a missing
+    # market cap cannot make a pre-revenue card ineligible any more -- that is the intended effect of
+    # taking the share price out, and it means MORE pre-revenue companies qualify than before.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: us_sp500, ticker: PREOK, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, info_market_cap: 5000.0, stmt_cash_and_equivalents: 2100.0, stmt_total_debt: 100.0}
+          - {market_code: us_sp500, ticker: PRENO, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, info_market_cap: 5000.0, stmt_total_debt: 100.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: us_sp500, ticker: PREOK, company_name: Pre OK, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: PRENO, company_name: Pre No, sector: Healthcare, currency: USD}
+    expect:
+      rows:
+        - {market_code: us_sp500, ticker: PREOK, company_type: pre_revenue, is_card_eligible: true}
+        - {market_code: us_sp500, ticker: PRENO, company_type: pre_revenue, is_card_eligible: false}
+  - name: card_metrics_ratio_reclassified_pre_revenue_is_eligible
+    # A company reclassified pre_revenue via the NEW ratio branch (revenue positive but < 0.1% of
+    # market cap -- see card_metrics_company_type_classification for the classification pin alone)
+    # must flip to the pre_revenue eligibility branch correctly too, exactly like a company that
+    # classifies pre_revenue via the original revenue <= 0 branch above. DYL-like: revenue $1,000
+    # against a $2,000,000 market cap (0.05%, under the floor), with cash/debt present so
+    # net_cash is computable -- matches real DYL, which has cash and debt populated.
+    model: int_stock__card_metrics
+    given:
+      - input: ref('fct_fundamentals_snapshot')
+        rows:
+          - {market_code: au_asx200, ticker: RATIOOK, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0, info_market_cap: 2000000.0, stmt_cash_and_equivalents: 500000.0, stmt_total_debt: 100000.0}
+      - input: ref('dim_stock')
+        rows:
+          - {market_code: au_asx200, ticker: RATIOOK, company_name: Ratio OK, sector: Energy, currency: AUD}
+    expect:
+      rows:
+        - {market_code: au_asx200, ticker: RATIOOK, company_type: pre_revenue, is_card_eligible: true, missing_metrics: []}

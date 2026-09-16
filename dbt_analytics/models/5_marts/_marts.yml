@@ -223,11 +223,25 @@ models:
           Pre-revenue-card cash metric — cash − total debt, a money amount in the company's
           reporting currency (nullable). Required for pre_revenue-card eligibility.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -50000000000000
+                max_value: 100000000000000
+              config:
+                severity: warn
       - name: working_capital
         description: >
           Pre-revenue-card liquidity metric — current assets − current liabilities, a currency amount
           (nullable; null for banks). Rendered for pre_revenue; not part of eligibility.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -20000000000000
+                max_value: 20000000000000
+              config:
+                severity: warn
       - name: cash_runway_months
         description: >
           Pre-revenue-card cash metric — months of cash left at the current burn (nullable; null when
@@ -245,6 +259,13 @@ models:
           Pre-revenue-card cash metric — average monthly cash burn, a currency amount (nullable; null
           when not burning). Rendered for pre_revenue; not part of eligibility.
         data_type: double
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 2500000000000
+              config:
+                severity: warn
       - name: is_card_eligible
         description: >
           Whether the company_type's required metrics are present (operating on a four-metric set;

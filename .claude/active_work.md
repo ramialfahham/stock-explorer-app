@@ -15,32 +15,47 @@ the detail._
 
 ## In flight
 
-**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: start Phase 5.** Six-phase plan,
-owner-approved in plan-mode review: `C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md`
-(outside this repo; summarize here if that path is ever unreachable). Phases 1-4 MERGED (!160,
-!161, !163, !165). Local `main` synced through Phase 4.
+**Repo-cleanup push (owner 2026-09-15), in progress -- NEXT: wait for MR !167 CI + owner
+review, then start Phase 6.** Six-phase plan, owner-approved in plan-mode review:
+`C:\Users\Rami\.claude\plans\spicy-frolicking-bachman.md` (outside this repo; summarize here
+if that path is ever unreachable). Phases 1-4 MERGED (!160, !161, !163, !165). Local `main`
+synced through Phase 4. Phase 5 committed and pushed, MR !167 open from
+`dbt/phase5-intermediate-split-and-range-guards` -- **not merged, do not treat as done until
+the owner merges it.**
 
-**Phase 4, MERGED !165.** CI/config hygiene: deduped the `~/.dbt/profiles.yml` heredoc into
-`scripts/write_ci_dbt_profile.py`; deleted unused `check_not_on_main.py`; removed
-`review_routing.json`'s dead `"*schema.yml"` entry; pinned `pytest`/`httpx`. 2 review rounds,
-clean. **Recurring miss worth remembering (from Phase 3, re-checked clean in Phase 4)**: a
-file added to scope mid-task can pull in a reviewer (routed by e.g. `*.sql`) never dispatched
-until the commit gate blocks on it -- re-check `.claude/review_routing.json` against the FULL
-current staged path list whenever scope grows mid-task, not just the reviewers you started
-with.
+**Phase 5 (dbt YAML structure): MR !167 open, all 4 required reviewers PASSed first round.**
+Split `_intermediate.yml` into models + `_intermediate_unit_tests.yml`, matching the existing
+`_core.yml`/`_yfinance_base.yml` pattern. Corrected the plan's stated 8-metric
+`accepted_range` gap to 4 (data_contract.md already had evidenced reasoning for the other 4);
+added guards for `net_cash`/`working_capital`/`burn_rate_monthly` from a real production
+measurement; excluded `dividend_yield_pct` with reasoning verified to hold structurally.
+`docs/data_contract.md`'s budget raised 64000 -> 65500. Detail in that MR's own
+`contract.md`/`review.md`.
 
-**Phase 3, MERGED !163.** GitLab Issues/Milestones replace doc-based backlog tracking; 2
-milestones, 7 issues (#13-#19); `docs/backlog/*.md` and `docs/product_roadmap_2026-06.md`
-deleted.
+**Note for future production-data tasks**: a read-only Supabase query needs explicit
+approval each time -- the auto-mode classifier blocks it by default ("Production Reads"),
+even a plain `SELECT MIN/MAX/COUNT`. `.env` credentials being present doesn't pre-authorize
+the query.
 
-**Phase 5 next, once Phase 4 merges.** dbt YAML structure: split
-`dbt_analytics/models/4_intermediate/_intermediate.yml` (1,430 lines) into a separate
-`_intermediate_unit_tests.yml`, matching the pattern already used for `_core.yml` /
-`_yfinance_base.yml`; measure and add `accepted_range` guards for the asymmetric-coverage
-metrics (`current_ratio_stmt`, `price_to_tangible_book`, `roa_pct`, `dividend_yield_pct`,
-`net_cash_to_market_cap`, `net_cash`, `working_capital`, `burn_rate_monthly`), writing an
-evidenced reason in `docs/data_contract.md` for any left out. See the plan file's Phase 5
-section. Phase 6 (documentation architecture) comes after.
+**Phase 4, MERGED !165.** CI/config hygiene: deduped the `~/.dbt/profiles.yml` heredoc,
+deleted unused `check_not_on_main.py`, removed a dead routing entry, pinned `pytest`/`httpx`.
+**Recurring miss worth remembering**: a file added to scope mid-task can pull in a reviewer
+never dispatched until the commit gate blocks on it -- re-check
+`.claude/review_routing.json` against the FULL current staged path list whenever scope grows
+mid-task. Phase 5 re-checked this proactively (4 reviewers dispatched up front) and needed no
+correction round.
+
+**Phase 6 next, once Phase 5 merges -- the last phase.** Documentation architecture: delete
+`docs/handover_2026-05-24.md` (its own stated delete condition has long been true); fix
+`docs/handover_2026-09-03.md`'s self-contradiction (a declined proposal presented as live
+later in the same archive); fix `docs/metric_layer.md`'s stale Phase 2 TODO (cites a script
+that doesn't exist); remove `docs/metric_audit.md`'s wrong "Decision log" table; archive
+`docs/ingest_coverage_notes.md` and `docs/intl-quarterly-row-labels.md` (superseded by
+`data_contract.md`); consolidate the CI/CD variables table duplicated in `supabase_setup.md`
+and `operations_guide.md`; link (don't restate) the em-dash rule from `CLAUDE.md`; fix
+`working-agreement.md` §2's citation of template files that don't exist in this repo. See the
+plan file's Phase 6 section for full detail -- verify current doc state before applying the
+plan's text as written, the pattern every phase so far has hit at least once.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost): the root-cause
 upsert-clobbering bug and the `--max-reads` cap are both merged, see Merged this pass. **The

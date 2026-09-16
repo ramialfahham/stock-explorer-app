@@ -517,6 +517,24 @@ card renders it", `net_cash_to_market_cap`'s says "superseded by `net_cash`" -- 
 to Supabase, but nothing a user sees depends on either's value, so a guard here would not
 protect anything the eligibility/display layer trusts.
 
+**Three more added, `net_cash`, `working_capital`, `burn_rate_monthly`** -- none is a
+near-zero-denominator ratio (subtraction, or FCF divided by the constant 12), so the risk
+here isn't explosion. It's that all three are computed for every `company_type` (data
+availability gates them, not type), rendered on `pre_revenue`, and `net_cash` also gates
+`pre_revenue` eligibility -- `cash_runway_months`'s existing "catch an orders-of-magnitude
+pipeline bug" role. Full population (5,726 rows): `net_cash` -30.5T to 64.3T; `working_capital`
+-11.0T to 9.2T; `burn_rate_monthly` 833K to 2.0T (all JPY, mega-caps; non-negative, same as
+`cash_runway_months`). Same pattern as that metric too: within the 15 `pre_revenue` rows each
+actually renders, the range is far narrower (`net_cash` -37M to 216M; `working_capital` 0 to
+517M; `burn_rate_monthly` 3.2M to 19.4M). Bounds cover the full population with headroom:
+`net_cash` -50T to 100T; `working_capital` +-20T; `burn_rate_monthly` 0 to 2.5T.
+
+**`dividend_yield_pct` was checked and left out.** A third dead-but-exported column (no longer
+catalogued, unrendered), same category as the pair above. Its real defect, per-row mixed units
+(issue #10, "What this does NOT cover" above), produces a plausible-looking WRONG value, not
+an extreme one -- confirmed by the measured range (0.0036% to 18.6%, 4,946 rows, no explosion
+despite the bug being live today). A range guard adds no protection here.
+
 **Fill floor** (`assert_metric_fill_floor.sql`). For every `(market_code, company_type,
 metric)` where the catalogue says the metric applies to that type, at least half of the
 eligible cards must carry a value; groups under five rows are skipped. Owner-set: a sanity
