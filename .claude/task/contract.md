@@ -3,88 +3,102 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #16. Today "Not now" is recorded as an interaction with no visible
-  effect on the list -- the reader has no way back to a skipped company except re-finding
-  it via Search or Discover. Add a "Not now" review list, structurally identical to Saved's
-  own list (same `row_ui` pattern, same focus/back-row mechanics), reachable from the
-  overflow (⋯) menu rather than a fourth bottom-nav tab -- decided via AskUserQuestion.
+objective: Closes #19. Add a guard comparing each `provider: wikipedia` market's
+  constituent seed `company_name` (after `ticker_overrides.csv` and
+  `company_name_overrides.csv` are applied) against a cached snapshot of yfinance's own
+  `info.longName`, so a wrong seed name (the class of defect that shipped as 11 wrong
+  `jp_nikkei225` names, caught previously only by a one-off manual script) fails CI on the
+  PR that introduces it, instead of shipping silently.
 
-  Design, worked out this session (not a new AskUserQuestion round -- these are mechanics,
-  not product decisions, and follow the confirmed direction directly):
-  - The panel is an overlay reachable from ANY tab via the overflow menu (`not_now_open`
-    session flag), not a new `NAV_PAGES` entry -- avoids `st.segmented_control`'s `default=`
-    needing to be one of its own `options`, which a real 4th nav value would break.
-  - Tapping a different bottom-nav tab while the panel is open closes it (mirrors how
-    opening Saved/Search implicitly abandons whatever focus state a prior tab was in).
-  - A skipped company's detail view offers **Save** (moves it to Saved) and **Remove**
-    (drops it from the list) -- needs a new `unskip` interaction action, mirroring the
-    existing `unsave`. No DB schema change: `user_interactions.action`'s CHECK constraint
-    is already known-stale and unenforced (nothing live writes to that table; interactions
-    live in a browser cookie, per `.claude/active_work.md`'s existing note on this).
-  - `saved_keys_with_order`'s tie-break logic (latest action wins) is generalized into a
-    shared `_latest_action_keys(interactions, add_action, remove_action)` so the new
-    `skipped_keys_with_order` can't silently diverge from it -- proactive, not a
-    reviewer-driven fix this time.
+  Five decisions, all made via AskUserQuestion before implementation:
+  1. **Data source**: a periodically-refreshed CACHED snapshot, not a live yfinance fetch
+     on every CI run.
+  2. **Match tolerance**: normalize known stylistic patterns (legal-form suffixes,
+     punctuation, diacritics) before comparing; flag whatever still differs.
+  3. **Scope**: only `provider: wikipedia` markets (`docs/constituent_sources.yml`) -- 8 of
+     the 9 active markets; `jp_nikkei225` (`provider: manual`) has no independent source to
+     compare against and is excluded.
+  4. **Failure mode**: hard-fail on a seed-touching PR. Implemented by adding the check to
+     `validate:full` (Tier A), which already runs unconditionally on every MR/push, per this
+     repo's own documented "no path-triggered tier" philosophy -- no new conditional CI
+     logic needed, consistent with every other Tier A check.
+  5. **Snapshot refresh mechanism**: a manual script (`scripts/refresh_yfinance_names.py`),
+     run occasionally by a human and its output committed -- exactly how
+     `scripts/refresh_constituents.py` already works. NOT a CI job that commits back to the
+     repo: this repo has no such mechanism today, and building one is its own new-mechanism
+     decision (a CI push credential) that was explicitly declined in favor of the simpler,
+     already-precedented manual-script pattern.
 
-  **Round 1 (cto-reviewer) FAILED, both findings real, both fixed:**
-  1. **`browser_storage.py` never persisted skip/unskip.** Its whole cookie module was
-     built on the documented premise "skips have no effect on any screen... so they stay
-     in session state only" -- exactly true until this task, and the diff added the
-     `unskip` action string without touching that premise anywhere. Result: the Not-now
-     list would silently reset on every reload, contradicting the issue's own goal.
-     Fixed by generalizing the module's save-cookie machinery (state-encoding, chunking,
-     the write script, `ensure_interactions_loaded`) to a second, independent cookie
-     namespace (`SKIP_COOKIE_PREFIX = "ss_skipped_"`), parameterized the same way the
-     `_latest_action_keys` generalization above already established the pattern for.
-     Live-verified: skip a company, reload the page for real, it's still in Not-now.
-  2. **The save+unskip fix only covered ONE of the two Save buttons.** Discover's own
-     sticky "Save" action (`_render_sticky_actions`) appended `"save"` only -- a card
-     skipped, then re-encountered and saved directly from Discover (filter_pool doesn't
-     exclude skipped tickers), would end up saved AND stuck in Not-now. Fixed by
-     extracting a shared `_save_card()` that always appends both `save` and `unskip`,
-     used by both Save buttons so neither can drift from the other again.
-  3. **Found while fixing #1, not a reviewer finding:** `clear_interactions()` ("Clear
-     saved") reset the WHOLE interactions list, including skip rows -- harmless while skip
-     was session-only, but now would silently wipe Not-now too, without its own
-     confirmation dialog ever mentioning that. Scoped it to save/unsave rows only.
+  **Match tolerance (decision 2) had to be substantially revised after real data.** A
+  fixed legal-suffix normalization list, run against the real live snapshot (956
+  companies, 8 markets), flagged 139 of 956 (~15%) -- systemic across every market, not a
+  `ch_smi`-only edge case: yfinance's `longName` is very often the FULL legal name
+  ("Commonwealth Bank" vs "Commonwealth Bank of Australia"). A fixed suffix list cannot
+  bridge that at scale. Replaced with prefix matching (`names_are_compatible`): one name's
+  tokens being a leading subsequence of the other's counts as the same company, which
+  covers the whole class without enumerating every legal form -- cut 139 to 57 mechanically
+  (plus two real normalization bugs found and fixed along the way: `&` vanishing as
+  whitespace risked the exact Merck & Co / Merck KGaA false-merge this repo's own
+  `test_market_onboarding.py` already warns about; a blanket dotted-abbreviation collapse
+  fused "Amazon.com" into one token). The remaining 57 were reviewed by hand: 54 confirmed
+  same-company via general knowledge (rebrands, acronyms, legal-form variants) and added to
+  `KNOWN_STYLISTIC_DIVERGENCES`; the last 3 (au_asx200:PDI, es_ibex35:COL.MC,
+  uk_ftse100:DCC) needed a source beyond general knowledge and were verified via WebSearch
+  against primary sources (GlobeNewswire, Euronext, the London Stock Exchange's own listing
+  page) before being added -- all three are genuine 2025/2026 renames or mergers the seed's
+  own display name hasn't caught up with, not data bugs. Guard is fully clean (exit 0)
+  against the real snapshot as committed.
 
 scope_paths:
-  - frontend/explore_filters.py
-  - frontend/app.py
-  - frontend/overflow_menu.py
-  - frontend/browser_storage.py
-  - tests/frontend/test_explore_filters.py
-  - tests/frontend/test_app_e2e.py
-  - tests/frontend/test_app.py
-  - tests/frontend/test_browser_storage.py
-  - docs/ui/discover_header.md
+  - scripts/refresh_yfinance_names.py
+  - scripts/check_company_names_vs_yfinance.py
+  - ingestion/constituents/yfinance_name_snapshot.csv
+  - ingestion/paths.py
+  - .gitlab-ci.yml
+  - docs/operations_guide.md
+  - tests/tooling/test_check_company_names_vs_yfinance.py
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none -- the one product decision (should skipped companies be
-  revisitable, and how) was answered via AskUserQuestion before this contract was written.
+decisions_reserved: none further -- all five were answered via AskUserQuestion before this
+  contract was written.
 
 done_when:
-  - `explore_filters.py`: `skipped_keys_with_order()` mirrors `saved_keys_with_order()` via
-    a shared `_latest_action_keys()` helper.
-  - Overflow menu shows a "Not now (N)" entry with the current skipped count.
-  - Opening it shows a row list of skipped companies (empty state if none); selecting one
-    shows its card with Save and Remove actions.
-  - Save moves the company out of the not-now list (records a `save` interaction); Remove
-    drops it (records an `unskip` interaction). Both return to the list.
-  - Switching bottom-nav tabs while the panel is open closes it cleanly, no leftover state.
-  - `docs/ui/discover_header.md`'s overflow-menu section documents the new entry.
-  - Verified live against a running dev server: skip a company on Discover, open Not now
-    from the overflow menu, confirm it appears, open it, Save it, confirm it's gone from
-    Not now and appears in Saved. Then, separately: skip a company, verify a real page
-    RELOAD (not just an AppTest run) keeps it in Not-now; confirm "Clear saved" leaves it
-    untouched.
-  - `pytest tests/frontend/ -q` green, with new coverage for `skipped_keys_with_order`,
-    `skipped_state`/cookie encode-decode under `SKIP_COOKIE_PREFIX`, `_save_card` clearing
-    skip status, `clear_interactions` preserving skip rows, and AppTest e2e paths for the
-    full round trip, the tab-switch-closes-panel behavior, and Remove.
+  - `scripts/refresh_yfinance_names.py`: for each `provider: wikipedia` active market,
+    resolves each constituent's yfinance symbol (via the existing `to_yfinance_ticker`
+    helper, ticker-override-corrected via `load_constituents`), fetches `info.longName`
+    only (not the full fundamentals payload `_fetch_fundamentals_row` pulls), using the
+    existing `call_with_retry`/`is_rate_limited` retry stack and a `--delay-seconds`
+    option matching `run_ingestion.py`'s convention. Writes
+    `ingestion/constituents/yfinance_name_snapshot.csv` (market_code, ticker,
+    yfinance_long_name, refreshed_at).
+  - `scripts/check_company_names_vs_yfinance.py`: for each `provider: wikipedia` market,
+    computes the FINAL seed name (seed CSV + `company_name_overrides.csv`, override wins),
+    tokenizes both it and the cached snapshot name (diacritics, punctuation, dotted-
+    abbreviation, trailing-parenthetical, leading-"the" insensitive) and flags a ticker
+    UNLESS one name's tokens are a leading prefix of the other's, or the ticker is in
+    `KNOWN_STYLISTIC_DIVERGENCES`. A ticker with no snapshot entry is a warning
+    (stale/incomplete snapshot), not a hard failure -- a different failure class than a
+    real name defect. Exits non-zero, listing every offender, if any hard mismatch remains.
+  - The initial snapshot is a REAL fetch (not a stub), run as part of this task, and the
+    guard run against it repeatedly as the matching logic was corrected -- confirmed
+    empirically, not assumed, ending at zero real mismatches (7 tickers have no snapshot
+    entry, 404s from yfinance on this fetch -- a known, non-blocking gap, not chased
+    further this task).
+  - `validate:full` in `.gitlab-ci.yml` runs the new check, placed alongside the other
+    registry/seed-shaped checks (no DuckDB dependency).
+  - `docs/operations_guide.md`'s "Manual operations" section documents the refresh script,
+    alongside `refresh_constituents.py`.
+  - Tests: tokenization and `names_are_compatible` are unit-tested, including the specific
+    false-merge risk this repo has already reasoned about elsewhere (`test_market_onboarding.py`'s
+    Merck KGaA vs Merck & Co warning), and a staleness test for `KNOWN_STYLISTIC_DIVERGENCES`
+    (mirroring `test_market_onboarding.py`'s own `KNOWN_DUPLICATE_SEED_NAMES` pattern) that
+    reads the real committed seeds/overrides/snapshot directly and fails if an allowlisted
+    divergence has quietly resolved -- it already caught 2 of the original 3 entries going
+    stale mid-task, when prefix matching made them redundant.
+  - `pytest tests/ -q` green.
 
-impact_map: frontend-only. New action string `unskip` (interaction-log convention, not a
-  schema change -- the DB CHECK constraint is already known-stale/unenforced). New cookie
-  namespace `ss_skipped_*`, additive -- no existing `ss_saved_*` cookie shape changes. No
-  schema, dbt, ingestion, or CI change.
+impact_map: two new scripts (ingestion-adjacent, no dbt/schema change), one new checked-in
+  data file (the snapshot), one new `validate:full` CI step, one docs update. No live
+  yfinance calls in CI -- only in the manually-run refresh script. No Supabase/production
+  access needed anywhere in this task.

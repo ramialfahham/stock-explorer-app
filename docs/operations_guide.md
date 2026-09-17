@@ -117,6 +117,18 @@ python scripts/refresh_constituents.py
 python scripts/refresh_constituents.py --market de_dax
 ```
 
+### Refresh the name-vs-yfinance audit snapshot
+
+Manual, occasional -- like `refresh_constituents.py` above, not a CI job (this repo has no
+mechanism for CI to commit back to the repo). Fetches `info.longName` for every
+`provider: wikipedia` market's constituents; `validate:full` compares the seed's final
+(override-applied) name against this cached snapshot on every MR (issue #19).
+
+```bash
+python scripts/refresh_yfinance_names.py
+python scripts/refresh_yfinance_names.py --market ch_smi
+```
+
 ### Audit yfinance coverage (before full ingest)
 
 ```bash

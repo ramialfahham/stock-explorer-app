@@ -1,0 +1,957 @@
+market_code,ticker,yfinance_long_name,refreshed_at
+au_asx200,360,"Life360, Inc.",2026-09-17T10:20:19.021455+00:00
+au_asx200,4DX,4DMedical Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,A2M,The a2 Milk Company Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,AAI,Alcoa Corporation,2026-09-17T10:20:19.021455+00:00
+au_asx200,AFI,Australian Foundation Investment Company Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,AGL,AGL Energy Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,AIA,Auckland International Airport Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ALD,Ampol Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ALK,Alkane Resources Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,ALL,Aristocrat Leisure Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ALQ,ALS Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ALX,Atlas Arteria Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,AMC,Amcor plc,2026-09-17T10:20:19.021455+00:00
+au_asx200,AMP,AMP Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ANN,Ansell Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ANZ,ANZ Group Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,APA,APA Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,APE,Eagers Automotive Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ARB,ARB Corporation Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ARG,Argo Investments Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ASB,Austal Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ASX,ASX Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,AUB,AUB Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,AZJ,Aurizon Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BEN,Bendigo and Adelaide Bank Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BFL,BSP Financial Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BGA,Bega Cheese Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BGL,Bellevue Gold Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BHP,BHP Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BOQ,Bank of Queensland Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BPT,Beach Energy Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BRG,Breville Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BSL,BlueScope Steel Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,BWP,BWP Trust,2026-09-17T10:20:19.021455+00:00
+au_asx200,BXB,Brambles Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CAR,CAR Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CBA,Commonwealth Bank of Australia,2026-09-17T10:20:19.021455+00:00
+au_asx200,CDA,Codan Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CEN,Contact Energy Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CGF,Challenger Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CHC,Charter Hall Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,CIA,Champion Iron Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CIP,Centuria Industrial REIT,2026-09-17T10:20:19.021455+00:00
+au_asx200,CLW,Charter Hall Long WALE REIT,2026-09-17T10:20:19.021455+00:00
+au_asx200,CMM,Capricorn Metals Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,CNU,Chorus Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,COH,Cochlear Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,COL,Coles Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CPU,Computershare Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CQR,Charter Hall Retail REIT,2026-09-17T10:20:19.021455+00:00
+au_asx200,CSC,Capstone Copper Corp.,2026-09-17T10:20:19.021455+00:00
+au_asx200,CSL,CSL Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CTD,Corporate Travel Management Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CWY,Cleanaway Waste Management Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,CYL,Catalyst Metals Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,DBI,Dalrymple Bay Infrastructure Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,DNL,Dyno Nobel Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,DOW,Downer EDI Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,DRO,DroneShield Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,DRR,Deterra Royalties Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,DXS,DEXUS,2026-09-17T10:20:19.021455+00:00
+au_asx200,DYL,Deep Yellow Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,EBO,EBOS Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,EDV,Endeavour Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,EMR,Emerald Resources NL,2026-09-17T10:20:19.021455+00:00
+au_asx200,EOS,Electro Optic Systems Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,EVN,Evolution Mining Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,EVT,EVT Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,FBU,Fletcher Building Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,FLT,Flight Centre Travel Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,FMG,Fortescue Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,FPH,Fisher & Paykel Healthcare Corporation Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,FRW,Freightways Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,GDG,Generation Development Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,GGP,Greatland Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,GMD,Genesis Minerals Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,GMG,Goodman Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,GNE,Genesis Energy Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,GPT,The GPT Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,GQG,GQG Partners Inc.,2026-09-17T10:20:19.021455+00:00
+au_asx200,HDN,HomeCo Daily Needs REIT,2026-09-17T10:20:19.021455+00:00
+au_asx200,HUB,HUB24 Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,HVN,Harvey Norman Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,IAG,Insurance Australia Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,IFT,Infratil Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,IGO,IGO Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ILU,Iluka Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,IMD,Imdex Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,JBH,JB Hi-Fi Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,JHX,James Hardie Industries plc,2026-09-17T10:20:19.021455+00:00
+au_asx200,L1G,L1 Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,LLC,Lendlease Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,LNW,"Light & Wonder, Inc.",2026-09-17T10:20:19.021455+00:00
+au_asx200,LOV,Lovisa Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,LSF,L1 Long Short Fund Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,LTR,Liontown Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,LYC,Lynas Rare Earths Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MCY,Mercury NZ Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MEZ,Meridian Energy Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MFF,MFF Capital Investments Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MFG,Magellan Financial Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MGR,Mirvac Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,MIN,Mineral Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MND,Monadelphous Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MPL,Medibank Private Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MQG,Macquarie Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MSB,Mesoblast Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MTS,Metcash Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,MXT,Metrics Master Income Trust,2026-09-17T10:20:19.021455+00:00
+au_asx200,NAB,National Australia Bank Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NEM,Newmont Corporation,2026-09-17T10:20:19.021455+00:00
+au_asx200,NHC,New Hope Corporation Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NHF,nib holdings limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NIC,Nickel Industries Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NST,Northern Star Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NWH,NRW Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NWL,Netwealth Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,NWS,News Corporation,2026-09-17T10:20:19.021455+00:00
+au_asx200,NXG,NexGen Energy Ltd.,2026-09-17T10:20:19.021455+00:00
+au_asx200,NXT,NEXTDC Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,OBM,Ora Banda Mining Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ORA,Orora Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ORG,Origin Energy Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ORI,Orica Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PDI,PDI Gold Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PDN,Paladin Energy Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,PLS,PLS Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PME,Pro Medicus Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PMV,Premier Investments Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PNI,Pinnacle Investment Management Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PPT,Perpetual Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PRN,Perenti Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PRU,Perseus Mining Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,PXA,PEXA Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,QAN,Qantas Airways Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,QBE,QBE Insurance Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,QUB,Qube Holdings Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,RDX,Redox Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,REA,REA Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,REG,Regis Healthcare Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,REH,Reece Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,RGN,Region Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,RHC,Ramsay Health Care Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,RIO,Rio Tinto Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,RMD,ResMed Inc.,2026-09-17T10:20:19.021455+00:00
+au_asx200,RMS,Ramelius Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,RRL,Regis Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,RSG,Resolute Mining Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,RWC,Reliance Worldwide Corporation Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,RYM,Ryman Healthcare Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,S32,South32 Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SCG,Scentre Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,SDF,Steadfast Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SEK,SEEK Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SFR,Sandfire Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SGH,SGH Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SGM,Sims Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SGP,Stockland,2026-09-17T10:20:19.021455+00:00
+au_asx200,SHL,Sonic Healthcare Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SIG,Sigma Healthcare Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SMR,Stanmore Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SNZ,Summerset Group Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SOL,Washington H. Soul Pattinson and Company Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SPK,Spark New Zealand Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,STO,Santos Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SUL,Super Retail Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,SUN,Suncorp Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TAH,Tabcorp Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TCL,Transurban Group,2026-09-17T10:20:19.021455+00:00
+au_asx200,TLC,The Lottery Corporation Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TLS,Telstra Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TLX,Telix Pharmaceuticals Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TNE,Technology One Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TPG,TPG Telecom Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TUA,Tuas Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,TWE,Treasury Wine Estates Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,VAU,Vault Minerals Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,VCX,Vicinity Centres,2026-09-17T10:20:19.021455+00:00
+au_asx200,VEA,Viva Energy Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,VGN,Virgin Australia Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,VNT,Ventia Services Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WAF,West African Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WAM,WAM Capital Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WBC,Westpac Banking Corporation,2026-09-17T10:20:19.021455+00:00
+au_asx200,WDS,Woodside Energy Group Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,WES,Wesfarmers Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WGX,Westgold Resources Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WHC,Whitehaven Coal Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WLE,WAM Leaders Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WOR,Worley Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WOW,Woolworths Group Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,WTC,WiseTech Global Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,XRO,Xero Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,XYZ,"Block, Inc.",2026-09-17T10:20:19.021455+00:00
+au_asx200,YAL,Yancoal Australia Ltd,2026-09-17T10:20:19.021455+00:00
+au_asx200,ZIM,Zimplats Holdings Limited,2026-09-17T10:20:19.021455+00:00
+au_asx200,ZIP,Zip Co Limited,2026-09-17T10:20:19.021455+00:00
+ch_smi,ABBN,ABB Ltd,2026-09-17T10:20:19.021455+00:00
+ch_smi,ALC,Alcon Inc.,2026-09-17T10:20:19.021455+00:00
+ch_smi,AMRZ,Amrize AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,CFR,Compagnie Financière Richemont SA,2026-09-17T10:20:19.021455+00:00
+ch_smi,GEBN,Geberit AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,GIVN,Givaudan SA,2026-09-17T10:20:19.021455+00:00
+ch_smi,HOLN,Holcim AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,KNIN,Kuehne + Nagel International AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,LOGN,Logitech International S.A.,2026-09-17T10:20:19.021455+00:00
+ch_smi,LONN,Lonza Group AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,NESN,Nestlé S.A.,2026-09-17T10:20:19.021455+00:00
+ch_smi,NOVN,Novartis AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,PGHN,Partners Group Holding AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,ROP,Roche Holding AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,SCMN,Swisscom AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,SIKA,Sika AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,SLHN,Swiss Life Holding AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,SREN,Swiss Re AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,UBSG,UBS Group AG,2026-09-17T10:20:19.021455+00:00
+ch_smi,ZURN,Zurich Insurance Group AG,2026-09-17T10:20:19.021455+00:00
+de_dax,ADS,adidas AG,2026-09-17T10:20:19.021455+00:00
+de_dax,AIR.PA,Airbus SE,2026-09-17T10:20:19.021455+00:00
+de_dax,ALV,Allianz SE,2026-09-17T10:20:19.021455+00:00
+de_dax,BAS,BASF SE,2026-09-17T10:20:19.021455+00:00
+de_dax,BAYN,Bayer Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,BEI,Beiersdorf Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,BMW,Bayerische Motoren Werke Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,BNR,Brenntag SE,2026-09-17T10:20:19.021455+00:00
+de_dax,CBK,Commerzbank AG,2026-09-17T10:20:19.021455+00:00
+de_dax,CON,Continental Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,DB1,Deutsche Börse AG,2026-09-17T10:20:19.021455+00:00
+de_dax,DBK,Deutsche Bank Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,DHL,DHL AG,2026-09-17T10:20:19.021455+00:00
+de_dax,DTE,Deutsche Telekom AG,2026-09-17T10:20:19.021455+00:00
+de_dax,DTG,Daimler Truck Holding AG,2026-09-17T10:20:19.021455+00:00
+de_dax,ENR,Siemens Energy AG,2026-09-17T10:20:19.021455+00:00
+de_dax,EOAN,E.ON SE,2026-09-17T10:20:19.021455+00:00
+de_dax,FME,Fresenius Medical Care AG,2026-09-17T10:20:19.021455+00:00
+de_dax,FRE,Fresenius SE & Co. KGaA,2026-09-17T10:20:19.021455+00:00
+de_dax,G1A,GEA Group Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,G24,Scout24 SE,2026-09-17T10:20:19.021455+00:00
+de_dax,HEI,Heidelberg Materials AG,2026-09-17T10:20:19.021455+00:00
+de_dax,HEN3,Henkel AG & Co. KGaA,2026-09-17T10:20:19.021455+00:00
+de_dax,HNR1,Hannover Rück SE,2026-09-17T10:20:19.021455+00:00
+de_dax,IFX,Infineon Technologies AG,2026-09-17T10:20:19.021455+00:00
+de_dax,MBG,Mercedes-Benz Group AG,2026-09-17T10:20:19.021455+00:00
+de_dax,MRK,Merck KGaA,2026-09-17T10:20:19.021455+00:00
+de_dax,MTX,MTU Aero Engines AG,2026-09-17T10:20:19.021455+00:00
+de_dax,MUV2,Münchener Rückversicherungs-Gesellschaft Aktiengesellschaft in München,2026-09-17T10:20:19.021455+00:00
+de_dax,PAH3,Porsche Automobil Holding SE,2026-09-17T10:20:19.021455+00:00
+de_dax,QIA,Qiagen N.V.,2026-09-17T10:20:19.021455+00:00
+de_dax,RHM,Rheinmetall AG,2026-09-17T10:20:19.021455+00:00
+de_dax,RWE,RWE Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,SAP,SAP SE,2026-09-17T10:20:19.021455+00:00
+de_dax,SHL,Siemens Healthineers AG,2026-09-17T10:20:19.021455+00:00
+de_dax,SIE,Siemens Aktiengesellschaft,2026-09-17T10:20:19.021455+00:00
+de_dax,SY1,Symrise AG,2026-09-17T10:20:19.021455+00:00
+de_dax,VNA,Vonovia SE,2026-09-17T10:20:19.021455+00:00
+de_dax,VOW3,Volkswagen AG,2026-09-17T10:20:19.021455+00:00
+de_dax,ZAL,Zalando SE,2026-09-17T10:20:19.021455+00:00
+es_ibex35,ACS.MC,"ACS, Actividades de Construcción y Servicios, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ACX.MC,"Acerinox, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,AENA.MC,"Aena S.M.E., S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,AMS.MC,"Amadeus IT Group, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ANA.MC,"Acciona, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ANE.MC,"Corporación Acciona Energías Renovables, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,BBVA.MC,"Banco Bilbao Vizcaya Argentaria, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,BKT.MC,"Bankinter, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,CABK.MC,"CaixaBank, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,CLNX.MC,"Cellnex Telecom, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,COL.MC,"Colonial SFL, Socimi S. A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ELE.MC,"Endesa, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ENG.MC,"Enagás, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,FDR.MC,"Fluidra, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,FER.MC,Ferrovial N.V.,2026-09-17T10:20:19.021455+00:00
+es_ibex35,GRF.MC,"Grifols, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,IAG.MC,International Consolidated Airlines Group S.A.,2026-09-17T10:20:19.021455+00:00
+es_ibex35,IBE.MC,"Iberdrola, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,IDR.MC,"Indra Sistemas, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ITX.MC,"Industria de Diseño Textil, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,LOG.MC,"Logista Integral, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,MAP.MC,"Mapfre, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,MRL.MC,"MERLIN Properties SOCIMI, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,MTS.MC,ArcelorMittal S.A.,2026-09-17T10:20:19.021455+00:00
+es_ibex35,NTGY.MC,"Naturgy Energy Group, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,PUIG.MC,"Puig Brands, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,RED.MC,"Redeia Corporación, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,REP.MC,"Repsol, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,ROVI.MC,"Laboratorios Farmaceuticos Rovi, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,SAB.MC,"Banco de Sabadell, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,SAN.MC,"Banco Santander, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,SCYR.MC,"Sacyr, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,SLR.MC,"Solaria Energía y Medio Ambiente, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,TEF.MC,"Telefónica, S.A.",2026-09-17T10:20:19.021455+00:00
+es_ibex35,UNI.MC,"Unicaja Banco, S.A.",2026-09-17T10:20:19.021455+00:00
+fr_cac40,AC.PA,Accor SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,ACA.PA,Crédit Agricole S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,AI.PA,L'Air Liquide S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,AIR.PA,Airbus SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,BN.PA,Danone S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,BNP.PA,BNP Paribas SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,BVI.PA,Bureau Veritas SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,CA.PA,Carrefour SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,CAP.PA,Capgemini SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,CS.PA,AXA SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,DG.PA,Vinci SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,DSY.PA,Dassault Systèmes SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,EDEN.PA,Edenred SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,EL.PA,EssilorLuxottica Société anonyme,2026-09-17T10:20:19.021455+00:00
+fr_cac40,EN.PA,Bouygues SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,ENGI.PA,Engie SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,ERF.PA,Eurofins Scientific SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,GLE.PA,Société Générale Société anonyme,2026-09-17T10:20:19.021455+00:00
+fr_cac40,HO.PA,Thales S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,KER.PA,Kering SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,LR.PA,Legrand SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,MC.PA,"LVMH Moët Hennessy - Louis Vuitton, Société Européenne",2026-09-17T10:20:19.021455+00:00
+fr_cac40,ML.PA,Compagnie Générale des Établissements Michelin Société en commandite par actions,2026-09-17T10:20:19.021455+00:00
+fr_cac40,MT.AS,ArcelorMittal S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,OR.PA,L'Oréal S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,ORA.PA,Orange S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,PUB.PA,Publicis Groupe S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,RI.PA,Pernod Ricard SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,RMS.PA,Hermès International Société en commandite par actions,2026-09-17T10:20:19.021455+00:00
+fr_cac40,RNO.PA,Renault SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,SAF.PA,Safran SA,2026-09-17T10:20:19.021455+00:00
+fr_cac40,SAN.PA,Sanofi,2026-09-17T10:20:19.021455+00:00
+fr_cac40,SGO.PA,Compagnie de Saint-Gobain S.A.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,STLAP.PA,Stellantis N.V.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,STMPA.PA,STMicroelectronics N.V.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,SU.PA,Schneider Electric S.E.,2026-09-17T10:20:19.021455+00:00
+fr_cac40,TEP.PA,Teleperformance SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,TTE.PA,TotalEnergies SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,URW.PA,Unibail-Rodamco-Westfield SE,2026-09-17T10:20:19.021455+00:00
+fr_cac40,VIE.PA,Veolia Environnement SA,2026-09-17T10:20:19.021455+00:00
+nl_aex,ABN.AS,ABN AMRO Bank N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,AD.AS,Koninklijke Ahold Delhaize N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,ADYEN.AS,Adyen N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,AGN.AS,Aegon Ltd.,2026-09-17T10:20:19.021455+00:00
+nl_aex,AKZA.AS,Akzo Nobel N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,ASM.AS,ASM International NV,2026-09-17T10:20:19.021455+00:00
+nl_aex,ASML.AS,ASML Holding N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,ASRNL.AS,ASR Nederland N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,BESI.AS,BE Semiconductor Industries N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,DSFIR.AS,DSM-Firmenich AG,2026-09-17T10:20:19.021455+00:00
+nl_aex,EXO.AS,Exor N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,HEIA.AS,Heineken N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,IMCD.AS,IMCD N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,INGA.AS,ING Groep N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,KPN.AS,Koninklijke KPN N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,MT.AS,ArcelorMittal S.A.,2026-09-17T10:20:19.021455+00:00
+nl_aex,NN.AS,NN Group N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,PHIA.AS,Koninklijke Philips N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,PRX.AS,Prosus N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,RAND.AS,Randstad N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,REN.AS,RELX PLC,2026-09-17T10:20:19.021455+00:00
+nl_aex,SHELL.AS,Shell plc,2026-09-17T10:20:19.021455+00:00
+nl_aex,UMG.AS,Universal Music Group N.V.,2026-09-17T10:20:19.021455+00:00
+nl_aex,UNA.AS,Unilever PLC,2026-09-17T10:20:19.021455+00:00
+nl_aex,WKL.AS,Wolters Kluwer N.V.,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,AAF,Airtel Africa Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,AAL,Anglo American plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ABF,Associated British Foods plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ADM,Admiral Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ALW,Alliance Witan Ord,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ANTO,Antofagasta plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,AUTO,Autotrader Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,AV,Aviva plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,AZN,AstraZeneca PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BA,BAE Systems plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BAB,Babcock International Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BARC,Barclays PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BATS,British American Tobacco p.l.c.,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BBOX,Tritax Big Box Ord,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BEZ,Beazley plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BGEO,Lion Finance Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BKG,The Berkeley Group Holdings plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BLND,British Land Company PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BNZL,Bunzl plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BP,BP p.l.c.,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BRBY,Burberry Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,BTRW,Barratt Redrow plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,CCEP,Coca-Cola Europacific Partners PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,CCH,Coca-Cola HBC AG,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,CNA,Centrica plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,CPG,Compass Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,CRDA,Croda International Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,CTEC,Convatec Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,DCC,DCC Energy plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,DGE,Diageo plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,DPLM,Diploma PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,EDV,Endeavour Mining plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ENT,Entain Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,EXPN,Experian plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,FCIT,F&C Investment Trust Ord,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,FRES,Fresnillo plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,GAW,Games Workshop Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,GLEN,Glencore plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,GSK,GSK plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,HLMA,Halma plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,HLN,Haleon plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,HSBA,HSBC Holdings plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,HSX,Hiscox Ltd,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,HWDN,Howden Joinery Group Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,IAG,International Consolidated Airlines Group S.A.,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ICG,ICG plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,IGG,IG Group Holdings plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,IHG,InterContinental Hotels Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,III,3i Group Ord,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,IMB,Imperial Brands PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,IMI,IMI plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,INF,Informa plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ITRK,Intertek Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,JD,JD Sports Fashion Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,KGF,Kingfisher plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,LAND,Land Securities Group Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,LGEN,Legal & General Group Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,LLOY,Lloyds Banking Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,LMP,LondonMetric Property Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,LSEG,London Stock Exchange Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,MKS,Marks and Spencer Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,MNDI,Mondi plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,MNG,M&G plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,MRO,Melrose Industries PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,MTLN,Metlen Energy & Metals PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,NG,National Grid plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,NWG,NatWest Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,NXT,NEXT plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,PCT,Polar Capital Technology Ord,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,PRU,Prudential plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,PSH,"Pershing Square Holdings, Ltd.",2026-09-17T10:20:19.021455+00:00
+uk_ftse100,PSN,Persimmon Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,PSON,Pearson plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,REL,RELX PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,RIO,Rio Tinto Group,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,RKT,Reckitt Benckiser Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,RMV,Rightmove plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,RR,Rolls-Royce Holdings plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,RTO,Rentokil Initial plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SBRY,J Sainsbury plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SDLF,Standard Life plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SDR,Schroders plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SGE,The Sage Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SGRO,SEGRO Plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SHEL,Shell plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SMIN,Smiths Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SMT,Scottish Mortgage Ord,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SN,Smith & Nephew plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SPX,Spirax Group plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SSE,SSE plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,STAN,Standard Chartered PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,STJ,St. James's Place plc,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,SVT,Severn Trent PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,TSCO,Tesco PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,ULVR,Unilever PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,UU,United Utilities Group PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,VOD,Vodafone Group Public Limited Company,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,WEIR,Weir PLC,2026-09-17T10:20:19.021455+00:00
+uk_ftse100,WTB,Whitbread plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,A,"Agilent Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AAPL,Apple Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ABBV,AbbVie Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ABNB,"Airbnb, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ABT,Abbott Laboratories,2026-09-17T10:20:19.021455+00:00
+us_sp500,ACGL,Arch Capital Group Ltd.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ACN,Accenture plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,ADBE,Adobe Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ADI,"Analog Devices, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ADM,Archer-Daniels-Midland Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,ADP,"Automatic Data Processing, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ADSK,"Autodesk, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AEE,Ameren Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,AEP,"American Electric Power Company, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AES,The AES Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,AFL,Aflac Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,AIG,"American International Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AIZ,"Assurant, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AJG,Arthur J. Gallagher & Co.,2026-09-17T10:20:19.021455+00:00
+us_sp500,AKAM,"Akamai Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ALB,Albemarle Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ALGN,"Align Technology, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ALL,The Allstate Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ALLE,Allegion plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,AMAT,"Applied Materials, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AMCR,Amcor plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,AMD,"Advanced Micro Devices, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AME,"AMETEK, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AMGN,Amgen Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,AMP,"Ameriprise Financial, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AMT,American Tower Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,AMZN,"Amazon.com, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ANET,"Arista Networks, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AON,Aon plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,AOS,A. O. Smith Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,APA,APA Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,APD,"Air Products and Chemicals, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,APH,Amphenol Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,APO,"Apollo Global Management, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,APP,AppLovin Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,APTV,Aptiv PLC,2026-09-17T10:20:19.021455+00:00
+us_sp500,ARE,"Alexandria Real Estate Equities, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ARES,Ares Management Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ATO,Atmos Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,AVB,AvalonBay Communities Inc,2026-09-17T10:20:19.021455+00:00
+us_sp500,AVGO,Broadcom Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,AVY,Avery Dennison Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,AWK,"American Water Works Company, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AXON,"Axon Enterprise, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,AXP,American Express Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,AZO,"AutoZone, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,BA,The Boeing Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,BAC,Bank of America Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,BALL,Ball Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,BAX,Baxter International Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,BBY,"Best Buy Co., Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,BDX,"Becton, Dickinson and Company",2026-09-17T10:20:19.021455+00:00
+us_sp500,BEN,Franklin Templeton Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,BG,Bunge Global SA,2026-09-17T10:20:19.021455+00:00
+us_sp500,BIIB,Biogen Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,BKNG,Booking Holdings Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,BKR,Baker Hughes Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,BLDR,"Builders FirstSource, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,BLK,"BlackRock, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,BMY,Bristol-Myers Squibb Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,BNY,The Bank of New York Mellon Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,BR,"Broadridge Financial Solutions, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,BRO,"Brown & Brown, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,BSX,Boston Scientific Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,BX,Blackstone Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,BXP,"BXP, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,C,Citigroup Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CAG,"Conagra Brands, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CAH,"Cardinal Health, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CARR,Carrier Global Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CASY,"Casey's General Stores, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CAT,Caterpillar Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CB,Chubb Limited,2026-09-17T10:20:19.021455+00:00
+us_sp500,CBOE,"Cboe Global Markets, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CBRE,"CBRE Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CCI,Crown Castle Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CCL,Carnival Corporation Ltd.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CDNS,"Cadence Design Systems, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CDW,CDW Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CEG,Constellation Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CF,"CF Industries Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CFG,"Citizens Financial Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CHD,"Church & Dwight Co., Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CHRW,"C.H. Robinson Worldwide, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CHTR,"Charter Communications, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CI,The Cigna Group,2026-09-17T10:20:19.021455+00:00
+us_sp500,CIEN,Ciena Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CINF,Cincinnati Financial Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CL,Colgate-Palmolive Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,CLX,The Clorox Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,CMCSA,Comcast Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CME,CME Group Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CMG,"Chipotle Mexican Grill, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CMI,Cummins Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CMS,CMS Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CNC,Centene Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CNP,"CenterPoint Energy, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,COF,Capital One Financial Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,COHR,Coherent Corp.,2026-09-17T10:20:19.021455+00:00
+us_sp500,COIN,"Coinbase Global, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,COO,"The Cooper Companies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,COP,ConocoPhillips,2026-09-17T10:20:19.021455+00:00
+us_sp500,COR,"Cencora, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,COST,Costco Wholesale Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CPAY,"Corpay, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CPB,The Campbell's Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,CPRT,"Copart, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CPT,Camden Property Trust,2026-09-17T10:20:19.021455+00:00
+us_sp500,CRH,CRH plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,CRL,"Charles River Laboratories International, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CRM,"Salesforce, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CRWD,"CrowdStrike Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CSCO,"Cisco Systems, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CSGP,"CoStar Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CSX,CSX Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CTAS,Cintas Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CTSH,Cognizant Technology Solutions Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CTVA,"Corteva, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,CVNA,Carvana Co.,2026-09-17T10:20:19.021455+00:00
+us_sp500,CVS,CVS Health Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,CVX,Chevron Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,D,"Dominion Energy, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DAL,"Delta Air Lines, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DASH,"DoorDash, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DD,"DuPont de Nemours, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DDOG,"Datadog, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DE,Deere & Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,DECK,Deckers Outdoor Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,DELL,Dell Technologies Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,DG,Dollar General Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,DGX,Quest Diagnostics Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,DHI,"D.R. Horton, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DHR,Danaher Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,DIS,The Walt Disney Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,DLR,"Digital Realty Trust, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DLTR,"Dollar Tree, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DOC,"Healthpeak Properties, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DOV,Dover Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,DOW,Dow Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,DPZ,"Domino's Pizza, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DRI,"Darden Restaurants, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,DTE,DTE Energy Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,DUK,Duke Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,DVA,DaVita Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,DVN,Devon Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,DXCM,"DexCom, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EA,Electronic Arts Inc,2026-09-17T10:20:19.021455+00:00
+us_sp500,EBAY,eBay Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ECL,Ecolab Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ED,"Consolidated Edison, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EFX,Equifax Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,EG,"Everest Group, Ltd.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EIX,Edison International,2026-09-17T10:20:19.021455+00:00
+us_sp500,EL,The Estée Lauder Companies Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ELV,"Elevance Health, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EME,"EMCOR Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EMR,Emerson Electric Co.,2026-09-17T10:20:19.021455+00:00
+us_sp500,EOG,"EOG Resources, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EPAM,"EPAM Systems, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EQIX,"Equinix, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EQR,Equity Residential,2026-09-17T10:20:19.021455+00:00
+us_sp500,EQT,EQT Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ERIE,Erie Indemnity Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,ES,Eversource Energy,2026-09-17T10:20:19.021455+00:00
+us_sp500,ESS,"Essex Property Trust, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ETN,Eaton Corporation plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,ETR,Entergy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,EVRG,"Evergy, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EW,Edwards Lifesciences Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,EXC,Exelon Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,EXE,Expand Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,EXPD,"Expeditors International of Washington, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EXPE,"Expedia Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,EXR,Extra Space Storage Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,F,Ford Motor Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,FANG,"Diamondback Energy, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FAST,Fastenal Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,FCX,Freeport-McMoRan Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,FDS,FactSet Research Systems Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,FDX,FedEx Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,FE,FirstEnergy Corp.,2026-09-17T10:20:19.021455+00:00
+us_sp500,FFIV,"F5, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FICO,Fair Isaac Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,FIS,"Fidelity National Information Services, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FISV,"Fiserv, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FITB,Fifth Third Bancorp,2026-09-17T10:20:19.021455+00:00
+us_sp500,FIX,"Comfort Systems USA, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FOX,Fox Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,FOXA,Fox Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,FRT,Federal Realty Investment Trust,2026-09-17T10:20:19.021455+00:00
+us_sp500,FSLR,"First Solar, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FTNT,"Fortinet, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,FTV,Fortive Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,GD,General Dynamics Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,GDDY,GoDaddy Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GE,GE Aerospace,2026-09-17T10:20:19.021455+00:00
+us_sp500,GEHC,GE HealthCare Technologies Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GEN,Gen Digital Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GEV,GE Vernova Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GILD,"Gilead Sciences, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,GIS,"General Mills, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,GL,Globe Life Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GLW,Corning Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,GM,General Motors Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,GNRC,Generac Holdings Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GOOG,Alphabet Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GOOGL,Alphabet Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GPC,Genuine Parts Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,GPN,Global Payments Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GRMN,Garmin Ltd.,2026-09-17T10:20:19.021455+00:00
+us_sp500,GS,"The Goldman Sachs Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,GWW,"W.W. Grainger, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HAL,Halliburton Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,HAS,"Hasbro, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HBAN,Huntington Bancshares Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,HCA,"HCA Healthcare, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HD,"The Home Depot, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HIG,"The Hartford Insurance Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HII,"Huntington Ingalls Industries, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HLT,Hilton Worldwide Holdings Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,HON,Honeywell International Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,HOOD,"Robinhood Markets, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HPE,Hewlett Packard Enterprise Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,HPQ,HP Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,HRL,Hormel Foods Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,HSIC,"Henry Schein, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HST,"Host Hotels & Resorts, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,HSY,The Hershey Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,HUBB,Hubbell Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,HUM,Humana Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,HWM,Howmet Aerospace Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,IBKR,"Interactive Brokers Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,IBM,International Business Machines Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ICE,"Intercontinental Exchange, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,IDXX,"IDEXX Laboratories, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,IEX,IDEX Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,IFF,International Flavors & Fragrances Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,INCY,Incyte Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,INTC,Intel Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,INTU,Intuit Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,INVH,Invitation Homes Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,IP,International Paper Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,IQV,IQVIA Holdings Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,IR,Ingersoll Rand Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,IRM,Iron Mountain Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,ISRG,"Intuitive Surgical, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,IT,"Gartner, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ITW,Illinois Tool Works Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,IVZ,Invesco Ltd.,2026-09-17T10:20:19.021455+00:00
+us_sp500,J,Jacobs Solutions Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,JBHT,"J.B. Hunt Transport Services, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,JBL,Jabil Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,JCI,Johnson Controls International plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,JKHY,"Jack Henry & Associates, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,JNJ,Johnson & Johnson,2026-09-17T10:20:19.021455+00:00
+us_sp500,JPM,JPMorgan Chase & Co.,2026-09-17T10:20:19.021455+00:00
+us_sp500,KDP,Keurig Dr Pepper Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,KEY,KeyCorp,2026-09-17T10:20:19.021455+00:00
+us_sp500,KEYS,"Keysight Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,KHC,The Kraft Heinz Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,KIM,Kimco Realty Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,KKR,KKR & Co. Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,KLAC,KLA Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,KMB,Kimberly-Clark Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,KMI,"Kinder Morgan, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,KO,The Coca-Cola Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,KR,The Kroger Co.,2026-09-17T10:20:19.021455+00:00
+us_sp500,KVUE,Kenvue Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,L,Loews Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,LDOS,"Leidos Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,LEN,Lennar Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,LH,Labcorp Holdings Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LHX,"L3Harris Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,LII,Lennox International Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LIN,Linde plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,LITE,Lumentum Holdings Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LLY,Eli Lilly and Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,LMT,Lockheed Martin Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,LNT,Alliant Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,LOW,"Lowe's Companies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,LRCX,Lam Research Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,LULU,lululemon athletica inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LUV,Southwest Airlines Co.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LVS,Las Vegas Sands Corp.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LYB,LyondellBasell Industries N.V.,2026-09-17T10:20:19.021455+00:00
+us_sp500,LYV,"Live Nation Entertainment, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MA,Mastercard Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,MAA,"Mid-America Apartment Communities, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MAR,"Marriott International, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MAS,Masco Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MCD,McDonald's Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MCHP,Microchip Technology Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,MCK,McKesson Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MCO,Moody's Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MDLZ,"Mondelez International, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MDT,Medtronic plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,MET,"MetLife, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,META,"Meta Platforms, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MGM,MGM Resorts International,2026-09-17T10:20:19.021455+00:00
+us_sp500,MKC,"McCormick & Company, Incorporated",2026-09-17T10:20:19.021455+00:00
+us_sp500,MLM,"Martin Marietta Materials, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MMM,3M Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,MNST,Monster Beverage Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MO,"Altria Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MOS,The Mosaic Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,MPC,Marathon Petroleum Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MPWR,"Monolithic Power Systems, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MRK,"Merck & Co., Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MRNA,"Moderna, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MRSH,"Marsh & McLennan Companies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MS,Morgan Stanley,2026-09-17T10:20:19.021455+00:00
+us_sp500,MSCI,MSCI Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,MSFT,Microsoft Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MSI,"Motorola Solutions, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,MTB,M&T Bank Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,MTD,Mettler-Toledo International Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,MU,"Micron Technology, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NCLH,Norwegian Cruise Line Holdings Ltd.,2026-09-17T10:20:19.021455+00:00
+us_sp500,NDAQ,"Nasdaq, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NDSN,Nordson Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NEE,"NextEra Energy, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NEM,Newmont Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NFLX,"Netflix, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NI,NiSource Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,NKE,"NIKE, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NOC,Northrop Grumman Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NOW,"ServiceNow, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NRG,"NRG Energy, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NSC,Norfolk Southern Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NTAP,"NetApp, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NTRS,Northern Trust Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NUE,Nucor Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NVDA,NVIDIA Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NVR,"NVR, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,NWS,News Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NWSA,News Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,NXPI,NXP Semiconductors N.V.,2026-09-17T10:20:19.021455+00:00
+us_sp500,O,Realty Income Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ODFL,"Old Dominion Freight Line, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,OKE,"ONEOK, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,OMC,Omnicom Group Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ON,ON Semiconductor Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ORCL,Oracle Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ORLY,"O'Reilly Automotive, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,OTIS,Otis Worldwide Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,OXY,Occidental Petroleum Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PANW,"Palo Alto Networks, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PAYX,"Paychex, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PCAR,PACCAR Inc,2026-09-17T10:20:19.021455+00:00
+us_sp500,PCG,PG&E Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PEG,Public Service Enterprise Group Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,PEP,"PepsiCo, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PFE,Pfizer Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,PFG,"Principal Financial Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PG,The Procter & Gamble Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,PGR,The Progressive Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PH,Parker-Hannifin Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PHM,"PulteGroup, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PKG,Packaging Corporation of America,2026-09-17T10:20:19.021455+00:00
+us_sp500,PLD,"Prologis, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PLTR,Palantir Technologies Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,PM,Philip Morris International Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,PNC,"The PNC Financial Services Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PNR,Pentair plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,PNW,Pinnacle West Capital Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PODD,Insulet Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,POOL,Pool Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PPG,"PPG Industries, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PPL,PPL Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PRU,"Prudential Financial, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PSA,Public Storage,2026-09-17T10:20:19.021455+00:00
+us_sp500,PSKY,Paramount Skydance Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,PSX,Phillips 66,2026-09-17T10:20:19.021455+00:00
+us_sp500,PTC,PTC Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,PWR,"Quanta Services, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,PYPL,"PayPal Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,Q,"Qnity Electronics, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,QCOM,QUALCOMM Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,RCL,Royal Caribbean Cruises Ltd.,2026-09-17T10:20:19.021455+00:00
+us_sp500,REG,Regency Centers Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,REGN,"Regeneron Pharmaceuticals, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,RF,Regions Financial Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,RJF,"Raymond James Financial, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,RL,Ralph Lauren Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,RMD,ResMed Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,ROK,"Rockwell Automation, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ROL,"Rollins, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ROP,"Roper Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ROST,"Ross Stores, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,RSG,"Republic Services, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,RTX,RTX Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,RVTY,"Revvity, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SBAC,SBA Communications Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,SBUX,Starbucks Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,SCHW,The Charles Schwab Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,SHW,The Sherwin-Williams Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,SJM,The J. M. Smucker Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,SLB,SLB N.V.,2026-09-17T10:20:19.021455+00:00
+us_sp500,SMCI,"Super Micro Computer, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SNA,Snap-on Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,SNDK,Sandisk Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,SNPS,"Synopsys, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SO,The Southern Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,SOLV,Solventum Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,SPG,"Simon Property Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SPGI,S&P Global Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,SRE,Sempra,2026-09-17T10:20:19.021455+00:00
+us_sp500,STE,STERIS plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,STLD,"Steel Dynamics, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,STT,State Street Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,STX,Seagate Technology Holdings plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,STZ,"Constellation Brands, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SW,Smurfit Westrock Plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,SWK,"Stanley Black & Decker, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SWKS,"Skyworks Solutions, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,SYF,Synchrony Financial,2026-09-17T10:20:19.021455+00:00
+us_sp500,SYK,Stryker Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,SYY,Sysco Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,T,AT&T Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,TAP,Molson Coors Beverage Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,TDG,TransDigm Group Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,TDY,Teledyne Technologies Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,TECH,Bio-Techne Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,TEL,TE Connectivity plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,TER,"Teradyne, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TFC,Truist Financial Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,TGT,Target Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,TJX,"The TJX Companies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TKO,"TKO Group Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TMO,Thermo Fisher Scientific Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,TMUS,"T-Mobile US, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TPL,Texas Pacific Land Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,TPR,"Tapestry, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TRGP,Targa Resources Corp.,2026-09-17T10:20:19.021455+00:00
+us_sp500,TRMB,Trimble Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,TROW,"T. Rowe Price Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TRV,"The Travelers Companies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TSCO,Tractor Supply Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,TSLA,"Tesla, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TSN,"Tyson Foods, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TT,Trane Technologies plc,2026-09-17T10:20:19.021455+00:00
+us_sp500,TTD,"The Trade Desk, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TTWO,"Take-Two Interactive Software, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,TXN,Texas Instruments Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,TXT,Textron Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,TYL,"Tyler Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,UAL,"United Airlines Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,UBER,"Uber Technologies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,UDR,"UDR, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,UHS,"Universal Health Services, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ULTA,"Ulta Beauty, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,UNH,UnitedHealth Group Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,UNP,Union Pacific Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,UPS,"United Parcel Service, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,URI,"United Rentals, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,USB,U.S. Bancorp,2026-09-17T10:20:19.021455+00:00
+us_sp500,V,Visa Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,VEEV,Veeva Systems Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,VICI,VICI Properties Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,VLO,Valero Energy Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,VLTO,Veralto Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,VMC,Vulcan Materials Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,VRSK,"Verisk Analytics, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,VRSN,"VeriSign, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,VRT,Vertiv Holdings Co,2026-09-17T10:20:19.021455+00:00
+us_sp500,VRTX,Vertex Pharmaceuticals Incorporated,2026-09-17T10:20:19.021455+00:00
+us_sp500,VST,Vistra Corp.,2026-09-17T10:20:19.021455+00:00
+us_sp500,VTR,"Ventas, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,VTRS,Viatris Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,VZ,Verizon Communications Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,WAB,Westinghouse Air Brake Technologies Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,WAT,Waters Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,WBD,"Warner Bros. Discovery, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WDAY,"Workday, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WDC,Western Digital Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,WEC,"WEC Energy Group, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WELL,Welltower Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,WFC,Wells Fargo & Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,WM,"Waste Management, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WMB,"The Williams Companies, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WMT,Walmart Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,WRB,W. R. Berkley Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,WSM,"Williams-Sonoma, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WST,"West Pharmaceutical Services, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,WTW,Willis Towers Watson Public Limited Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,WY,Weyerhaeuser Company,2026-09-17T10:20:19.021455+00:00
+us_sp500,WYNN,"Wynn Resorts, Limited",2026-09-17T10:20:19.021455+00:00
+us_sp500,XEL,Xcel Energy Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,XOM,ExxonMobil Holdings Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,XYL,Xylem Inc.,2026-09-17T10:20:19.021455+00:00
+us_sp500,XYZ,"Block, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,YUM,"Yum! Brands, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ZBH,"Zimmer Biomet Holdings, Inc.",2026-09-17T10:20:19.021455+00:00
+us_sp500,ZBRA,Zebra Technologies Corporation,2026-09-17T10:20:19.021455+00:00
+us_sp500,ZTS,Zoetis Inc.,2026-09-17T10:20:19.021455+00:00
