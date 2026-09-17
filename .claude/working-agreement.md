@@ -46,6 +46,10 @@ Before committing, run the review cycle (the commit gate enforces it):
 4. `git commit` — blocked until the review matches the staged change, every required
    reviewer passed, and any escalation has a recorded answer.
 
+On a re-review round, re-dispatch a reviewer only if their own routing-matched files
+changed since their own last verdict, OR their last verdict was FAIL -- not the full
+required set every round (issue #5).
+
 Trace before you change a shared data model: know what depends on it downstream first.
 
 **Prose earns its place only three ways.** Write it if it records a decision that cannot be
