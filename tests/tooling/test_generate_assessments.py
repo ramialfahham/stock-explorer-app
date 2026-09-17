@@ -327,6 +327,48 @@ def test_attach_reads_clears_a_stale_read_when_its_regeneration_attempt_fails() 
     assert rec["read_model"] is None
 
 
+def test_attach_reads_logs_every_card_not_just_failures(capsys) -> None:
+    """issue #22: a silent success and a card that was never even bucketed looked
+    identical in the job log, which is what made that investigation need a live manual
+    repro instead of just reading the log. Every bucket now prints its own ticker."""
+    carried_rec = _base_record(ticker="CARRIED", input_hash="h1")
+    generated_rec = _base_record(ticker="GENERATED")
+    capped_rec = _base_record(ticker="CAPPED")
+    existing = {
+        ("us_sp500", "CARRIED"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"},
+    }
+    rows = {
+        ("us_sp500", "CARRIED"): _metric_row("CARRIED"),
+        ("us_sp500", "GENERATED"): _metric_row("GENERATED"),
+        ("us_sp500", "CAPPED"): _metric_row("CAPPED"),
+    }
+    client = _FakeAnthropic(text="ok read on these figures.")
+    # order matters: no_stored_read before needs_refresh, so GENERATED (no stored read)
+    # is attempted and CAPPED (also no stored read) is the one the cap does not reach.
+    summary = gen.attach_reads(
+        [carried_rec, generated_rec, capped_rec], rows, existing, client, max_reads=1
+    )
+    assert summary == {"generated": 1, "carried": 1, "capped": 1, "failed": 0}
+    out = capsys.readouterr().out
+    assert "carried for us_sp500/CARRIED" in out
+    assert "generated for us_sp500/GENERATED" in out
+    assert "capped for us_sp500/CAPPED" in out
+
+
+def test_attach_reads_logs_a_missing_mart_row(capsys) -> None:
+    """The defensive branch (records derive from the same rows as rows_by_key, so this
+    "shouldn't happen") was previously silent -- indistinguishable from a genuine silent
+    success in the log. Now logged like any other failure, with its ticker."""
+    rec = _base_record()
+    client = _FakeAnthropic()
+    summary = gen.attach_reads([rec], {}, {}, client)  # rows_by_key has no matching row
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert client.messages.calls == []
+    err = capsys.readouterr().err
+    assert "us_sp500/OPX" in err
+    assert "no matching mart row" in err
+
+
 def test_main_max_reads_negative_is_rejected() -> None:
     """Rejected by argparse itself, before any file/credential access -- no duckdb/env setup
     needed here."""
