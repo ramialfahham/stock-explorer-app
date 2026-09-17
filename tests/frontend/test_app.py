@@ -266,14 +266,6 @@ def test_card_open_on_saved_follows_the_saved_focus_key() -> None:
     assert _card_open("Discover") is False
 
 
-def test_card_open_is_never_true_on_search() -> None:
-    """Search renders a card under its results, not as a view of its own, so the header
-    stays full there."""
-    st.session_state["search_selected"] = "us_sp500::MMM"
-    st.session_state["discover_focus_key"] = "us_sp500::MMM"
-    assert _card_open("Search") is False
-
-
 # --- _save_card: the one place "save" is recorded, from any surface. Must also clear skip
 # status (issue #16) -- found the hard way in the Not-now panel's own Save button, then
 # generalized so no other Save button (e.g. Discover's sticky action) could reintroduce it.

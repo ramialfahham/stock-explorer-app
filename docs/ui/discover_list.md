@@ -19,9 +19,9 @@ when only one company matches. No auto-focus on tab load, matching Saved's own r
 
 ---
 
-## Why this list is richer than Saved's or Search's
+## Why this list is richer than Saved's or search results'
 
-Saved and Search rows are picking rows, title and subtitle only, deliberately no numbers
+Saved rows and search-result rows are picking rows, title and subtitle only, deliberately no numbers
 (`saved_list.md`'s own anti-pattern: "list is for picking, not reading numbers"). Discover's
 filter narrows a large, unfamiliar pool (up to hundreds of companies), so the row carries one
 extra signal that helps a reader decide which company to open first: one glance metric.
@@ -69,7 +69,7 @@ the value is missing).
 
 **Left (`.ss-row-main`):** title is the company display name (`.ss-row-title`), subtitle is
 `{ticker} · {sector}` via `saved_row_subtitle()` (`.ss-row-sub`), the same function Saved and
-Search already use, so the two-line identity reads identically everywhere in the app.
+search results already use, so the two-line identity reads identically everywhere in the app.
 **Right (`.ss-row-side`):** the lead metric's value and label stacked (`.ss-row-metric-value` /
 `.ss-row-metric-label`). Absent entirely when the card has no value for its type's lead metric;
 the row degrades gracefully, never to a blank box.
@@ -86,7 +86,7 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
 | Row structure | Same tap mechanics as the plain row (`st.container` plus an invisible overlay `st.button`), different HTML via `build_rich_row_html`, see `design_system.md`'s row primitive |
 | Ordering | Alphabetical by company name, not the retired walk's round-robin/skip order: a list should be stable and re-findable |
 | Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measures at ~2.4s before Streamlit even registers a click. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
-| Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and Search already use, unchanged |
+| Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and search results already use, unchanged |
 | Sticky actions | Save / Not now render on the **focus card only** (matching where they already lived), not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` already rejects |
 | Empty state | One `st.info`, no fake rows |
 | Not now | Recorded as an interaction, with **no visible effect on the list**. There is no walk position left to deprioritize it from; see `north_star.md`'s "Not now (Skip)" section |

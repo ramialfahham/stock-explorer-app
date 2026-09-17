@@ -420,7 +420,7 @@ def _render_explore_filters(client) -> None:
     session_state entry is evicted by Streamlit whenever the widget isn't instantiated on the
     immediately preceding run -- true even with an explicit key, not just for unkeyed widgets --
     and this popover's content only renders while on Discover (frontend/app.py's own
-    `if active == "Discover"` guard), so one glance at Saved or Search was silently wiping the
+    `if active == "Discover"` guard), so one glance at Saved was silently wiping the
     selection. Reading/writing the plain (non-widget) session_state value directly and seeding
     each render's `index=` from it survives that eviction, since nothing here is tied to a
     widget's own key lifecycle."""
@@ -735,9 +735,7 @@ _SEARCH_QUERY_WIDGET_KEY = "search_query_widget"
 
 
 def _search_query_widget(*, placeholder: str) -> str:
-    """A `key=`-owned text_input, shared by the standalone Search tab and the persistent
-    Discover search box -- only one of the two ever renders in a given run, so they can't
-    collide on the key.
+    """The `key=`-owned text_input behind Discover's persistent search box.
 
     NOT a `value=`-seeded unkeyed widget, despite that being this file's usual pattern for
     surviving cross-tab eviction (see `_render_explore_filters`). That pattern is wrong
@@ -747,8 +745,9 @@ def _search_query_widget(*, placeholder: str) -> str:
     the very first keystroke, and Streamlit treats every following run as a brand-new
     widget that ignores whatever the frontend is trying to submit. Confirmed as a real, live
     bug against a running dev server, not an AppTest artifact: typing a second query, or
-    clearing the box, silently did nothing, in both the standalone Search tab (pre-existing,
-    unmodified by issue #20) and the new Discover box alike.
+    clearing the box, silently did nothing (found when this app still had a separate
+    standalone Search tab sharing this same widget, since removed as redundant -- the bug
+    itself was in this widget, not in having two entry points).
 
     The fix: give the widget a stable `key=` so Streamlit owns its live value across edits
     with no identity churn, and re-seed `st.session_state[key]` from `search_query` only
@@ -769,8 +768,7 @@ def _search_query_widget(*, placeholder: str) -> str:
 def _search_matches(cards: list[dict], query: str) -> list[dict]:
     """Ticker/company-name substring match, case-insensitive, sorted by display name.
     Global lookup across the full deck -- not scoped to Discover's market/sector filter or
-    its saved-ticker exclusion. Shared by the persistent Discover search box and the
-    standalone Search tab so the two entry points can't silently diverge (issue #20)."""
+    its saved-ticker exclusion."""
     needle = query.lower()
     matches = [
         c
@@ -783,8 +781,7 @@ def _search_matches(cards: list[dict], query: str) -> list[dict]:
 
 
 def _render_search_results(client, query: str, *, key_prefix: str) -> None:
-    """Matches for `query` plus the selected match's read-only card. Shared by the
-    persistent Discover search box and the standalone Search tab."""
+    """Matches for `query` plus the selected match's read-only card."""
     cards = _ensure_all_cards(client)
     matches = _search_matches(cards, query)
 
@@ -810,19 +807,9 @@ def _render_search_results(client, query: str, *, key_prefix: str) -> None:
 
 def _render_discover_search_box() -> str:
     """Persistent search above Discover's list (issue #20) -- always visible on the list
-    view, not gated behind the standalone Search tab. Shares `search_query`/`search_selected`
-    and the widget key with the standalone Search tab, kept as a fallback entry point, so
-    switching between them keeps the same query and selection."""
+    view. The only search entry point; the earlier separate Search tab was redundant with
+    this and removed."""
     return _search_query_widget(placeholder="Search ticker or company name")
-
-
-def _render_search_tab(client) -> None:
-    query = _search_query_widget(placeholder="Ticker or company name")
-
-    if not query:
-        return
-
-    _render_search_results(client, query, key_prefix="search")
 
 
 def _discovery_page(client) -> None:
@@ -881,10 +868,8 @@ def _discovery_page(client) -> None:
 
     if active == "Discover":
         focused_card = _render_discover_tab(client)
-    elif active == "Saved":
-        _render_saved_tab(client, interactions)
     else:
-        _render_search_tab(client)
+        _render_saved_tab(client, interactions)
 
     if focused_card is not None:
         _render_sticky_actions(focused_card)

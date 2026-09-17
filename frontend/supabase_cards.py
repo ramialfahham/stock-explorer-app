@@ -9,12 +9,12 @@ from explore_filters import attach_assessments, dedupe_to_latest_snapshot
 # PostgREST default max rows per request.
 PAGE_SIZE = 1000
 
-# The only columns the Discover/Saved/Search list, filter, count and sort paths read. The card
+# The only columns the Discover/Saved list, filter, count, sort, and search paths read. The card
 # FACE needs the other ~67 columns, but it needs them for one card at a time -- fetching all of
 # them for the whole deck downloads ~9-18 MB before anything can render, and `business_summary`
 # alone is 66% of that. Keep this list minimal and justified:
-#   market_code, ticker            -- the card key, plus Search matching
-#   company_name, sector           -- row title/subtitle, Search matching, sector filter
+#   market_code, ticker            -- the card key, plus search matching
+#   company_name, sector           -- row title/subtitle, search matching, sector filter
 #   is_card_eligible               -- filter_pool's eligibility gate
 #   snapshot_date                  -- dedupe_to_latest_snapshot, Saved's freshness line
 #   company_type, currency         -- pick and format the row's lead metric

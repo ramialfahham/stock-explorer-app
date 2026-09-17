@@ -67,11 +67,6 @@ def test_right_now_saved_tab_singular() -> None:
     assert line == "1 saved company on this device"
 
 
-def test_right_now_search_tab() -> None:
-    line = right_now_line(active_tab="Search", saved_count=0)
-    assert "fundamentals snapshot" in line
-
-
 def test_menu_metrics_line_has_no_stale_metric_count() -> None:
     """Regression guard: this constant ("About the data" menu section) has been
     rewritten multiple times in one task alone to drop a stale "five" metric-count
@@ -88,7 +83,6 @@ def test_quick_tip_varies_by_tab() -> None:
     assert "Save keeps" in discover
     assert "learning list" not in discover.lower()
     assert "headlines" in quick_tip_line(active_tab="Saved")
-    assert "complete set of fundamentals" in quick_tip_line(active_tab="Search")
 
 
 def test_latest_snapshot_label_picks_max_date() -> None:

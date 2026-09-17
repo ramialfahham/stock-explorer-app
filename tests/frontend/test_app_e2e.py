@@ -92,7 +92,7 @@ def app_test(monkeypatch: pytest.MonkeyPatch) -> AppTest:
     monkeypatch.setenv("SUPABASE_URL", "https://fixture.supabase.co")
     monkeypatch.setenv("SUPABASE_ANON_KEY", "fixture-anon-key")
     # The deck and the card face are two separate fetches now, so both need mocking: the deck
-    # feeds the Discover/Saved/Search lists, fetch_card_detail feeds whichever card is opened.
+    # feeds the Discover/Saved lists, fetch_card_detail feeds whichever card is opened.
     monkeypatch.setattr(supabase_cards, "fetch_deck", lambda client: _fixture_cards())
     monkeypatch.setattr(
         supabase_cards,
@@ -305,33 +305,6 @@ def test_remove_from_saved_only_removes_that_card(app_test: AppTest) -> None:
     assert _row_button(at, "saved_row_us_sp500::BETA") is not None
 
 
-def test_search_by_ticker_finds_card(app_test: AppTest) -> None:
-    at = app_test.run()
-    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
-    # The search box is the only st.text_input rendered on any given run (see
-    # _search_query_widget's docstring) -- addressed by index rather than key.
-    at = at.text_input[0].set_value("ALFA").run()
-    _assert_clean(at)
-    assert _row_button(at, "search_us_sp500_ALFA") is not None
-    assert _row_button(at, "search_us_sp500_BETA") is None
-
-
-def test_search_tab_accepts_a_second_edit(app_test: AppTest) -> None:
-    """The regression this guards: `_search_query_widget`'s predecessor derived an unkeyed
-    widget's identity from `value=`, reseeded from the widget's own prior output -- so the
-    identity moved out from under itself after the first edit and every following one was
-    silently discarded. Confirmed as a real bug against a running dev server, not an
-    AppTest artifact. A second, different query must actually take effect."""
-    at = app_test.run()
-    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
-    at = at.text_input[0].set_value("ALFA").run()
-    _assert_clean(at)
-    at = at.text_input[0].set_value("BETA").run()
-    _assert_clean(at)
-    assert _row_button(at, "search_us_sp500_BETA") is not None
-    assert _row_button(at, "search_us_sp500_ALFA") is None
-
-
 def test_discover_shows_persistent_search_box_by_default(app_test: AppTest) -> None:
     """Issue #20: search must be visible on Discover's list view without switching tabs."""
     at = app_test.run()
@@ -350,8 +323,8 @@ def test_discover_persistent_search_hides_filters_and_pool(app_test: AppTest) ->
 
 
 def test_discover_persistent_search_selected_card_has_no_save_button(app_test: AppTest) -> None:
-    """Decided via AskUserQuestion: a persistent-search hit renders read-only, matching the
-    standalone Search tab -- Save/Not now parity is a separately-scoped follow-up."""
+    """Decided via AskUserQuestion: a persistent-search hit renders read-only -- Save/Not
+    now parity is a separately-scoped follow-up."""
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
     at = at.button(key="discover_search_us_sp500_ALFA").click().run()
@@ -361,8 +334,11 @@ def test_discover_persistent_search_selected_card_has_no_save_button(app_test: A
 
 
 def test_discover_persistent_search_accepts_a_second_edit(app_test: AppTest) -> None:
-    """Same regression as test_search_tab_accepts_a_second_edit, for the other entry point
-    sharing `_search_query_widget`."""
+    """The regression this guards: `_search_query_widget`'s predecessor derived an unkeyed
+    widget's identity from `value=`, reseeded from the widget's own prior output -- so the
+    identity moved out from under itself after the first edit and every following one was
+    silently discarded. Confirmed as a real bug against a running dev server, not an
+    AppTest artifact. A second, different query must actually take effect."""
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
     _assert_clean(at)
@@ -391,7 +367,6 @@ def test_discover_persistent_search_hidden_while_a_card_is_focused(app_test: App
 
 def test_search_with_no_match_shows_warning(app_test: AppTest) -> None:
     at = app_test.run()
-    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
     at = at.text_input[0].set_value("nonexistent-zzz").run()
     _assert_clean(at)
     assert len(at.warning) == 1
@@ -435,8 +410,8 @@ def test_header_compacts_while_a_card_is_open_and_restores_on_back(app_test: App
 
 
 def test_saved_count_shows_only_on_the_saved_tab(app_test: AppTest, cookie_scripts) -> None:
-    """The "N saved" chrome is Saved-tab-only: it does not render on Discover's list header,
-    Discover's back row, or Search."""
+    """The "N saved" chrome is Saved-tab-only: it does not render on Discover's list header
+    or Discover's back row."""
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     at = at.button(key="discover_save").click().run()
@@ -446,12 +421,6 @@ def test_saved_count_shows_only_on_the_saved_tab(app_test: AppTest, cookie_scrip
     _assert_clean(at)
     assert not any("saved" in v for v in _rendered_markdown(at)), (
         "Discover's list header must not mention the saved count"
-    )
-
-    at = at.segmented_control(key="bottom_nav").set_value("Search").run()
-    _assert_clean(at)
-    assert not any("saved" in v for v in _rendered_markdown(at)), (
-        "Search must not render a saved count at all, even before a query is typed"
     )
 
     at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
