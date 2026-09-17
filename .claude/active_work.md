@@ -32,9 +32,16 @@ start item N+1 before N is merged.
   **CLOSED, no code** -- `d007b931` already shipped list-first entry. #1 (Slice 6 redesign):
   **CLOSED, no code** -- verdict badge, AI read/fallback, per-type metrics, chips, single
   disclosure all already merged since 2026-08-20; live-verified on production.
-- **Next**: Phase 4, issue #13 (metric range filters) -- scoped, no decision needed, but a
-  prior attempt was reverted (too tall on mobile, unclear defaults, Clear crashed session
-  state); avoid those three failure modes. Rest of sequence in the plan file above.
+- **Phase 4 item 1, issue #13 (metric preset filters): MR !174 open, awaiting CI + merge.**
+  5 plain-language toggle chips (High margin, Low debt, Growing revenue, Strong returns,
+  Cash-safe) in Discover's Filters popover -- pattern + preset list both decided via
+  AskUserQuestion. cto-reviewer round-1 caught a real bug: `ebit_margin_pct`/`net_margin_pct`
+  aren't mutually exclusive by type in the data, so selecting checks by "metric is non-null"
+  silently ANDed both margins for operating cards; fixed by scoping every check to
+  `company_type` directly. See operational notes for the reusable lesson.
+- **Next**: once !174 merges, Phase 4 items #14-18 (each needs a product decision -- ask one
+  at a time when reached, don't batch), then Phase 5 (#19, #5). Rest of sequence in the plan
+  file above.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -45,21 +52,12 @@ guardrail gaps resolved; detail in each MR. **The `--max-reads` value for the
 `data-pipeline` CI job is still unset -- owner's call**, ideally after one clean scheduled
 run's real counts. Nothing else open from this push.
 
-**Load-time work (owner 2026-09-14: black screen not acceptable, zero spend).** Merged:
-!140 header first, splash at first byte, saved list in cookies (owner: A), telemetry off;
-!141 `?timing=1` stage clock (keep or remove: owner's call); !142 Streamlit's source watcher
-off in production (it scanned every loaded module on the message-flushing thread after each
-new session's first run; 3 s here). !143 merged: yfinance (with pandas and numpy) imported only when Saved fetches headlines.
-Live after !143, five return visits, script itself 25 ms: first byte 0.2 s (splash), header
-2.6 to 2.9 s, full list 2.96 / 3.19 / 3.24 / 3.00 / 3.05 s (this morning: 11.6 s to first
-pixel). Cold process (after a deploy or Render's sleep): first visit 15.7 s (was 26 to 44 s),
-of which `import app` 9.1 s (was 20 to 33) and the first Supabase deck fetch 5.6 s. What
-remains is outside the code: about 2 s of connection and Streamlit session start on Render's
-box before our script runs, and the sleep. **NEXT, owner's calls:** a faster free host
-(Hugging Face Spaces; the owner must create the Space); reading the deck over plain httpx
-instead of the Supabase client library (2.6 s of the import here), a mechanism change.
-Owner's to reword: "Loading cards", the splash "Stock Explorer" / "Loading"; keep or remove
-`?timing=1`.
+**Load-time work (owner 2026-09-14: black screen not acceptable, zero spend), CLOSED for
+now.** !140-!143 merged: header/splash first paint, saved list in cookies, telemetry off,
+file watcher off, lazy yfinance import. Cold start ~15.7s (was 26-44s), warm ~3s. **NEXT,
+owner's calls:** a faster free host (Hugging Face Spaces -- owner must create the Space);
+reading the deck over plain httpx instead of the Supabase client library, a mechanism
+change. Owner's to reword: "Loading cards" splash text; keep or remove `?timing=1`.
 
 **CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
 summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
@@ -70,20 +68,19 @@ yields (four decimals = fraction) would catch a fraction row at any yield but mi
 genuine four-decimal percent. Definition territory; not done.
 
 
-**Issue #9 Tier 1 is closed** with !126 merged (fill floor at 50%, owner-set).
+**Issue #9 Tier 1 closed**, !126 merged (fill floor 50%).
 
-**Three owner questions from the fill floor, none urgent:** (a) CI fixtures are 5 operating,
-1 financial, 1 pre-revenue per market, so `dbt build` exercises the floor for operating
-metrics only (pytest covers the other types with fixtures); raising the fixture counts widens
-`scripts/seed_ci_raw_fixtures.py`. (b) `cash_runway_months` and `burn_rate_monthly` are
-legitimately null for a pre-revenue company not burning cash, so a market with five such cards
-would trip the floor on correct data; only three pre-revenue companies exist today. (c)
-`jinja2` is imported directly in `tests/tooling/test_metric_fill_floor.py` but pinned only
-through `dbt-core`; cto suggests an explicit pin in `requirements.txt`.
+**Three owner questions from the fill floor, none urgent:** (a) CI fixtures (5 operating, 1
+financial, 1 pre-revenue per market) exercise the floor for operating metrics only; raising
+counts widens `scripts/seed_ci_raw_fixtures.py`. (b) `cash_runway_months`/`burn_rate_monthly`
+legitimately null for a pre-revenue company not burning cash -- five such cards in one
+market would trip the floor on correct data; only three exist today. (c) `jinja2` imported
+directly in `tests/tooling/test_metric_fill_floor.py` but pinned only via `dbt-core`; cto
+suggests an explicit pin in `requirements.txt`.
 
-**Side finding, not root-caused (from the `accepted_range` work, !158):**
-`ebit_margin_pct` = 44,944.9% for IAG (au_asx200) -- unlike DYL's already-understood
-pre-revenue explosion, this one has no obvious explanation and is worth a look.
+**Side finding, not root-caused (`accepted_range` work, !158):** `ebit_margin_pct` =
+44,944.9% for IAG (au_asx200) -- unlike DYL's understood pre-revenue explosion, no obvious
+explanation, worth a look.
 
 **Merged this pass** (detail in each MR): !157 reworks `revenue_growth_yoy_pct`'s catalogue
 copy to state verdict-consistent caveats instead of telling readers to discount a decline the
@@ -383,6 +380,13 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   server, not an AppTest artifact (issue #20, `_search_query_widget`); AppTest alone missed
   the worst form (clearing to empty) -- always verify a widget fix live, not just via
   tests. Fix: stable `key=`, reseed `st.session_state[key]` only when ABSENT.
+- **A metric being non-null on a card is NOT proof it belongs to that card's company_type.**
+  dbt computes each metric from whatever statement fields exist, with no `company_type`
+  gate -- e.g. `ebit_margin_pct` and `net_margin_pct` are both non-null on most operating
+  cards, not just financial ones. Any type-aware logic (metric presets, future filters)
+  must branch on `card["company_type"]` directly, never on "is this metric present" as a
+  proxy for type (issue #13, cto-reviewer round-1 finding -- silently ANDed two unrelated
+  thresholds together before the fix).
 - **`handover_in.py`'s injection cap exists in three places that can silently diverge**: the
   live, wired copy at `~/.claude/hooks/handover_in.py` (32000 bytes), and two dormant plugin
   source copies (`~/.claude/plugins/cache/dbt-agent-kit/.../hooks/handover_in.py` and the

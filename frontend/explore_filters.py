@@ -46,9 +46,92 @@ def sector_filter_label(sector: str) -> str:
     return sector
 
 
-def filter_scope_summary(*, market_code: str, sector: str) -> str:
+METRIC_PRESETS: dict[str, dict[str, Any]] = {
+    "high_margin": {
+        "label": "High margin",
+        "checks": (
+            ("operating", "ebit_margin_pct", "gt", 20.0),
+            ("financial", "net_margin_pct", "gt", 20.0),
+        ),
+    },
+    "low_debt": {
+        "label": "Low debt",
+        "checks": (("operating", "net_debt_to_ebitda", "lt", 2.0),),
+    },
+    "growing_revenue": {
+        "label": "Growing revenue",
+        "checks": (
+            ("operating", "revenue_growth_yoy_pct", "gt", 0.0),
+            ("financial", "revenue_growth_yoy_pct", "gt", 0.0),
+        ),
+    },
+    "strong_returns": {
+        "label": "Strong returns",
+        "checks": (
+            ("operating", "statement_roe_pct", "gt", 15.0),
+            ("financial", "statement_roe_pct", "gt", 15.0),
+        ),
+    },
+    "cash_safe": {
+        "label": "Cash-safe",
+        "checks": (("pre_revenue", "cash_runway_months", "gt", 18.0),),
+    },
+}
+
+
+def metric_preset_options() -> list[str]:
+    return list(METRIC_PRESETS)
+
+
+def metric_preset_label(preset_id: str) -> str:
+    return METRIC_PRESETS[preset_id]["label"]
+
+
+def _card_matches_preset(card: dict[str, Any], preset_id: str) -> bool:
+    """Each check is scoped by company_type, not by which metric happens to be non-null.
+    `ebit_margin_pct` and `net_margin_pct` are NOT mutually exclusive in the data --
+    int_stock__card_metrics.sql computes both straight from statement fields with no
+    company_type gate, so most operating cards also carry a non-null net_margin_pct.
+    Selecting checks by presence alone would silently AND the two margins together for an
+    operating card instead of checking only the one that applies to its type. Matching by
+    `card["company_type"]` instead removes that ambiguity regardless of which metrics
+    happen to be co-populated.
+
+    A card whose company_type has no check in this preset passes through untouched (e.g.
+    `cash_safe` against an operating card) -- the same "omit, never fake" rule the health
+    verdict and metric stack already follow. A card whose type DOES have a check, but is
+    still missing that specific metric's value (a metric not in that type's mandatory
+    eligibility set, e.g. `statement_roe_pct` for operating), also passes through rather
+    than being excluded for data it was never guaranteed to have."""
+    checks = METRIC_PRESETS[preset_id]["checks"]
+    card_type = card.get("company_type")
+    applicable = [(m, op, t) for ctype, m, op, t in checks if ctype == card_type]
+    if not applicable:
+        return True
+    for metric, op, threshold in applicable:
+        value = card.get(metric)
+        if value is None:
+            continue
+        if op == "gt" and not value > threshold:
+            return False
+        if op == "lt" and not value < threshold:
+            return False
+    return True
+
+
+def card_matches_metric_presets(card: dict[str, Any], preset_ids: Iterable[str]) -> bool:
+    return all(_card_matches_preset(card, preset_id) for preset_id in preset_ids)
+
+
+def filter_scope_summary(
+    *, market_code: str, sector: str, metric_presets: Iterable[str] = ()
+) -> str:
     """Compact label for the closed Filters row on Discover."""
-    return f"{market_filter_label(market_code)} · {sector_filter_label(sector)}"
+    base = f"{market_filter_label(market_code)} · {sector_filter_label(sector)}"
+    active = [pid for pid in METRIC_PRESETS if pid in set(metric_presets)]
+    if not active:
+        return base
+    return f"{base} · {', '.join(metric_preset_label(pid) for pid in active)}"
 
 
 def _card_key(card: dict[str, Any]) -> tuple[str, str]:
@@ -179,9 +262,11 @@ def filter_pool(
     *,
     market_code: str,
     sector: str,
+    metric_presets: Iterable[str] = (),
 ) -> list[dict[str, Any]]:
     """Return card-eligible rows in scope, excluding saved tickers."""
     saved = saved_keys_with_order(interactions)
+    preset_ids = list(metric_presets)
     pool: list[dict[str, Any]] = []
     for card in cards:
         if not card.get("is_card_eligible"):
@@ -191,6 +276,8 @@ def filter_pool(
         if market_code != ALL_MARKETS and card.get("market_code") != market_code:
             continue
         if sector != ALL_SECTORS and (card.get("sector") or "Unknown") != sector:
+            continue
+        if preset_ids and not card_matches_metric_presets(card, preset_ids):
             continue
         pool.append(card)
     if market_code == ALL_MARKETS:

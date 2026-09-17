@@ -11,7 +11,7 @@ budgets:
   docs/ui/card_metric_cell.md: 26000
   docs/ui/design_system.md: 10000
   docs/ui/disclosure_pattern.md: 4000
-  docs/ui/discover_header.md: 8000
+  docs/ui/discover_header.md: 9000
   docs/ui/discover_list.md: 10000
   docs/ui/saved_list.md: 7000
   docs/data_contract.md: 65500
