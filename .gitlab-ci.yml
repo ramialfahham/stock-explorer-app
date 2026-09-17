@@ -155,6 +155,7 @@ validate:full:
     - python scripts/check_docs_indexed.py
     - python scripts/check_layer_contract.py
     - python scripts/check_registry_var_sync.py
+    - python scripts/check_company_names_vs_yfinance.py
     - python scripts/check_dbt_sql_structure.py
     # dbt reads DBT_PROFILES_DIR / --profiles-dir; sqlfluff's dbt templater reads
     # profiles_dir from the COMMITTED .sqlfluff, which pins it to the repo root. Two tools,
