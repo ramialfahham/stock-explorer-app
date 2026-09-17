@@ -34,13 +34,14 @@ start item N+1 before N is merged.
   popover. cto-reviewer round-1 caught a real bug (`ebit_margin_pct`/`net_margin_pct` aren't
   mutually exclusive by type in the data; fixed by scoping every check to `company_type`
   directly) -- see operational notes for the reusable lesson.
-- **Phase 4 items #14-18, decided 2026-09-17** (GitLab note on each issue, left open not
-  closed): #14/#15/#17/#18 -- skip/wait, no confirmed complaint or already labeled
-  optional-later. **#16 (Not now review list) -- BUILD.** A "Not now" list, structurally
-  like Saved's own list (`row_ui` pattern), reachable from overflow -- real gap today
-  (skipped companies unreachable except re-search).
-- **Next**: implement #16 (in progress this session), then Phase 5 (#19, #5). Rest of
-  sequence in the plan file above.
+- **Phase 4 items #14-18, decided 2026-09-17** (GitLab note on each issue, left open):
+  #14/#15/#17/#18 -- skip/wait, no confirmed complaint. **#16 (Not now review list): MR
+  !176 open.** Overlay from overflow menu, not a 4th nav tab. cto-reviewer round 1 caught
+  two real bugs: `browser_storage.py` never persisted skip/unskip (fixed with a second
+  cookie namespace, `SKIP_COOKIE_PREFIX`); only one of two Save buttons cleared skip status
+  (fixed with shared `_save_card()`). Round 2 caught a staging bookkeeping error -- see
+  operational notes.
+- **Next**: once !176 merges, Phase 5 (#19, #5). Rest of sequence in the plan file above.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -81,31 +82,12 @@ suggests an explicit pin in `requirements.txt`.
 44,944.9% for IAG (au_asx200) -- unlike DYL's understood pre-revenue explosion, no obvious
 explanation, worth a look.
 
-**Merged this pass** (detail in each MR): !157 reworks `revenue_growth_yoy_pct`'s catalogue
-copy to state verdict-consistent caveats instead of telling readers to discount a decline the
-app's own rule treats as real; closes item 2. !155 names the Postgres table explicitly in the
-`mart_stock_cards` heading (three reviewers had flagged this in an earlier MR, never fixed
-until now). !158 adds `dbt_utils.accepted_range` sanity guards (`severity: warn`) to eight
-card metrics prone to near-zero-denominator explosion, bounds measured against production
-(detail in `docs/data_contract.md`); closes the `accepted_range` question left open by A2.
-!156 closes item 10 (latent `AppTest` crash risk), no action needed. !153 routes
-`.claude/working-agreement.md` to
-`cto-reviewer` (MR !116's third guardrail gap; the other two declined, not deferred). !151 `--max-reads` caps new Claude calls per run in
-the AI-read step (unbounded default, value for CI still unset -- owner's call); clears a
-capped/failed card's stale read instead of leaving it under fresh numbers. !149 fixed a live bug where the assessments batch
-upsert nulled "carried" cards' `ai_read` whenever a call also held a "generated" record
-(root cause of item 8's cost, not just a symptom); also fixed `_fetch_existing_assessments()`
-silently capping at 1000 rows. !147 names the sector in a benchmarked metric's own
-gloss line ("..., vs sector.") when its range bar is drawn. !145 AI-written read as always-visible bullets
-(reversing the earlier card-view fold), "N saved" scoped to the Saved tab only, and the
-now-contradicted "first metric above the fold" success check retired. !143 lazy yfinance.
-!142 file watcher off in production. !141 timing probe. !140 first paint, cookies, splash.
-!118-!139 (excluding intervening handover-collapse MRs, e.g. !121): issue #9 pipeline-audit
-closure batch (fundamentals gate, precision caps, mart
-grain, market_code test, fill floor, AI-read labels/fold, catalogue wording, dividendYield
-scale, playgrounds, CI tiers doc, ROE/working-capital wording, sync_dbt_vars exit status,
-financial caveat placement, context ownership headers + byte budgets, generated metric table,
-standing rules to durable homes) -- detail in each MR's own contract.md/review.md.
+**Merged, issue #9 pipeline-audit closure batch (!118-!158, all fully merged and closed)**:
+fundamentals gate, precision caps, mart grain, fill floor, `accepted_range` guards, AI-read
+labels/fold/cost fix, catalogue wording, dividendYield scale, load-time work (first paint,
+lazy yfinance, file watcher off), `--max-reads` cap (CI value still unset -- owner's call),
+`.claude/working-agreement.md` routed to cto-reviewer. Detail in each MR's own
+contract.md/review.md, not repeated here.
 
 ## Atomic card export (MR !115, merged `f98f4025`)
 
@@ -386,6 +368,14 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   must branch on `card["company_type"]` directly, never on "is this metric present" as a
   proxy for type (issue #13, cto-reviewer round-1 finding -- silently ANDed two unrelated
   thresholds together before the fix).
+- **`git add` EVERY file touched before each review round, not just that round's new
+  ones** -- a later round's `git add` listing only its own new files can leave an earlier
+  round's edit `MM` (staged + unstaged), so reviewers see a stale staged diff missing the
+  fix even though the working tree has it. One reviewer correctly FAILed on
+  `git diff --cached`; another PASSed reading the live file instead (as instructed) -- a
+  real gap between "looks right on disk" and "what's actually being committed." Run
+  `git status --short` before each round, confirm every touched file is a single `M`
+  (issue #16, round 2/3).
 - **`handover_in.py`'s injection cap exists in three places that can silently diverge**: the
   live, wired copy at `~/.claude/hooks/handover_in.py` (32000 bytes), and two dormant plugin
   source copies (`~/.claude/plugins/cache/dbt-agent-kit/.../hooks/handover_in.py` and the
