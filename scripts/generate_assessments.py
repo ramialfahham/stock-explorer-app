@@ -336,6 +336,7 @@ def attach_reads(
             needs_refresh.append(record)
         else:
             carried += 1
+            print(f"  read carried for {record['market_code']}/{record['ticker']} (unchanged)")
 
     new_first = no_stored_read + needs_refresh
     if max_reads is None:
@@ -344,6 +345,7 @@ def attach_reads(
         cutoff = max(max_reads, 0)
         selected, capped_records = new_first[:cutoff], new_first[cutoff:]
     for record in capped_records:
+        print(f"  read capped for {record['market_code']}/{record['ticker']} (not attempted this run)")
         _clear_stale_read_if_present(record, existing_by_key)
 
     generated = failed = 0
@@ -351,6 +353,11 @@ def attach_reads(
         key = (record["market_code"], record["ticker"])
         row = rows_by_key.get(key)
         if row is None:  # defensive: records derive from these rows, so shouldn't happen
+            print(
+                f"  read failed for {record['market_code']}/{record['ticker']}: "
+                "no matching mart row (defensive branch hit)",
+                file=sys.stderr,
+            )
             failed += 1
             _clear_stale_read_if_present(record, existing_by_key)
             continue
@@ -362,6 +369,7 @@ def attach_reads(
         record["ai_read"] = text
         record["read_model"] = model
         generated += 1
+        print(f"  read generated for {record['market_code']}/{record['ticker']}")
     return {
         "generated": generated,
         "carried": carried,
