@@ -35,13 +35,21 @@ start item N+1 before N is merged.
   mutually exclusive by type in the data; fixed by scoping every check to `company_type`
   directly) -- see operational notes for the reusable lesson.
 - **Phase 4 items #14-18, decided 2026-09-17** (GitLab note on each issue, left open):
-  #14/#15/#17/#18 -- skip/wait, no confirmed complaint. **#16 (Not now review list): MR
-  !176 open.** Overlay from overflow menu, not a 4th nav tab. cto-reviewer round 1 caught
-  two real bugs: `browser_storage.py` never persisted skip/unskip (fixed with a second
-  cookie namespace, `SKIP_COOKIE_PREFIX`); only one of two Save buttons cleared skip status
-  (fixed with shared `_save_card()`). Round 2 caught a staging bookkeeping error -- see
-  operational notes.
-- **Next**: once !176 merges, Phase 5 (#19, #5). Rest of sequence in the plan file above.
+  #14/#15/#17/#18 -- skip/wait, no confirmed complaint. **#16: MERGED (!176).** Not-now
+  overlay from overflow menu. cto-reviewer caught two real bugs: `browser_storage.py`
+  never persisted skip/unskip (fixed with a second cookie namespace, `SKIP_COOKIE_PREFIX`);
+  only one of two Save buttons cleared skip status (fixed with shared `_save_card()`) --
+  see operational notes.
+- **Phase 5 item 1, issue #19 (name-vs-yfinance audit guard): MR !178 open.** New CI guard
+  (`scripts/check_company_names_vs_yfinance.py`) + manual refresh script
+  (`scripts/refresh_yfinance_names.py`). A fixed legal-suffix normalization flagged 139/956
+  companies (~15%, systemic, not an edge case) against the REAL live snapshot -- replaced
+  with prefix matching, cut to 57, hand-reviewed (54 general knowledge, 3 web-verified
+  against primary sources: all genuine 2025/26 renames, not bugs). Guard is clean (exit 0)
+  against the committed real snapshot (956 companies, 8 markets). 4 reviewers, all PASS.
+- **Next**: once !178 merges, Phase 5 item 2, issue #5 (review-cycle re-dispatch scoping --
+  internal/meta, do opportunistically). That closes the entire backlog plan. Full sequence
+  in the plan file above.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -368,6 +376,11 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   must branch on `card["company_type"]` directly, never on "is this metric present" as a
   proxy for type (issue #13, cto-reviewer round-1 finding -- silently ANDed two unrelated
   thresholds together before the fix).
+- **This Bash tool's terminal display mangles non-ASCII on the way back -- verify via
+  raw-byte decode, never trust a printed `é`/`�` as proof of real corruption.** A file read
+  with explicit `encoding="utf-8"` can still print `�` even when the bytes are perfectly
+  valid UTF-8 (confirmed via raw-byte check, issue #19's yfinance snapshot). Same root
+  cause as the em-dash cp1252 note below -- applies to any non-ASCII content, not just diffs.
 - **`git add` EVERY file touched before each review round, not just that round's new
   ones** -- a later round's `git add` listing only its own new files can leave an earlier
   round's edit `MM` (staged + unstaged), so reviewers see a stale staged diff missing the
