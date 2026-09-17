@@ -28,6 +28,12 @@ not clearing skip status (#16) -- all in "Context / operational notes" below. **
 precedent is not the same as the owner deciding fresh -- when an issue's own text reserves a
 call, ask directly (working-agreement.md SS7), don't reason by analogy to close it (SS6).**
 
+**Issue #3 (ANTHROPIC_API_KEY): CLOSED.** Was already set (Protected, Masked) -- a stale
+"unconfirmed" claim sat in this file across sessions. **Issue #21: MR !181 open.** Adds a
+working-agreement.md SS1 rule from that miss: re-check an owner-flagged claim against its
+live source before restating it, when a cheap check exists (e.g. `glab variable list`) --
+owner chose this over an automated re-verification mechanism, named and declined.
+
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
 "Context / operational notes" below. Plan file fully executed, nothing outstanding.

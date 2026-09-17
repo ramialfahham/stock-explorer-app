@@ -2,26 +2,25 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: 5aa43b990f92d33c5af8c0642cb3124aea096a09322dd73eeab5583bf21f3478
+diff_sha256: ec28cae89d4d186a0ed709c424db3ba3335128792507553c3a62e6805cb873f1
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
 - Staged diff touches only `scope_paths` (`.claude/working-agreement.md`,
-  `.claude/task/contract.md`).
-- `decisions_reserved` accurately reflects that the routing-granularity question was
-  asked directly to the owner and answered, not resolved by analogy.
-- `git status --short` clean, no stray unstaged edits to files this task touched.
-- `check_context_budget.py` and `check_no_em_dash.py` both pass against the staged state.
+  `.claude/task/contract.md`, `docs/context_budget.yml`).
+- `done_when` matches: rule added to working-agreement.md §1, budget raised 9000 -> 9200.
+- `git status --short` clean, no stray unstaged changes.
+- `check_context_budget.py` and `check_no_em_dash.py` both pass.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- Round-1 finding 1 (re-dispatch rule silent on an open FAIL) verified fixed: the rule
-  now reads "... OR their last verdict was FAIL," closing the deadlock case.
-- Round-1 finding 2 (routing-granularity thread closed by analogy, overstepping an
-  owner-reserved decision) verified fixed: contract.md now records an honest escalation
-  (reopened issue #5, asked directly per working-agreement.md §7, owner answered "keep
-  path-only routing"), not a citation-based closure.
-- No new issues from these edits: scope stays tight to the two files, em-dash rule
-  respected, wording is frank about the round-1 failure rather than hiding it.
+- Rule text correctly extends the existing "trust live state over a stale handover"
+  principle to state outside git, without overreaching into the automated-mechanism
+  option the owner explicitly declined.
+- Placement (right after the existing active_work.md guidance in §1) is sensible.
+- Budget bump (9000 -> 9200) is proportionate to the actual added text.
+- Minor note (not a blocker): "if a cheap check exists" leaves the cost/effort
+  boundary to judgment; acceptable given the owner chose the lightweight rule over
+  automation, and issue #21 gives a concrete worked example.

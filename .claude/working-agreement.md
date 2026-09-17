@@ -23,6 +23,9 @@ Exploring tradeoffs or being asked a question is not permission to change the re
 Answer, recommend, then wait. When unsure, ask one short question instead of acting.
 At the end of a session, update `.claude/active_work.md` so the next one continues cleanly.
 
+A flagged-to-owner item in `active_work.md` claims state outside git. Re-check it live
+before restating it, if a cheap check exists -- don't just repeat the file (issue #21).
+
 ## 2. The task contract + review cycle
 
 Before a non-trivial change, write `.claude/task/contract.md`: objective, `scope_paths` (the

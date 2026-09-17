@@ -6,7 +6,7 @@ budgets:
   .claude/task/contract.md: 8000
   .claude/task/review.md: 8000
   .claude/active_work.md: 32000
-  .claude/working-agreement.md: 9000
+  .claude/working-agreement.md: 9200
   CLAUDE.md: 6500
   docs/ui/card_metric_cell.md: 26000
   docs/ui/design_system.md: 10000
