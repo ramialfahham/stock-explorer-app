@@ -26,17 +26,15 @@ start item N+1 before N is merged.
   item 1, issue #7: MERGED (!171).** Dedupe by ticker in `filter_pool()` for ALL_MARKETS.
   **Phase 2 item 2, issue #4: CLOSED, no code change** -- all three items already fixed by
   earlier merged work (`57b5877f`, `fd21df17`), verified before implementing.
-- **Phase 3 item 1, issue #20 (persistent search on Discover): MR !172 open, awaiting CI +
-  merge.** Persistent box always visible on Discover's list, replaces Filters/pool while a
-  query is active (read-only result, no Save -- decided via AskUserQuestion). Search tab
-  kept as fallback, shares state/logic via new `_search_matches()`/`_render_search_results()`.
-  **Found and fixed a real, live-browser-confirmed bug along the way** (old unkeyed search
-  widget silently discarded every edit after the first) -- see operational notes below.
-- **Next**: once !172 merges, sync `main`, continue Phase 3: issue #6 (Discover entry
-  ordering -- owner decision needed, ask when reached), then issue #1 (Slice 6 redesign).
-  Full remaining sequence in the plan file above.
-  Full remaining sequence (Phase 4 depth features, Phase 5 process/data-quality) is in the
-  plan file above -- do not re-derive the priority order, read it.
+- **Phase 3 -- CLOSED, all three resolved.** #20: **MERGED (!172)** -- persistent search
+  box, replaces Filters/pool while active; fixed a real live-confirmed bug (old unkeyed
+  search widget discarded every edit after the first) -- see operational notes. #6:
+  **CLOSED, no code** -- `d007b931` already shipped list-first entry. #1 (Slice 6 redesign):
+  **CLOSED, no code** -- verdict badge, AI read/fallback, per-type metrics, chips, single
+  disclosure all already merged since 2026-08-20; live-verified on production.
+- **Next**: Phase 4, issue #13 (metric range filters) -- scoped, no decision needed, but a
+  prior attempt was reverted (too tall on mobile, unclear defaults, Clear crashed session
+  state); avoid those three failure modes. Rest of sequence in the plan file above.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
