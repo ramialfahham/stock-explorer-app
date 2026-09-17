@@ -32,11 +32,20 @@ call, ask directly (working-agreement.md SS7), don't reason by analogy to close 
 working-agreement.md SS1 now says: re-check an owner-flagged claim against its live source
 before restating it, when a cheap check exists.
 
-**Search tab removal: MR !182 open.** Owner looked at a live screenshot, asked what the
-standalone Search tab was for -- it duplicated Discover's own persistent search box
-exactly (issue #20), confirmed redundant, owner said "do it." Nav shrinks to
-Discover/Saved; the search feature itself (global, on Discover's list) is unchanged.
-Live-verified desktop + 480px mobile. Both reviewers PASS.
+**Search tab removal: MERGED (!182).** Nav shrunk to Discover/Saved (issue #20's box
+already covered it, standalone tab was pure duplication).
+
+**Issue #22 (a card stuck on fallback verdict text, no log trace across two full runs):
+MR !183 open.** Found live: 3i (uk_ftse100/III) showing `VERDICT_FALLBACK_READ` instead of
+a real AI read. Full investigation in issue #22. `input_hash` recomputed locally for every
+3i snapshot back to 2026-08-20: identical throughout, ruling out "refresh got rejected."
+Zero log trace of 3i in either the 2026-09-01 or 2026-09-15 run despite the code saying it
+should have been attempted both times -- root cause not isolated. MR !183 closes item 1:
+`attach_reads()` now logs every card it processes, not just failures, so the next case is
+diagnosable from the log alone. **Do not assume 2026-10-01 fixes 3i -- check its
+`card_assessments` row directly after.** **Lesson: don't state the code's intended
+behavior ("self-heals next run") as a confirmed outcome without verifying it** -- caught
+by the owner mid-session, issue text corrected same session.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
