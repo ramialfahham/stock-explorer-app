@@ -28,7 +28,6 @@ _DISCOVER_TIP = (
     "for now; the list doesn't change."
 )
 _SAVED_TIP = "Open a company to practice numbers or load recent headlines."
-_SEARCH_TIP = "Only companies with a complete set of fundamentals appear here."
 
 
 def markets_line(counts: dict[str, int]) -> str:
@@ -72,8 +71,6 @@ def right_now_line(*, active_tab: str, saved_count: int) -> str:
     if tab == "Saved":
         noun = "company" if saved_count == 1 else "companies"
         return f"{saved_count} saved {noun} on this device"
-    if tab == "Search":
-        return "Find any company with a complete fundamentals snapshot"
     market = st.session_state.get("explore_market", ALL_MARKETS)
     sector = st.session_state.get("explore_sector", ALL_SECTORS)
     return discover_scope_line(market=market, sector=sector)
@@ -83,8 +80,6 @@ def quick_tip_line(*, active_tab: str) -> str:
     tab = active_tab.strip()
     if tab == "Saved":
         return _SAVED_TIP
-    if tab == "Search":
-        return _SEARCH_TIP
     return _DISCOVER_TIP
 
 

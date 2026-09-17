@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-NAV_PAGES = ("Discover", "Saved", "Search")
+NAV_PAGES = ("Discover", "Saved")
 
 
 def normalize_nav_page(value: object | None, *, fallback: str = "Discover") -> str:

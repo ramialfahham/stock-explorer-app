@@ -28,11 +28,15 @@ not clearing skip status (#16) -- all in "Context / operational notes" below. **
 precedent is not the same as the owner deciding fresh -- when an issue's own text reserves a
 call, ask directly (working-agreement.md SS7), don't reason by analogy to close it (SS6).**
 
-**Issue #3 (ANTHROPIC_API_KEY): CLOSED.** Was already set (Protected, Masked) -- a stale
-"unconfirmed" claim sat in this file across sessions. **Issue #21: MR !181 open.** Adds a
-working-agreement.md SS1 rule from that miss: re-check an owner-flagged claim against its
-live source before restating it, when a cheap check exists (e.g. `glab variable list`) --
-owner chose this over an automated re-verification mechanism, named and declined.
+**Issue #3 (ANTHROPIC_API_KEY): CLOSED**, already set. **Issue #21: MERGED (!181)** --
+working-agreement.md SS1 now says: re-check an owner-flagged claim against its live source
+before restating it, when a cheap check exists.
+
+**Search tab removal: MR !182 open.** Owner looked at a live screenshot, asked what the
+standalone Search tab was for -- it duplicated Discover's own persistent search box
+exactly (issue #20), confirmed redundant, owner said "do it." Nav shrinks to
+Discover/Saved; the search feature itself (global, on Discover's list) is unchanged.
+Live-verified desktop + 480px mobile. Both reviewers PASS.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into

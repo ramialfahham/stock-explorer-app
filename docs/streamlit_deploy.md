@@ -25,7 +25,7 @@ connection and the two secrets need a human.
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (anon / publishable key only — never the service role key)
 5. Confirm branch `main`, click **Apply/Create**. First deploy runs automatically. Open the
-   assigned `*.onrender.com` URL — Discover and Search load immediately (no login). Save/skip
+   assigned `*.onrender.com` URL -- Discover loads immediately (no login). Save/skip
    persist in a browser cookie on the device.
 
 Free-tier instances spin down after ~15 minutes idle; the next visit takes 30-60s to cold-start.

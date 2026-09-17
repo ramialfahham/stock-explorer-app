@@ -27,7 +27,7 @@ the row/button building blocks those specs assume. This doc is that missing laye
 | `--ss-space-3` | `0.75rem` | Section heading top margin (e.g. Saved-tab news heading) |
 | `--ss-space-4` | `0.85rem` | Row horizontal padding, page gutter |
 | `--ss-radius-control` | `0.5rem` (8px) | Buttons, icon-button trigger, metric-label chips, verdict badge |
-| `--ss-radius-surface` | `0.75rem` (12px) | The card, Saved/Search rows |
+| `--ss-radius-surface` | `0.75rem` (12px) | The card, Saved/search-result rows |
 | `--ss-row-title` | `0.9375rem` (15px) | List-row primary text only -- do not reuse `--ss-title` (reserved for in-card identity) or reuse this outside a row |
 | `--ss-title` | `1.0625rem` (17px) | In-card identity: company name and ticker |
 | `--ss-body` | `0.875rem` (14px) | Reading text: AI read, company summary, metric gloss, learn panel, menu body, alerts, nav buttons |
@@ -61,11 +61,11 @@ visible button label; Streamlit centers button text, so visible copy always come
 HTML). Implementation: `frontend/row_ui.py` — `build_row_html()` (pure) + `render_row_list()`
 (Streamlit-calling), mirroring `card_ui.py`'s own pure/render split.
 
-**Who uses this today:** Saved-list rows and Search results, via the plain row
+**Who uses this today:** Saved-list rows and search results, via the plain row
 (`row_ui.render_row_list`); Discover's list, via the richer variant that adds one lead
 metric (`row_ui.render_rich_row_list`, see [`discover_list.md`](discover_list.md)).
-**Who doesn't:** every focus view (Discover, Saved, Search): those render the full card,
-not a row.
+**Who doesn't:** every focus view (Discover, Saved, and a selected search result): those
+render the full card, not a row.
 
 ---
 
@@ -81,7 +81,7 @@ not a row.
   (`:last-child`) — position-based selectors silently jump to the wrong element if the row
   is ever reordered. Any future icon-only trigger opts in by dropping the same marker
   immediately before it.
-- **Segmented control excluded.** The Discover/Saved/Search nav pills are a native Streamlit
+- **Segmented control excluded.** The Discover/Saved nav pills are a native Streamlit
   widget (`st.segmented_control`), not our HTML/button markup — it is deliberately outside
   this variant system and keeps its own theming.
 
@@ -145,7 +145,7 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 
 ## 480px smoke
 
-- [ ] Saved row and Search row render with identical corner radius and padding
+- [ ] Saved row and a search-result row render with identical corner radius and padding
 - [ ] Overflow trigger's icon-button radius matches other control-tier elements
 - [ ] Overflow's "Clear saved" button renders with the same accent/surface skin as the
       Discover action bar

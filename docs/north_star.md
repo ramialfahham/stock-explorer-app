@@ -158,7 +158,7 @@ The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 
 - Recorded as an interaction, with no visible effect on the list; the reader simply moves on
   to whatever they choose next.
-- Always reachable via **Search**.
+- Always reachable via Discover's search box.
 
 Neither action deletes pipeline data.
 
@@ -181,7 +181,9 @@ Filter default is **All markets · All sectors** — see [`explore_filters.py`](
 
 ### Search (v1)
 
-Intentional lookup by ticker or name. Same Company Snapshot layout if card-eligible.
+Intentional lookup by ticker or name, via the persistent search box on Discover's list --
+not a separate tab (removed as redundant once Discover carried it directly). Same Company
+Snapshot layout if card-eligible.
 
 ---
 

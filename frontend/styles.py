@@ -999,7 +999,7 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     border-radius: var(--ss-radius-control) !important;
 }
 
-/* Nav row: Discover / Saved / Search + overflow menu (single line on mobile). Same broken
+/* Nav row: Discover / Saved + overflow menu (single line on mobile). Same broken
    sibling assumption as .ss-card-footer-shell/.ss-action-shell above (confirmed live: this
    prefix matched zero elements) -- fixed the same way. Less visibly broken than the action
    bar only by coincidence: st.container(horizontal=True) already renders flex/row natively,
