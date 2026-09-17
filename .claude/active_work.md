@@ -21,35 +21,28 @@ prioritized sequence across all 15 then-open GitLab issues, reasoned from "what 
 outside reviewer judge first." Work one item at a time, five-step protocol per item, do not
 start item N+1 before N is merged.
 
-- **Phase 0, issue #2: CLOSED.** Stale -- Render migration already shipped. Phase 1, issue
-  #3 (ANTHROPIC_API_KEY): flagged to owner, not agent work, still unconfirmed. **Phase 2
-  item 1, issue #7: MERGED (!171).** Dedupe by ticker in `filter_pool()` for ALL_MARKETS.
-  **Phase 2 item 2, issue #4: CLOSED, no code change** -- all three items already fixed by
-  earlier merged work (`57b5877f`, `fd21df17`), verified before implementing.
-- **Phase 3 -- CLOSED, all three resolved.** #20 **MERGED (!172)** -- persistent search box;
-  fixed a real live-confirmed bug (old unkeyed search widget discarded every edit after the
-  first) -- see operational notes. #6/#1: **CLOSED, no code** -- both already shipped
-  (list-first entry, Slice 6 redesign); live-verified on production.
-- **Phase 4 item 1, issue #13: MERGED (!174).** 5 preset chips in Discover's Filters
-  popover. cto-reviewer round-1 caught a real bug (`ebit_margin_pct`/`net_margin_pct` aren't
-  mutually exclusive by type in the data; fixed by scoping every check to `company_type`
-  directly) -- see operational notes for the reusable lesson.
-- **Phase 4 items #14-18, decided 2026-09-17** (GitLab note on each issue, left open):
-  #14/#15/#17/#18 -- skip/wait, no confirmed complaint. **#16: MERGED (!176).** Not-now
-  overlay from overflow menu. cto-reviewer caught two real bugs: `browser_storage.py`
-  never persisted skip/unskip (fixed with a second cookie namespace, `SKIP_COOKIE_PREFIX`);
-  only one of two Save buttons cleared skip status (fixed with shared `_save_card()`) --
-  see operational notes.
-- **Phase 5 item 1, issue #19 (name-vs-yfinance audit guard): MR !178 open.** New CI guard
+- **Phases 0-4: CLOSED, all merged.** #2 (stale, Render already shipped), #3 (owner flagged,
+  not agent work), **#7 !171** (dedupe by ticker, ALL_MARKETS), #4 (no code, already fixed),
+  **#20 !172** (persistent search box; fixed a real live-confirmed unkeyed-widget bug -- see
+  operational notes), #6/#1 (no code, already shipped, live-verified), **#13 !174** (5 preset
+  chips; cto-reviewer caught a real `company_type`-scoping bug -- see operational notes),
+  #14/#15/#17/#18 (decided 2026-09-17, skip/wait, GitLab note each), **#16 !176** (Not-now
+  overlay; cto-reviewer caught two real bugs, skip/unskip persistence + a Save button not
+  clearing skip -- see operational notes). Detail in each MR's own contract.md/review.md.
+- **Phase 5 item 1, issue #19: MERGED (!178).** Name-vs-yfinance audit guard
   (`scripts/check_company_names_vs_yfinance.py`) + manual refresh script
-  (`scripts/refresh_yfinance_names.py`). A fixed legal-suffix normalization flagged 139/956
-  companies (~15%, systemic, not an edge case) against the REAL live snapshot -- replaced
-  with prefix matching, cut to 57, hand-reviewed (54 general knowledge, 3 web-verified
-  against primary sources: all genuine 2025/26 renames, not bugs). Guard is clean (exit 0)
-  against the committed real snapshot (956 companies, 8 markets). 4 reviewers, all PASS.
-- **Next**: once !178 merges, Phase 5 item 2, issue #5 (review-cycle re-dispatch scoping --
-  internal/meta, do opportunistically). That closes the entire backlog plan. Full sequence
-  in the plan file above.
+  (`scripts/refresh_yfinance_names.py`); prefix matching after a fixed-suffix approach
+  flagged 139/956 real companies (~15%, systemic). Detail in the MR's own contract.md.
+- **Phase 5 item 2, issue #5: MR !179 open.** Formalizes re-review re-dispatch scoping in
+  `.claude/working-agreement.md` SS2 (re-dispatch a reviewer if its files changed since its
+  own last verdict, OR that verdict was FAIL). cto-reviewer round-1 FAIL caught a real
+  deadlock gap (now fixed) and a process violation: an earlier contract.md draft closed
+  issue #5's own "routing granularity" thread by citing prior incidents as precedent --
+  the "it's analogous to X" reasoning SS6 forbids for an owner-reserved call. Fixed by
+  reopening #5, asking directly per SS7: owner kept path-only routing, no heuristic added.
+  **Lesson: citing past incidents as precedent isn't the owner deciding fresh -- when an
+  issue reserves a call, ask, don't reason by analogy.** Round 2 both PASS. Last item in
+  the GitLab issue backlog prioritization push -- **once !179 merges, that plan is done.**
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
