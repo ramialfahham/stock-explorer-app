@@ -2,54 +2,57 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: b9e06bf1c3b44f542d928c725e3330cd13c9bceb5c574556d200bd9d1a05be87
+diff_sha256: 3e2acd199cb42ef1fad438c91b3f547943efbacc7c4559beea9a209553160bae
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- All 7 changed files in `scope_paths`; every `done_when` item verified against the diff.
-- Backward compatibility: `filter_pool()`/`filter_scope_summary()` gain an optional
-  `metric_presets` keyword parameter with empty default; existing call sites unaffected.
-- Pass-through correctness: a card whose type has no matching preset check, or is missing
-  that check's specific metric value, is never excluded -- verified against the diff and
-  its dedicated tests.
-- Both owner-level decisions (preset pattern, preset list/thresholds) were pre-approved
-  via AskUserQuestion; no silent decisions in the diff.
+- All 10 touched files (frontend/explore_filters.py, frontend/app.py, frontend/overflow_menu.py,
+  frontend/browser_storage.py, tests/frontend/test_explore_filters.py,
+  tests/frontend/test_app_e2e.py, tests/frontend/test_app.py, tests/frontend/test_browser_storage.py,
+  docs/ui/discover_header.md, .claude/task/contract.md) within `scope_paths`.
+- Round 2 FAILED correctly: `frontend/app.py` was `MM` (staged + unstaged) -- the staged
+  diff genuinely lacked `_save_card()` even though the working-tree file had it, because a
+  `git add` after the browser_storage.py fix omitted re-staging app.py. Root-caused and
+  fixed (`git add frontend/app.py`); round 3 confirmed the file is a clean single `M` and
+  `_save_card()` is present in the staged diff, called from both Save buttons.
+- Every `done_when` item verified against the diff: `skipped_keys_with_order()` via shared
+  `_latest_action_keys()`, overflow menu count, panel list/detail/Save/Remove, tab-switch
+  close, docs updated, test coverage for the round-1 fixes.
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- **Round 1 FAILED**: `high_margin`'s two checks (`ebit_margin_pct` for operating,
-  `net_margin_pct` for financial) were selected by "is this metric non-null," not by the
-  card's actual `company_type`. `int_stock__card_metrics.sql` computes both metrics
-  independently of `company_type` (no gate), so most operating cards also carry a non-null
-  `net_margin_pct` -- the old code silently required BOTH margins to clear 20%, over-
-  excluding operating cards with a strong operating margin but a thinner net margin.
-- **Round 2: fixed and verified.** `METRIC_PRESETS` now scopes every check by
-  `(company_type, metric, op, threshold)`; `_card_matches_preset` filters by
-  `card["company_type"] == ctype`, not metric presence. Confirmed by direct code read and
-  the new regression test `test_card_matches_metric_presets_operating_ignores_a_co_populated_net_margin`
-  (operating card with both `ebit_margin_pct=25.0` and `net_margin_pct=2.0` set still
-  matches `high_margin`). Checked for a new bug from reusing the same metric name across
-  two `company_type` scopes (`growing_revenue`, `strong_returns`) -- not exploitable, since
-  a card has exactly one `company_type`, so at most one same-named tuple can ever apply.
-- `st.pills` widget genuinely safe from the eviction/identity-churn issues this file has
-  hit before: `explore_metric_presets` is never written from the pill's own output before
-  being read on the same run, unlike the `_search_query_widget` case from a separate task.
-- `docs/context_budget.yml`'s raise (8000->9000 for `discover_header.md`) is justified by
-  the diff's genuine new content, not an unexplained widening.
-- Preset-filter-before-dedup ordering in `filter_pool`: investigated, found consistent with
-  the PRE-EXISTING market/sector filter ordering (which already runs before dedup) -- left
-  as-is by design, not a regression this diff introduces.
-- `pytest tests/frontend/test_explore_filters.py -q` run directly both rounds: 46 passed.
+- **Round 1 FAILED, two real findings:** (1) `browser_storage.py` never persisted
+  skip/unskip -- its own docstring documented that as deliberate, a premise this task
+  overturns; the Not-now list would silently reset on every reload. (2) Only the Not-now
+  panel's Save button was fixed to also unskip; Discover's own sticky Save button still
+  only appended "save", so a skipped-then-saved-from-Discover card would end up saved AND
+  stuck in Not-now.
+- **Round 2: both fixed and verified.** `browser_storage.py`'s save-cookie machinery
+  generalized to a second independent cookie namespace (`SKIP_COOKIE_PREFIX`), parameterized
+  the same way `_latest_action_keys` was generalized in `explore_filters.py`. Confirmed
+  byte-for-byte backward compatible: every pre-existing call site's `prefix=` defaults to
+  the original `COOKIE_PREFIX`, `migration_script()` (save-only) correctly left untouched.
+  `_save_card()` extracted and confirmed as the ONLY place "save" is appended in `app.py`
+  (grepped), used by both Save buttons.
+- Also found and fixed while fixing #1 (not a reviewer finding): `clear_interactions()`
+  ("Clear saved") used to wipe the whole interactions list, including skip rows, without
+  its own confirmation dialog ever mentioning that. Scoped to save/unsave rows only;
+  verified the row-filter fails toward RETAINING an unrecognized future action string, not
+  dropping it.
+- `pytest tests/frontend/test_explore_filters.py` (skip persistence tests exercise both
+  cookie namespaces together, not just independently) and the full suite run directly:
+  330 passed.
 
 ## Verified independently
 
-- `pytest tests/frontend/ -q` -- 313 passed (full frontend suite, both rounds).
+- `pytest tests/frontend/ -q` -- 330 passed (full suite, after the final re-stage).
 - `python scripts/check_no_em_dash.py`, `check_context_budget.py` -- passed.
-- Live-verified against a running dev server (`streamlit run streamlit_app.py`) with real
-  production-shaped data, both before and after the round-1 fix: single preset (High
-  margin: 1021 -> 476 companies), two presets combined (AND semantics, summary line lists
-  both labels), deselect (clean revert to unfiltered pool, no crash -- confirms the specific
-  failure mode, `StreamlitAPIException` on Clear, that sank the prior attempt, does not
-  recur with this pattern).
+- Live-verified against a running dev server, real browser cookies (not just AppTest,
+  which runs within one continuous session and can't exercise a real reload):
+  - Full round trip: skip on Discover -> Not-now list -> open -> Save -> gone from
+    Not-now, present in Saved.
+  - Skip a company, confirm the `ss_skipped_` cookie is actually set in the browser,
+    reload the page for real (not an AppTest rerun) -- still shows in Not-now afterward.
+  - "Clear saved" (with its own confirm dialog) leaves an existing Not-now entry untouched.

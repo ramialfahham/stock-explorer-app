@@ -272,3 +272,26 @@ def test_card_open_is_never_true_on_search() -> None:
     st.session_state["search_selected"] = "us_sp500::MMM"
     st.session_state["discover_focus_key"] = "us_sp500::MMM"
     assert _card_open("Search") is False
+
+
+# --- _save_card: the one place "save" is recorded, from any surface. Must also clear skip
+# status (issue #16) -- found the hard way in the Not-now panel's own Save button, then
+# generalized so no other Save button (e.g. Discover's sticky action) could reintroduce it.
+
+
+def test_save_card_also_clears_skip_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    from explore_filters import skipped_keys_with_order
+
+    interactions: list[dict] = []
+
+    def fake_append(card: dict, action: str) -> None:
+        interactions.append(
+            {"market_code": card["market_code"], "ticker": card["ticker"], "action": action}
+        )
+
+    monkeypatch.setattr(app_module, "append_interaction", fake_append)
+    card = {"market_code": "us_sp500", "ticker": "ALFA"}
+    app_module.append_interaction(card, "skip")
+    assert skipped_keys_with_order(interactions) == {("us_sp500", "ALFA"): ""}
+    app_module._save_card(card)
+    assert skipped_keys_with_order(interactions) == {}

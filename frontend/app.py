@@ -34,6 +34,7 @@ from explore_filters import (
     metric_preset_options,
     saved_keys_with_order,
     sectors_for_market,
+    skipped_keys_with_order,
 )
 from markets import eligible_counts_by_market, latest_snapshot_label
 from nav_pages import NAV_PAGES, normalize_nav_page
@@ -70,6 +71,8 @@ def _init_state() -> None:
     defaults = {
         "discover_focus_key": None,
         "saved_focus_key": None,
+        "not_now_open": False,
+        "not_now_focus_key": None,
         "search_selected": None,
         "search_query": "",
         "active_page": "Discover",
@@ -232,19 +235,30 @@ def _discover_page_slice(pool: list[dict], page: int) -> tuple[list[dict], int]:
     return pool[start : start + DISCOVER_PAGE_SIZE], page
 
 
+def _cards_for_order(client, order: dict[tuple[str, str], str]) -> list[dict]:
+    """Deck rows matching an (market_code, ticker) -> timestamp map, most recent first.
+    Shared by Saved and the Not-now panel (issue #16) so the two lists can't diverge in how
+    they resolve keys back to cards or order them."""
+    cards = _ensure_all_cards(client)
+    matched = [c for c in cards if (c["market_code"], c["ticker"]) in order]
+    matched.sort(key=lambda c: order.get((c["market_code"], c["ticker"]), ""), reverse=True)
+    return matched
+
+
 def _saved_count(interactions: list[dict]) -> int:
     return len(saved_keys_with_order(interactions))
 
 
 def _saved_cards(client, interactions: list[dict]) -> list[dict]:
-    save_order = saved_keys_with_order(interactions)
-    cards = _ensure_all_cards(client)
-    saved = [c for c in cards if (c["market_code"], c["ticker"]) in save_order]
-    saved.sort(
-        key=lambda c: save_order.get((c["market_code"], c["ticker"]), ""),
-        reverse=True,
-    )
-    return saved
+    return _cards_for_order(client, saved_keys_with_order(interactions))
+
+
+def _not_now_count(interactions: list[dict]) -> int:
+    return len(skipped_keys_with_order(interactions))
+
+
+def _not_now_cards(client, interactions: list[dict]) -> list[dict]:
+    return _cards_for_order(client, skipped_keys_with_order(interactions))
 
 
 def _card_key(card: dict) -> tuple[str, str]:
@@ -320,7 +334,7 @@ def _render_saved_scope_stats(*, saved_count: int) -> None:
     )
 
 
-def _render_bottom_nav(*, saved_count: int, client) -> str:
+def _render_bottom_nav(*, saved_count: int, not_now_count: int, client) -> str:
     prior_active = normalize_nav_page(st.session_state.get("active_page"))
     if "bottom_nav" in st.session_state:
         st.session_state["bottom_nav"] = normalize_nav_page(
@@ -344,29 +358,48 @@ def _render_bottom_nav(*, saved_count: int, client) -> str:
             render_overflow_menu(
                 active_tab=normalize_nav_page(st.session_state.get("active_page")),
                 saved_count=saved_count,
+                not_now_count=not_now_count,
                 cards=cards,
                 eligible_counts=st.session_state.get("eligible_counts") or {},
                 on_clear_saved=_clear_saved_session,
+                on_open_not_now=_open_not_now_panel,
                 descriptions_missing=_descriptions_missing(client),
             )
     selected = normalize_nav_page(
         page or st.session_state.get("bottom_nav"),
         fallback=prior_active,
     )
+    if selected != prior_active:
+        # A genuine tab switch abandons the Not-now overlay, the same way it already
+        # abandons a focused Discover/Saved card -- otherwise the reader would tap Saved
+        # and still see the Not-now panel stuck open over it.
+        _close_not_now_panel()
     st.session_state["active_page"] = selected
     return selected
+
+
+def _save_card(card: dict) -> None:
+    """The one place "save" is recorded, from any surface (Discover's sticky action, the
+    Not-now panel). Always also records "unskip": a card cannot be both currently-saved and
+    currently-skipped at once, so saving a previously-skipped card must clear its skip
+    status too, or it would stay stuck in the Not-now list after being saved (issue #16 --
+    found by the e2e test this exact scenario writes, in the Not-now panel's own Save
+    button; generalized here so no other Save button can reintroduce the same bug)."""
+    append_interaction(card, "save")
+    append_interaction(card, "unskip")
 
 
 def _render_sticky_actions(card: dict) -> None:
     """Save or Not now, on the focus card. Both return to the list: Save excludes the
     ticker from the pool going forward (filter_pool's existing save exclusion); Not now is
-    logged as an interaction but has no visible effect on the list; there is no walk
-    position left to deprioritize it from, so the reader free-scrolls to whatever's next
-    instead of being pushed to one."""
+    logged as an interaction and surfaces in the overflow menu's Not-now review list
+    (issue #16), though it has no effect on THIS list -- there is no walk position left to
+    deprioritize it from, so the reader free-scrolls to whatever's next instead of being
+    pushed to one."""
     st.markdown('<div class="ss-action-shell"></div>', unsafe_allow_html=True)
     col_save, col_skip = st.columns(2)
     if col_save.button("Save", type="primary", use_container_width=True, key="discover_save"):
-        append_interaction(card, "save")
+        _save_card(card)
         st.session_state["discover_focus_key"] = None
         st.rerun()
 
@@ -601,6 +634,88 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
         st.rerun()
 
 
+def _open_not_now_panel() -> None:
+    st.session_state["not_now_open"] = True
+    st.session_state["not_now_focus_key"] = None
+
+
+def _close_not_now_panel() -> None:
+    st.session_state["not_now_open"] = False
+    st.session_state["not_now_focus_key"] = None
+
+
+def _select_not_now_row(card: dict) -> None:
+    st.session_state["not_now_focus_key"] = _saved_row_key(card)
+
+
+def _render_not_now_panel(client, interactions: list[dict]) -> None:
+    """A "Not now" review list, structurally identical to `_render_saved_tab` (issue #16)
+    -- reachable from the overflow menu on any tab, not a fourth NAV_PAGES entry, since
+    `st.segmented_control`'s `default=` must be one of its own `options` and this panel
+    isn't meant to appear as a bottom-nav pill. `_render_bottom_nav` closes it whenever the
+    reader taps an actual nav tab, mirroring how switching tabs already abandons whatever
+    focus state the prior tab was in."""
+    not_now_cards = _not_now_cards(client, interactions)
+    focus_key = st.session_state.get("not_now_focus_key")
+
+    if focus_key:
+        _render_back_row(
+            key="not_now_back_to_list",
+            saved_count=None,
+            on_back=lambda: st.session_state.update({"not_now_focus_key": None}),
+        )
+    else:
+        st.markdown('<div class="ss-back-row-marker"></div>', unsafe_allow_html=True)
+        if st.button("← Close", key="not_now_close", use_container_width=False):
+            _close_not_now_panel()
+            st.rerun()
+
+    if not not_now_cards:
+        st.info("Nothing skipped yet -- companies you tap **Not now** on appear here.")
+        return
+
+    if not focus_key:
+        row_ui.render_row_list(
+            not_now_cards,
+            key_prefix="not_now_row",
+            row_key_fn=_saved_row_key,
+            title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
+            subtitle_fn=saved_row_subtitle,
+            on_select=_select_not_now_row,
+        )
+        return
+
+    market_code, ticker = focus_key.split("::", 1)
+    selected = next(
+        (
+            c
+            for c in not_now_cards
+            if c["market_code"] == market_code and c["ticker"] == ticker
+        ),
+        None,
+    )
+    if not selected:
+        st.session_state["not_now_focus_key"] = None
+        st.rerun()
+        return
+
+    selected = _hydrate(client, selected)
+    render_stock_card(selected, widget_key_prefix="not_now")
+    col_save, col_remove = st.columns(2)
+    with col_save:
+        if st.button(
+            "Save", key="not_now_save", type="primary", use_container_width=True
+        ):
+            st.session_state["not_now_focus_key"] = None
+            _save_card(selected)
+            st.rerun()
+    with col_remove:
+        if st.button("Remove", key="not_now_remove", use_container_width=True):
+            st.session_state["not_now_focus_key"] = None
+            append_interaction(selected, "unskip")
+            st.rerun()
+
+
 def _select_search_row(card: dict) -> None:
     st.session_state["search_selected"] = _card_key(card)
 
@@ -725,7 +840,15 @@ def _discovery_page(client) -> None:
 
     # The brand header is already on screen (main() renders it first); the nav reads the same
     # session-state page the header's compact flag was computed from.
-    active = _render_bottom_nav(saved_count=saved_count, client=client)
+    active = _render_bottom_nav(
+        saved_count=saved_count,
+        not_now_count=_not_now_count(interactions),
+        client=client,
+    )
+
+    if st.session_state.get("not_now_open"):
+        _render_not_now_panel(client, interactions)
+        return
 
     discover_focused = active == "Discover" and bool(
         st.session_state.get("discover_focus_key")

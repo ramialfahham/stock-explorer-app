@@ -15,6 +15,7 @@ from explore_filters import (  # noqa: E402
     metric_preset_label,
     metric_preset_options,
     saved_keys_with_order,
+    skipped_keys_with_order,
     walk_progress_line,
 )
 
@@ -372,6 +373,45 @@ def test_saved_keys_with_order_absent_when_unsaved_without_ever_saving() -> None
         {"market_code": "us_sp500", "ticker": "AAPL", "action": "unsave", "created_at": "t1"},
     ]
     assert saved_keys_with_order(interactions) == {}
+
+
+def test_skipped_keys_with_order_absent_when_never_skipped() -> None:
+    assert skipped_keys_with_order([]) == {}
+
+
+def test_skipped_keys_with_order_present_after_a_single_skip() -> None:
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "skip", "created_at": "t1"},
+    ]
+    assert skipped_keys_with_order(interactions) == {("us_sp500", "AAPL"): "t1"}
+
+
+def test_skipped_keys_with_order_absent_after_skip_then_unskip() -> None:
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "skip", "created_at": "t1"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "unskip", "created_at": "t2"},
+    ]
+    assert skipped_keys_with_order(interactions) == {}
+
+
+def test_skipped_keys_with_order_present_with_second_timestamp_after_reskip() -> None:
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "skip", "created_at": "t1"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "unskip", "created_at": "t2"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "skip", "created_at": "t3"},
+    ]
+    assert skipped_keys_with_order(interactions) == {("us_sp500", "AAPL"): "t3"}
+
+
+def test_skipped_keys_with_order_independent_of_save_state() -> None:
+    """skip/unskip and save/unsave are separate action pairs -- a save interaction must
+    never register as a skip, and vice versa."""
+    interactions = [
+        {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t1"},
+        {"market_code": "us_sp500", "ticker": "MSFT", "action": "skip", "created_at": "t2"},
+    ]
+    assert skipped_keys_with_order(interactions) == {("us_sp500", "MSFT"): "t2"}
+    assert saved_keys_with_order(interactions) == {("us_sp500", "AAPL"): "t1"}
 
 
 def test_dedupe_coalesces_summary_from_older_snapshot() -> None:
