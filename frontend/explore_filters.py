@@ -228,23 +228,39 @@ def attach_assessments(
     return result
 
 
-def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
-    """Currently-saved (market_code, ticker) keys, each mapped to its latest save
-    timestamp. A key's most recent action (save or unsave) determines current state --
-    absent entirely if unsaved, or never saved. Shared with app.py's `_saved_count`/
-    `_saved_cards`, which is why this is public rather than the usual module-private
-    underscore convention -- it's the single source of truth for "is this saved" so
-    Discover's exclusion and the Saved tab's own list can never disagree."""
+def _latest_action_keys(
+    interactions: list[dict[str, Any]], *, add_action: str, remove_action: str
+) -> dict[tuple[str, str], str]:
+    """Currently-active (market_code, ticker) keys for one add/remove action pair, each
+    mapped to its latest action's timestamp. A key's most recent action determines current
+    state -- absent entirely if removed, or never added. Shared tie-break logic for
+    save/unsave and skip/unskip (issue #16) so the two pairs can't silently diverge."""
     latest: dict[tuple[str, str], tuple[str, str]] = {}
     for row in interactions:
         action = row.get("action")
-        if action not in ("save", "unsave"):
+        if action not in (add_action, remove_action):
             continue
         key = _card_key(row)
         created = row.get("created_at") or ""
         if key not in latest or created >= latest[key][0]:
             latest[key] = (created, action)
-    return {key: created for key, (created, action) in latest.items() if action == "save"}
+    return {key: created for key, (created, action) in latest.items() if action == add_action}
+
+
+def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
+    """Currently-saved (market_code, ticker) keys, each mapped to its latest save
+    timestamp. Shared with app.py's `_saved_count`/`_saved_cards`, which is why this is
+    public rather than the usual module-private underscore convention -- it's the single
+    source of truth for "is this saved" so Discover's exclusion and the Saved tab's own
+    list can never disagree."""
+    return _latest_action_keys(interactions, add_action="save", remove_action="unsave")
+
+
+def skipped_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
+    """Currently-"not now"-ed (market_code, ticker) keys, each mapped to its latest skip
+    timestamp. Mirrors `saved_keys_with_order` for the skip/unskip action pair (issue #16)
+    -- public for the same reason, shared with app.py's Not-now panel."""
+    return _latest_action_keys(interactions, add_action="skip", remove_action="unskip")
 
 
 def _dedupe_by_ticker(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:

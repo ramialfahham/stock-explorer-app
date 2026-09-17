@@ -95,9 +95,12 @@ Popover content order:
 
 1. **Right now** — tab-aware one-liner (`right_now_line`)
 2. **Tip** — Discover / Saved / Search hint
-3. Actions (clear saved -- confirms in place before wiping the list: swaps to a "Clear all
+3. **Not now (N)** button (issue #16) -- opens a Saved-shaped review list of skipped
+   companies as an overlay on top of whichever tab is active, not a fourth nav tab. Save
+   moves a card into Saved; Remove drops it. Switching bottom-nav tabs closes it
+4. Actions (clear saved -- confirms in place before wiping the list: swaps to a "Clear all
    N saved companies? This can't be undone." message with Cancel/Clear-all, no second popover)
-4. **About the data** expander: refresh cadence, fundamentals-per-company gate, market breakdown; caption when `business_summary` export is missing
+5. **About the data** expander: refresh cadence, fundamentals-per-company gate, market breakdown; caption when `business_summary` export is missing
 
 ---
 

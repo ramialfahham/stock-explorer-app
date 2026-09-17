@@ -136,9 +136,11 @@ def render_overflow_menu(
     *,
     active_tab: str,
     saved_count: int,
+    not_now_count: int,
     cards: list[dict[str, Any]],
     eligible_counts: dict[str, int],
     on_clear_saved: Callable[[], None],
+    on_open_not_now: Callable[[], None],
     descriptions_missing: bool = False,
 ) -> None:
     """Render popover body: context, actions, and optional data expander."""
@@ -147,6 +149,11 @@ def render_overflow_menu(
         unsafe_allow_html=True,
     )
     st.markdown('<div class="ss-menu-actions-divider"></div>', unsafe_allow_html=True)
+    if st.button(
+        f"Not now ({not_now_count})", key="menu_open_not_now", use_container_width=True
+    ):
+        on_open_not_now()
+        st.rerun()
     if st.session_state.get("confirm_clear_saved"):
         noun = "company" if saved_count == 1 else "companies"
         st.markdown(

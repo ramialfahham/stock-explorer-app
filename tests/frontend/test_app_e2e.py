@@ -153,6 +153,104 @@ def test_save_card_from_discover_appears_in_saved(app_test: AppTest, cookie_scri
     assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
 
+def test_not_now_review_list_round_trip(app_test: AppTest, cookie_scripts) -> None:
+    """Issue #16: a company tapped "Not now" on Discover must be reachable again -- via
+    the overflow menu's "Not now" list -- and Save from there must move it into Saved."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    at = at.button(key="discover_skip").click().run()
+    _assert_clean(at)
+
+    # The overflow menu's button is reachable regardless of the popover's visual open
+    # state -- AppTest tracks the widget tree, not rendered visibility.
+    at = at.button(key="menu_open_not_now").click().run()
+    _assert_clean(at)
+    assert _row_button(at, "not_now_row_us_sp500::ALFA") is not None
+    assert _row_button(at, "not_now_row_us_sp500::BETA") is None
+
+    at = at.button(key="not_now_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    at = at.button(key="not_now_save").click().run()
+    _assert_clean(at)
+
+    at = at.button(key="menu_open_not_now").click().run()
+    _assert_clean(at)
+    assert _row_button(at, "not_now_row_us_sp500::ALFA") is None
+
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
+
+
+def test_not_now_panel_closes_when_switching_tabs(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    at = at.button(key="discover_skip").click().run()
+    at = at.button(key="menu_open_not_now").click().run()
+    _assert_clean(at)
+    assert at.session_state["not_now_open"] is True
+
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    assert at.session_state["not_now_open"] is False
+
+
+def test_skip_queues_a_cookie_write(app_test: AppTest, cookie_scripts) -> None:
+    """The regression this guards: skip/unskip used to be session-only (browser_storage.py's
+    own docstring said so), which was fine while nothing visible depended on it surviving a
+    reload. Issue #16 makes Not-now a real, revisitable list, so a skip must now persist the
+    same way a save does -- under its own cookie namespace, not the saved one."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    writes_before = [b for b in cookie_scripts if "ss_skipped_" in b]
+    assert writes_before == []
+    at = at.button(key="discover_skip").click().run()
+    _assert_clean(at)
+    writes = [b for b in cookie_scripts if "ss_skipped_" in b]
+    assert len(writes) == 1
+    assert "us_sp500:ALFA:" in writes[0]
+
+
+def test_clear_saved_does_not_clear_the_not_now_list(app_test: AppTest, cookie_scripts) -> None:
+    """Clear saved's own confirmation names only the saved count -- it must not silently
+    also wipe Not-now, which it would have before this task since clear_interactions()
+    reset the whole interactions list wholesale."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    at = at.button(key="discover_save").click().run()
+    at = at.segmented_control(key="bottom_nav").set_value("Discover").run()
+    at = at.button(key="discover_row_us_sp500::BETA").click().run()
+    at = at.button(key="discover_skip").click().run()
+    _assert_clean(at)
+
+    at = at.button(key="menu_clear_saved").click().run()
+    at = at.button(key="menu_clear_saved_confirm").click().run()
+    _assert_clean(at)
+
+    at = at.button(key="menu_open_not_now").click().run()
+    _assert_clean(at)
+    assert _row_button(at, "not_now_row_us_sp500::BETA") is not None
+
+
+def test_not_now_remove_drops_it_without_saving(app_test: AppTest) -> None:
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    at = at.button(key="discover_skip").click().run()
+    at = at.button(key="menu_open_not_now").click().run()
+    at = at.button(key="not_now_row_us_sp500::ALFA").click().run()
+    at = at.button(key="not_now_remove").click().run()
+    _assert_clean(at)
+
+    at = at.button(key="menu_open_not_now").click().run()
+    _assert_clean(at)
+    assert _row_button(at, "not_now_row_us_sp500::ALFA") is None
+
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is None
+
+
 def test_remove_from_saved_only_removes_that_card(app_test: AppTest) -> None:
     """Regression-shaped by construction: two cards are saved so removal is proven to be
     scoped to the selected one, not a blanket clear that happens to look right with only one
