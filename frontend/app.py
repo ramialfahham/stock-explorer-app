@@ -30,6 +30,8 @@ from explore_filters import (
     filter_pool,
     filter_scope_summary,
     market_filter_options,
+    metric_preset_label,
+    metric_preset_options,
     saved_keys_with_order,
     sectors_for_market,
 )
@@ -73,6 +75,7 @@ def _init_state() -> None:
         "active_page": "Discover",
         "explore_market": default_market_filter(),
         "explore_sector": ALL_SECTORS,
+        "explore_metric_presets": [],
         "all_cards": [],
     }
     for key, value in defaults.items():
@@ -187,6 +190,10 @@ def _explore_filters() -> tuple[str, str]:
     return market, sector
 
 
+def _explore_metric_presets() -> list[str]:
+    return st.session_state.get("explore_metric_presets", [])
+
+
 def _sync_eligible_counts(client) -> None:
     cards = _ensure_all_cards(client)
     st.session_state["eligible_counts"] = eligible_counts_by_market(cards)
@@ -196,7 +203,13 @@ def _discover_pool(client) -> list[dict]:
     cards = _ensure_all_cards(client)
     interactions = get_interactions()
     market, sector = _explore_filters()
-    pool = filter_pool(cards, interactions, market_code=market, sector=sector)
+    pool = filter_pool(
+        cards,
+        interactions,
+        market_code=market,
+        sector=sector,
+        metric_presets=_explore_metric_presets(),
+    )
     pool.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
     return pool
 
@@ -369,7 +382,8 @@ def _on_filter_change() -> None:
 
 
 def _render_explore_filters(client) -> None:
-    """Market/sector selectboxes are deliberately unkeyed. A `key=`-bound widget's
+    """Market/sector selectboxes and the metric-preset pills are deliberately unkeyed.
+    A `key=`-bound widget's
     session_state entry is evicted by Streamlit whenever the widget isn't instantiated on the
     immediately preceding run -- true even with an explicit key, not just for unkeyed widgets --
     and this popover's content only renders while on Discover (frontend/app.py's own
@@ -379,7 +393,10 @@ def _render_explore_filters(client) -> None:
     widget's own key lifecycle."""
     cards = _ensure_all_cards(client)
     market, sector = _explore_filters()
-    summary = filter_scope_summary(market_code=market, sector=sector)
+    metric_presets = _explore_metric_presets()
+    summary = filter_scope_summary(
+        market_code=market, sector=sector, metric_presets=metric_presets
+    )
 
     filter_btn, summary_col = st.columns([2, 5], vertical_alignment="center")
     with filter_btn:
@@ -414,6 +431,20 @@ def _render_explore_filters(client) -> None:
             )
             if selected_sector != stored_sector:
                 st.session_state["explore_sector"] = selected_sector
+                _on_filter_change()
+                st.rerun()
+            preset_ids = metric_preset_options()
+            stored_presets = [p for p in metric_presets if p in preset_ids]
+            selected_presets = st.pills(
+                "Metric filters",
+                options=preset_ids,
+                selection_mode="multi",
+                default=stored_presets,
+                format_func=metric_preset_label,
+                label_visibility="collapsed",
+            )
+            if set(selected_presets) != set(stored_presets):
+                st.session_state["explore_metric_presets"] = selected_presets
                 _on_filter_change()
                 st.rerun()
     with summary_col:

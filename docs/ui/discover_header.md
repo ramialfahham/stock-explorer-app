@@ -48,7 +48,7 @@ On Discover the same back row has no saved count: `[ ← Back to list ]` alone, 
 | 3 | Disclosure | `_render_brand_header()` | "Not investment advice." A permanent caption, not a one-time screen. Replaced the old first-run landing gate (removed) so the disclosure stays reachable every visit instead of appearing once and never again. List views only; the card view is never a visit's first screen |
 | 4 | Nav | `_render_bottom_nav()` | Horizontal flex row: Discover / Saved / Search segmented control + **⋯** popover (same line on mobile; Streamlit `st.columns` stacks below 640px) |
 | 5 | Persistent search | `_render_discover_search_box()` | **Discover list view only**: always-visible, same global lookup as the standalone Search tab. A query replaces rows 6-7 and the pool with results. Hidden while a card is focused |
-| 6 | Filters | `_render_explore_filters()` | **Discover list view only, while row 5 is empty**: **Filters** popover (market + sector); closed row shows `filter_scope_summary()`. Hidden while a card is focused or a query is active |
+| 6 | Filters | `_render_explore_filters()` | **Discover list view only, while row 5 is empty**: **Filters** popover (market + sector + metric-preset pills); closed row shows `filter_scope_summary()`. Hidden while a card is focused or a query is active |
 | 7 | Stats | `_render_discover_scope_stats()` / `_render_saved_scope_stats()` / `_render_back_row()` | **Saved-tab-only saved count** (§6): Discover shows `{remaining} match your filters` (hidden during row 5's query); Saved shows `{saved} saved`; standalone Search shows nothing; a focused card shows the back button alone on Discover, plus `{saved} saved` on Saved |
 
 Sticky **Save** / **Not now** actions render **below** the card body on Discover — not in the header.
@@ -59,11 +59,11 @@ Sticky **Save** / **Not now** actions render **below** the card body on Discover
 
 **Closed state:** `Filters` button + right-aligned summary. Not shown once a card is focused -- see the vertical-order table above.
 
-**Open state:** Market selectbox, then Sector selectbox (respects current market). Options come from live eligible cards (`market_filter_options()`), not `MARKET_DISPLAY_NAMES`'s full static list -- a market with zero exported companies yet doesn't appear. Changes return to the list (clearing any open focus card) via `_on_filter_change`.
+**Open state:** Market selectbox, Sector selectbox (respects current market), then five metric-preset pills (`st.pills`, multi-select: High margin, Low debt, Growing revenue, Strong returns, Cash-safe -- `METRIC_PRESETS` in `frontend/explore_filters.py`). Market options come from live eligible cards (`market_filter_options()`), not the full static list. Changes return to the list via `_on_filter_change`.
+
+**Pills, not numeric min/max (issue #13):** a prior numeric attempt was too tall on mobile, had confusing sentinel defaults, and crashed on Clear. Plain-language toggles avoid all three: compact, unselected already means "no filter," no Clear control needed -- tap a pill again to deselect. A card whose company_type has no corresponding metric passes through untouched.
 
 **Removed:** "Surprise me worldwide" checkbox -- use **All markets** instead.
-
-**Phase 2 (deferred):** Metric range filters -- needs a mobile-friendly pattern (not a long scrollable popover with min/max widgets). Tracked in issue #13.
 
 ---
 

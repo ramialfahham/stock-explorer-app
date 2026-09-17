@@ -6,11 +6,14 @@ from explore_filters import (  # noqa: E402
     ALL_MARKETS,
     ALL_SECTORS,
     attach_assessments,
+    card_matches_metric_presets,
     deck_rows_lack_columns,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
     market_filter_options,
+    metric_preset_label,
+    metric_preset_options,
     saved_keys_with_order,
     walk_progress_line,
 )
@@ -175,6 +178,131 @@ def test_filter_pool_single_market_scope_unaffected_by_dedup() -> None:
         sector=ALL_SECTORS,
     )
     assert {c["ticker"] for c in pool} == {"AIR.PA", "BMW"}
+
+
+def test_metric_preset_options_has_five_presets() -> None:
+    assert len(metric_preset_options()) == 5
+
+
+def test_metric_preset_label_is_plain_language() -> None:
+    assert metric_preset_label("high_margin") == "High margin"
+
+
+def test_card_matches_metric_presets_true_when_type_has_no_check() -> None:
+    """The rule this guards: a preset the card's company_type has no check for (e.g.
+    cash_safe against an operating card) must pass through, never exclude -- the same
+    "omit, never fake" rule the health verdict and metric stack already follow."""
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    assert card_matches_metric_presets(card, ["cash_safe"]) is True
+
+
+def test_card_matches_metric_presets_true_when_type_matches_but_value_missing() -> None:
+    """A card whose type HAS a check but is still missing that metric's value (not in its
+    type's mandatory eligibility set, e.g. statement_roe_pct for operating) also passes
+    through -- it was never guaranteed to have that value."""
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    assert card_matches_metric_presets(card, ["strong_returns"]) is True
+
+
+def test_card_matches_metric_presets_high_margin_operating_above_threshold() -> None:
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    card["ebit_margin_pct"] = 25.0
+    assert card_matches_metric_presets(card, ["high_margin"]) is True
+
+
+def test_card_matches_metric_presets_high_margin_operating_below_threshold() -> None:
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    card["ebit_margin_pct"] = 10.0
+    assert card_matches_metric_presets(card, ["high_margin"]) is False
+
+
+def test_card_matches_metric_presets_high_margin_financial_uses_net_margin() -> None:
+    card = _card("JPM", "Financial Services")
+    card["company_type"] = "financial"
+    card["net_margin_pct"] = 30.0
+    assert card_matches_metric_presets(card, ["high_margin"]) is True
+
+
+def test_card_matches_metric_presets_operating_ignores_a_co_populated_net_margin() -> None:
+    """The bug this guards (cto-reviewer, this task): ebit_margin_pct and net_margin_pct
+    are NOT mutually exclusive in the real data -- int_stock__card_metrics.sql computes
+    both straight from statement fields with no company_type gate, so most operating cards
+    also carry a non-null net_margin_pct. An operating card with a strong operating margin
+    but a thin net margin (interest, tax) must still match high_margin -- checking by
+    presence alone would wrongly AND the two thresholds together."""
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    card["ebit_margin_pct"] = 25.0
+    card["net_margin_pct"] = 2.0
+    assert card_matches_metric_presets(card, ["high_margin"]) is True
+
+
+def test_card_matches_metric_presets_low_debt_uses_lower_better_direction() -> None:
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    card["net_debt_to_ebitda"] = 1.5
+    assert card_matches_metric_presets(card, ["low_debt"]) is True
+    card["net_debt_to_ebitda"] = 3.0
+    assert card_matches_metric_presets(card, ["low_debt"]) is False
+
+
+def test_card_matches_metric_presets_all_active_presets_must_pass() -> None:
+    card = _card("AAPL", "Technology")
+    card["company_type"] = "operating"
+    card["ebit_margin_pct"] = 25.0
+    card["net_debt_to_ebitda"] = 3.0
+    assert card_matches_metric_presets(card, ["high_margin"]) is True
+    assert card_matches_metric_presets(card, ["high_margin", "low_debt"]) is False
+
+
+def test_filter_pool_applies_active_metric_preset() -> None:
+    cards = [
+        _card("AAPL", "Technology"),
+        _card("MSFT", "Technology"),
+    ]
+    for c in cards:
+        c["company_type"] = "operating"
+    cards[0]["ebit_margin_pct"] = 25.0
+    cards[1]["ebit_margin_pct"] = 10.0
+    pool = filter_pool(
+        cards,
+        [],
+        market_code="us_sp500",
+        sector=ALL_SECTORS,
+        metric_presets=["high_margin"],
+    )
+    assert {c["ticker"] for c in pool} == {"AAPL"}
+
+
+def test_filter_pool_no_presets_is_unaffected() -> None:
+    cards = [_card("AAPL", "Technology"), _card("MSFT", "Technology")]
+    cards[0]["company_type"] = "operating"
+    cards[0]["ebit_margin_pct"] = 10.0
+    pool = filter_pool(
+        cards,
+        [],
+        market_code="us_sp500",
+        sector=ALL_SECTORS,
+    )
+    assert {c["ticker"] for c in pool} == {"AAPL", "MSFT"}
+
+
+def test_filter_scope_summary_includes_active_presets() -> None:
+    summary = filter_scope_summary(
+        market_code="us_sp500",
+        sector=ALL_SECTORS,
+        metric_presets=["low_debt", "high_margin"],
+    )
+    assert summary == "S&P 500 · All sectors · High margin, Low debt"
+
+
+def test_filter_scope_summary_no_presets_omits_suffix() -> None:
+    summary = filter_scope_summary(market_code="us_sp500", sector=ALL_SECTORS)
+    assert summary == "S&P 500 · All sectors"
 
 
 def test_filter_pool_excludes_saved() -> None:
