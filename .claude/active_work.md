@@ -26,22 +26,21 @@ start item N+1 before N is merged.
   item 1, issue #7: MERGED (!171).** Dedupe by ticker in `filter_pool()` for ALL_MARKETS.
   **Phase 2 item 2, issue #4: CLOSED, no code change** -- all three items already fixed by
   earlier merged work (`57b5877f`, `fd21df17`), verified before implementing.
-- **Phase 3 -- CLOSED, all three resolved.** #20: **MERGED (!172)** -- persistent search
-  box, replaces Filters/pool while active; fixed a real live-confirmed bug (old unkeyed
-  search widget discarded every edit after the first) -- see operational notes. #6:
-  **CLOSED, no code** -- `d007b931` already shipped list-first entry. #1 (Slice 6 redesign):
-  **CLOSED, no code** -- verdict badge, AI read/fallback, per-type metrics, chips, single
-  disclosure all already merged since 2026-08-20; live-verified on production.
-- **Phase 4 item 1, issue #13 (metric preset filters): MR !174 open, awaiting CI + merge.**
-  5 plain-language toggle chips (High margin, Low debt, Growing revenue, Strong returns,
-  Cash-safe) in Discover's Filters popover -- pattern + preset list both decided via
-  AskUserQuestion. cto-reviewer round-1 caught a real bug: `ebit_margin_pct`/`net_margin_pct`
-  aren't mutually exclusive by type in the data, so selecting checks by "metric is non-null"
-  silently ANDed both margins for operating cards; fixed by scoping every check to
-  `company_type` directly. See operational notes for the reusable lesson.
-- **Next**: once !174 merges, Phase 4 items #14-18 (each needs a product decision -- ask one
-  at a time when reached, don't batch), then Phase 5 (#19, #5). Rest of sequence in the plan
-  file above.
+- **Phase 3 -- CLOSED, all three resolved.** #20 **MERGED (!172)** -- persistent search box;
+  fixed a real live-confirmed bug (old unkeyed search widget discarded every edit after the
+  first) -- see operational notes. #6/#1: **CLOSED, no code** -- both already shipped
+  (list-first entry, Slice 6 redesign); live-verified on production.
+- **Phase 4 item 1, issue #13: MERGED (!174).** 5 preset chips in Discover's Filters
+  popover. cto-reviewer round-1 caught a real bug (`ebit_margin_pct`/`net_margin_pct` aren't
+  mutually exclusive by type in the data; fixed by scoping every check to `company_type`
+  directly) -- see operational notes for the reusable lesson.
+- **Phase 4 items #14-18, decided 2026-09-17** (GitLab note on each issue, left open not
+  closed): #14/#15/#17/#18 -- skip/wait, no confirmed complaint or already labeled
+  optional-later. **#16 (Not now review list) -- BUILD.** A "Not now" list, structurally
+  like Saved's own list (`row_ui` pattern), reachable from overflow -- real gap today
+  (skipped companies unreachable except re-search).
+- **Next**: implement #16 (in progress this session), then Phase 5 (#19, #5). Rest of
+  sequence in the plan file above.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
