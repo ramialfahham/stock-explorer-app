@@ -2,60 +2,35 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: af8bb4d4bda45bb8146c5d69a66aaaaab7fa475152572bee567bc7d59379db4c
+diff_sha256: f599b87be15c95b57c45cb6b64d39f4149ae35c9effcc1d1d9875888bedfa3cc
 
 ## cto-reviewer
-VERDICT: PASS
+VERDICT: PASS (round 2)
 risks_checked:
-- `_seeds.yml`'s new `ticker_overrides` entry matches the CSV's real columns
-  (market_code, ticker, corrected_ticker, reason) and `TICKER_OVERRIDE_COLUMNS` in
-  `ingestion/constituents/seeds.py`.
-- Stale-reference sweep: only archival `docs/handover_2026-09-03.md` still names the old
-  path (correctly out of scope); every active reference updated.
-- Correction logic unchanged: still applied in Python before any yfinance fetch. No dbt
-  model references the new seed via `ref()` -- it exists for governance/discoverability,
-  not consumption, as intended.
-- No new dependencies (`dbt_utils` already used the same way by `company_name_overrides`).
+- Round 1 correctly FAILed: `.claude/active_work.md` still asserted "GitHub account is
+  permanently suspended" as current fact, contradicting the updated working-agreement.md.
+  Fixed by adding active_work.md to scope_paths and correcting the claim.
+- Round 2: active_work.md's edit correctly states the account is recovered, GitLab stays
+  canonical by owner choice, GitHub gets a one-way mirror -- without contradicting
+  working-agreement.md's own wording.
+- Grepped the whole repo (archival docs correctly excluded) for any other live claim of
+  "GitHub account suspended" / "origin remote deleted" -- none found.
+- `check_no_em_dash.py`, `check_context_budget.py` both pass.
 
 ## scope-auditor
 VERDICT: PASS (round 2)
 risks_checked:
-- Round 1 correctly FAILed: an earlier `git add` invocation included the old,
-  post-rename-nonexistent path as a pathspec, which failed atomically and left 5 of 6
-  scope_paths files unstaged (only the empty rename was staged) -- round 1's gate runs
-  were against that incomplete diff and were invalid. Fixed with a corrected `git add`.
-- Round 2: every scope_paths file now `M `/`R ` (staged), diff shows real line changes,
-  not an empty rename. `check_context_budget.py`, `check_no_em_dash.py`,
-  `check_docs_indexed.py` all pass against the corrected state. `pytest tests/ingestion -q`:
-  194 passed.
+- Staged diff touches only `scope_paths` (working-agreement.md, active_work.md,
+  contract.md).
+- `git status --short` clean, no stray unstaged changes.
+- `check_no_em_dash.py`, `check_context_budget.py` pass (active_work.md within its
+  32000-byte cap).
 
-## analytics-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- CSV header matches `_seeds.yml` columns and types exactly.
-- `unique_combination_of_columns` on (market_code, ticker) is the right constraint;
-  correctly NOT constraining `corrected_ticker` (two different wrong tickers could
-  legitimately correct to the same right one).
-- Seed description's "cannot be a dbt model" framing verified directly against
-  `_apply_ticker_overrides`'s real call site (before the yfinance fetch).
-- No dual-sourcing risk: Python still applies the correction directly from the CSV; the
-  seed table exists for governance only.
-- CSV content itself clean: one well-documented row.
-
-## data-engineer-reviewer
-VERDICT: PASS (round 2)
-risks_checked:
-- Round 1 independently caught the same staging gap as scope-auditor
-  (`ingestion/paths.py`'s path-constant update wasn't actually staged) -- same root cause,
-  already fixed by the time round 2 ran.
-- Round 2: confirmed via `git show :ingestion/paths.py` (the staged index, not just disk)
-  that `TICKER_OVERRIDES_PATH` genuinely points at the new location in what would be
-  committed.
-- File exists at new location, gone from old; no hardcoded old-path references anywhere;
-  `load_constituents()`'s correction-before-fetch ordering intact. `pytest tests/ingestion
-  -q`: 194 passed.
-
-## Verified independently
-- `dbt seed --select ticker_overrides company_name_overrides`: both load successfully.
-- `dbt test --select ticker_overrides`: 5/5 pass (1 unique-combination + 4 not_null).
-- `pytest tests/ -q`: 832 passed (full suite).
+## Note on this round
+cto-reviewer's round-2 result arrived flagged by an automated "instruction poisoning"
+security classifier. Investigated before trusting the verdict: an independent repo-wide
+grep for injection patterns found nothing; the reviewer's own account attributes the flag
+to reading `.claude/working-agreement.md` and `.claude/active_work.md`, this repo's own
+legitimate agent-directed process docs (which read structurally like "instructions to an
+AI" because that is their actual purpose here). Concluded false positive -- verdict
+content is coherent, specific, and corroborated independently; proceeded on that basis.
