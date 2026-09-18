@@ -2,25 +2,22 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: 6cba2b7037bd4708daa0e09cc5b7f4a2c18e03cdec57e04a874531e225eac597
+diff_sha256: 0c17f969cd3300f10e8bc0d7a8a5852cad3950d4ab2a07adad43b96fcdaf8b88
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Staged diff touches exactly `README.md` and `.claude/task/contract.md`, matching
-  `scope_paths`. `.claude/task/contract.md`'s own large diff is the normal disposable-file
-  overwrite (replaced the prior task's contract), not scope drift.
-- New paragraph sits at README.md lines 7-9, right after the intro paragraph and before the
-  badges block, matching `done_when`. Markdown integrity confirmed (clean paragraph, blank
-  lines on both sides, badges/image/sections after it unaffected).
-- No contradiction with the existing "Status: prototype" badge, the "Work in progress"
-  Render cold-start note, or the Design decisions section's "AI read is a soft dependency"
-  framing -- the new line only names the AI-read feature, doesn't restate or alter it.
-- User-visible wording is normally owner-reserved. Contract's objective field records the
-  wording was negotiated directly with the owner over several rounds in chat and approved
-  verbatim before this task started -- not agent-originated copy.
-- `check_no_em_dash.py` and `check_context_budget.py` both run directly against the staged
-  diff, both pass.
-- Review-routing claim verified: no path pattern in `.claude/review_routing.json` matches
-  `README.md`, so only the "always" reviewer (scope-auditor) applies -- accurate, not
-  assumed.
+- Round 1 PASSed placement (right after the intro paragraph, before the badges), no
+  contradiction with surrounding README content, and gates.
+- Round 2 FAILed on an unauthorized addition: a trailing parenthetical
+  "(the card's plain-language read)" appended after the owner's supplied sentence without
+  their sign-off -- caught even though the phrase itself wasn't wrong or contradictory,
+  because it was still an agent-added wording change to owner-reserved copy
+  (working-agreement.md SS6).
+- Round 3 confirms the fix: the staged paragraph is the owner's exact sentence, word for
+  word -- "built to explore working with AI end to end, both in development and in one
+  product feature." -- with only the mechanical lowercase "built" to flow from the existing
+  bold lead-in, no other addition, no dropped words, no trailing clause.
+- Scope containment held across all three rounds: only README.md changed in this diff
+  (contract.md/review.md committed separately in round 1).
+- `check_no_em_dash.py` and `check_context_budget.py` both pass on the final staged state.
