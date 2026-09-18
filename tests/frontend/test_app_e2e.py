@@ -394,6 +394,51 @@ def test_clearing_discover_persistent_search_restores_filters_and_pool(app_test:
     assert _scope_stats_line_present(at)
 
 
+def test_discover_search_has_no_clear_button_when_empty(app_test: AppTest) -> None:
+    at = app_test.run()
+    _assert_clean(at)
+    assert _row_button(at, "discover_search_clear") is None
+
+
+def test_discover_search_clear_button_appears_and_clears_the_query(
+    app_test: AppTest,
+) -> None:
+    """The actual fix, not the manual-clear path above: found live by the owner that the
+    ONLY way out of an active search was deleting every typed character by hand -- clicking
+    the already-active Discover nav pill did nothing (Streamlit's segmented_control gives
+    no signal that the same option was reselected). An explicit, always-visible clear
+    control is the fix; this is the one that must actually be there and actually work."""
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    _assert_clean(at)
+    assert _row_button(at, "discover_search_clear") is not None
+    at = at.button(key="discover_search_clear").click().run()
+    _assert_clean(at)
+    assert at.text_input[0].value == ""
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
+    assert _row_button(at, "discover_row_us_sp500::BETA") is not None
+    assert _scope_stats_line_present(at)
+
+
+def test_switching_tabs_and_back_clears_an_active_search(app_test: AppTest) -> None:
+    """The second half of the same fix: a genuine tab switch must never leave the reader
+    stuck in whatever sub-state they left a tab in, the same guarantee the Not-now panel
+    already gets. Without this, going to Saved and back to Discover would still show the
+    old search results with no visible way out."""
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    _assert_clean(at)
+    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    _assert_clean(at)
+    at = at.segmented_control(key="bottom_nav").set_value("Discover").run()
+    _assert_clean(at)
+    assert len(at.text_input) == 1
+    assert at.text_input[0].value == ""
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
+    assert _row_button(at, "discover_row_us_sp500::BETA") is not None
+    assert _scope_stats_line_present(at)
+
+
 def test_discover_persistent_search_hidden_while_a_card_is_focused(app_test: AppTest) -> None:
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()

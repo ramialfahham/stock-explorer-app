@@ -24,31 +24,32 @@ past incidents as precedent is not the same as the owner deciding fresh -- when 
 own text reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy
 to close it (SS6).**
 
-**Issue #3, #21, Search tab removal, issue #22 item 1, seed governance (ticker_overrides.csv
--> dbt_analytics/seeds/): all MERGED (!181-!184).** Issue #22's root cause still NOT
-isolated (3i/uk_ftse100/III's `input_hash` identical since 2026-08-20, zero log trace of it
-in two separate runs) -- `attach_reads()` now logs every card, not just failures, so the
-next run should finally show why. **Do not assume 2026-10-01 fixes 3i -- check its
-`card_assessments` row directly after.**
+**Issue #3, #21, Search tab removal, issue #22 item 1, seed governance: all MERGED
+(!181-!184).** Issue #22's root cause still NOT isolated (3i/uk_ftse100/III's `input_hash`
+identical since 2026-08-20, zero log trace in two runs) -- `attach_reads()` now logs every
+card. **Do not assume 2026-10-01 fixes 3i -- check its `card_assessments` row after.**
 
-**GitHub recovered, repo published: MERGED (!185).** Owner decision for this project:
-GitLab canonical, one-way push mirror to GitHub for visibility (owner set up via `gh`/GitLab
-UI, both now authenticated on this machine -- `glab` and `gh` both sit in the OS keyring as
-pre-existing infra, neither entered by me). Both repos flipped **public** 2026-09-18 --
-portfolio-grade substance work (issue #9) was already done, this was the last gate. Synced
-description/topics on both, fixed GitHub's stale Streamlit-Cloud website link to the real
-Render URL, closed 2 stale pre-migration GitHub issues.
+**GitHub recovered, repo published: MERGED (!185).** GitLab canonical, one-way push mirror
+to GitHub (`glab`/`gh` both pre-existing OS-keyring infra, neither entered by me). Both
+repos flipped **public** 2026-09-18 -- portfolio-grade substance (issue #9) already done.
+Synced description/topics, fixed GitHub's stale Streamlit-Cloud link, closed 2 stale
+pre-migration GitHub issues.
 
 **Search-card focus fix: MERGED (!186).** A card opened from search now enters a focused
 state (back row, hides search box/results) like every other card-open path -- owner found
 it live. Screenshot refreshed too.
 
-**README AI-read + plain-language diagram: MR !187 open.** Owner: README never mentioned
-the AI-written card read anywhere (diagram/Highlights/Stack table) -- fixed, plus a Design
-decisions bullet. Architecture diagram's node labels rewritten in plain language (owner:
-non-technical readers should follow it) -- tool names stay as proper nouns, internal jargon
-(ephemeral DuckDB, data contract, etc.) removed from the diagram itself. Rendered in a real
-browser to confirm Mermaid syntax before shipping, not just eyeballed.
+**README AI-read + plain-language diagram: MERGED (!187).** README now covers the AI-read
+component; architecture diagram rewritten in plain language (tool names as proper nouns,
+internal jargon removed).
+
+**Search: no way out except deleting text -- MR !188 open.** Owner found live, second gap
+on the same search feature: clicking the already-active Discover pill did nothing
+(`segmented_control` gives no signal on reselecting), so search had no escape hatch. Fixed
+with a concept: (1) a visible "Clear" button whenever search has text, (2) a genuine tab
+switch also resets search, same guarantee Not-now already had. Hit a real Streamlit
+widget-key constraint along the way, caught by a new test -- see operational notes.
+Live-verified.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -306,6 +307,11 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
 
 ## Context / operational notes
 
+- **Can't directly assign `st.session_state[key] = ...` for a KEYED widget already
+  rendered earlier in the SAME run** -- raises `StreamlitAPIException: cannot be modified
+  after the widget... is instantiated`. Use `.pop(key, None)` instead; the key is absent
+  next run, and a widget with its own reseed-when-absent pattern (search box already has
+  one) picks the cleared value up correctly. Hit and fixed via `_clear_search()`.
 - **A multi-path `git add` fails ATOMICALLY and SILENTLY-for-the-others if ANY one
   pathspec doesn't match** -- e.g. listing a file's OLD path in the same call right after
   `git mv`-ing it away. The whole invocation errors, and the other valid paths in that
