@@ -81,9 +81,12 @@ render the full card, not a row.
   (`:last-child`) — position-based selectors silently jump to the wrong element if the row
   is ever reordered. Any future icon-only trigger opts in by dropping the same marker
   immediately before it.
-- **Segmented control excluded.** The Discover/Saved nav pills are a native Streamlit
-  widget (`st.segmented_control`), not our HTML/button markup — it is deliberately outside
-  this variant system and keeps its own theming.
+- **Nav pills use the base button variant, not a native widget.** The Discover/Saved nav
+  pills are plain `st.button()`s (`type="primary"` for the active tab, `"secondary"`
+  otherwise), not `st.segmented_control` -- that widget cannot report a click on the option
+  already selected, which made re-tapping the active tab a silent no-op. Plain buttons
+  fire on every click, so they get the same primary/secondary skin as any other button
+  here, no separate theming.
 
 ---
 

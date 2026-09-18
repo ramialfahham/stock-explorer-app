@@ -2,73 +2,70 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: 26ab153522b74b1b43804c0dfdb26427915cf5752f2fa5fb4f346ceec1790158
+diff_sha256: 15a84ad8b441fe478e29094010dd92e75d828205b8ca2f524eb0b7581b0dfb4b
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- `_discover_pool()` (frontend/app.py) is the single source of truth for Discover's row
-  set: query set -> `_search_matches`, else -> `filter_pool`. No competing pool builder.
-- `_render_discover_tab()` has no leftover search-specific branching: one row list
-  (`key_prefix="discover_row"`), one focus-key lookup, one back row
-  (`key="discover_back_to_list"`). Confirmed zero remaining references to
-  `search_selected`, `_render_search_results`, `_render_search_focused_card`,
-  `_select_search_row`, `_card_key` anywhere in frontend/app.py.
-- Row keys and back-button keys rethreaded consistently across both test files, not a
-  partial rename.
-- Stale-focus-key revalidation is a single shared implementation: `_render_discover_tab`
-  re-validates `discover_focus_key` against whatever `pool` `_discover_pool` returned that
-  run, so a card falling out of a changed query resets exactly like one falling out of a
-  changed filter -- same mechanism, not a new special case.
-- Saved tab and Not-now panel use their own focus keys and row-key function, untouched by
-  this diff; no accidental cross-tab state sharing introduced.
-- Round 1 found a real defect: `_render_discover_scope_stats` hardcoded "N match your
-  filters" and was now shown during an active search too, where the wording was factually
-  wrong (no filters applied). Round 2 confirms the fix is complete: the function now
-  branches on an explicit `query` param, the call site passes the current-run query with no
-  staleness window (`_sync_search_query` already ran before `_discover_pool` is read), the
-  whole label -- either branch -- is still wrapped in `html.escape`, and the new negative/
-  positive test assertions are real regression guards (verified via exact codepoints, not
-  terminal rendering), not tautologies.
-- `pytest tests/frontend -q`: 329 passed. `pytest tests/ -q` (excluding the pre-existing,
-  unrelated `tests/tooling/test_generate_assessments.py` collection error caused by a
-  missing `anthropic` import when run outside `.venv`): 796 passed.
-- `check_no_em_dash.py` and `check_context_budget.py` both pass against the staged diff.
-- No new dependency, service, CI step, or hook. Net -34 lines in frontend/app.py.
+- Root-cause claim reproduced, not just read: checked out the pre-diff `frontend/app.py`,
+  focused a Discover card, called
+  `at.segmented_control(key="bottom_nav").set_value("Discover")` (reselecting the already
+  -active value) -- `discover_focus_key` stayed set, confirming the reselect really was a
+  silent no-op under the old code, then restored the working tree cleanly.
+- `_go_to_nav_page`'s isolation confirmed by reading the code: clicking Discover only ever
+  touches `discover_focus_key` (+ search), clicking Saved only ever touches
+  `saved_focus_key` -- neither leaks into the other tab's state.
+- `bottom_nav` fully deleted: no session-state-key reference left anywhere in frontend/ or
+  tests/ (grepped both).
+- `main()`'s early compact-header read no longer needs a `bottom_nav` fallback: the new
+  handler sets `active_page` then calls `st.rerun()` immediately, which aborts the current
+  run before any staleness window can open, unlike the old widget's own mid-run state
+  update.
+- CSS verified live, not just read: started the app, inspected the actual rendered DOM
+  (`min-height: 37.6px`, `font-weight: 600`, `font-size: 14px` matching the new rule).
+  Specifically checked the broadened `[data-testid="stButton"]` selector doesn't leak onto
+  the overflow popover's own buttons -- traced the DOM, popover body is portaled outside
+  the nav row's subtree, confirmed via computed style on "Not now" (untouched, default
+  Streamlit styling).
+- Round 1 found two authoritative UI docs (`docs/ui/design_system.md`,
+  `docs/ui/discover_header.md`) still claiming the nav is `st.segmented_control` --
+  working-agreement.md SS2's "grep the repo for the claim" rule. Round 2 confirms both
+  fixes are accurate against the current code (button `type=` logic, the scope-stats query
+  wording), and a repo-wide grep for `segmented control`/`segmented_control`/`bottom_nav`
+  turns up nothing else stale outside the one frozen historical archive
+  (`docs/handover_2026-09-03.md`), correctly left untouched.
+- `pytest tests/frontend -q`: 332 passed, both rounds. `check_no_em_dash.py`,
+  `check_context_budget.py`: both pass on the final staged state.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Staged diff touches exactly `.claude/task/contract.md`, `frontend/app.py`,
-  `tests/frontend/test_app.py`, `tests/frontend/test_app_e2e.py` -- all within
-  `scope_paths`. `.claude/task/review.md` written after this verdict, as expected.
-- `_search_matches` itself is untouched by this diff -- still matches against the full
-  deck with no market/sector scoping, confirming search stays global per the prior
-  AskUserQuestion decision (issue #20) and was not silently re-scoped alongside the
-  state-machine unification.
-- Tests assert the NEW behavior, not the old: search-opened cards now assert Save/Not-now
-  ARE present (old read-only assertions removed), unified `discover_row_*`/
-  `discover_back_to_list` keys used throughout.
-- Round 1 finding (the scope-stats wording lying about "filters" during a search --
-  User-visible wording is an owner decision per working-agreement.md SS6, and the contract's
-  original `decisions_reserved: none` didn't actually cover this) is resolved in round 2:
-  contract.md now explicitly documents the wording fix and that round 1 caught it. The new
-  copy ("N match "query"") is not a fresh unilateral wording decision -- it reuses the
-  exact curly-quote-around-the-raw-query convention already shipped on `main` in the
-  adjacent empty-state message (`git log -S` traced to commit 5983794c, pre-existing), so
-  it's precedent-following, not new-copy-inventing.
-- `pytest tests/frontend -q`: 329 passed. `check_no_em_dash.py` / `check_context_budget.py`:
-  both pass against the current staged diff.
+- Staged diff matches `scope_paths` exactly: frontend/app.py, frontend/styles.py,
+  tests/frontend/test_app_e2e.py, docs/ui/design_system.md, docs/ui/discover_header.md,
+  .claude/task/contract.md.
+- "One mechanism, not three patches" claim verified directly in the diff: both nav buttons
+  route through the single `_go_to_nav_page(target)` handler for every click, genuine
+  switch or reselect alike -- no separate special-casing for the Saved-reselect or
+  Not-now-overlay-reselect cases; they fall out of the same code path.
+- One real, disclosed behavior change beyond the reported no-op: a genuine tab switch now
+  also clears the tab being switched TO's own stale focused card (the old code never did
+  this). Disclosed in the contract's own objective text, which `decisions_reserved` states
+  the owner reviewed (table-format plan) before implementation -- not a silently smuggled
+  decision.
+- Round 2's doc-only addition to scope checked for a hidden decision riding along: the
+  discover_header.md row-7 wording fix (scope-stats count during search) was verified
+  against `_render_discover_scope_stats`, confirmed untouched by this diff -- the doc edit
+  documents already-shipped behavior from the earlier, separately-merged search-unification
+  MR, not a new decision.
+- `pytest tests/frontend -q`: 332 passed, both rounds. `check_no_em_dash.py`,
+  `check_context_budget.py`: both pass on the final staged state.
 
 ## Verified independently
 - Full suite: `pytest tests/ -q` (excluding the pre-existing, unrelated
-  `tests/tooling/test_generate_assessments.py` collection error -- missing `anthropic`
-  import when run outside `.venv`, not touched by this task) -- 796 passed.
-- Live browser, full flow: typed "apple" -> list narrows to the one match, Filters popover
-  hidden, stats line reads `1 match "apple"` (not the stale "matches your filters" claim).
-  Clicked the row -> card opens directly with Save/Not now visible (the exact bug the owner
-  screenshotted: "clicking on the field, apple content opens, but i'm not on a card").
-  Clicked Back -> returned to the same one-match "apple" results, not empty or stale.
-  Switched to Saved, back to Discover -> search cleared, Filters popover restored, full
-  1021-company list showing again (the "and clicking on discover here does nothing" bug,
-  now fixed).
+  `tests/tooling/test_generate_assessments.py` collection error) -- 799 passed.
+- Live browser, all three reselect cases plus a normal switch: card open on Discover, click
+  "Discover" (already active) -> returns to Discover's list. Card open on Saved (after
+  saving a card and reopening it), click "Saved" (already active) -> returns to Saved's
+  list. Not-now overlay open (via the overflow menu, after skipping a card), click
+  "Discover" (already active) -> overlay closes, Discover's list shows. Genuine
+  Discover<->Saved switches confirmed working throughout.
