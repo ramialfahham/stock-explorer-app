@@ -294,7 +294,9 @@ def _render_brand_header(*, compact: bool = False) -> None:
 
 def _card_open(active: str) -> bool:
     if active == "Discover":
-        return bool(st.session_state.get("discover_focus_key"))
+        return bool(st.session_state.get("discover_focus_key")) or bool(
+            st.session_state.get("search_selected")
+        )
     if active == "Saved":
         return bool(st.session_state.get("saved_focus_key"))
     return False
@@ -781,7 +783,10 @@ def _search_matches(cards: list[dict], query: str) -> list[dict]:
 
 
 def _render_search_results(client, query: str, *, key_prefix: str) -> None:
-    """Matches for `query` plus the selected match's read-only card."""
+    """The list of matches for `query`. Never called with a selection already pinned --
+    selecting a row moves to `_render_search_focused_card` on the next run instead of
+    rendering the card inline here (issue: search-opened cards previously never entered a
+    focused state, unlike every other card-open path in the app)."""
     cards = _ensure_all_cards(client)
     matches = _search_matches(cards, query)
 
@@ -798,11 +803,31 @@ def _render_search_results(client, query: str, *, key_prefix: str) -> None:
         on_select=_select_search_row,
     )
 
+
+def _render_search_focused_card(client) -> None:
+    """The focused view for a card opened from search results -- mirrors Discover's and
+    Saved's own list-to-card focus pattern (hide the list, show a back row + the card)
+    instead of leaving the search box and result row rendered above the card indefinitely,
+    which was the one card-open path in the app that never got this treatment. Back
+    returns to the search RESULTS for the same query, not to an empty box or the full
+    Discover pool -- same as Discover's/Saved's own back buttons return to their own list,
+    not further up."""
+    query = st.session_state.get("search_query", "")
+    cards = _ensure_all_cards(client)
+    matches = _search_matches(cards, query)
     selected = st.session_state.get("search_selected")
-    if selected:
-        match = next((c for c in matches if _card_key(c) == selected), None)
-        if match:
-            render_stock_card(_hydrate(client, match), widget_key_prefix=key_prefix)
+    match = next((c for c in matches if _card_key(c) == selected), None)
+    if not match:
+        st.session_state["search_selected"] = None
+        st.rerun()
+        return
+
+    _render_back_row(
+        key="discover_search_back_to_results",
+        saved_count=None,
+        on_back=lambda: st.session_state.update({"search_selected": None}),
+    )
+    render_stock_card(_hydrate(client, match), widget_key_prefix="discover_search")
 
 
 def _render_discover_search_box() -> str:
@@ -840,7 +865,16 @@ def _discovery_page(client) -> None:
     discover_focused = active == "Discover" and bool(
         st.session_state.get("discover_focus_key")
     )
+    search_focused = active == "Discover" and bool(st.session_state.get("search_selected"))
     card_open = _card_open(active)
+
+    if search_focused:
+        # Same focus pattern as Discover's and Saved's own list-to-card transitions: the
+        # search box and result row are not rendered at all while a search-opened card is
+        # focused, not just visually hidden -- the widget's own reseed-when-key-absent
+        # logic (_search_query_widget's docstring) restores its value once it reappears.
+        _render_search_focused_card(client)
+        return
 
     discover_search_query = ""
     if active == "Discover" and not discover_focused:

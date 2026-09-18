@@ -333,6 +333,42 @@ def test_discover_persistent_search_selected_card_has_no_save_button(app_test: A
     assert _row_button(at, "discover_skip") is None
 
 
+def test_discover_persistent_search_selected_card_enters_focused_state(
+    app_test: AppTest,
+) -> None:
+    """The bug this guards: a card opened from search never entered a focused state like
+    every other card-open path in the app (Discover's own list, Saved's list) -- the
+    search box and result row stayed rendered above the card indefinitely, with no back
+    button. Found live by the owner. Selecting a search hit must now hide both and show a
+    back row, exactly like Discover's/Saved's own focus pattern."""
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    at = at.button(key="discover_search_us_sp500_ALFA").click().run()
+    _assert_clean(at)
+    assert len(at.text_input) == 0, "the search box must not still be rendered"
+    assert _row_button(at, "discover_search_us_sp500_ALFA") is None, (
+        "the result row must not still be rendered"
+    )
+    assert at.button(key="discover_search_back_to_results") is not None
+    assert _header_is_compact(at), "header must compact like every other focused-card state"
+
+
+def test_discover_persistent_search_back_returns_to_the_same_results(
+    app_test: AppTest,
+) -> None:
+    at = app_test.run()
+    at = at.text_input[0].set_value("ALFA").run()
+    at = at.button(key="discover_search_us_sp500_ALFA").click().run()
+    _assert_clean(at)
+    at = at.button(key="discover_search_back_to_results").click().run()
+    _assert_clean(at)
+    assert at.text_input[0].value == "ALFA", (
+        "back must return to the search results for the same query, not an empty box"
+    )
+    assert _row_button(at, "discover_search_us_sp500_ALFA") is not None
+    assert not _header_is_compact(at)
+
+
 def test_discover_persistent_search_accepts_a_second_edit(app_test: AppTest) -> None:
     """The regression this guards: `_search_query_widget`'s predecessor derived an unkeyed
     widget's identity from `value=`, reseeded from the widget's own prior output -- so the
