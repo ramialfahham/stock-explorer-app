@@ -46,6 +46,7 @@ from assessment_rules import (
     compute_verdict,
     find_read_style_violations,
     validate_read_metrics,
+    verdict_meaning_violation,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -196,12 +197,13 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     (None, None) on any failure so a single bad card never fails the batch.
 
     Forces tool-use (READ_TOOL_SCHEMA) so the model returns the read alongside the exact
-    metrics it cited, then checks those against the card's own numbers (validate_read_metrics)
-    and against a deterministic subset of the prompt's own style rules
-    (find_read_style_violations) before accepting the read -- a malformed response, an empty
-    read, an unverifiable citation, or a style-rule violation is treated the same as an API
-    failure: fail closed, self-heals next run via the existing regenerate-on-input-hash-change
-    path. No retry.
+    metrics it cited and its own verdict_meaning classification, then checks those against the
+    card's own numbers (validate_read_metrics), the verdict already decided (verdict_meaning_violation),
+    and a deterministic subset of the prompt's own style rules (find_read_style_violations)
+    before accepting the read -- a malformed response, an empty read, an unverifiable citation,
+    a verdict-meaning mismatch, or a style-rule violation is treated the same as an API failure:
+    fail closed, self-heals next run via the existing regenerate-on-input-hash-change path. No
+    retry.
     """
     system, user = build_read_messages(row, verdict)
     try:
@@ -233,17 +235,27 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     payload = tool_block.input if isinstance(tool_block.input, dict) else {}
     text = str(payload.get("read") or "").strip()
     referenced = payload.get("referenced_metrics")
-    if not text or not isinstance(referenced, list):
+    reported_meaning = payload.get("verdict_meaning")
+    if not text or not isinstance(referenced, list) or not isinstance(reported_meaning, str):
         print(
             f"  read failed for {row.get('market_code')}/{row.get('ticker')}: "
             f"malformed tool payload (read={'present' if text else 'blank'}, "
-            f"referenced_metrics type={type(referenced).__name__})",
+            f"referenced_metrics type={type(referenced).__name__}, "
+            f"verdict_meaning type={type(reported_meaning).__name__})",
             file=sys.stderr,
         )
         return None, None
     if not validate_read_metrics(row, referenced):
         print(
             f"  read REJECTED (unverifiable metric) for "
+            f"{row.get('market_code')}/{row.get('ticker')}",
+            file=sys.stderr,
+        )
+        return None, None
+    meaning_violation = verdict_meaning_violation(verdict, text, reported_meaning)
+    if meaning_violation:
+        print(
+            f"  read REJECTED (verdict meaning: {meaning_violation}) for "
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )

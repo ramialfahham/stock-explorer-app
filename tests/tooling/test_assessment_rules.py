@@ -853,10 +853,12 @@ def test_validate_read_metrics_rejects_a_malformed_entry() -> None:
     assert rules.validate_read_metrics(row, ["not a dict at all"]) is False
 
 
-def test_read_tool_schema_requires_read_and_referenced_metrics() -> None:
+def test_read_tool_schema_requires_read_referenced_metrics_and_verdict_meaning() -> None:
     assert rules.READ_TOOL_SCHEMA["name"] == rules.READ_TOOL_NAME
     required = rules.READ_TOOL_SCHEMA["input_schema"]["required"]
-    assert set(required) == {"read", "referenced_metrics"}
+    assert set(required) == {"read", "referenced_metrics", "verdict_meaning"}
+    meaning_field = rules.READ_TOOL_SCHEMA["input_schema"]["properties"]["verdict_meaning"]
+    assert set(meaning_field["enum"]) == {"healthy", "mixed", "fragile"}
 
 
 def test_build_read_messages_financial_states_profitability_only_limit() -> None:
@@ -1402,22 +1404,49 @@ def test_find_read_style_violations_allows_this_year_when_not_about_growth() -> 
     assert not any('"this year"' in v for v in violations), violations
 
 
-def test_find_read_style_violations_catches_a_missing_verdict_ending() -> None:
-    dirty = "Operating margin is strong and debt is low."
-    assert any("does not end on the verdict" in v for v in rules.find_read_style_violations(dirty))
-
-
-def test_find_read_style_violations_accepts_the_on_these_numbers_variant() -> None:
-    # The prompt's own yellow example swaps "figures" for "numbers" -- both must pass.
-    clean = "Margins are mixed and leverage is manageable, a mixed financial picture on these numbers."
-    assert rules.find_read_style_violations(clean) == []
-
-
 def test_find_read_style_violations_reports_every_violation_found_not_just_the_first() -> None:
     dirty = "Sounds cheap! Definitely a buy — not just cheap, but a bargain."
     violations = rules.find_read_style_violations(dirty)
-    assert len(violations) >= 4, violations
+    assert len(violations) >= 3, violations
     assert any("dash" in v for v in violations)
     assert any("exclamation" in v for v in violations)
     assert any("investment-advice language" in v for v in violations)
-    assert any("does not end on the verdict" in v for v in violations)
+
+
+# --- verdict_meaning_violation: replaced find_read_style_violations' old regex-based
+# verdict-ending check (which only matched one fixed sentence shape, "...healthy ON THESE
+# FIGURES", and rejected real, fully compliant reads that closed with the same meaning in a
+# different word order -- confirmed live against real production data). The model now states its own
+# classification as a separate, enum-constrained tool field (verdict_meaning), checked here
+# against the verdict already decided and against the read text actually containing it.
+
+
+def test_verdict_meaning_violation_accepts_a_matching_report() -> None:
+    read = "Margins are strong and debt is low, which is financially healthy on these figures."
+    assert rules.verdict_meaning_violation("green", read, "healthy") is None
+
+
+def test_verdict_meaning_violation_accepts_the_leading_word_order() -> None:
+    # The exact real-world case that broke the old regex: the model is free to lead with
+    # the anchor phrase instead of trailing it, as long as the reported field is honest.
+    read = "Margins are thin. These figures paint a picture of a financially fragile company."
+    assert rules.verdict_meaning_violation("red", read, "fragile") is None
+
+
+def test_verdict_meaning_violation_catches_a_mismatch_against_the_actual_verdict() -> None:
+    # The verdict is decided by deterministic rules, never by the model -- a read that
+    # reports a DIFFERENT meaning than the verdict it was actually given is a real problem
+    # (its content has drifted from the badge it will be shown under), not a false positive.
+    read = "Margins are strong and debt is low, financially healthy on these figures."
+    violation = rules.verdict_meaning_violation("red", read, "healthy")
+    assert violation is not None
+    assert "does not match the verdict" in violation
+
+
+def test_verdict_meaning_violation_catches_a_reported_word_missing_from_the_text() -> None:
+    # The structured field alone is not trusted -- it must correspond to something the
+    # reader actually sees in the prose, not just an internally consistent self-report.
+    read = "Margins are strong and debt is low."
+    violation = rules.verdict_meaning_violation("green", read, "healthy")
+    assert violation is not None
+    assert "does not actually appear in the read text" in violation
