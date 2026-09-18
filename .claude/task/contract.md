@@ -3,52 +3,42 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Fix a real UX gap the owner found live: opening a card from Discover's search
-  results never enters a focused state the way every other card-open path in the app does
-  (Discover's own list, Saved's list). The search box and the result row stay rendered
-  above the opened card indefinitely -- no back button, no way to tell "I'm on a card now."
-  This makes the search-opened card the one inconsistent entry point in an otherwise
-  consistent focus pattern (`discover_focus_key` / `saved_focus_key`, each hides its list
-  and shows a back row + the card). Fix: add the same treatment for search
-  (`search_selected` already exists as the state key, it just was never wired into the
-  hide-list-show-back-row pattern the other two use).
+objective: README documentation gap the owner flagged: the AI-written card read (Claude
+  Haiku, `scripts/generate_assessments.py`) is a real architectural component and a
+  genuine differentiator, but is completely absent from the README -- not in the
+  architecture diagram, Highlights, or Stack table. Someone reading it would have no idea
+  the app uses an LLM at all. Owner's direction: "worth mentioning that some AI feature is
+  integrated here." Also rounds out two minor gaps found in the same review:
+  `tests/`/`storage/` missing from the Project layout tree, and `streamlit_app.py`
+  (the actual entry point run in Local setup step 8) / `render.yaml` not shown either.
 
 scope_paths:
-  - frontend/app.py
-  - tests/frontend/test_app.py
-  - tests/frontend/test_app_e2e.py
-  - docs/media/discover-card.png
+  - README.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none -- this applies an already-established, already-approved pattern
-  (focused card hides its list, shows a back row) to a second entry point that was missing
-  it, not a new UX decision. Back returns to the search RESULTS (same query), mirroring how
-  Discover's and Saved's own back buttons return to their own list, not further up.
+decisions_reserved: none -- the owner gave the exact direction ("mention some AI feature
+  is integrated") in chat; wording stays plain and proportionate to that ask, matching the
+  README's own existing voice and level of detail, not a new marketing push.
 
 done_when:
-  - Opening a card from search hides the search box and the result row list, shows a
-    `← Back to list` row, then the read-only card -- matching Discover's/Saved's own
-    focused-card chrome.
-  - Back returns to the search results for the same query (not to the empty search box,
-    not to the full Discover pool).
-  - `_card_open("Discover")` returns True when a search-opened card is focused too, so the
-    header compacts consistently with every other focused-card state.
-  - The search query widget's session_state survives being hidden while a card is
-    focused (the file's own established reseed-when-key-absent pattern, already used for
-    market/sector filters surviving the same kind of hide) -- verified live, not just by
-    AppTest, per this file's own standing rule for widget-identity bugs.
-  - `_render_search_results`'s now-dead "render the selected card inline" branch is
-    removed (search_selected can no longer be true when this function runs).
-  - `pytest tests/frontend -q` passes, including new coverage for the focused-search-card
-    state and the back-to-results transition.
-  - Live-verified in the browser: search, open a card, confirm it looks like every other
-    focused card (no search box, no result row, back button present, back returns to the
-    same search results).
-  - `docs/media/discover-card.png` refreshed to the current card design (owner-supplied
-    screenshot, cropped to match the existing framing) -- unrelated to the UX fix itself,
-    bundled since both surfaced in the same conversation.
+  - The architecture diagram shows the AI-read step (Claude Haiku, generating each card's
+    verdict + prose read) feeding into Supabase, positioned accurately relative to the
+    real pipeline order (`.gitlab-ci.yml`: dbt build -> export_to_supabase.py AND
+    generate_assessments.py, both reading the same dbt-built data, writing separate
+    Supabase tables).
+  - The diagram's own node labels are plain-language, not internal jargon (owner:
+    "non-technical people should understand what's going on") -- tool names (yfinance,
+    dbt, Supabase, Claude, Streamlit, GitLab CI) stay as proper nouns, but internal terms
+    like "ephemeral DuckDB", "1_staging -> 5_marts", "card marts", "data contract",
+    "index-constituent fundamentals" don't appear in the diagram itself. Verified by
+    actually rendering the Mermaid syntax (a local static-file check), not just
+    eyeballing the text.
+  - Highlights gains one bullet for the AI-written read, same density as the existing
+    bullets.
+  - Stack table gains a row for it.
+  - Project layout tree includes `tests/`, `storage/`, `streamlit_app.py`, `render.yaml`.
+  - `python scripts/check_no_em_dash.py` passes.
 
-impact_map: one new focused-view function in frontend/app.py, two call-site changes
-  (`_card_open`, `_discovery_page`), removal of dead code in `_render_search_results`,
-  plus test coverage. No data/schema/CI change. Pure UX consistency fix.
+impact_map: README.md only. No code, no diagram-rendering dependency beyond the Mermaid
+  block already there. Purely closing a real documentation gap.

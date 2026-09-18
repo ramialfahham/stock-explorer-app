@@ -39,12 +39,16 @@ portfolio-grade substance work (issue #9) was already done, this was the last ga
 description/topics on both, fixed GitHub's stale Streamlit-Cloud website link to the real
 Render URL, closed 2 stale pre-migration GitHub issues.
 
-**Search-card focus fix: MR !186 open.** Owner found live: opening a card from search never
-entered a focused state like every other card-open path (search box + result row stayed
-rendered above it indefinitely, no back button). Added `_render_search_focused_card()`
-mirroring the existing Discover-list/Saved-list focus pattern; back returns to the same
-search results. Also refreshed the stale `docs/media/discover-card.png` (AI-read now
-renders as bullets, screenshot was from before that). Live-verified.
+**Search-card focus fix: MERGED (!186).** A card opened from search now enters a focused
+state (back row, hides search box/results) like every other card-open path -- owner found
+it live. Screenshot refreshed too.
+
+**README AI-read + plain-language diagram: MR !187 open.** Owner: README never mentioned
+the AI-written card read anywhere (diagram/Highlights/Stack table) -- fixed, plus a Design
+decisions bullet. Architecture diagram's node labels rewritten in plain language (owner:
+non-technical readers should follow it) -- tool names stay as proper nouns, internal jargon
+(ephemeral DuckDB, data contract, etc.) removed from the diagram itself. Rendered in a real
+browser to confirm Mermaid syntax before shipping, not just eyeballed.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
