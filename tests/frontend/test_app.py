@@ -122,29 +122,20 @@ def test_sync_search_query_first_call_persists_the_query() -> None:
     assert st.session_state["search_query"] == "Apple"
 
 
-def test_sync_search_query_unchanged_query_leaves_selection_alone() -> None:
-    st.session_state["search_query"] = "Apple"
-    st.session_state["search_selected"] = ("us_sp500", "AAPL")
-    _sync_search_query("Apple")
-    assert st.session_state["search_selected"] == ("us_sp500", "AAPL")
-
-
-def test_sync_search_query_changed_query_clears_a_pinned_selection() -> None:
-    """The regression this fix targets: searching "App" after Apple -> Microsoft must not
-    silently resurrect Apple's card just because "App" re-matches it as a substring."""
+def test_sync_search_query_does_not_touch_the_focus_key() -> None:
+    """Search no longer has its own focus concept -- `discover_focus_key` is the only one,
+    shared with the normal filtered list, so a query change has nothing search-specific to
+    clear here. The old regression this once guarded (a changed query resurrecting a stale
+    selection) is now structurally impossible instead of hand-maintained: the search box
+    that could change the query is not even rendered while a card is focused
+    (`_discovery_page`'s `not discover_focused` guard), and `_render_discover_tab`'s own
+    stale-focus-key re-validation (shared by every Discover card-open path, not
+    search-specific) is the actual, general safety net."""
     st.session_state["search_query"] = "Microsoft"
-    st.session_state["search_selected"] = ("us_sp500", "AAPL")
+    st.session_state["discover_focus_key"] = "us_sp500::AAPL"
     _sync_search_query("App")
     assert st.session_state["search_query"] == "App"
-    assert st.session_state["search_selected"] is None
-
-
-def test_sync_search_query_clearing_the_box_also_clears_a_pinned_selection() -> None:
-    st.session_state["search_query"] = "Apple"
-    st.session_state["search_selected"] = ("us_sp500", "AAPL")
-    _sync_search_query("")
-    assert st.session_state["search_query"] == ""
-    assert st.session_state["search_selected"] is None
+    assert st.session_state["discover_focus_key"] == "us_sp500::AAPL"
 
 
 # --- _ensure_all_cards cache invalidation (perf/first-visit-card-load) ---
