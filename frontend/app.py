@@ -372,10 +372,15 @@ def _render_bottom_nav(*, saved_count: int, not_now_count: int, client) -> str:
         fallback=prior_active,
     )
     if selected != prior_active:
-        # A genuine tab switch abandons the Not-now overlay, the same way it already
-        # abandons a focused Discover/Saved card -- otherwise the reader would tap Saved
-        # and still see the Not-now panel stuck open over it.
+        # A genuine tab switch abandons the Not-now overlay and any active search, the
+        # same way it already abandons a focused Discover/Saved card -- otherwise the
+        # reader would tap Saved and back to Discover and still be stuck showing old
+        # search results, with no way out short of deleting the query by hand (found live
+        # by the owner: clicking the already-active Discover pill is a no-op -- Streamlit's
+        # segmented_control gives no signal that the same option was reselected, so a tab
+        # click was never a reliable way to clear search in the first place).
         _close_not_now_panel()
+        _clear_search()
     st.session_state["active_page"] = selected
     return selected
 
@@ -733,6 +738,20 @@ def _sync_search_query(query: str) -> None:
         st.session_state["search_selected"] = None
 
 
+def _clear_search() -> None:
+    """The one way out of an active search, besides deleting every typed character by
+    hand. Resets the plain mirror and DROPS the widget's own keyed state -- `del`, not
+    assignment: Streamlit forbids writing to an already-instantiated keyed widget's
+    session_state entry within the same run (the Clear button's own click handler runs
+    after `_search_query_widget` already rendered this run), but removing the key entirely
+    is allowed. On the next run (`st.rerun()`, called by every caller right after this),
+    the key is simply absent, and `_search_query_widget`'s own reseed-when-absent logic
+    (its own docstring) picks that up and seeds it from the now-empty `search_query`."""
+    st.session_state["search_query"] = ""
+    st.session_state["search_selected"] = None
+    st.session_state.pop(_SEARCH_QUERY_WIDGET_KEY, None)
+
+
 _SEARCH_QUERY_WIDGET_KEY = "search_query_widget"
 
 
@@ -833,8 +852,21 @@ def _render_search_focused_card(client) -> None:
 def _render_discover_search_box() -> str:
     """Persistent search above Discover's list (issue #20) -- always visible on the list
     view. The only search entry point; the earlier separate Search tab was redundant with
-    this and removed."""
-    return _search_query_widget(placeholder="Search ticker or company name")
+    this and removed.
+
+    A "Clear" control appears once there's a query -- the explicit, always-visible way out
+    of search a reader actually needs (found live by the owner: clicking the already-active
+    Discover nav pill did nothing, since Streamlit's segmented_control gives no signal that
+    the same option was reselected; a nav click was never going to be a reliable escape
+    hatch, an explicit control in the search row is)."""
+    with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+        with st.container(width="stretch"):
+            query = _search_query_widget(placeholder="Search ticker or company name")
+        if query:
+            if st.button("✕", key="discover_search_clear", help="Clear search"):
+                _clear_search()
+                st.rerun()
+    return query
 
 
 def _discovery_page(client) -> None:
