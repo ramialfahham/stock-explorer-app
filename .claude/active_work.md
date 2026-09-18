@@ -37,7 +37,7 @@ MERGED.** !186: search-opened card gets a focused state like every other card-op
 
 **Search clear button + tab-switch reset (!188): MERGED**, superseded below.
 
-**Discover search unified into the filtered-list mechanism -- MR !189 open.** Owner
+**Discover search unified into the filtered-list mechanism: MERGED (!189).** Owner
 live-tested !186/!188 (each a narrow point-fix) and gave sharp feedback: stop patching
 search symptoms one at a time, design ONE coherent navigation concept.
 Root cause of all three prior search bugs: search was a second, parallel state machine to
