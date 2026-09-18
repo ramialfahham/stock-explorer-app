@@ -17,33 +17,36 @@ one or two lines and let the archive keep the detail._
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
-(outside this repo). #2/#4/#6/#1 closed with no code; #14/#15/#17/#18 skip/wait. **Lesson:
-citing past incidents as precedent is not the owner deciding fresh -- when an issue's own
-text reserves a call, ask directly (working-agreement.md SS7).**
+(outside this repo). #2/#4/#6/#1 closed no code; #14/#15/#17/#18 skip/wait. **Lesson:
+citing past incidents as precedent is not the owner deciding fresh (working-agreement.md
+SS7).**
 
-**Repo renamed stock-swipe-app -> stock-explorer-app: MR !194 open.** GitLab project,
-GitHub mirror, local `gitlab` remote all renamed. Every live in-repo reference swept and
-fixed (docs, CLAUDE.md, README, review_routing.json, .gitlab-ci.yml, a Python constant, 2
-SQL migration comments); the 2 frozen archive docs correctly untouched. **Open, owner's
-call:** GitLab's push-mirror config still embeds the OLD GitHub URL with an access token
-this session never had -- repoint via GitLab UI (Settings -> Repository -> Mirroring) when
-convenient; works for now via GitHub's redirect. **Local folder `D:\Projects\stock-swipe-app`
-NOT renamed** -- asked who should do it, never answered; do it before/outside a session.
+**Repo renamed stock-swipe-app -> stock-explorer-app: MERGED (!194), token repointed.**
+GitLab project, GitHub mirror, local `gitlab` remote all renamed; every live in-repo
+reference fixed. Push-mirror's stored GitHub token was gone -- owner generated a fresh
+fine-grained PAT (Contents: Read-and-write), mirror re-added pointing at the new URL,
+verified end to end (local/GitLab/GitHub main all at the same commit). **Local folder
+`D:\Projects\stock-swipe-app` still NOT renamed** -- owner will do it themselves after
+closing a session (renaming a live session's own cwd breaks its shell mid-session).
 
 **README scope note added: MERGED (!193).** Owner's exact wording, several chat rounds.
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
 parenthetical, even accurate, is still unauthorized owner-reserved copy (round-2 catch).
 
-**Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).**
-**Issue #22 largely RESOLVED 2026-09-18** by manually triggering the schedule (owner
-approved, real API cost) to exercise new per-card logging: 3i now has a real read;
-ai_read null rate dropped 878/1045 (84%) -> 129/1047 (12.3%) -- retry-every-run mechanism
-genuinely works. Remainder is 87% one style rule ("does not end on the verdict's meaning")
-at full scale -- flagged as prompt/detection tuning, not a rule to relax. **Owner decision
-needed, not yet acted on.**
+**Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184). Issue #22
+RESOLVED: MR !195 open.** Manually triggering the schedule dropped the ai_read null rate
+878/1045 (84%) -> 129/1047 (12.3%); the 87% remainder traced to one brittle regex
+requiring the literal "on these figures"/"on these numbers" phrase. Owner rejected a
+regex-widening fix as unsystematic; replaced with a structured tool-schema field
+(`verdict_meaning`, enum healthy/mixed/fragile) the model self-reports, checked against
+the deterministic verdict and against the read text itself -- same pattern
+`referenced_metrics` already uses. Verified against the real API 3x (before/after/re-check
+after a follow-up fix), not simulated. **Durable lesson: when a fix "feels like a hack,"
+the tell is usually real -- pattern-matching free text to infer something the model
+already knows is the wrong layer; make it state that structurally instead.**
 
 **GitHub recovered/published (!185), search-card focus (!186), README AI-read diagram
-(!187): all MERGED.** GitLab canonical, one-way mirror to GitHub, both public.
+(!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
 
 **Search unified into Discover's filtered list (!188, !189): MERGED.** Owner hit three
 separate search bugs across narrow point-fixes, gave sharp feedback: stop patching
@@ -72,19 +75,18 @@ run's real counts. Nothing else open from this push.
 
 **Load-time work (owner 2026-09-14, zero spend), CLOSED for now.** !140-!143 merged:
 first-paint splash, cookie-based saved list, telemetry/file-watcher off, lazy yfinance.
-Warm-run server time re-measured 2026-09-18: 141ms -- fast, not the bottleneck anymore.
-**NEXT, owner's calls:** Hugging Face Spaces migration (owner creates the Space); httpx
-deck fetch instead of the Supabase client library, a mechanism change.
+Warm-run server time re-measured: 141ms -- fast, not the bottleneck anymore. **NEXT,
+owner's calls:** Hugging Face Spaces migration (owner creates the Space); httpx deck fetch
+instead of the Supabase client library, a mechanism change.
 
 **Owner question left open by !130:** a decimals-based discriminator for fraction-scale
-yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a
-genuine four-decimal percent. Definition territory; not done.
+yields would catch a fraction row at any yield but mis-scale a genuine four-decimal
+percent. Definition territory; not done.
 
 
-**Issue #9 Tier 1 closed**, !126 merged (fill floor 50%). Three minor owner questions from
-it, none urgent (CI fixture counts, a pre-revenue null edge case, a `jinja2` pin) --
-detail in !126's own contract.md/review.md if revisited. **Side finding, not root-caused
-(!158):** `ebit_margin_pct` = 44,944.9% for IAG (au_asx200), no obvious explanation.
+**Issue #9 Tier 1 closed**, !126 merged (fill floor 50%). Three minor owner questions,
+none urgent -- detail in !126's own contract.md/review.md if revisited. **Side finding,
+not root-caused (!158):** `ebit_margin_pct` = 44,944.9% for IAG (au_asx200), no explanation.
 
 **Merged, issue #9 pipeline-audit closure batch (!118-!158, all fully merged and closed)**:
 fundamentals gate, precision caps, mart grain, fill floor, `accepted_range` guards, AI-read
@@ -199,7 +201,7 @@ Numbered defects and gaps:
    reason is past global-file edits breaking sibling projects (operational notes). Detail in
    MR !116/!118's own contract.md/review.md.
 
-1. **BXB, RMS, SPK (`au_asx200`) stuck on a stale snapshot**
+1. **BXB, RMS, SPK stuck on a stale snapshot**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
    and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
    operating-eligibility fields, computed straight from Yahoo's `info.revenueGrowth` scalar
