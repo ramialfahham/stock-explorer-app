@@ -4,6 +4,9 @@ An explore-and-learn stock app for finance-curious beginners — it turns compan
 fundamentals into plain-language "snapshots" you scan one at a time, save, or skip.
 Learning tool, **not** investment advice; batch fundamentals, **not** real-time trading.
 
+**About this project:** built to explore working with AI end to end, both in development
+and in one product feature.
+
 [![pipeline status](https://gitlab.com/rami.al-fahham/stock-swipe-app/badges/main/pipeline.svg)](https://gitlab.com/rami.al-fahham/stock-swipe-app/-/pipelines)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status: prototype](https://img.shields.io/badge/status-prototype-orange)

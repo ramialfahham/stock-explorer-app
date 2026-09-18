@@ -17,39 +17,41 @@ one or two lines and let the archive keep the detail._
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
-(outside this repo) has full detail. #2/#4/#6/#1 closed with no code; #14/#15/#17/#18
-decided skip/wait (GitLab note each, left open). **Lesson from #5's round 1 FAIL: citing
-past incidents as precedent is not the owner deciding fresh -- when an issue's own text
-reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy (SS6).**
+(outside this repo). #2/#4/#6/#1 closed with no code; #14/#15/#17/#18 skip/wait (GitLab
+note each). **Lesson: citing past incidents as precedent is not the owner deciding fresh
+-- when an issue's own text reserves a call, ask directly (working-agreement.md SS7).**
+
+**README scope note added: MERGED (!193).** Short framing line, owner's exact wording
+after several chat rounds. **Lesson: when the owner supplies literal wording, use it
+verbatim -- an agent-added parenthetical, even accurate and non-contradictory, is still
+an unauthorized change to owner-reserved copy (caught by round-2 review here).**
 
 **Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).**
 **Issue #22 largely RESOLVED 2026-09-18** by manually triggering the schedule (owner
-approved, real API cost) to exercise the new per-card logging: 3i now has a real read; the
-ai_read null rate dropped 878/1045 (84%) -> 129/1047 (12.3%) -- a real backlog, but the
-retry-every-run mechanism genuinely works. Remainder is 87% one style rule ("does not end
-on the verdict's meaning") at full scale -- flagged as likely prompt/detection tuning, not
-a rule to relax. **Owner decision needed, not yet acted on.**
+approved, real API cost) to exercise new per-card logging: 3i now has a real read;
+ai_read null rate dropped 878/1045 (84%) -> 129/1047 (12.3%) -- retry-every-run mechanism
+genuinely works. Remainder is 87% one style rule ("does not end on the verdict's meaning")
+at full scale -- flagged as prompt/detection tuning, not a rule to relax. **Owner decision
+needed, not yet acted on.**
 
-**GitHub recovered/published (!185), search-card focus fix (!186), README AI-read diagram
+**GitHub recovered/published (!185), search-card focus (!186), README AI-read diagram
 (!187): all MERGED.** GitLab canonical, one-way mirror to GitHub, both public.
 
-**Search unified into Discover's filtered list (!188, !189): MERGED.** Owner hit
-three separate search bugs across narrow point-fixes and gave sharp feedback: stop patching
+**Search unified into Discover's filtered list (!188, !189): MERGED.** Owner hit three
+separate search bugs across narrow point-fixes, gave sharp feedback: stop patching
 symptoms, design ONE concept. Fix: `_discover_pool()` picks search-matched or
 filter-matched rows, `_render_discover_tab()` renders either identically -- one pool, one
-row list, one focus key, one back button. Search-opened cards now get full Save/Not-now.
-**Durable lesson: a THIRD bug on one feature after two narrow fixes means stop patching
-symptoms and find the shared root cause** -- directly reapplied below.
+row list, one focus key, one back button. **Durable lesson: a THIRD bug on one feature
+after two narrow fixes means stop patching symptoms, find the shared root cause.**
 
 **Nav buttons fixed when the active tab is re-tapped: MERGED (!191).** Re-clicking the
 already-active nav pill did nothing -- `st.segmented_control` only reports a NEW selection,
-not fixable by reading the return value differently (confirmed against Streamlit's source).
-Same cause also silently broke Saved's own focused-card state and the Not-now overlay.
-Owner rejected hiding/disabling the broken pill as patching around the defect. Fix: nav
-pills are plain `st.button()`s now -- always fire, one handler (`_go_to_nav_page`) makes
-every click land on that tab's list, fixing all three cases at once. `bottom_nav` session
-key deleted; `active_page` is the sole source of truth. Round
-1 review caught stale UI docs -- fixed before commit.
+not fixable by reading the return value differently. Same cause also silently broke
+Saved's own focused-card state and the Not-now overlay. Owner rejected hiding/disabling
+the broken pill as patching around the defect. Fix: nav pills are plain `st.button()`s
+now -- always fire, one handler (`_go_to_nav_page`) makes every click land on that tab's
+list, fixing all three cases at once. `bottom_nav` session key deleted; `active_page` is
+the sole source of truth. Round 1 review caught stale UI docs -- fixed before commit.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -75,19 +77,10 @@ yields (four decimals = fraction) would catch a fraction row at any yield but mi
 genuine four-decimal percent. Definition territory; not done.
 
 
-**Issue #9 Tier 1 closed**, !126 merged (fill floor 50%).
-
-**Three owner questions from the fill floor, none urgent:** (a) CI fixtures (5 operating, 1
-financial, 1 pre-revenue per market) exercise the floor for operating metrics only; raising
-counts widens `scripts/seed_ci_raw_fixtures.py`. (b) `cash_runway_months`/`burn_rate_monthly`
-legitimately null for a pre-revenue company not burning cash -- five such cards in one
-market would trip the floor on correct data; only three exist today. (c) `jinja2` imported
-directly in `tests/tooling/test_metric_fill_floor.py` but pinned only via `dbt-core`; cto
-suggests an explicit pin in `requirements.txt`.
-
-**Side finding, not root-caused (`accepted_range` work, !158):** `ebit_margin_pct` =
-44,944.9% for IAG (au_asx200) -- unlike DYL's understood pre-revenue explosion, no obvious
-explanation, worth a look.
+**Issue #9 Tier 1 closed**, !126 merged (fill floor 50%). Three minor owner questions from
+it, none urgent (CI fixture counts, a pre-revenue null edge case, a `jinja2` pin) --
+detail in !126's own contract.md/review.md if revisited. **Side finding, not root-caused
+(!158):** `ebit_margin_pct` = 44,944.9% for IAG (au_asx200), no obvious explanation.
 
 **Merged, issue #9 pipeline-audit closure batch (!118-!158, all fully merged and closed)**:
 fundamentals gate, precision caps, mart grain, fill floor, `accepted_range` guards, AI-read
