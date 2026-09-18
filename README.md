@@ -25,19 +25,21 @@ layer that reads a clean data contract out of Supabase.
 
 ```mermaid
 flowchart TD
-    subgraph core["Durable core — data engine"]
+    subgraph core["Data pipeline -- runs automatically on a schedule"]
         direction TB
-        A["yfinance<br/>index-constituent fundamentals"] --> B["Python ingestion<br/>raw parquet"]
-        B --> C["dbt transforms<br/>ephemeral DuckDB · 1_staging → 5_marts"]
-        C --> D["Eligibility gate<br/>per-company-type data contract"]
-        D --> E[("Supabase / Postgres<br/>card marts")]
+        A["Yahoo Finance<br/>company financial data"] --> B["Fetch & save<br/>the raw numbers"]
+        B --> C["dbt<br/>cleans the data & calculates the metrics"]
+        C --> D["Completeness check<br/>a company only shows up once its data is complete"]
+        D --> E[("Supabase database<br/>stores the finished cards")]
+        D --> H["Claude AI<br/>writes each card's plain-language summary"]
+        H --> E
     end
-    E -->|"stable data contract"| F
-    subgraph ui["Swappable UI — replaceable without touching the engine"]
+    E -->|"the app reads the finished cards"| F
+    subgraph ui["The app -- what you actually see"]
         direction TB
-        F["Streamlit prototype<br/>filter · list · save / not-now"]
+        F["Streamlit<br/>browse, filter, save companies"]
     end
-    G["GitLab CI<br/>scheduled pipeline"] -.orchestrates.-> core
+    G["GitLab CI<br/>runs the pipeline on a schedule"] -.triggers.-> core
 ```
 
 Nothing runs on a developer machine in production — the pipeline is scheduled in CI and
@@ -47,6 +49,10 @@ the app reads only the exported marts.
 
 - **Fundamentals as beginner snapshots** — one company at a time, plain-language gloss on
   each metric, with optional depth via progressive disclosure.
+- **AI-written health reads** -- Claude Haiku turns each card's own numbers into a 2-3
+  sentence plain-language read, citation-checked against the card's real figures before it
+  ships; a deterministic fallback line covers the gap when a read is pending or the model
+  call fails, never a blank card.
 - **Per-company-type eligibility contract**: a company enters the pool only when all
   its headline fundamentals for its type are present; no fallbacks or substitute
   proxies, because incomplete data erodes trust.
@@ -78,6 +84,11 @@ The reasoning and trade-offs behind the core — deeper context lives in
   the UI is intentionally decoupled — it consumes the Supabase card marts through a stable
   data contract, so it can be replaced (a different framework, another language) without
   touching the engine. The frontend is treated as the least permanent part of the system.
+- **The AI read is a soft dependency, not a blocker.** `ANTHROPIC_API_KEY` is optional --
+  without it the deterministic health verdict still ships, just without the prose read.
+  Every generated read is checked against the card's own numbers before it's accepted; a
+  `--max-reads` flag exists to cap new-call volume per run, since the read step is the
+  pipeline's single biggest runtime cost otherwise.
 - **No accounts in v1.** The saved list persists in a browser cookie. Zero signup
   friction and no personal data to hold, traded against no cross-device sync — deferred,
   not designed out (the `user_interactions` table is reserved for it).
@@ -88,6 +99,7 @@ The reasoning and trade-offs behind the core — deeper context lives in
 |---|---|
 | Ingestion | Python + yfinance |
 | Transform | dbt-core + dbt-duckdb (ephemeral DuckDB) |
+| AI read | Claude Haiku (Anthropic API) -- per-card verdict + plain-language prose |
 | Warehouse | Supabase (Postgres) |
 | Frontend | Streamlit on Render (prototype -- swappable) |
 
@@ -105,11 +117,15 @@ stock-swipe-app/
 │   ├── market_registry.yml      # Active markets (registry-driven)
 │   └── supabase_setup.md        # Supabase project + secrets checklist
 ├── supabase/migrations/       # SQL schema (applied via apply_supabase_migrations.py)
-├── scripts/                   # Migrations, layer contract, registry sync, connection check
+├── scripts/                   # Migrations, layer contract, registry sync, AI read, connection check
 ├── dbt_analytics/             # dbt project (1_staging → 5_marts)
 ├── ingestion/                 # Raw data fetch scripts
 ├── frontend/                  # Streamlit app (app.py)
+├── streamlit_app.py           # Render's entry point (thin wrapper around frontend/app.py)
+├── tests/                     # pytest, mirrors the pipeline's own layers
+├── storage/                   # Gitignored: raw parquet, constituent seeds (local/CI only)
 ├── .gitlab-ci.yml              # CI + data pipeline
+├── render.yaml                 # Render Blueprint (frontend deploy)
 ├── profiles.yml.example       # Copy to profiles.yml for local dbt
 └── .env.example               # Copy to .env for Supabase credentials
 ```
