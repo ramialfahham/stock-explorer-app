@@ -412,9 +412,10 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   production.** App is deployed on Render (native GitLab OAuth, auto-deploy on push),
   serving real cards from a new Supabase project (the original is permanently
   GitHub-OAuth-locked and inaccessible). Scheduled `data-pipeline` CI job runs biweekly
-  (1st/15th, 06:00 UTC) and refreshes production unattended. The GitHub account is permanently
-  suspended and its `origin` remote has been deleted from this clone (working agreement §3);
-  push to `gitlab`, use `glab`, never `gh`. Full narrative (the account-recovery story, the
-  CI-minutes/runner
+  (1st/15th, 06:00 UTC) and refreshes production unattended. **The GitHub account is
+  recovered as of 2026-09-18** (was suspended, which is why this repo moved to GitLab in
+  the first place) -- GitLab stays canonical by owner choice, GitHub gets a one-way mirror
+  the owner sets up (working agreement §3). No `origin` remote here regardless; push to
+  `gitlab`, use `glab`, never `gh`. Full narrative (the CI-minutes/runner
   consolidation saga, the branch-protection ordering trap) is in
   `docs/handover_2026-08-18.md` and `docs/handover_2026-09-03.md`.

@@ -76,12 +76,13 @@ the same assertion standing elsewhere.
 
 ## 3. Branches
 
-Every change goes on a new branch, never a commit or push to `main`. This repo lives on
-GitLab, and only GitLab while the GitHub account remains suspended. That is conditional, not
-permanent: revisit only if that account is recovered, and do not re-ask otherwise. **Do not add
-an `origin` remote or push to one**: the GitHub account behind that name is suspended, and a
-session pushed to it anyway despite this rule, which is why the remote was removed rather than
-left in place with a warning.
+Every change goes on a new branch, never a commit or push to `main`. GitLab is canonical for
+this repo by settled owner choice (the GitHub account, previously suspended, is now
+recovered): all agent work, CI, branches, and MRs stay on GitLab. GitHub carries a one-way
+push mirror the owner set up in GitLab's UI, for portfolio visibility only -- per-repo, not
+a standing rule. **Do not add an `origin` remote or push to GitHub**: it would fight the mirror. A session
+pushed to `origin` once before this rule existed, why the remote was removed, not just
+warned about.
 
 Push to the `gitlab` remote with a FULL refspec (`git push gitlab <branch>:<branch>`)
 and use `glab`, never `gh`. `git push gitlab <branch>` alone is not safe on this machine: the
