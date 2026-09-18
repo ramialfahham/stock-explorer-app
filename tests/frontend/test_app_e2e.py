@@ -148,7 +148,7 @@ def test_save_card_from_discover_appears_in_saved(app_test: AppTest, cookie_scri
     assert len(writes) == 1
     assert "us_sp500:ALFA:" in writes[0]
 
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
     assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
@@ -178,7 +178,7 @@ def test_not_now_review_list_round_trip(app_test: AppTest, cookie_scripts) -> No
     _assert_clean(at)
     assert _row_button(at, "not_now_row_us_sp500::ALFA") is None
 
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
     assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
@@ -191,9 +191,71 @@ def test_not_now_panel_closes_when_switching_tabs(app_test: AppTest) -> None:
     _assert_clean(at)
     assert at.session_state["not_now_open"] is True
 
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
     assert at.session_state["not_now_open"] is False
+
+
+def test_reclicking_discover_while_a_discover_card_is_open_returns_to_the_list(
+    app_test: AppTest,
+) -> None:
+    """Owner found live: on a Discover card, clicking "Discover" (already the active tab)
+    did nothing. Root cause was `st.segmented_control` -- it only ever reports a NEW
+    selection, so a click on the option already selected is indistinguishable from no click
+    at all, a real Streamlit limitation confirmed against its own source, not something a
+    different read of its return value could fix. Nav is plain `st.button`s now, which fire
+    on every click regardless, and the click handler's one rule is "land on this tab's
+    list" whether or not the tab was already active."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    assert at.session_state["discover_focus_key"] is not None
+
+    at = at.button(key="nav_discover").click().run()
+    _assert_clean(at)
+    assert at.session_state["discover_focus_key"] is None
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
+
+
+def test_reclicking_saved_while_a_saved_card_is_open_returns_to_the_list(
+    app_test: AppTest, cookie_scripts
+) -> None:
+    """Same defect, same fix, the Saved tab's own focused-card state -- unreported by the
+    owner but the identical root cause, so it gets the identical guard."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    at = at.button(key="discover_save").click().run()
+    _assert_clean(at)
+
+    at = at.button(key="nav_saved").click().run()
+    _assert_clean(at)
+    at = at.button(key="saved_row_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    assert at.session_state["saved_focus_key"] is not None
+
+    at = at.button(key="nav_saved").click().run()
+    _assert_clean(at)
+    assert at.session_state["saved_focus_key"] is None
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
+
+
+def test_reclicking_discover_while_the_not_now_panel_is_open_closes_it(
+    app_test: AppTest,
+) -> None:
+    """Third manifestation of the same root cause: the Not-now overlay is only ever closed
+    by a genuine tab switch or its own Close button -- re-tapping the tab you're already on
+    used to be a no-op here too."""
+    at = app_test.run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
+    at = at.button(key="discover_skip").click().run()
+    at = at.button(key="menu_open_not_now").click().run()
+    _assert_clean(at)
+    assert at.session_state["not_now_open"] is True
+
+    at = at.button(key="nav_discover").click().run()
+    _assert_clean(at)
+    assert at.session_state["not_now_open"] is False
+    assert _row_button(at, "discover_row_us_sp500::BETA") is not None
 
 
 def test_skip_queues_a_cookie_write(app_test: AppTest, cookie_scripts) -> None:
@@ -219,7 +281,7 @@ def test_clear_saved_does_not_clear_the_not_now_list(app_test: AppTest, cookie_s
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     at = at.button(key="discover_save").click().run()
-    at = at.segmented_control(key="bottom_nav").set_value("Discover").run()
+    at = at.button(key="nav_discover").click().run()
     at = at.button(key="discover_row_us_sp500::BETA").click().run()
     at = at.button(key="discover_skip").click().run()
     _assert_clean(at)
@@ -246,7 +308,7 @@ def test_not_now_remove_drops_it_without_saving(app_test: AppTest) -> None:
     _assert_clean(at)
     assert _row_button(at, "not_now_row_us_sp500::ALFA") is None
 
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
     assert _row_button(at, "saved_row_us_sp500::ALFA") is None
 
@@ -292,7 +354,7 @@ def test_remove_from_saved_only_removes_that_card(app_test: AppTest) -> None:
     at = at.run()
     _assert_clean(at)
 
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
     assert _row_button(at, "saved_row_us_sp500::BETA") is not None
 
@@ -438,9 +500,9 @@ def test_switching_tabs_and_back_clears_an_active_search(app_test: AppTest) -> N
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
     _assert_clean(at)
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
-    at = at.segmented_control(key="bottom_nav").set_value("Discover").run()
+    at = at.button(key="nav_discover").click().run()
     _assert_clean(at)
     assert len(at.text_input) == 1
     assert at.text_input[0].value == ""
@@ -508,13 +570,13 @@ def test_saved_count_shows_only_on_the_saved_tab(app_test: AppTest, cookie_scrip
     at = at.button(key="discover_save").click().run()
     _assert_clean(at)
 
-    at = at.segmented_control(key="bottom_nav").set_value("Discover").run()
+    at = at.button(key="nav_discover").click().run()
     _assert_clean(at)
     assert not any("saved" in v for v in _rendered_markdown(at)), (
         "Discover's list header must not mention the saved count"
     )
 
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
     assert any("1 saved" in v and "ss-header-stats--solo" in v for v in _rendered_markdown(at))
 
@@ -531,6 +593,6 @@ def test_switching_to_saved_while_a_discover_card_is_open_restores_the_header(
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     assert _header_is_compact(at)
-    at = at.segmented_control(key="bottom_nav").set_value("Saved").run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
     assert not _header_is_compact(at)

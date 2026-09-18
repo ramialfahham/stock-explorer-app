@@ -1033,18 +1033,26 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     display: flex;
     align-items: stretch;
 }
-/* Second, separate bug in these two rules beyond the sibling-prefix one above: st.segmented_control()
-   does not render a `data-testid="stSegmentedControl"` element at all -- confirmed live, the
-   real wrapper carries `stButtonGroup` (same class of mistake as the stLinkButton/
-   stBaseLinkButton-secondary correction above; each button itself is
-   `stBaseButton-segmented_controlActive`/`...Inactive`, not checked here). */
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButtonGroup"] {
-    width: 100%;
+/* Discover/Saved are two plain st.button()s, not st.segmented_control -- that widget never
+   reports a click on the option already selected (confirmed against Streamlit's own source,
+   not fixable by reading its return value differently), so re-tapping the active tab was
+   silently a no-op. A plain button fires on every click regardless. One nesting level
+   deeper than the rules above: the buttons sit in their own inner stHorizontalBlock
+   (st.container(horizontal=True, width="stretch")), itself the outer row's first column. */
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] {
+    width: 100% !important;
+    gap: var(--ss-space-1) !important;
 }
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButtonGroup"] button {
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButton"] button {
     font-size: var(--ss-body) !important;
     font-weight: 600 !important;
     min-height: 2.35rem !important;
+    width: 100% !important;
 }
 /* Native widget theming (Slice 6b) — st.popover and st.expander rendered fully unstyled
    before this; both now match the app's surface/border language instead of default

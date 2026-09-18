@@ -94,11 +94,6 @@ def _init_state() -> None:
         st.session_state["_cards_cache_version"] = CARDS_CACHE_VERSION
 
     st.session_state["active_page"] = normalize_nav_page(st.session_state.get("active_page"))
-    if "bottom_nav" in st.session_state:
-        st.session_state["bottom_nav"] = normalize_nav_page(
-            st.session_state.get("bottom_nav"),
-            fallback=st.session_state["active_page"],
-        )
 
 
 # Short enough that a pipeline export shows up the same day without a redeploy, and short
@@ -342,29 +337,49 @@ def _render_saved_scope_stats(*, saved_count: int) -> None:
     )
 
 
+def _go_to_nav_page(target: str) -> None:
+    """The one rule behind every nav click: land on TARGET's plain list, whatever was open.
+    Used for both a genuine switch and a re-click of the tab already active -- deliberately
+    not conditioned on which one this is, because `st.button` (unlike `st.segmented_control`,
+    see `_render_bottom_nav`) cannot tell the two apart from a click alone, and a reader
+    re-tapping the tab they're already on expects exactly this: back to its root, the same
+    as any standard tab bar."""
+    _close_not_now_panel()
+    if target == "Discover":
+        st.session_state["discover_focus_key"] = None
+        _clear_search()
+    else:
+        st.session_state["saved_focus_key"] = None
+    st.session_state["active_page"] = target
+
+
 def _render_bottom_nav(*, saved_count: int, not_now_count: int, client) -> str:
-    prior_active = normalize_nav_page(st.session_state.get("active_page"))
-    if "bottom_nav" in st.session_state:
-        st.session_state["bottom_nav"] = normalize_nav_page(
-            st.session_state.get("bottom_nav"),
-            fallback=prior_active,
-        )
+    active = normalize_nav_page(st.session_state.get("active_page"))
 
     st.markdown('<div class="ss-nav-row-marker"></div>', unsafe_allow_html=True)
     with st.container(horizontal=True, vertical_alignment="center", gap="small"):
-        with st.container(width="stretch"):
-            page = st.segmented_control(
-                "Navigation",
-                options=list(NAV_PAGES),
-                default=prior_active,
-                label_visibility="collapsed",
-                key="bottom_nav",
-            )
+        with st.container(horizontal=True, width="stretch", gap="small"):
+            # Plain buttons, not st.segmented_control: that widget only reports a NEW
+            # selection, so clicking the tab already active returns no signal at all --
+            # confirmed against Streamlit's own source, not fixable by reading its return
+            # value differently. A real st.button fires on every click regardless, which is
+            # what makes re-tapping the active tab actually able to do something (see
+            # _go_to_nav_page).
+            for page in NAV_PAGES:
+                is_active = page == active
+                if st.button(
+                    page,
+                    key=f"nav_{page.lower()}",
+                    type="primary" if is_active else "secondary",
+                    use_container_width=True,
+                ):
+                    _go_to_nav_page(page)
+                    st.rerun()
         st.markdown('<div class="ss-icon-btn-marker"></div>', unsafe_allow_html=True)
         with st.popover("⋯"):
             cards = _ensure_all_cards(client)
             render_overflow_menu(
-                active_tab=normalize_nav_page(st.session_state.get("active_page")),
+                active_tab=active,
                 saved_count=saved_count,
                 not_now_count=not_now_count,
                 cards=cards,
@@ -373,22 +388,7 @@ def _render_bottom_nav(*, saved_count: int, not_now_count: int, client) -> str:
                 on_open_not_now=_open_not_now_panel,
                 descriptions_missing=_descriptions_missing(client),
             )
-    selected = normalize_nav_page(
-        page or st.session_state.get("bottom_nav"),
-        fallback=prior_active,
-    )
-    if selected != prior_active:
-        # A genuine tab switch abandons the Not-now overlay and any active search, the
-        # same way it already abandons a focused Discover/Saved card -- otherwise the
-        # reader would tap Saved and back to Discover and still be stuck showing old
-        # search results, with no way out short of deleting the query by hand (found live
-        # by the owner: clicking the already-active Discover pill is a no-op -- Streamlit's
-        # segmented_control gives no signal that the same option was reselected, so a tab
-        # click was never a reliable way to clear search in the first place).
-        _close_not_now_panel()
-        _clear_search()
-    st.session_state["active_page"] = selected
-    return selected
+    return active
 
 
 def _save_card(card: dict) -> None:
@@ -669,9 +669,8 @@ def _select_not_now_row(card: dict) -> None:
 
 def _render_not_now_panel(client, interactions: list[dict]) -> None:
     """A "Not now" review list, structurally identical to `_render_saved_tab` (issue #16)
-    -- reachable from the overflow menu on any tab, not a fourth NAV_PAGES entry, since
-    `st.segmented_control`'s `default=` must be one of its own `options` and this panel
-    isn't meant to appear as a bottom-nav pill. `_render_bottom_nav` closes it whenever the
+    -- reachable from the overflow menu on any tab, not a third nav button, since this panel
+    isn't meant to appear as a bottom-nav destination. `_render_bottom_nav` closes it whenever the
     reader taps an actual nav tab, mirroring how switching tabs already abandons whatever
     focus state the prior tab was in."""
     not_now_cards = _not_now_cards(client, interactions)
@@ -897,9 +896,7 @@ def main() -> None:
     # rerun and the deck fetch can take seconds, and Streamlit paints nothing until the first
     # element arrives. The header depends only on session state, so it goes out first.
     _render_brand_header(compact=_card_open(
-        normalize_nav_page(
-            st.session_state.get("bottom_nav") or st.session_state.get("active_page")
-        )
+        normalize_nav_page(st.session_state.get("active_page"))
     ))
     timing.mark("header")
 

@@ -3,74 +3,69 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Owner, live-testing the app across three prior narrow fixes (search-card-focus
-  MR !186, search-clear-button MR !188), found each fix addressed only the specific
-  symptom reported and left the underlying design broken: search was built as a second,
-  parallel state machine to Discover's filtered list (its own focus flag `search_selected`,
-  its own rendering functions `_render_search_results`/`_render_search_focused_card`, its
-  own read-only card carve-out), duplicating the list/pagination/focus/back mechanism the
-  filtered list already had. Owner's explicit instruction: stop patching individual
-  symptoms and implement one coherent navigation concept for the whole app.
+objective: Owner found live: on a Discover card, clicking "Discover" (already the active
+  nav tab) does nothing. Root cause: `st.segmented_control` only ever reports a NEW
+  selection -- clicking the option already selected returns exactly the value it already
+  had, indistinguishable from no click at all. Traced against Streamlit's own source
+  earlier this session; not fixable by reading the return value differently. The owner
+  explicitly rejected patching around this (hiding/disabling the broken pill) as the wrong
+  fix, since that still leaves navigation dependent on a widget signal that structurally
+  cannot exist for this case.
 
-  Concept implemented: search is not a separate mode, it narrows the same Discover pool a
-  market/sector/preset filter would. `_discover_pool()` returns `_search_matches()` results
-  when a query is set, else the normal `filter_pool()` results -- and `_render_discover_tab()`,
-  already generic over whatever pool it receives, renders filtered and searched lists/cards
-  identically with no added branching. One state key (`discover_focus_key`), one row-list
-  path, one back-button implementation, shared by every way a Discover card can be opened.
+  Same root cause, three places (only the first was reported; the other two share the
+  identical defect and get the identical fix in this task):
+  - Card focused on Discover, click "Discover": no-op.
+  - Card focused on Saved, click "Saved": no-op.
+  - Not-now overlay open (from the overflow menu), click the active tab: no-op.
+  Clicking the OTHER tab always worked, because that is a genuine value change, which
+  `segmented_control` can detect -- the defect is specifically the reselect-the-active-tab
+  case, which the widget cannot report by design.
 
-  Removed as dead code once the second state machine no longer existed: `_card_key`,
-  `_select_search_row`, `_render_search_results`, `_render_search_focused_card`, and the
-  `search_selected` session-state key.
+  Fix: replace the two nav pills with two plain `st.button()`s (Discover / Saved, primary
+  style when active). A plain button fires on every click, active-already or not, so the
+  no-signal case cannot occur. One handler for both buttons, one rule for every nav click:
+  land on the clicked tab's plain list -- close the Not-now overlay if open, clear that
+  tab's focused card (and Discover's search, if leaving/re-entering Discover), set the
+  active tab. This is ordinary tab-bar behavior (tapping the tab you're on returns to its
+  root) and it removes the app's only remaining dependency on segmented_control's broken
+  reselect signal, not just for the reported case.
 
-  Net behavior changes from unifying (both examined against the owner's request, not
-  applied silently):
-  - A card opened from search now gets full Save/Not-now actions, same as one opened from
-    the filtered list. The prior read-only carve-out was itself a symptom of search being a
-    lesser, separate code path -- keeping it would have meant threading a read-only flag
-    through the now-shared render path, reintroducing the special-casing being removed.
-  - The scope-stats line now shows during an active search too (previously hidden by a
-    search-specific branch that no longer exists) -- but with its wording corrected to
-    match: "N match "query"" during a search, "N match your filters" otherwise
-    (`_render_discover_scope_stats` now takes the active query and branches on it, mirroring
-    the empty-state message just below it, which already branched on `query` the same way).
-    A round 1 review (both cto-reviewer and scope-auditor, independently) caught that the
-    first pass reused the filter-only string unconditionally, so an active search claimed
-    "matches your filters" while zero filters were in effect -- fixed before round 2.
+  Deleted as dead state once segmented_control was no longer in use: the `bottom_nav`
+  session-state key (it only ever existed to manage that widget's own identity/reseed).
+  `active_page` is now the single source of truth for the active tab.
 
-  Deliberately NOT changed: search's underlying card-set semantics. It stays global (matches
-  the full deck, ignoring the current market/sector/preset filters) and still excludes
-  nothing -- this was an explicit, already-made product decision (AskUserQuestion, issue
-  #20) and re-scoping it now would be a second, unrelated change riding on this one.
+  Round 1 review (cto-reviewer) FAILed on exactly the class of gap working-agreement.md §2
+  warns about: two authoritative UI docs (`docs/ui/design_system.md`,
+  `docs/ui/discover_header.md`) still described the nav as `st.segmented_control` after
+  this diff replaced it with plain buttons. Fixed before round 2, and a third stale claim
+  in the same discover_header.md table row 7 (left over from the earlier search-unification
+  task, found while already editing that row) fixed alongside it.
 
 scope_paths:
   - frontend/app.py
-  - tests/frontend/test_app.py
+  - frontend/styles.py
   - tests/frontend/test_app_e2e.py
+  - docs/ui/design_system.md
+  - docs/ui/discover_header.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none -- the owner explicitly delegated the concept and asked for direct
-  implementation ("I told you to come up with a concept... implement... stop
-  micromanaging me").
+decisions_reserved: none -- the owner asked for a short, concrete plan (table format) for
+  this exact behavior change, reviewed it, and said to implement.
 
 done_when:
-  - Discover's list, its pagination, its focused-card view, and its back button behave
-    identically whether the pool came from filters or from a search query -- no
-    search-specific rendering path remains in frontend/app.py.
-  - Opening a card from a search result grants the same Save/Not-now actions a
-    filtered-list card gets.
-  - `pytest tests/frontend -q` and `pytest tests/ -q` (excluding the pre-existing,
-    unrelated `tests/tooling/test_generate_assessments.py` collection error from a missing
-    local `anthropic` package) pass.
+  - Card focused on Discover, click "Discover": returns to Discover's list (not a no-op).
+  - Card focused on Saved, click "Saved": returns to Saved's list (not a no-op).
+  - Not-now overlay open, click the active tab: overlay closes, list shows (not a no-op).
+  - Genuine tab switches (Discover <-> Saved) still work, including from a focused card or
+    the Not-now overlay on the tab being left.
+  - `pytest tests/frontend -q` and `pytest tests/ -q` (excluding the pre-existing, unrelated
+    `tests/tooling/test_generate_assessments.py` collection error from a missing local
+    `anthropic` import) pass, including new coverage for all three reselect cases above.
   - `check_no_em_dash.py` and `check_context_budget.py` pass.
-  - Live-verified in the browser: searching "apple" narrows the list to the one match with
-    the stats line and no Filters popover; clicking it opens the card directly (the exact
-    bug the owner screenshotted: "clicking on the field, apple content opens, but i'm not
-    on a card") with Save/Not-now visible; Back returns to the same one-match search
-    results; switching to Saved and back to Discover clears the search and restores the
-    full filtered list.
+  - Live-verified in the browser: all three reselect cases above, plus a normal Discover
+    <-> Saved switch, still behave correctly.
 
-impact_map: frontend/app.py (Discover's pool/list/focus/back logic, net smaller after
-  removing the duplicated search rendering path), matching test coverage. No data/schema/CI
-  change.
+impact_map: frontend/app.py (nav rendering + one new shared handler), frontend/styles.py
+  (nav-row CSS updated for two plain buttons instead of segmented_control's DOM), matching
+  test coverage. No data/schema/CI change.
