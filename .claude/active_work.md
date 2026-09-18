@@ -16,42 +16,35 @@ one or two lines and let the archive keep the detail._
 ## In flight
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
-merged (!171, !172, !174, !176, !178, !179).** Plan file
-`C:\Users\Rami\.claude\plans\vivid-booping-lake.md` (outside this repo) has the full
-sequence and per-item detail; each MR's own contract.md/review.md has the rest. #2/#4/#6/#1
-closed with no code (already shipped or stale); #14/#15/#17/#18 decided skip/wait (GitLab
-note each, left open). Real bugs cto-reviewer or my own tests caught along the way: a
-live-confirmed unkeyed-search-widget identity-churn bug (#20), an `ebit_margin_pct`-presence
-type-scoping bug (#13), skip/unskip never persisted to a cookie plus one of two Save buttons
-not clearing skip status (#16) -- all in "Context / operational notes" below. **Lesson from
-#5's round 1 FAIL, worth carrying forward: citing this repo's own past incidents as
-precedent is not the same as the owner deciding fresh -- when an issue's own text reserves a
-call, ask directly (working-agreement.md SS7), don't reason by analogy to close it (SS6).**
+merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
+(outside this repo) has full detail; each MR's own contract.md/review.md has the rest.
+#2/#4/#6/#1 closed with no code; #14/#15/#17/#18 decided skip/wait (GitLab note each, left
+open). **Lesson from #5's round 1 FAIL, worth carrying forward: citing this repo's own
+past incidents as precedent is not the same as the owner deciding fresh -- when an issue's
+own text reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy
+to close it (SS6).**
 
-**Issue #3 (ANTHROPIC_API_KEY): CLOSED**, already set. **Issue #21: MERGED (!181)** --
-working-agreement.md SS1: re-check an owner-flagged claim live before restating it.
-**Search tab removal: MERGED (!182)** -- nav shrunk to Discover/Saved, issue #20's box
-already covered it.
+**Issue #3, #21, Search tab removal, issue #22 item 1, seed governance (ticker_overrides.csv
+-> dbt_analytics/seeds/): all MERGED (!181-!184).** Issue #22's root cause still NOT
+isolated (3i/uk_ftse100/III's `input_hash` identical since 2026-08-20, zero log trace of it
+in two separate runs) -- `attach_reads()` now logs every card, not just failures, so the
+next run should finally show why. **Do not assume 2026-10-01 fixes 3i -- check its
+`card_assessments` row directly after.**
 
-**Issue #22 (a card stuck on fallback verdict text): MERGED (!183)**, item 1 only --
-`attach_reads()` now logs every card, not just failures. Root cause still NOT isolated: 3i
-(uk_ftse100/III)'s `input_hash` has been identical since 2026-08-20 (rules out "refresh got
-rejected"), yet zero log trace of it in either the 2026-09-01 or 2026-09-15 run despite the
-code saying it should have been attempted both times. **Do not assume 2026-10-01 fixes 3i
--- check its `card_assessments` row directly after.** **Lesson: don't state the code's
-intended behavior ("self-heals next run") as a confirmed outcome without verifying it** --
-caught by the owner mid-session.
+**GitHub recovered, repo published: MERGED (!185).** Owner decision for this project:
+GitLab canonical, one-way push mirror to GitHub for visibility (owner set up via `gh`/GitLab
+UI, both now authenticated on this machine -- `glab` and `gh` both sit in the OS keyring as
+pre-existing infra, neither entered by me). Both repos flipped **public** 2026-09-18 --
+portfolio-grade substance work (issue #9) was already done, this was the last gate. Synced
+description/topics on both, fixed GitHub's stale Streamlit-Cloud website link to the real
+Render URL, closed 2 stale pre-migration GitHub issues.
 
-**Seed governance: MR !184 open.** Owner: "we have no consistent naming conventions for
-the seeds." `ticker_overrides.csv` and `company_name_overrides.csv` are structurally
-identical correction tables, but only the latter was a real dbt seed (schema + tests); the
-former was a bare CSV in `ingestion/constituents/`. Moved via `git mv` into
-`dbt_analytics/seeds/`, added a `_seeds.yml` entry mirroring `company_name_overrides` --
-`dbt_project.yml`'s `seed-paths` auto-discovers it as a real seed table now, closing the
-actual governance gap. Correction logic unchanged (still Python, pre-fetch -- can't be a
-dbt model, the ticker must be right before dbt's own input is fetched). Round 1: two
-reviewers independently caught a real `git add` atomic-failure bug -- see operational
-notes.
+**Search-card focus fix: MR !186 open.** Owner found live: opening a card from search never
+entered a focused state like every other card-open path (search box + result row stayed
+rendered above it indefinitely, no back button). Added `_render_search_focused_card()`
+mirroring the existing Discover-list/Saved-list focus pattern; back returns to the same
+search results. Also refreshed the stale `docs/media/discover-card.png` (AI-read now
+renders as bullets, screenshot was from before that). Live-verified.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
