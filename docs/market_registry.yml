@@ -1,4 +1,4 @@
-# Stock Swipe — Market Registry
+# Stock Explorer -- Market Registry
 # ==============================
 # Single source of truth for which stock markets the app ingests and serves.
 # Do not hardcode markets elsewhere. An entry here is the FIRST step of adding a market, not

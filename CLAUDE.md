@@ -1,4 +1,4 @@
-# Stock Swipe App
+# Stock Explorer
 
 > DURABLE. **Owns:** the map -- what this project is, and which file owns what. Injected into
 > every session, so the hard rules a session must not miss are surfaced here as POINTERS.

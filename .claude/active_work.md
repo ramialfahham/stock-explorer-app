@@ -17,14 +17,22 @@ one or two lines and let the archive keep the detail._
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
-(outside this repo). #2/#4/#6/#1 closed with no code; #14/#15/#17/#18 skip/wait (GitLab
-note each). **Lesson: citing past incidents as precedent is not the owner deciding fresh
--- when an issue's own text reserves a call, ask directly (working-agreement.md SS7).**
+(outside this repo). #2/#4/#6/#1 closed with no code; #14/#15/#17/#18 skip/wait. **Lesson:
+citing past incidents as precedent is not the owner deciding fresh -- when an issue's own
+text reserves a call, ask directly (working-agreement.md SS7).**
 
-**README scope note added: MERGED (!193).** Short framing line, owner's exact wording
-after several chat rounds. **Lesson: when the owner supplies literal wording, use it
-verbatim -- an agent-added parenthetical, even accurate and non-contradictory, is still
-an unauthorized change to owner-reserved copy (caught by round-2 review here).**
+**Repo renamed stock-swipe-app -> stock-explorer-app: MR !194 open.** GitLab project,
+GitHub mirror, local `gitlab` remote all renamed. Every live in-repo reference swept and
+fixed (docs, CLAUDE.md, README, review_routing.json, .gitlab-ci.yml, a Python constant, 2
+SQL migration comments); the 2 frozen archive docs correctly untouched. **Open, owner's
+call:** GitLab's push-mirror config still embeds the OLD GitHub URL with an access token
+this session never had -- repoint via GitLab UI (Settings -> Repository -> Mirroring) when
+convenient; works for now via GitHub's redirect. **Local folder `D:\Projects\stock-swipe-app`
+NOT renamed** -- asked who should do it, never answered; do it before/outside a session.
+
+**README scope note added: MERGED (!193).** Owner's exact wording, several chat rounds.
+**Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
+parenthetical, even accurate, is still unauthorized owner-reserved copy (round-2 catch).
 
 **Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).**
 **Issue #22 largely RESOLVED 2026-09-18** by manually triggering the schedule (owner
@@ -62,15 +70,11 @@ guardrail gaps resolved; detail in each MR. **The `--max-reads` value for the
 `data-pipeline` CI job is still unset -- owner's call**, ideally after one clean scheduled
 run's real counts. Nothing else open from this push.
 
-**Load-time work (owner 2026-09-14: black screen not acceptable, zero spend), CLOSED for
-now.** !140-!143 merged: header/splash first paint, saved list in cookies, telemetry off,
-file watcher off, lazy yfinance import. Cold start ~15.7s (was 26-44s), warm ~3s. **NEXT,
-owner's calls:** a faster free host (Hugging Face Spaces -- owner must create the Space);
-reading the deck over plain httpx instead of the Supabase client library, a mechanism
-change. Owner's to reword: "Loading cards" splash text; keep or remove `?timing=1`.
-
-**!129/!130's post-merge check is satisfied** -- the 09-01/09-15 runs both show a working
-`generated=`/`carried=` summary, seen directly this session.
+**Load-time work (owner 2026-09-14, zero spend), CLOSED for now.** !140-!143 merged:
+first-paint splash, cookie-based saved list, telemetry/file-watcher off, lazy yfinance.
+Warm-run server time re-measured 2026-09-18: 141ms -- fast, not the bottleneck anymore.
+**NEXT, owner's calls:** Hugging Face Spaces migration (owner creates the Space); httpx
+deck fetch instead of the Supabase client library, a mechanism change.
 
 **Owner question left open by !130:** a decimals-based discriminator for fraction-scale
 yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a

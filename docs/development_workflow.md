@@ -1,4 +1,4 @@
-# Development workflow — Stock Swipe App
+# Development workflow -- Stock Explorer
 
 > DURABLE. **Owns:** the branch, MR and CI flow, and the definition of done.
 > **Never:** agent process -- that is `.claude/working-agreement.md`.

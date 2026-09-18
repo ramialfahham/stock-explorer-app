@@ -1,4 +1,4 @@
-# Streamlit on Render — Stock Swipe
+# Streamlit on Render -- Stock Explorer
 
 Deploy the discovery UI (`frontend/app.py`, via the `streamlit_app.py` entrypoint) against
 Supabase data exported by the data pipeline.
@@ -15,7 +15,7 @@ connection and the two secrets need a human.
 
 1. Sign up / log in at [render.com](https://render.com).
 2. **Connect GitLab** — Account Settings → Connected Accounts → GitLab OAuth, authorize access
-   to `rami.al-fahham/stock-swipe-app`.
+   to `rami.al-fahham/stock-explorer-app`.
 3. **New → Blueprint** → select the repo. Render reads `render.yaml`: Python runtime,
    `.python-version` (3.11), build command (`pip install -r frontend/requirements.txt && python scripts/patch_streamlit_splash.py`), start
    command (`streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.fileWatcherType none`), free

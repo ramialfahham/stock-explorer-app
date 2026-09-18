@@ -13,7 +13,7 @@ from ingestion.constituents.seeds import write_constituents
 from ingestion.paths import CONSTITUENT_SOURCES_PATH
 
 WIKIPEDIA_USER_AGENT = (
-    "stock-swipe-app/1.0 (https://github.com/ramialfahham/stock-swipe-app)"
+    "stock-explorer-app/1.0 (https://github.com/ramialfahham/stock-explorer-app)"
 )
 
 

@@ -1,6 +1,6 @@
 # Supabase setup
 
-Phase 2 checklist for the Stock Swipe App warehouse and auth backend.
+Phase 2 checklist for the Stock Explorer warehouse and auth backend.
 
 **No manual SQL in the Dashboard.** Schema changes live in `supabase/migrations/` and are
 applied by `scripts/apply_supabase_migrations.py` (locally or via GitLab CI).
@@ -10,7 +10,7 @@ applied by `scripts/apply_supabase_migrations.py` (locally or via GitLab CI).
 ## 1. Create a Supabase project
 
 1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and sign in.
-2. **New project** → pick an org, name (e.g. `stock-swipe-app`), database password, region.
+2. **New project** → pick an org, name (e.g. `stock-explorer-app`), database password, region.
 3. **"Automatically expose new tables"** — leave this **unchecked** (Supabase's own
    recommendation; deliberate access control instead of exposing every table by default).
    This means `service_role`/`anon`/`authenticated` get **no implicit table privileges** —

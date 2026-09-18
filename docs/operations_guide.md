@@ -1,4 +1,4 @@
-# Operations guide — Stock Swipe App
+# Operations guide -- Stock Explorer
 
 > DURABLE. **Owns:** how production data moves, and the runbook for when it breaks.
 > **Never:** product rules or metric definitions.

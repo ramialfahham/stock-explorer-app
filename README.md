@@ -7,7 +7,7 @@ Learning tool, **not** investment advice; batch fundamentals, **not** real-time 
 **About this project:** built to explore working with AI end to end, both in development
 and in one product feature.
 
-[![pipeline status](https://gitlab.com/rami.al-fahham/stock-swipe-app/badges/main/pipeline.svg)](https://gitlab.com/rami.al-fahham/stock-swipe-app/-/pipelines)
+[![pipeline status](https://gitlab.com/rami.al-fahham/stock-explorer-app/badges/main/pipeline.svg)](https://gitlab.com/rami.al-fahham/stock-explorer-app/-/pipelines)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status: prototype](https://img.shields.io/badge/status-prototype-orange)
 
@@ -109,7 +109,7 @@ The reasoning and trade-offs behind the core — deeper context lives in
 ## Project layout
 
 ```
-stock-swipe-app/
+stock-explorer-app/
 ├── CLAUDE.md                  # Entry doc for Claude Code — points to guardrails + docs
 ├── .claude/                   # dbt-agent-kit guardrails: working-agreement.md, review_routing.json, active_work.md, task/
 ├── docs/
