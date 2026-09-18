@@ -312,25 +312,37 @@ def test_discover_shows_persistent_search_box_by_default(app_test: AppTest) -> N
     assert len(at.text_input) == 1
 
 
-def test_discover_persistent_search_hides_filters_and_pool(app_test: AppTest) -> None:
+def test_discover_persistent_search_replaces_filters_and_pool(app_test: AppTest) -> None:
+    """Search is not a separate system from the filtered list -- it narrows the SAME pool
+    `_discover_pool` returns, rendered by the SAME `_render_discover_tab`. A search-matched
+    row therefore uses the identical `discover_row_*` key the normal filtered list uses,
+    not a separate `discover_search_*` prefix from a second rendering path."""
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
     _assert_clean(at)
-    assert _row_button(at, "discover_search_us_sp500_ALFA") is not None
-    assert _row_button(at, "discover_row_us_sp500::ALFA") is None
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
     assert _row_button(at, "discover_row_us_sp500::BETA") is None
-    assert not _scope_stats_line_present(at)
+    assert _scope_stats_line_present(at), "the count still shows -- now the search-match count"
+    assert any('match “ALFA”' in v for v in _rendered_markdown(at)), (
+        "the label must name the search, not claim a filter narrowed the list"
+    )
+    assert not any("match your filters" in v for v in _rendered_markdown(at))
 
 
-def test_discover_persistent_search_selected_card_has_no_save_button(app_test: AppTest) -> None:
-    """Decided via AskUserQuestion: a persistent-search hit renders read-only -- Save/Not
-    now parity is a separately-scoped follow-up."""
+def test_discover_persistent_search_selected_card_has_save_and_not_now_buttons(
+    app_test: AppTest,
+) -> None:
+    """A card opened from search is exactly as capable as one opened from the filtered
+    list -- Save/Not now, not read-only. The earlier read-only carve-out (AskUserQuestion,
+    "a separately-scoped follow-up") was itself a symptom of search being a second, lesser
+    code path; unifying search into the same list-to-card mechanism the filtered list uses
+    removes the special case rather than requiring a flag to preserve it."""
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
-    at = at.button(key="discover_search_us_sp500_ALFA").click().run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     _assert_clean(at)
-    assert _row_button(at, "discover_save") is None
-    assert _row_button(at, "discover_skip") is None
+    assert _row_button(at, "discover_save") is not None
+    assert _row_button(at, "discover_skip") is not None
 
 
 def test_discover_persistent_search_selected_card_enters_focused_state(
@@ -340,16 +352,14 @@ def test_discover_persistent_search_selected_card_enters_focused_state(
     every other card-open path in the app (Discover's own list, Saved's list) -- the
     search box and result row stayed rendered above the card indefinitely, with no back
     button. Found live by the owner. Selecting a search hit must now hide both and show a
-    back row, exactly like Discover's/Saved's own focus pattern."""
+    back row, exactly like Discover's/Saved's own focus pattern -- the SAME back row, since
+    it is now the same mechanism, not a search-specific one."""
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
-    at = at.button(key="discover_search_us_sp500_ALFA").click().run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     _assert_clean(at)
     assert len(at.text_input) == 0, "the search box must not still be rendered"
-    assert _row_button(at, "discover_search_us_sp500_ALFA") is None, (
-        "the result row must not still be rendered"
-    )
-    assert at.button(key="discover_search_back_to_results") is not None
+    assert at.button(key="discover_back_to_list") is not None
     assert _header_is_compact(at), "header must compact like every other focused-card state"
 
 
@@ -358,14 +368,14 @@ def test_discover_persistent_search_back_returns_to_the_same_results(
 ) -> None:
     at = app_test.run()
     at = at.text_input[0].set_value("ALFA").run()
-    at = at.button(key="discover_search_us_sp500_ALFA").click().run()
+    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     _assert_clean(at)
-    at = at.button(key="discover_search_back_to_results").click().run()
+    at = at.button(key="discover_back_to_list").click().run()
     _assert_clean(at)
     assert at.text_input[0].value == "ALFA", (
         "back must return to the search results for the same query, not an empty box"
     )
-    assert _row_button(at, "discover_search_us_sp500_ALFA") is not None
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
     assert not _header_is_compact(at)
 
 
@@ -380,8 +390,8 @@ def test_discover_persistent_search_accepts_a_second_edit(app_test: AppTest) -> 
     _assert_clean(at)
     at = at.text_input[0].set_value("BETA").run()
     _assert_clean(at)
-    assert _row_button(at, "discover_search_us_sp500_BETA") is not None
-    assert _row_button(at, "discover_search_us_sp500_ALFA") is None
+    assert _row_button(at, "discover_row_us_sp500::BETA") is not None
+    assert _row_button(at, "discover_row_us_sp500::ALFA") is None
 
 
 def test_clearing_discover_persistent_search_restores_filters_and_pool(app_test: AppTest) -> None:

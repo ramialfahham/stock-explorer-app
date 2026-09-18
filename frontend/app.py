@@ -73,7 +73,6 @@ def _init_state() -> None:
         "saved_focus_key": None,
         "not_now_open": False,
         "not_now_focus_key": None,
-        "search_selected": None,
         "search_query": "",
         "active_page": "Discover",
         "explore_market": default_market_filter(),
@@ -203,7 +202,19 @@ def _sync_eligible_counts(client) -> None:
 
 
 def _discover_pool(client) -> list[dict]:
+    """The rows Discover's list (and, from it, the focused card) draws from -- a search
+    query and the market/sector/preset filters both narrow this SAME pool, through the
+    same list, same pagination, same focus/back mechanism. Search stays global (matches
+    against the full deck, not scoped to the current market/sector/preset filters --
+    decided via AskUserQuestion, issue #20) and replaces filter-narrowing entirely rather
+    than combining with it, but it is not a separate system: it is simply which rows end
+    up in `pool` this run. A card opened from a search hit is exactly as capable (Save,
+    Not now) as one opened from the filtered list, because there is no longer a second,
+    lesser code path for it to have been opened from."""
     cards = _ensure_all_cards(client)
+    query = st.session_state.get("search_query", "")
+    if query:
+        return _search_matches(cards, query)
     interactions = get_interactions()
     market, sector = _explore_filters()
     pool = filter_pool(
@@ -261,10 +272,6 @@ def _not_now_cards(client, interactions: list[dict]) -> list[dict]:
     return _cards_for_order(client, skipped_keys_with_order(interactions))
 
 
-def _card_key(card: dict) -> tuple[str, str]:
-    return (card["market_code"], card["ticker"])
-
-
 def _clear_saved_session() -> None:
     st.session_state["saved_focus_key"] = None
 
@@ -294,9 +301,7 @@ def _render_brand_header(*, compact: bool = False) -> None:
 
 def _card_open(active: str) -> bool:
     if active == "Discover":
-        return bool(st.session_state.get("discover_focus_key")) or bool(
-            st.session_state.get("search_selected")
-        )
+        return bool(st.session_state.get("discover_focus_key"))
     if active == "Saved":
         return bool(st.session_state.get("saved_focus_key"))
     return False
@@ -320,10 +325,11 @@ def _render_back_row(*, key: str, saved_count: int | None, on_back) -> None:
                 )
 
 
-def _render_discover_scope_stats(*, remaining: int) -> None:
+def _render_discover_scope_stats(*, remaining: int, query: str = "") -> None:
+    label = f"{remaining} match “{query}”" if query else f"{remaining} match your filters"
     st.markdown(
         f'<div class="ss-header-stats ss-header-stats--solo">'
-        f"{html.escape(f'{remaining} match your filters')}</div>",
+        f"{html.escape(label)}</div>",
         unsafe_allow_html=True,
     )
 
@@ -528,15 +534,21 @@ def _render_discover_pagination(page: int, total_pages: int) -> None:
 
 
 def _render_discover_tab(client) -> dict | None:
-    """Filtered list, or the focused card. Filters run in _discovery_page.
+    """The list -- filtered, or search-matched, whichever `_discover_pool` currently
+    returns -- or the focused card opened from it. Filters/search box render in
+    _discovery_page.
 
     Returns the focused card so _discovery_page can render sticky actions for it, or None
     when the list (not a focus card) is showing.
     """
     pool = _discover_pool(client)
+    query = st.session_state.get("search_query", "")
 
     if not pool:
-        st.info("No companies match this scope. Try another market, sector, or clear filters.")
+        if query:
+            st.warning(f"No matches for “{query}”.")
+        else:
+            st.info("No companies match this scope. Try another market, sector, or clear filters.")
         return None
 
     focus_key = st.session_state.get("discover_focus_key")
@@ -723,19 +735,14 @@ def _render_not_now_panel(client, interactions: list[dict]) -> None:
             st.rerun()
 
 
-def _select_search_row(card: dict) -> None:
-    st.session_state["search_selected"] = _card_key(card)
-
-
 def _sync_search_query(query: str) -> None:
-    """Persist the query and, if it changed, clear any pinned selection -- plain
-    session_state bookkeeping, no Streamlit widget involved, so it's unit-tested directly
-    (test_app.py). A later query that happens to re-match an old selection's ticker/name as a
-    substring must not silently resurrect a card the reader never clicked for this query."""
-    stored_query = st.session_state.get("search_query", "")
-    if query != stored_query:
-        st.session_state["search_query"] = query
-        st.session_state["search_selected"] = None
+    """Persist the query -- plain session_state bookkeeping, no Streamlit widget involved,
+    so it's unit-tested directly (test_app.py). Does not need to clear a pinned selection:
+    search no longer has its own focus concept, `discover_focus_key` is the only one, and a
+    query change naturally changes what `_discover_pool` returns, which `_render_discover_tab`
+    already re-validates the focused key against (clearing it if the focused card fell out
+    of the new pool) -- one mechanism, not two kept in sync by hand."""
+    st.session_state["search_query"] = query
 
 
 def _clear_search() -> None:
@@ -748,7 +755,6 @@ def _clear_search() -> None:
     the key is simply absent, and `_search_query_widget`'s own reseed-when-absent logic
     (its own docstring) picks that up and seeds it from the now-empty `search_query`."""
     st.session_state["search_query"] = ""
-    st.session_state["search_selected"] = None
     st.session_state.pop(_SEARCH_QUERY_WIDGET_KEY, None)
 
 
@@ -801,54 +807,6 @@ def _search_matches(cards: list[dict], query: str) -> list[dict]:
     return matches
 
 
-def _render_search_results(client, query: str, *, key_prefix: str) -> None:
-    """The list of matches for `query`. Never called with a selection already pinned --
-    selecting a row moves to `_render_search_focused_card` on the next run instead of
-    rendering the card inline here (issue: search-opened cards previously never entered a
-    focused state, unlike every other card-open path in the app)."""
-    cards = _ensure_all_cards(client)
-    matches = _search_matches(cards, query)
-
-    if not matches:
-        st.warning(f"No matches for “{query}”.")
-        return
-
-    row_ui.render_row_list(
-        matches[:20],
-        key_prefix=key_prefix,
-        row_key_fn=lambda c: f"{c['market_code']}_{c['ticker']}",
-        title_fn=lambda c: c.get("company_name") or c.get("ticker") or "Unknown",
-        subtitle_fn=saved_row_subtitle,
-        on_select=_select_search_row,
-    )
-
-
-def _render_search_focused_card(client) -> None:
-    """The focused view for a card opened from search results -- mirrors Discover's and
-    Saved's own list-to-card focus pattern (hide the list, show a back row + the card)
-    instead of leaving the search box and result row rendered above the card indefinitely,
-    which was the one card-open path in the app that never got this treatment. Back
-    returns to the search RESULTS for the same query, not to an empty box or the full
-    Discover pool -- same as Discover's/Saved's own back buttons return to their own list,
-    not further up."""
-    query = st.session_state.get("search_query", "")
-    cards = _ensure_all_cards(client)
-    matches = _search_matches(cards, query)
-    selected = st.session_state.get("search_selected")
-    match = next((c for c in matches if _card_key(c) == selected), None)
-    if not match:
-        st.session_state["search_selected"] = None
-        st.rerun()
-        return
-
-    _render_back_row(
-        key="discover_search_back_to_results",
-        saved_count=None,
-        on_back=lambda: st.session_state.update({"search_selected": None}),
-    )
-    render_stock_card(_hydrate(client, match), widget_key_prefix="discover_search")
-
-
 def _render_discover_search_box() -> str:
     """Persistent search above Discover's list (issue #20) -- always visible on the list
     view. The only search entry point; the earlier separate Search tab was redundant with
@@ -897,36 +855,25 @@ def _discovery_page(client) -> None:
     discover_focused = active == "Discover" and bool(
         st.session_state.get("discover_focus_key")
     )
-    search_focused = active == "Discover" and bool(st.session_state.get("search_selected"))
     card_open = _card_open(active)
-
-    if search_focused:
-        # Same focus pattern as Discover's and Saved's own list-to-card transitions: the
-        # search box and result row are not rendered at all while a search-opened card is
-        # focused, not just visually hidden -- the widget's own reseed-when-key-absent
-        # logic (_search_query_widget's docstring) restores its value once it reappears.
-        _render_search_focused_card(client)
-        return
 
     discover_search_query = ""
     if active == "Discover" and not discover_focused:
         discover_search_query = _render_discover_search_box()
-
-    if discover_search_query:
-        # Replaces Filters and the filtered pool entirely rather than showing alongside
-        # them -- a market/sector filter is meaningless once the query is searching
-        # globally (decided via AskUserQuestion, issue #20).
-        _render_search_results(client, discover_search_query, key_prefix="discover_search")
-        return
-
-    if active == "Discover" and not discover_focused:
-        _render_explore_filters(client)
+        # A query replaces filter-narrowing entirely rather than combining with it -- a
+        # market/sector filter is meaningless once the query is searching globally
+        # (decided via AskUserQuestion, issue #20). Beyond that, search is not a separate
+        # system: _discover_pool decides what's in scope (filtered, or search-matched),
+        # and _render_discover_tab renders whatever that is -- same list, same pagination,
+        # same focus/back mechanism -- regardless of which one put it there.
+        if not discover_search_query:
+            _render_explore_filters(client)
 
     _sync_eligible_counts(client)
     remaining = len(_discover_pool(client)) if active == "Discover" and not discover_focused else 0
     if not card_open:
         if active == "Discover" and not discover_focused:
-            _render_discover_scope_stats(remaining=remaining)
+            _render_discover_scope_stats(remaining=remaining, query=discover_search_query)
         elif active == "Saved":
             _render_saved_scope_stats(saved_count=saved_count)
 

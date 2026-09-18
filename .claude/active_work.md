@@ -17,39 +17,40 @@ one or two lines and let the archive keep the detail._
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
-(outside this repo) has full detail; each MR's own contract.md/review.md has the rest.
-#2/#4/#6/#1 closed with no code; #14/#15/#17/#18 decided skip/wait (GitLab note each, left
-open). **Lesson from #5's round 1 FAIL, worth carrying forward: citing this repo's own
-past incidents as precedent is not the same as the owner deciding fresh -- when an issue's
-own text reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy
-to close it (SS6).**
+(outside this repo) has full detail. #2/#4/#6/#1 closed with no code; #14/#15/#17/#18
+decided skip/wait (GitLab note each, left open). **Lesson from #5's round 1 FAIL: citing
+past incidents as precedent is not the owner deciding fresh -- when an issue's own text
+reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy (SS6).**
 
 **Issue #3, #21, Search tab removal, issue #22 item 1, seed governance: all MERGED
-(!181-!184).** Issue #22's root cause still NOT isolated (3i/uk_ftse100/III's `input_hash`
-identical since 2026-08-20, zero log trace in two runs) -- `attach_reads()` now logs every
-card. **Do not assume 2026-10-01 fixes 3i -- check its `card_assessments` row after.**
+(!181-!184).** Issue #22 root cause still NOT isolated (3i/uk_ftse100/III `input_hash`
+identical since 2026-08-20) -- `attach_reads()` now logs every card. **Do not assume
+2026-10-01 fixes 3i -- check its `card_assessments` row after.**
 
 **GitHub recovered, repo published: MERGED (!185).** GitLab canonical, one-way push mirror
-to GitHub (`glab`/`gh` both pre-existing OS-keyring infra, neither entered by me). Both
-repos flipped **public** 2026-09-18 -- portfolio-grade substance (issue #9) already done.
-Synced description/topics, fixed GitHub's stale Streamlit-Cloud link, closed 2 stale
-pre-migration GitHub issues.
+to GitHub. Both repos flipped **public** 2026-09-18. Synced description/topics, fixed
+GitHub's stale Streamlit-Cloud link, closed 2 stale GitHub issues.
 
-**Search-card focus fix: MERGED (!186).** A card opened from search now enters a focused
-state (back row, hides search box/results) like every other card-open path -- owner found
-it live. Screenshot refreshed too.
+**Search-card focus fix (!186) and README AI-read + plain-language diagram (!187): both
+MERGED.** !186: search-opened card gets a focused state like every other card-open path.
+!187: README covers AI-read, diagram rewritten plain-language.
 
-**README AI-read + plain-language diagram: MERGED (!187).** README now covers the AI-read
-component; architecture diagram rewritten in plain language (tool names as proper nouns,
-internal jargon removed).
+**Search clear button + tab-switch reset (!188): MERGED**, superseded below.
 
-**Search: no way out except deleting text -- MR !188 open.** Owner found live, second gap
-on the same search feature: clicking the already-active Discover pill did nothing
-(`segmented_control` gives no signal on reselecting), so search had no escape hatch. Fixed
-with a concept: (1) a visible "Clear" button whenever search has text, (2) a genuine tab
-switch also resets search, same guarantee Not-now already had. Hit a real Streamlit
-widget-key constraint along the way, caught by a new test -- see operational notes.
-Live-verified.
+**Discover search unified into the filtered-list mechanism -- MR !189 open.** Owner
+live-tested !186/!188 (each a narrow point-fix) and gave sharp feedback: stop patching
+search symptoms one at a time, design ONE coherent navigation concept.
+Root cause of all three prior search bugs: search was a second, parallel state machine to
+Discover's filtered list (own focus key, own render functions, own read-only carve-out).
+Collapsed to one: `_discover_pool()` picks search-matched or filter-matched rows,
+`_render_discover_tab()` renders either identically -- one pool, one row list, one focus
+key, one back button. Removed as dead: `_card_key`, `_select_search_row`,
+`_render_search_results`, `_render_search_focused_card`, `search_selected`. Side effects
+kept, both examined: search-opened cards get full Save/Not-now now; scope-stats line shows
+during search, worded `N match "query"` (a wording bug -- reusing "match your filters" in a
+search context -- caught by both review rounds, fixed before commit). Live-verified end to
+end. **Durable lesson: a THIRD bug on one feature after two narrow fixes signals to stop
+patching symptoms and find the shared root cause.**
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -196,14 +197,13 @@ Live owner decisions a future session must act on, not numbered because they are
 
 Numbered defects and gaps:
 
-0. **MR !116/!118's reserved decisions: CLOSED.** (c) done (working-agreement.md routes to
-   cto-reviewer). (a), (b), (d), (e), (f) **DECLINED 2026-09-15, do not re-raise without new
-   owner instruction** -- each needs editing a file OUTSIDE this repo shared machine-wide
-   (dbt-agent-kit templates, `~/.claude/hooks/branch_discipline.py`) or a new CI mechanism
-   never put on the menu; owner's reason is past global-file edits breaking sibling projects
-   (see operational notes). Full detail in MR !116/!118's own contract.md/review.md.
+0. **MR !116/!118's reserved decisions: CLOSED.** (c) done. (a),(b),(d),(e),(f) **DECLINED
+   2026-09-15, do not re-raise without new owner instruction** -- each needs editing a file
+   OUTSIDE this repo shared machine-wide, or a new CI mechanism never put on the menu; owner's
+   reason is past global-file edits breaking sibling projects (operational notes). Detail in
+   MR !116/!118's own contract.md/review.md.
 
-1. **BXB, RMS, SPK (`au_asx200`) are still stuck on a 2026-08-20 snapshot as of 2026-09-03**
+1. **BXB, RMS, SPK (`au_asx200`) stuck on a 2026-08-20 snapshot as of 2026-09-03**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
    and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
    operating-eligibility fields, computed straight from Yahoo's `info.revenueGrowth` scalar
