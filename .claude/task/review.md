@@ -2,35 +2,37 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: f599b87be15c95b57c45cb6b64d39f4149ae35c9effcc1d1d9875888bedfa3cc
+diff_sha256: 6c12040ee65dbc53b9c462dc79d8e264fbc835cfc403fc66bd77d53243d5c4c8
 
 ## cto-reviewer
-VERDICT: PASS (round 2)
+VERDICT: PASS
 risks_checked:
-- Round 1 correctly FAILed: `.claude/active_work.md` still asserted "GitHub account is
-  permanently suspended" as current fact, contradicting the updated working-agreement.md.
-  Fixed by adding active_work.md to scope_paths and correcting the claim.
-- Round 2: active_work.md's edit correctly states the account is recovered, GitLab stays
-  canonical by owner choice, GitHub gets a one-way mirror -- without contradicting
-  working-agreement.md's own wording.
-- Grepped the whole repo (archival docs correctly excluded) for any other live claim of
-  "GitHub account suspended" / "origin remote deleted" -- none found.
-- `check_no_em_dash.py`, `check_context_budget.py` both pass.
+- Widget-identity reseed pattern traced directly (not just trusted): `_search_query_widget`
+  re-seeds from `search_query` only when its key is absent, so hiding it while a card is
+  focused evicts it cleanly and the reappear-after-Back path restores the value correctly
+  -- same pattern already established for market/sector filters, live-verified by the
+  owner (this file's own standing rule for widget-identity bugs).
+- `_render_search_results` has exactly one call site, which the new `search_focused` early
+  return in `_discovery_page` sits before -- the removed inline-card branch is genuinely
+  unreachable, not just visually dead.
+- `_card_open`'s new `search_selected` check is correctly scoped to the Discover branch
+  only; no leak into Saved.
+- No regression risk to Discover's or Saved's own focus paths -- the new branch is
+  additive and gated on `search_focused` alone.
 
 ## scope-auditor
-VERDICT: PASS (round 2)
+VERDICT: PASS
 risks_checked:
-- Staged diff touches only `scope_paths` (working-agreement.md, active_work.md,
-  contract.md).
+- Staged diff touches only `scope_paths` (frontend/app.py, tests/frontend/test_app_e2e.py,
+  docs/media/discover-card.png, .claude/task/contract.md).
+- `done_when` satisfied: focused-card state for search, back returns to same results,
+  `_card_open` includes `search_selected`, dead branch removed, screenshot refreshed.
 - `git status --short` clean, no stray unstaged changes.
-- `check_no_em_dash.py`, `check_context_budget.py` pass (active_work.md within its
-  32000-byte cap).
+- `check_no_em_dash.py`, `check_context_budget.py` pass.
+- `pytest tests/frontend -q`: 328 passed (326 existing + 2 new).
 
-## Note on this round
-cto-reviewer's round-2 result arrived flagged by an automated "instruction poisoning"
-security classifier. Investigated before trusting the verdict: an independent repo-wide
-grep for injection patterns found nothing; the reviewer's own account attributes the flag
-to reading `.claude/working-agreement.md` and `.claude/active_work.md`, this repo's own
-legitimate agent-directed process docs (which read structurally like "instructions to an
-AI" because that is their actual purpose here). Concluded false positive -- verdict
-content is coherent, specific, and corroborated independently; proceeded on that basis.
+## Verified independently
+- Full suite: `pytest tests/ -q` -- 834 passed.
+- Live browser: searched "apple", opened the card -- search box and result row gone, back
+  row present, header compacted (matching every other focused-card state). Clicked back --
+  returned to the same search results, query preserved, header restored.
