@@ -1,4 +1,4 @@
--- Stock Swipe App — initial Supabase schema
+-- Stock Explorer -- initial Supabase schema
 -- Applied by scripts/apply_supabase_migrations.py
 
 -- ---------------------------------------------------------------------------

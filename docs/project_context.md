@@ -1,4 +1,4 @@
-# Project context — Stock Swipe App
+# Project context -- Stock Explorer
 
 > DURABLE. **Owns:** stock-specific conventions that extend the general standards.
 > **Never:** anything the general standards already state.

@@ -7,7 +7,7 @@
 Product vision and UX principles. When implementation choices conflict, this document wins
 for user-facing behavior. Technical contracts live in [`data_contract.md`](data_contract.md).
 
-**Product name:** **Stock Explorer** (in-app and docs). Repo name may remain `stock-swipe-app`.
+**Product name:** **Stock Explorer** (in-app and docs). Repo name matches: `stock-explorer-app`.
 
 ---
 
@@ -250,5 +250,5 @@ thresholds.
 ## Phase 2 backlog (stickiness + depth)
 
 Tracked as GitLab issues on milestone
-["1 · Discover depth"](https://gitlab.com/rami.al-fahham/stock-swipe-app/-/milestones/1),
+["1 · Discover depth"](https://gitlab.com/rami.al-fahham/stock-explorer-app/-/milestones/1),
 not in this doc.

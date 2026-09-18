@@ -148,7 +148,7 @@ validate:full:
   <<: *python
   stage: validate
   script:
-    - mkdir -p /tmp/stock-swipe-raw
+    - mkdir -p /tmp/stock-explorer-raw
     - python scripts/check_context_budget.py
     - python scripts/check_no_narrative_dates.py
     - python scripts/check_no_em_dash.py
@@ -272,7 +272,7 @@ dev-schema-check:
   <<: *python
   stage: production
   script:
-    - mkdir -p /tmp/stock-swipe-raw
+    - mkdir -p /tmp/stock-explorer-raw
     - python scripts/write_ci_dbt_profile.py --path /tmp/stock_data_dev_check.db
     - python scripts/seed_ci_raw_fixtures.py
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"

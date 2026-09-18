@@ -1,4 +1,4 @@
-# Data contract — Stock Swipe App
+# Data contract -- Stock Explorer
 
 > DURABLE. **Owns:** grains, freshness, completeness, export shape, eligibility and the verdict
 > rules.

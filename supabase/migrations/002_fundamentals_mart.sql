@@ -1,4 +1,4 @@
--- Stock Swipe App — fundamentals mart + DAX activation
+-- Stock Explorer -- fundamentals mart + DAX activation
 -- Applied by scripts/apply_supabase_migrations.py
 
 -- ---------------------------------------------------------------------------

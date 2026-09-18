@@ -1,6 +1,6 @@
 # dbt_analytics
 
-dbt project for the Stock Swipe App transform layer.
+dbt project for the Stock Explorer transform layer.
 
 ## Docs (authoritative)
 
