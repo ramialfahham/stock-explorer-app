@@ -22,35 +22,33 @@ decided skip/wait (GitLab note each, left open). **Lesson from #5's round 1 FAIL
 past incidents as precedent is not the owner deciding fresh -- when an issue's own text
 reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy (SS6).**
 
-**Issue #3, #21, Search tab removal, issue #22 item 1, seed governance: all MERGED
-(!181-!184).** Issue #22 root cause still NOT isolated (3i/uk_ftse100/III `input_hash`
-identical since 2026-08-20) -- `attach_reads()` now logs every card. **Do not assume
-2026-10-01 fixes 3i -- check its `card_assessments` row after.**
+**Issue #3, #21, Search tab removal, issue #22 item 1, seed governance: MERGED (!181-!184).**
+Issue #22 root cause still NOT isolated (3i/uk_ftse100/III `input_hash` unchanged since
+2026-08-20) -- `attach_reads()` now logs every card. **Do not assume 2026-10-01 fixes 3i.**
 
-**GitHub recovered, repo published: MERGED (!185).** GitLab canonical, one-way push mirror
-to GitHub. Both repos flipped **public** 2026-09-18. Synced description/topics, fixed
-GitHub's stale Streamlit-Cloud link, closed 2 stale GitHub issues.
+**GitHub recovered/published (!185), search-card focus fix (!186), README AI-read diagram
+(!187): all MERGED.** GitLab canonical, one-way mirror to GitHub, both repos public since
+2026-09-18.
 
-**Search-card focus fix (!186) and README AI-read + plain-language diagram (!187): both
-MERGED.** !186: search-opened card gets a focused state like every other card-open path.
-!187: README covers AI-read, diagram rewritten plain-language.
+**Search unified into Discover's filtered-list mechanism (!188, !189): MERGED.** Owner hit
+three separate search bugs across narrow point-fixes and gave sharp feedback: stop patching
+symptoms, design ONE concept. Fix: `_discover_pool()` picks search-matched or
+filter-matched rows, `_render_discover_tab()` renders either identically -- one pool, one
+row list, one focus key, one back button. Search-opened cards now get full Save/Not-now.
+**Durable lesson: a THIRD bug on one feature after two narrow fixes means stop patching
+symptoms and find the shared root cause** -- directly reapplied below.
 
-**Search clear button + tab-switch reset (!188): MERGED**, superseded below.
-
-**Discover search unified into the filtered-list mechanism: MERGED (!189).** Owner
-live-tested !186/!188 (each a narrow point-fix) and gave sharp feedback: stop patching
-search symptoms one at a time, design ONE coherent navigation concept.
-Root cause of all three prior search bugs: search was a second, parallel state machine to
-Discover's filtered list (own focus key, own render functions, own read-only carve-out).
-Collapsed to one: `_discover_pool()` picks search-matched or filter-matched rows,
-`_render_discover_tab()` renders either identically -- one pool, one row list, one focus
-key, one back button. Removed as dead: `_card_key`, `_select_search_row`,
-`_render_search_results`, `_render_search_focused_card`, `search_selected`. Side effects
-kept, both examined: search-opened cards get full Save/Not-now now; scope-stats line shows
-during search, worded `N match "query"` (a wording bug -- reusing "match your filters" in a
-search context -- caught by both review rounds, fixed before commit). Live-verified end to
-end. **Durable lesson: a THIRD bug on one feature after two narrow fixes signals to stop
-patching symptoms and find the shared root cause.**
+**Nav buttons fixed when the active tab is re-tapped: MERGED (!191).** Owner found live: on
+a Discover card, clicking "Discover" (already active) did nothing -- `st.segmented_control`
+only reports a NEW selection, so a reselect click is indistinguishable from no click at all
+(confirmed against Streamlit's own source, not fixable by reading the return value
+differently). Same cause, silently also broken for Saved's own focused-card state and the
+Not-now overlay. When told to hide/disable the broken pill instead, owner correctly pushed
+back: that's patching around the defect, not removing it. Fix: nav pills are plain
+`st.button()`s now, not segmented_control -- a real button always fires, so one handler
+(`_go_to_nav_page`) makes every click land on that tab's plain list, fixing all three cases
+at once. `bottom_nav` session key deleted; `active_page` is the sole source of truth. Round
+1 review caught two UI docs still describing segmented_control -- fixed before commit.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -203,7 +201,7 @@ Numbered defects and gaps:
    reason is past global-file edits breaking sibling projects (operational notes). Detail in
    MR !116/!118's own contract.md/review.md.
 
-1. **BXB, RMS, SPK (`au_asx200`) stuck on a 2026-08-20 snapshot as of 2026-09-03**
+1. **BXB, RMS, SPK (`au_asx200`) stuck on a 2026-08-20 snapshot**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
    and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
    operating-eligibility fields, computed straight from Yahoo's `info.revenueGrowth` scalar
