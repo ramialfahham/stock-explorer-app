@@ -133,29 +133,48 @@ class _FakeMessage:
         model: str,
         referenced_metrics: list | None = None,
         *,
+        verdict_meaning: str | None = "healthy",
         content: list | None = None,
         stop_reason: str = "tool_use",
     ) -> None:
         if content is None:
-            payload = {"read": text, "referenced_metrics": referenced_metrics or []}
+            payload = {
+                "read": text,
+                "referenced_metrics": referenced_metrics or [],
+                "verdict_meaning": verdict_meaning,
+            }
             content = [_FakeToolUseBlock(payload)]
         self.content = content
         self.model = model
         self.stop_reason = stop_reason
 
 
+_MEANING_WORDS = ("healthy", "mixed", "fragile")
+
+
 class _FakeMessages:
-    def __init__(self, text: str = "A steady read on these figures.", model: str = "claude-haiku-4-5",
+    def __init__(self, text: str = "A steady read, financially healthy on these figures.",
+                 model: str = "claude-haiku-4-5",
                  fail_calls: set[int] = frozenset(),
                  referenced_metrics: list | None = None,
+                 verdict_meaning: str | None = "healthy",
                  content: list | None = None,
-                 stop_reason: str = "tool_use") -> None:
+                 stop_reason: str = "tool_use",
+                 auto_verdict_meaning: bool = False) -> None:
         self._text = text
         self._model = model
         self._fail_calls = set(fail_calls)
         self._referenced_metrics = referenced_metrics
+        self._verdict_meaning = verdict_meaning
         self._content = content
         self._stop_reason = stop_reason
+        # Opt-in only: a run over several real cards with DIFFERENT verdicts (e.g. main() end
+        # to end against a real mart) needs a response that actually agrees with what each
+        # individual call asked for, like the real API does -- a single static text/meaning
+        # would legitimately fail the new meaning-matches-verdict check for every card except
+        # the one it happens to match. Every other test uses one fixed verdict per fake client
+        # and does not need this.
+        self._auto_verdict_meaning = auto_verdict_meaning
         self.calls: list[dict] = []
 
     def create(self, **kwargs):
@@ -163,8 +182,20 @@ class _FakeMessages:
         self.calls.append(kwargs)
         if idx in self._fail_calls:
             raise RuntimeError("boom")
+        text = self._text
+        verdict_meaning = self._verdict_meaning
+        if self._auto_verdict_meaning:
+            user_content = next(
+                (m.get("content", "") for m in kwargs.get("messages", []) if m.get("role") == "user"),
+                "",
+            )
+            verdict_meaning = next(
+                (w for w in _MEANING_WORDS if w in str(user_content).lower()), "healthy"
+            )
+            text = f"A steady read, financially {verdict_meaning} on these figures."
         return _FakeMessage(
-            self._text, self._model, self._referenced_metrics,
+            text, self._model, self._referenced_metrics,
+            verdict_meaning=verdict_meaning,
             content=self._content, stop_reason=self._stop_reason,
         )
 
@@ -265,10 +296,10 @@ def _metric_row(ticker: str = "OPX") -> dict:
 
 def test_attach_reads_generates_for_new_card() -> None:
     rec = _base_record()
-    client = _FakeAnthropic(text="Sturdy on these figures.")
+    client = _FakeAnthropic(text="Sturdy, financially healthy on these figures.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
-    assert rec["ai_read"] == "Sturdy on these figures."
+    assert rec["ai_read"] == "Sturdy, financially healthy on these figures."
     assert rec["read_model"] == "claude-haiku-4-5"
     assert len(client.messages.calls) == 1
 
@@ -307,11 +338,11 @@ def test_attach_reads_isolates_a_failed_card() -> None:
     a = _base_record(ticker="AAA")
     b = _base_record(ticker="BBB")
     rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
-    client = _FakeAnthropic(text="ok read on these figures.", fail_calls={0})  # first card's call raises
+    client = _FakeAnthropic(text="ok read, financially healthy on these figures.", fail_calls={0})  # first card's call raises
     summary = gen.attach_reads([a, b], rows, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in a                     # nothing was stored, nothing to clear
-    assert b["ai_read"] == "ok read on these figures."   # the batch kept going
+    assert b["ai_read"] == "ok read, financially healthy on these figures."   # the batch kept going
 
 
 def test_attach_reads_clears_a_stale_read_when_its_regeneration_attempt_fails() -> None:
@@ -342,7 +373,7 @@ def test_attach_reads_logs_every_card_not_just_failures(capsys) -> None:
         ("us_sp500", "GENERATED"): _metric_row("GENERATED"),
         ("us_sp500", "CAPPED"): _metric_row("CAPPED"),
     }
-    client = _FakeAnthropic(text="ok read on these figures.")
+    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
     # order matters: no_stored_read before needs_refresh, so GENERATED (no stored read)
     # is attempted and CAPPED (also no stored read) is the one the cap does not reach.
     summary = gen.attach_reads(
@@ -403,7 +434,7 @@ def test_max_reads_none_is_unbounded_default() -> None:
     a = _base_record(ticker="AAA")
     b = _base_record(ticker="BBB")
     rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
-    client = _FakeAnthropic(text="ok read on these figures.")
+    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
     summary = gen.attach_reads([a, b], rows, {}, client)
     assert summary == {"generated": 2, "carried": 0, "capped": 0, "failed": 0}
 
@@ -417,7 +448,7 @@ def test_max_reads_caps_new_calls_and_reports_capped() -> None:
         ("us_sp500", "BBB"): _metric_row("BBB"),
         ("us_sp500", "CCC"): _metric_row("CCC"),
     }
-    client = _FakeAnthropic(text="ok read on these figures.")
+    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
     summary = gen.attach_reads([a, b, c], rows, {}, client, max_reads=2)
     assert summary == {"generated": 2, "carried": 0, "capped": 1, "failed": 0}
     assert len(client.messages.calls) == 2
@@ -440,10 +471,10 @@ def test_max_reads_prioritizes_cards_with_no_stored_read_over_refreshes() -> Non
         ("us_sp500", "FRESH"): _metric_row("FRESH"),
     }
     existing = {("us_sp500", "STALE"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"}}
-    client = _FakeAnthropic(text="ok read on these figures.")
+    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
     summary = gen.attach_reads([stale, fresh], rows, existing, client, max_reads=1)
     assert summary == {"generated": 1, "carried": 0, "capped": 1, "failed": 0}
-    assert fresh["ai_read"] == "ok read on these figures."  # no-stored-read card wins the slot...
+    assert fresh["ai_read"] == "ok read, financially healthy on these figures."  # no-stored-read card wins the slot...
     # ...the refresh is deferred; its stale H1 read is explicitly cleared, not left showing
     # under this run's fresh verdict (equity-analyst-reviewer finding: the frontend's own
     # staleness guard checks snapshot_date, not input_hash, so it can't catch this itself).
@@ -493,7 +524,7 @@ def test_attach_reads_rejects_a_style_violation(capsys) -> None:
     treated exactly like a hallucination-guard rejection -- fails closed, same "failed" count,
     same self-healing path, no separate return-value shape."""
     rec = _base_record()
-    client = _FakeAnthropic(text="This is a great buy right now!")
+    client = _FakeAnthropic(text="This is a great buy right now! Financially healthy on these figures.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
@@ -521,10 +552,10 @@ def test_attach_reads_style_check_call_site_is_actually_wired(monkeypatch) -> No
     violation above is proven to depend on the real call site, not some other guard."""
     monkeypatch.setattr(gen, "find_read_style_violations", lambda read: [])
     rec = _base_record()
-    client = _FakeAnthropic(text="This is a great buy right now!")  # style-dirty, metric-clean
+    client = _FakeAnthropic(text="This is a great buy right now! Financially healthy on these figures.")  # style-dirty, metric-clean
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
-    assert rec["ai_read"] == "This is a great buy right now!"
+    assert rec["ai_read"] == "This is a great buy right now! Financially healthy on these figures."
 
 
 def test_attach_reads_rejects_a_response_with_no_tool_use_block(capsys) -> None:
@@ -551,6 +582,22 @@ def test_attach_reads_rejects_a_blank_read(capsys) -> None:
 def test_attach_reads_rejects_non_list_referenced_metrics(capsys) -> None:
     rec = _base_record()
     client = _FakeAnthropic(text="Operating margin looks strong.", referenced_metrics="oops")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+    assert "malformed tool payload" in capsys.readouterr().err
+
+
+def test_attach_reads_rejects_a_non_string_verdict_meaning(capsys) -> None:
+    """Mirrors test_attach_reads_rejects_non_list_referenced_metrics -- verdict_meaning has
+    the same malformed-payload guard (not isinstance(..., str)) as referenced_metrics'
+    not isinstance(..., list) on the same line, and needs the same direct coverage: a
+    future edit dropping just this one clause would otherwise pass every other test."""
+    rec = _base_record()
+    client = _FakeAnthropic(
+        text="Operating margin looks strong, financially healthy on these figures.",
+        verdict_meaning=None,
+    )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
@@ -620,17 +667,17 @@ def test_a_capped_cards_cleared_read_and_a_generated_cards_fresh_read_both_survi
         ("us_sp500", "FRESH"): _metric_row("FRESH"),
     }
     existing_by_key = {("us_sp500", "STALE"): existing[0]}
-    client = _FakeAnthropic(text="fresh read on these figures.")
+    client = _FakeAnthropic(text="fresh read, financially healthy on these figures.")
     summary = gen.attach_reads([stale, fresh], rows, existing_by_key, client, max_reads=1)
     assert summary == {"generated": 1, "carried": 0, "capped": 1, "failed": 0}
     assert stale["ai_read"] is None and stale["read_model"] is None  # cleared, not absent
-    assert fresh["ai_read"] == "fresh read on these figures."
+    assert fresh["ai_read"] == "fresh read, financially healthy on these figures."
 
     fake_sb = _FakeSupabase(existing=existing)
     calls = gen._upsert_records(fake_sb, [stale, fresh])
     assert calls == 1  # same key-shape (both carry ai_read/read_model) -> one call
     assert fake_sb.postgrest_state[("us_sp500", "STALE")]["ai_read"] is None
-    assert fake_sb.postgrest_state[("us_sp500", "FRESH")]["ai_read"] == "fresh read on these figures."
+    assert fake_sb.postgrest_state[("us_sp500", "FRESH")]["ai_read"] == "fresh read, financially healthy on these figures."
 
 
 def test_upsert_records_batches_within_each_key_shape_group() -> None:
@@ -698,17 +745,21 @@ def test_main_with_anthropic_key_attaches_reads(tmp_path: Path, monkeypatch) -> 
 
     fake_sb = _FakeSupabase(existing=[])  # nothing stored -> every card regenerates
     monkeypatch.setattr(gen, "create_client", lambda url, key, options=None: fake_sb)
+    # _ROWS carries a real mix of verdicts (OPX/PREX red, FINX green), so a single static
+    # response would fail the meaning-matches-verdict check for whichever cards it doesn't
+    # happen to match -- auto_verdict_meaning replies in line with what each call actually
+    # asked for, the same way the real API does.
     monkeypatch.setattr(
         gen.anthropic,
         "Anthropic",
-        lambda *a, **k: _FakeAnthropic(text="A steady read, financially healthy on these figures."),
+        lambda *a, **k: _FakeAnthropic(auto_verdict_meaning=True),
     )
 
     assert gen.main(["--duckdb-path", str(db)]) == 0
     upserted = [rec for batch in fake_sb.upserts for rec in batch]
     assert upserted
     for rec in upserted:
-        assert rec["ai_read"] == "A steady read, financially healthy on these figures."
+        assert "financially" in rec["ai_read"]
         assert rec["read_model"] == "claude-haiku-4-5"
 
 
@@ -724,7 +775,10 @@ def test_main_max_reads_flag_caps_the_run_end_to_end(tmp_path: Path, monkeypatch
 
     fake_sb = _FakeSupabase(existing=[])
     monkeypatch.setattr(gen, "create_client", lambda url, key, options=None: fake_sb)
-    fake_client = _FakeAnthropic(text="A steady read, financially healthy on these figures.")
+    # Same reasoning as test_main_with_anthropic_key_attaches_reads: _ROWS mixes verdicts,
+    # so the single card this cap lets through needs a response matching whichever verdict
+    # it actually is, not a fixed one that might not match.
+    fake_client = _FakeAnthropic(auto_verdict_meaning=True)
     monkeypatch.setattr(gen.anthropic, "Anthropic", lambda *a, **k: fake_client)
 
     assert gen.main(["--duckdb-path", str(db), "--max-reads", "1"]) == 0

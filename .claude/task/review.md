@@ -2,97 +2,71 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: bdbf28cea82eeaa3055999811895d397dedc8b2371ff4e65bbdd8043a7536b59
+diff_sha256: 01a5ca98b072178c6293a36fff49f910486e230c9450c8c8cf34a18e9f204534
 
 ## cto-reviewer
 VERDICT: PASS
 risks_checked:
-- `.claude/review_routing.json` (CI-authority, routed to this reviewer): only the
-  `_comment` field's descriptive text changed (old slug -> new slug); the `"always"` list
-  and the entire `"paths"` mapping are byte-identical -- no routing rule weakened under
-  cover of the rename.
-- `ingestion/constituents/refresh.py`'s `WIKIPEDIA_USER_AGENT` string: only the literal
-  changed, no logic touched; the embedded GitHub URL verified against the real renamed
-  repo via `gh repo view ramialfahham/stock-explorer-app`, not a guess.
-- `CLAUDE.md` self-reference: only the title line changed, no other internal pointer in
-  that file broken.
-- Round 1 flagged (non-blocking) `.gitlab-ci.yml`'s `mkdir -p /tmp/stock-swipe-raw` in two
-  job blocks, missed by the original grep pattern (`-raw` suffix, not `-app`). Round 2
-  confirms the fix: both occurrences renamed consistently, no job/step/variable structure
-  touched, and grepped the whole repo for any consumer of that path -- none exists (the
-  real CI data path is `/tmp/stock_data_ci.db` / `/tmp/stock_data_dev_check.db`, a separate
-  mechanism), so the rename cannot have broken a reader that expected the old string.
-- Completeness: repo-wide grep for the old slug/name returns only the two frozen archive
-  docs (excluded by design) and the disposable contract's own narrative text.
-- `check_no_em_dash.py`, `check_context_budget.py`, and the required pytest suite (83
-  tests) all pass on the final staged state.
+- `_VERDICT_ENDING_RE` genuinely deleted, not left dead alongside the new check -- grepped
+  the whole repo, zero hits outside contract/handover prose. `find_read_style_violations`'s
+  docstring updated to say the verdict-meaning check moved out, not duplicated.
+- `verdict_meaning_violation(verdict, read, reported_meaning)`: two independent checks,
+  proven independent by the two dedicated tests (a mismatch-vs-verdict case passes even
+  when the word IS in the text; a missing-from-text case fails even when the reported word
+  matches the verdict) -- neither check can silently cover for the other. Compares against
+  the DETERMINISTIC verdict (`record["health_verdict"] = compute_verdict(row)`, traced
+  through the call chain to `_generate_read`), never anything derived from the model's own
+  response.
+- `_generate_read`'s new validation sequence: `verdict_meaning` extracted and type-checked
+  in the same malformed-payload branch as `referenced_metrics`; a violation fails closed
+  (`return None, None`) the same way every other rejection reason already does.
+- Round 1 found two real gaps, both fixed before round 2: `READ_SYSTEM_PROMPT` still said
+  the tool takes "two fields" after this task added a third (`verdict_meaning`) -- corrected
+  to "three fields" in one isolated hunk, confirmed nothing else in the prompt's rules,
+  company-type lens, or voice was touched. `verdict_meaning`'s malformed-payload case had no
+  dedicated test (unlike its sibling `referenced_metrics` check on the same line) -- added,
+  traced to confirm it actually catches removal of that specific clause (the rejection
+  message changes from "malformed tool payload" to a verdict-meaning rejection otherwise).
+- `pytest tests/tooling/test_assessment_rules.py tests/tooling/test_generate_assessments.py`:
+  178 passed. Full suite `pytest tests/`: 841 passed. `check_no_em_dash.py`,
+  `check_context_budget.py`: both pass (one round hit a session-local git-on-PATH artifact
+  unrelated to the diff, confirmed clean by manual dash scan and by re-running with PATH
+  fixed).
+- Scope: exactly 5 files (scripts/assessment_rules.py, scripts/generate_assessments.py,
+  tests/tooling/test_assessment_rules.py, tests/tooling/test_generate_assessments.py,
+  .claude/task/contract.md), no dependency/CI/hook file touched.
 
 ## scope-auditor
 VERDICT: PASS
 risks_checked:
-- Round 1 found `CLAUDE.md`'s title landed as "Stock Explorer App" while every other file
-  in the same sweep dropped "App" to match `docs/north_star.md`'s canonical product name --
-  an internal inconsistency within this same rename, exactly the failure mode
-  working-agreement.md SS2 warns about. Round 2 confirms the fix: `CLAUDE.md:1` now reads
-  exactly "# Stock Explorer".
-- `.gitlab-ci.yml` fix (cto-reviewer's round-1 finding) confirmed independently: only the
-  two targeted `mkdir -p` lines changed, added correctly to `scope_paths`.
-- Fresh (not memory-trusted) repo-wide grep for `stock-swipe-app`, `Stock Swipe`, and
-  `stock-swipe-raw` -- three separate patterns -- confirms the only remaining hits are the
-  two frozen archives and the disposable contract's own narrative.
-- `git diff --staged --stat`: 17 files, every one inside the updated `scope_paths`.
-- Mechanical gates and the required pytest suite re-run fresh against the final staged
-  state, both clean (83 passed).
-
-## data-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- Wikipedia User-Agent policy compliance: new value preserves the exact
-  `AppName/version (contact URL)` shape the old one had -- only the slug substituted in
-  both the app name and the URL path, no new malformation. `pytest
-  tests/ingestion/test_constituent_seeds.py`: 41 passed. No test asserts the literal
-  string value (pre-existing coverage gap, not introduced by this change, not a blocker
-  for a pure rename).
-- Migration re-apply safety: `scripts/apply_supabase_migrations.py` tracks applied
-  migrations by filename (`schema_migrations` table, `on conflict (filename) do nothing`),
-  not content hash -- since both migration files keep their exact filenames, the
-  comment-only edit cannot cause either to be re-selected as pending or re-applied.
-- Blast radius: exactly the 3 ingestion/supabase files in `scope_paths`, no drift.
-
-## analytics-engineer-reviewer
-VERDICT: PASS
-risks_checked:
-- Migration immutability: both `supabase/migrations/001_initial_schema.sql` and
-  `002_fundamentals_mart.sql` diffs show exactly one changed line each (the header
-  comment) -- every `CREATE TABLE`, `ALTER`, grant, index, and trigger statement is
-  byte-for-byte identical to before. No risk of the on-disk schema drifting from what's
-  already applied in production.
-- Blast radius: no other `*.sql` file in the repo touched.
-- Dash convention: new comment lines use `--` (double hyphen), not an em/en dash, matching
-  this repo's own established style already visible in the surrounding unedited lines.
-
-## equity-analyst-reviewer
-VERDICT: PASS
-risks_checked:
-- `docs/data_contract.md` diff is exactly one hunk, the H1 title line -- everything below
-  (grains, freshness rules, completeness rules, export shape, eligibility rules, verdict
-  logic, metric definitions) is byte-identical. No metric row, calculation, threshold, or
-  applicability caveat touched; nothing in the usual finance-content checklist (validity,
-  applicability honesty, direction correctness, no-advice line, fabrication risk) applies
-  to a bare title-string edit with zero semantic delta.
-- New title "Stock Explorer" (no "App") cross-checked against `docs/north_star.md`'s
-  already-established canonical product name -- internally consistent, not a new,
-  unapproved naming decision riding along with the rename.
-- No other file in this reviewer's routing scope (`*metric_catalogue.csv`,
-  `docs/metric_layer.md`) is part of this staged diff.
+- `READ_SYSTEM_PROMPT` scope held: the contract explicitly puts this prompt's voice/content
+  off-limits except the one factual field-count correction. Read the diff hunk line by line
+  against the full prompt text -- only "two fields" -> "three fields" plus naming
+  `verdict_meaning` changed; every other rule (tone, beginner-language, investment-advice
+  ban, jargon rule, numbers-only reasoning, company-type lens) is unchanged context in the
+  same hunk.
+- Doc-sync: grepped `docs/` for every claim this change makes stale ("on these figures",
+  "two fields", "VERDICT_ENDING", etc.) -- the only hits are the two frozen archive docs,
+  correctly excluded, never edited for later changes. No live doc described the old
+  mechanism, so nothing needed updating.
+- `find_read_style_violations()` narrowed cleanly: the old regex and its violation-append
+  block are fully removed, the equivalent check exists only in the new, separate
+  `verdict_meaning_violation()` -- matches `done_when`'s "moved out, not duplicated."
+- New test (`test_attach_reads_rejects_a_non_string_verdict_meaning`) stays inside
+  `scope_paths`, mirrors its sibling test exactly, adds no unrelated coverage.
+- `_generate_read()`'s fail-closed wiring confirmed: `verdict_meaning_violation` runs after
+  the hallucination check and before the style check, rejects the same way every other
+  reason already does.
+- `pytest` (targeted + full suite), `check_no_em_dash.py`, `check_context_budget.py`: all
+  pass (one round's failures traced to a session-local PATH artifact, not the diff --
+  re-confirmed clean with PATH fixed).
 
 ## Verified independently
-- Full sweep confirmed complete: repo-wide grep for the old repo slug and old product name
-  returns nothing live -- only the two explicitly-frozen archive docs and this task's own
-  disposable contract narrative.
-- GitLab project renamed to `rami.al-fahham/stock-explorer-app` (canonical, feeds Render
-  and the CI schedule), GitHub mirror renamed to match, local `gitlab` remote updated,
-  push-mirror sync re-verified working via GitHub's redirect. The mirror's own stored
-  target URL still embeds the old GitHub path with an access token this session never had
-  access to -- flagged to the owner to repoint via GitLab's UI when convenient, not
-  something this task could fix.
+- Verified against real production data three separate times across this task, not
+  simulated: a 20-card sample against the live API with the OLD schema (3 genuine
+  verdict-ending failures, all the "leading form" word-order case -- confirmed the root
+  cause before writing any fix); a 20-card sample with the NEW schema (20 of 20 passed,
+  every `verdict_meaning` field agreeing with the real deterministic verdict -- confirmed
+  the fix works in practice); a 5-card sample after the round-1 prompt-text fix (4 of 5
+  passed -- the one rejection was the field-vs-text check correctly catching a real case
+  where the model's structured self-report and its own prose disagreed, not a bug).

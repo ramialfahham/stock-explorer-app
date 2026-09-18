@@ -437,12 +437,13 @@ def compute_input_hash(
 READ_SYSTEM_PROMPT = """You write a short, plain-language "read" of a company's financial health for a complete beginner using a stock-learning app. You are given the company type, a set of already-computed numbers, and a health verdict (green, yellow, or red) that fixed rules decided - not you. In 2-3 sentences, explain what those numbers say about the company's financial health, ending on what the verdict means in plain words.
 
 Rules:
-- Respond by calling the write_card_read tool with two fields: "read" (the prose) and
+- Respond by calling the write_card_read tool with three fields: "read" (the prose),
   "referenced_metrics" (one entry per metric from the numbers list below that the read explicitly
   cites, each with "label" and "value_as_shown" copied EXACTLY as given below, character for
-  character, not reformatted, rounded, or recomputed). If the read cites no specific number,
-  "referenced_metrics" may be empty. Never invent a label or value that is not in the numbers
-  list.
+  character, not reformatted, rounded, or recomputed), and "verdict_meaning" (which of
+  healthy/mixed/fragile your closing sentence actually lands on). If the read cites no specific
+  number, "referenced_metrics" may be empty. Never invent a label or value that is not in the
+  numbers list.
 - Educational only. Never give investment advice. Do not say or imply whether to buy, sell, hold, or avoid the share, whether it is cheap, expensive, or "worth it", and never predict the price. You explain what the numbers describe; you never recommend an action.
 - Write for someone who knows no finance vocabulary. If you use a term, gloss it in plain words or an everyday comparison. Leave no jargon unexplained.
 - Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
@@ -470,10 +471,27 @@ VERDICT_MEANING: dict[str, str] = {
     VERDICT_RED: "red - financially fragile on these figures",
 }
 
+# The single word each verdict's meaning boils down to, for the write_card_read tool's
+# verdict_meaning field (below) -- what the model classifies its OWN closing sentence as,
+# checked against the verdict already decided by (deterministic, non-LLM) rules above.
+VERDICT_MEANING_WORD: dict[str, str] = {
+    VERDICT_GREEN: "healthy",
+    VERDICT_YELLOW: "mixed",
+    VERDICT_RED: "fragile",
+}
+
 
 # Forces structured output instead of free text: the model must name which facts it used, in the
 # exact form it was given them, so scripts/generate_assessments.py can check the read against
 # the card's own numbers before storing it -- a numeric hallucination guard, not an LLM judge.
+# verdict_meaning does the same job for the prompt's OTHER hard requirement (close on the
+# verdict's meaning): rather than pattern-matching the free-form prose for one fixed sentence
+# shape -- which rejected real, fully compliant reads that closed with the same meaning in a
+# different word order ("These figures show a healthy company" vs "...healthy on these
+# figures"), confirmed live -- the model states which of the three meanings it
+# landed on as its own separate, enum-constrained field, checked in code against the verdict
+# already decided (never the model's call) and against the read text actually containing that
+# word, so the field can't be right while the prose the reader sees is wrong.
 # Pure data, no I/O; the actual API call lives in scripts/generate_assessments.py.
 READ_TOOL_NAME = "write_card_read"
 READ_TOOL_SCHEMA: dict[str, Any] = {
@@ -509,8 +527,19 @@ READ_TOOL_SCHEMA: dict[str, Any] = {
                     "required": ["label", "value_as_shown"],
                 },
             },
+            "verdict_meaning": {
+                "type": "string",
+                "enum": ["healthy", "mixed", "fragile"],
+                "description": (
+                    "Which single word the read's closing sentence actually lands on, tied to "
+                    "'these figures'/'these numbers' as the system prompt requires -- healthy, "
+                    "mixed, or fragile. Must match the Health verdict given above, and the read "
+                    "itself must genuinely close on this word, in your own natural phrasing (not "
+                    "a fixed sentence to copy)."
+                ),
+            },
         },
-        "required": ["read", "referenced_metrics"],
+        "required": ["read", "referenced_metrics", "verdict_meaning"],
     },
 }
 
@@ -873,24 +902,14 @@ _GROWTH_PERIOD_RE = re.compile(r"\b(?:this year|over the year)\b", re.IGNORECASE
 # alternation since a single lookaround assertion can't express it directly.
 _SENTENCE_BOUNDARY_RE = re.compile(r"(?<!\d)\.|\.(?!\d)|[!?]+")
 
-# The prompt gives these as WORKED EXAMPLES ("e.g. ..."), not mandatory verbatim text, and the
-# yellow example itself swaps "figures" for "numbers" ("a mixed financial picture on these
-# numbers") to show the two are interchangeable -- so both must be accepted. This only checks that
-# ONE of the two anchor phrases appears somewhere in the text, not that it is truly the final
-# clause, and not that the surrounding words say the RIGHT health/fragility word for the verdict's
-# actual color -- this function is never given the verdict, only the read text, and matching
-# arbitrary healthy/mixed/fragile synonymy is exactly the semantic judgment this guard avoids. Of
-# the checks here, this is the least certain: the prompt's own "e.g." means a compliant read is
-# free to close with the same meaning in different words, which this check would not recognize.
-_VERDICT_ENDING_RE = re.compile(r"\bon these (?:figures|numbers)\b", re.IGNORECASE)
-
-
 def find_read_style_violations(read: str) -> list[str]:
     """Deterministic, code-checkable SUBSET of READ_SYSTEM_PROMPT's own rules -- a style/rule
-    guard, not a hallucination guard (that is validate_read_metrics, above). Returns one
-    human-readable description per violated rule found; an empty list means none of the checks
-    below fired (NOT a claim that the read is fully prompt-compliant -- only that this specific,
-    deliberately partial subset passed).
+    guard over the read TEXT ALONE, not a hallucination guard (that is validate_read_metrics)
+    and not the verdict-meaning guard (that is verdict_meaning_violation, below -- it needs the
+    verdict color and the model's own structured self-report, not just this text, so it can't
+    live here). Returns one human-readable description per violated rule found; an empty list
+    means none of the checks below fired (NOT a claim that the read is fully prompt-compliant --
+    only that this specific, deliberately partial subset passed).
 
     Checks every rule independently and collects every violation found, rather than stopping at
     the first, so the caller can report all of them at once.
@@ -938,9 +957,36 @@ def find_read_style_violations(read: str) -> list[str]:
             )
             break
 
-    if not _VERDICT_ENDING_RE.search(read):
-        violations.append(
-            'does not end on the verdict\'s meaning (no "on these figures"/"on these numbers")'
-        )
-
     return violations
+
+
+def verdict_meaning_violation(verdict: str, read: str, reported_meaning: str) -> str | None:
+    """Confirms the read actually closes on the verdict's meaning -- the prompt's other hard
+    requirement, alongside the style rules above, but checked differently on purpose.
+
+    The prompt's own "e.g." examples are worked examples, not mandatory verbatim text: a
+    compliant read is free to close with the same meaning in different words ("These figures
+    show a healthy company" as readily as "...healthy on these figures"). Pattern-matching the
+    free-form prose for one fixed sentence shape rejected real, fully compliant reads over this
+    exact word-order variance (confirmed live against real production data) -- a brittleness
+    inherent to guessing at prose structure, not fixable by adding more patterns one at a time.
+
+    Instead, the model states which of the three meanings it landed on as its own separate,
+    enum-constrained tool field (verdict_meaning, forced by READ_TOOL_SCHEMA to one of exactly
+    "healthy"/"mixed"/"fragile") rather than us inferring it from the prose. Two checks, not one:
+    (1) that reported classification must match the verdict this row's rules ALREADY decided --
+    never the model's own call, catching a read whose content drifts from the actual verdict
+    color; (2) the reported word must genuinely appear in the read text too, so the structured
+    field can't be right while what the reader actually sees is wrong or missing it entirely.
+
+    Returns a description of the violation, or None if the read has none.
+    """
+    expected = VERDICT_MEANING_WORD.get(verdict)
+    if reported_meaning != expected:
+        return (
+            f'reported verdict_meaning "{reported_meaning}" does not match the verdict '
+            f'"{verdict}" (expected "{expected}")'
+        )
+    if expected not in read.lower():
+        return f'verdict_meaning "{expected}" does not actually appear in the read text'
+    return None
