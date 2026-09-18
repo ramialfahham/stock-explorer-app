@@ -209,7 +209,7 @@ KNOWN_CROSS_MARKET_COMPANIES: dict[str, tuple[frozenset[str], str]] = {
         frozenset({"us_sp500", "au_asx200"}),
         "PRE-EXISTING in the seeds. The raw au_asx200 seed still says XYX (that is what "
         "Wikipedia's own S&P/ASX 200 table lists; not a scrape bug), so "
-        "ingestion/constituents/ticker_overrides.csv corrects it to XYZ before any fetch, "
+        "dbt_analytics/seeds/ticker_overrides.csv corrects it to XYZ before any fetch, "
         "fixed 2026-08-29. Once real ingestion next runs for au_asx200, this becomes a genuine "
         "cross-market duplicate like Amcor, Newmont, ResMed and Rio Tinto elsewhere in this "
         "allowlist, not counted as one in the contract before that.",
@@ -898,7 +898,7 @@ def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
     )
 
 
-TICKER_OVERRIDES = REPO / "ingestion" / "constituents" / "ticker_overrides.csv"
+TICKER_OVERRIDES = REPO / "dbt_analytics" / "seeds" / "ticker_overrides.csv"
 
 
 def _ticker_override_rows() -> list[dict]:

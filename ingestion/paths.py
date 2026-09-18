@@ -9,7 +9,7 @@ REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
 CONSTITUENT_SOURCES_PATH = REPO_ROOT / "docs" / "constituent_sources.yml"
 SEEDS_DIR = REPO_ROOT / "storage" / "seeds"
 RAW_DIR = REPO_ROOT / "storage" / "raw"
-TICKER_OVERRIDES_PATH = REPO_ROOT / "ingestion" / "constituents" / "ticker_overrides.csv"
+TICKER_OVERRIDES_PATH = REPO_ROOT / "dbt_analytics" / "seeds" / "ticker_overrides.csv"
 NAME_OVERRIDES_PATH = REPO_ROOT / "dbt_analytics" / "seeds" / "company_name_overrides.csv"
 NAME_SNAPSHOT_PATH = REPO_ROOT / "ingestion" / "constituents" / "yfinance_name_snapshot.csv"
 

@@ -29,23 +29,29 @@ precedent is not the same as the owner deciding fresh -- when an issue's own tex
 call, ask directly (working-agreement.md SS7), don't reason by analogy to close it (SS6).**
 
 **Issue #3 (ANTHROPIC_API_KEY): CLOSED**, already set. **Issue #21: MERGED (!181)** --
-working-agreement.md SS1 now says: re-check an owner-flagged claim against its live source
-before restating it, when a cheap check exists.
+working-agreement.md SS1: re-check an owner-flagged claim live before restating it.
+**Search tab removal: MERGED (!182)** -- nav shrunk to Discover/Saved, issue #20's box
+already covered it.
 
-**Search tab removal: MERGED (!182).** Nav shrunk to Discover/Saved (issue #20's box
-already covered it, standalone tab was pure duplication).
+**Issue #22 (a card stuck on fallback verdict text): MERGED (!183)**, item 1 only --
+`attach_reads()` now logs every card, not just failures. Root cause still NOT isolated: 3i
+(uk_ftse100/III)'s `input_hash` has been identical since 2026-08-20 (rules out "refresh got
+rejected"), yet zero log trace of it in either the 2026-09-01 or 2026-09-15 run despite the
+code saying it should have been attempted both times. **Do not assume 2026-10-01 fixes 3i
+-- check its `card_assessments` row directly after.** **Lesson: don't state the code's
+intended behavior ("self-heals next run") as a confirmed outcome without verifying it** --
+caught by the owner mid-session.
 
-**Issue #22 (a card stuck on fallback verdict text, no log trace across two full runs):
-MR !183 open.** Found live: 3i (uk_ftse100/III) showing `VERDICT_FALLBACK_READ` instead of
-a real AI read. Full investigation in issue #22. `input_hash` recomputed locally for every
-3i snapshot back to 2026-08-20: identical throughout, ruling out "refresh got rejected."
-Zero log trace of 3i in either the 2026-09-01 or 2026-09-15 run despite the code saying it
-should have been attempted both times -- root cause not isolated. MR !183 closes item 1:
-`attach_reads()` now logs every card it processes, not just failures, so the next case is
-diagnosable from the log alone. **Do not assume 2026-10-01 fixes 3i -- check its
-`card_assessments` row directly after.** **Lesson: don't state the code's intended
-behavior ("self-heals next run") as a confirmed outcome without verifying it** -- caught
-by the owner mid-session, issue text corrected same session.
+**Seed governance: MR !184 open.** Owner: "we have no consistent naming conventions for
+the seeds." `ticker_overrides.csv` and `company_name_overrides.csv` are structurally
+identical correction tables, but only the latter was a real dbt seed (schema + tests); the
+former was a bare CSV in `ingestion/constituents/`. Moved via `git mv` into
+`dbt_analytics/seeds/`, added a `_seeds.yml` entry mirroring `company_name_overrides` --
+`dbt_project.yml`'s `seed-paths` auto-discovers it as a real seed table now, closing the
+actual governance gap. Correction logic unchanged (still Python, pre-fetch -- can't be a
+dbt model, the ticker must be right before dbt's own input is fetched). Round 1: two
+reviewers independently caught a real `git add` atomic-failure bug -- see operational
+notes.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -63,9 +69,8 @@ owner's calls:** a faster free host (Hugging Face Spaces -- owner must create th
 reading the deck over plain httpx instead of the Supabase client library, a mechanism
 change. Owner's to reword: "Loading cards" splash text; keep or remove `?timing=1`.
 
-**CHECK on the first scheduled run after !129 and !130 (both merged):** (a) `generate_assessments`
-summary, `generated=` vs `carried=`, the only measurement of how fast reads converge on the
-new labels without a hash bump; (b) `assert_dividend_yield_suspects` WARN count, expected 5.
+**!129/!130's post-merge check is satisfied** -- the 09-01/09-15 runs both show a working
+`generated=`/`carried=` summary, seen directly this session.
 
 **Owner question left open by !130:** a decimals-based discriminator for fraction-scale
 yields (four decimals = fraction) would catch a fraction row at any yield but mis-scale a
@@ -162,14 +167,12 @@ before onboarding any of them** (the `onboard-market` skill routes there); it ca
 procedure and two traps no other doc holds (Wikipedia rejecting pandas' default user agent;
 `table_index` being positional and silently wrong rather than erroring).
 
-Known, not necessarily still current (pipeline has run repeatedly since these were measured;
-re-verify before relying on any of it): the 20-card warn threshold is absolute, not
-proportional to constituent count, so Switzerland (20 members) warns unless every single one
-is eligible -- **decided 2026-08-28: this is wrong, fix in phase 2, not on any single
-onboarding branch.** The coverage audit for France/Netherlands/Switzerland/Spain was only
-ever sample-verified, never full-run-verified from this environment. Seed tickers sat at 1079
-against a 959-ticker, 73-minute pipeline run and a 2-hour CI timeout, with headroom narrowing
-each batch and nobody tracking it as of the last check.
+Known, not necessarily still current (re-verify before relying on any of it): the 20-card
+warn threshold is absolute, not proportional to constituent count, so Switzerland (20
+members) warns unless every single one is eligible -- **decided 2026-08-28: wrong, fix in
+phase 2, not on any single onboarding branch.** France/Netherlands/Switzerland/Spain
+coverage was only ever sample-verified, never full-run-verified. Seed-ticker count vs. the
+2-hour CI timeout has narrowing headroom, untracked as of the last check.
 
 ## Open items (carried forward, genuinely unresolved as of 2026-09-03)
 
@@ -195,24 +198,12 @@ Live owner decisions a future session must act on, not numbered because they are
 
 Numbered defects and gaps:
 
-0. **THREE OWNER DECISIONS RESERVED BY MR !116.** (c) CLOSED 2026-09-15:
-   `.claude/working-agreement.md` now routes to `cto-reviewer` in `review_routing.json`
-   (project-local, no cross-repo reach). (a) and (b) **DECLINED 2026-09-15, not deferred --
-   do not re-raise without new owner instruction.** Both need editing a file OUTSIDE this
-   repo shared by every project on the machine (dbt-agent-kit's own `CONTRACT_TEMPLATE.md`/
-   `REVIEW_TEMPLATE.md` for (a), `~/.claude/hooks/branch_discipline.py` for (b), which would
-   also need to start blocking `glab mr merge` alongside the `gh pr merge` it already blocks).
-   Owner's reason: past global-file edits have broken sibling projects before (see Context /
-   operational notes below), and that risk isn't worth taking for either gap. The working
-   agreement §3 keeps stating (b)'s gap honestly rather than oversell the guard.
-
-   **And three from MR !118, same reason, all data-contract questions (§6):** (d) the price
-   counters cannot see a symbol yfinance returns as an all-NaN OHLCV block; closing it needs a
-   contract-level rule, and a bare `not_null` on `close` is wrong because legitimate NaN exists.
-   (e) Nothing enforces the "nothing reads prices" precondition the no-gate decision rests on;
-   a `ref('stg_yf__daily_prices')` would make it wrong silently. (f) A separate CI job with
-   `allow_failure: true` would surface price loss as a visible pipeline warning without gating;
-   it is a new workflow step and was never put on the menu.
+0. **MR !116/!118's reserved decisions: CLOSED.** (c) done (working-agreement.md routes to
+   cto-reviewer). (a), (b), (d), (e), (f) **DECLINED 2026-09-15, do not re-raise without new
+   owner instruction** -- each needs editing a file OUTSIDE this repo shared machine-wide
+   (dbt-agent-kit templates, `~/.claude/hooks/branch_discipline.py`) or a new CI mechanism
+   never put on the menu; owner's reason is past global-file edits breaking sibling projects
+   (see operational notes). Full detail in MR !116/!118's own contract.md/review.md.
 
 1. **BXB, RMS, SPK (`au_asx200`) are still stuck on a 2026-08-20 snapshot as of 2026-09-03**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
@@ -318,6 +309,15 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
 
 ## Context / operational notes
 
+- **A multi-path `git add` fails ATOMICALLY and SILENTLY-for-the-others if ANY one
+  pathspec doesn't match** -- e.g. listing a file's OLD path in the same call right after
+  `git mv`-ing it away. The whole invocation errors, and the other valid paths in that
+  call don't get staged either, while `git status` right after still looks plausible at a
+  glance unless read carefully (`M `/`R ` mixed with unstaged ` M`). Caused a real
+  round-1 FAIL on the ticker_overrides.csv seed move (two reviewers independently caught
+  it) -- every gate that run had only ever seen the empty rename. After `git mv` + a
+  multi-path `git add`, re-check `git status --short`: every line must start with a
+  non-space status letter.
 - **Review mechanics**: the blocking review gate is `commit_review_gate.py` (global,
   `~/.claude/hooks/`, not tracked in this repo). `diff_sha256` =
   `sha256(git diff --staged --no-renames --no-abbrev -- . ":(exclude).claude/task/review.md")`
