@@ -22,15 +22,18 @@ decided skip/wait (GitLab note each, left open). **Lesson from #5's round 1 FAIL
 past incidents as precedent is not the owner deciding fresh -- when an issue's own text
 reserves a call, ask directly (working-agreement.md SS7), don't reason by analogy (SS6).**
 
-**Issue #3, #21, Search tab removal, issue #22 item 1, seed governance: MERGED (!181-!184).**
-Issue #22 root cause still NOT isolated (3i/uk_ftse100/III `input_hash` unchanged since
-2026-08-20) -- `attach_reads()` now logs every card. **Do not assume 2026-10-01 fixes 3i.**
+**Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).**
+**Issue #22 largely RESOLVED 2026-09-18** by manually triggering the schedule (owner
+approved, real API cost) to exercise the new per-card logging: 3i now has a real read; the
+ai_read null rate dropped 878/1045 (84%) -> 129/1047 (12.3%) -- a real backlog, but the
+retry-every-run mechanism genuinely works. Remainder is 87% one style rule ("does not end
+on the verdict's meaning") at full scale -- flagged as likely prompt/detection tuning, not
+a rule to relax. **Owner decision needed, not yet acted on.**
 
 **GitHub recovered/published (!185), search-card focus fix (!186), README AI-read diagram
-(!187): all MERGED.** GitLab canonical, one-way mirror to GitHub, both repos public since
-2026-09-18.
+(!187): all MERGED.** GitLab canonical, one-way mirror to GitHub, both public.
 
-**Search unified into Discover's filtered-list mechanism (!188, !189): MERGED.** Owner hit
+**Search unified into Discover's filtered list (!188, !189): MERGED.** Owner hit
 three separate search bugs across narrow point-fixes and gave sharp feedback: stop patching
 symptoms, design ONE concept. Fix: `_discover_pool()` picks search-matched or
 filter-matched rows, `_render_discover_tab()` renders either identically -- one pool, one
@@ -38,17 +41,15 @@ row list, one focus key, one back button. Search-opened cards now get full Save/
 **Durable lesson: a THIRD bug on one feature after two narrow fixes means stop patching
 symptoms and find the shared root cause** -- directly reapplied below.
 
-**Nav buttons fixed when the active tab is re-tapped: MERGED (!191).** Owner found live: on
-a Discover card, clicking "Discover" (already active) did nothing -- `st.segmented_control`
-only reports a NEW selection, so a reselect click is indistinguishable from no click at all
-(confirmed against Streamlit's own source, not fixable by reading the return value
-differently). Same cause, silently also broken for Saved's own focused-card state and the
-Not-now overlay. When told to hide/disable the broken pill instead, owner correctly pushed
-back: that's patching around the defect, not removing it. Fix: nav pills are plain
-`st.button()`s now, not segmented_control -- a real button always fires, so one handler
-(`_go_to_nav_page`) makes every click land on that tab's plain list, fixing all three cases
-at once. `bottom_nav` session key deleted; `active_page` is the sole source of truth. Round
-1 review caught two UI docs still describing segmented_control -- fixed before commit.
+**Nav buttons fixed when the active tab is re-tapped: MERGED (!191).** Re-clicking the
+already-active nav pill did nothing -- `st.segmented_control` only reports a NEW selection,
+not fixable by reading the return value differently (confirmed against Streamlit's source).
+Same cause also silently broke Saved's own focused-card state and the Not-now overlay.
+Owner rejected hiding/disabling the broken pill as patching around the defect. Fix: nav
+pills are plain `st.button()`s now -- always fire, one handler (`_go_to_nav_page`) makes
+every click land on that tab's list, fixing all three cases at once. `bottom_nav` session
+key deleted; `active_page` is the sole source of truth. Round
+1 review caught stale UI docs -- fixed before commit.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
@@ -201,7 +202,7 @@ Numbered defects and gaps:
    reason is past global-file edits breaking sibling projects (operational notes). Detail in
    MR !116/!118's own contract.md/review.md.
 
-1. **BXB, RMS, SPK (`au_asx200`) stuck on a 2026-08-20 snapshot**
+1. **BXB, RMS, SPK (`au_asx200`) stuck on a stale snapshot**
    (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
    and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
    operating-eligibility fields, computed straight from Yahoo's `info.revenueGrowth` scalar
