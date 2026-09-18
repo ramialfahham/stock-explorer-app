@@ -3,34 +3,54 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Refs #22. Adds explicit per-card logging to `attach_reads()` in
-  `scripts/generate_assessments.py`, for every card it processes, not just failures.
-  Today a silent success and a card that was never even bucketed look identical in the
-  job log -- that gap is what made diagnosing issue #22 (a card stuck on the fallback
-  read with zero log trace across two full runs) require a live manual repro instead of
-  just reading the log. This closes that gap for future cases: every record now prints
-  exactly one line naming its ticker and outcome (carried, generated, failed, rejected,
-  capped, or no matching mart row), regardless of which bucket it lands in.
+objective: Move `ticker_overrides.csv` from `ingestion/constituents/` into
+  `dbt_analytics/seeds/`, per the owner's direct instruction. Owner observation that
+  prompted this: two structurally identical per-ticker correction tables
+  (`ticker_overrides.csv`, `company_name_overrides.csv`) lived in different directories
+  with different governance -- only `company_name_overrides.csv` was an actual dbt seed
+  with schema-enforced `not_null`/`unique` tests; `ticker_overrides.csv` was a bare CSV
+  read directly by Python, validated only by ad hoc pytest assertions.
+
+  `dbt_project.yml`'s `seed-paths: ["seeds"]` means dbt auto-discovers every CSV under
+  `dbt_analytics/seeds/` as a real seed table the next `dbt build` -- so this move alone
+  makes `ticker_overrides` a real dbt seed, loaded into DuckDB, whether or not it is
+  documented. Adding a `_seeds.yml` entry (mirroring `company_name_overrides`'s schema +
+  tests) closes the exact governance gap the owner pointed out, not just the file's
+  address.
+
+  The correction itself keeps applying in Python, before any yfinance fetch
+  (`ingestion/constituents/seeds.py`'s `_apply_ticker_overrides`, called from
+  `load_constituents()`) -- unchanged. It cannot move into a dbt model: the ticker must be
+  corrected before the fetch that dbt's own input depends on, not after. This is a file
+  relocation plus real dbt-test governance, not a change to when or how the correction is
+  applied.
 
 scope_paths:
-  - scripts/generate_assessments.py
-  - tests/tooling/test_generate_assessments.py
+  - dbt_analytics/seeds/ticker_overrides.csv (new path)
+  - ingestion/constituents/ticker_overrides.csv (removed)
+  - dbt_analytics/seeds/_seeds.yml
+  - ingestion/paths.py
+  - scripts/check_company_names_vs_yfinance.py
+  - tests/ingestion/test_market_onboarding.py
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none -- this is exactly what issue #22's own "what exactly" item 1
-  asked for, confirmed directly in chat ("add the per-card logging").
+decisions_reserved: none -- the owner gave the exact instruction ("move ticker_overrides.csv
+  into dbt_analytics/seeds") after confirming the finding live in chat.
 
 done_when:
-  - Every record `attach_reads` sees prints exactly one line: which bucket it landed in
-    (carried / generated / failed / rejected / capped / no mart row) and its ticker.
-  - Existing failure/rejection log wording is unchanged (tests assert on exact substrings
-    like "read failed for", "malformed tool payload") -- only new lines are added, no
-    existing ones reworded.
-  - `pytest tests/tooling/test_generate_assessments.py -q` passes, including new coverage
-    for the previously-silent paths (carried, generated, capped, no-mart-row).
+  - `ticker_overrides.csv` lives at `dbt_analytics/seeds/ticker_overrides.csv`, gone from
+    `ingestion/constituents/`.
+  - `dbt_analytics/seeds/_seeds.yml` documents it: column types, `not_null` on all four
+    columns, `unique_combination_of_columns` on (market_code, ticker) -- same rigor as
+    `company_name_overrides`.
+  - `ingestion/paths.py`'s `TICKER_OVERRIDES_PATH` points at the new location; ingestion
+    still reads the raw CSV directly (unchanged behavior, just a new path).
+  - `dbt seed --project-dir dbt_analytics --profiles-dir .` succeeds and the new seed
+    passes its own tests (`dbt test --select ticker_overrides`).
+  - `pytest tests/ingestion -q` passes with paths updated, no stale-path assertions left.
   - `python scripts/check_no_em_dash.py` passes.
 
-impact_map: one function's logging in one script, plus its tests. No behavior change to
-  which cards get a read, what gets upserted, or the CI job's exit code -- purely
-  observability for the next time a card like #22's ends up unexplained.
+impact_map: one CSV relocated, one dbt seed schema entry added, one Python path constant,
+  one script comment, one test file's path constants. No behavior change to which ticker
+  gets corrected or when -- the correction still runs in Python before any fetch.

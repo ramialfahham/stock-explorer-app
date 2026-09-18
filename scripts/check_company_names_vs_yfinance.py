@@ -1,9 +1,9 @@
 """Guard: flag a seed company_name that no longer matches yfinance's own company name.
 
 Issue #19. Compares each `provider: wikipedia` market's constituent seed name -- after
-`ticker_overrides.csv` and `dbt_analytics/seeds/company_name_overrides.csv` are applied,
-the same "final" name the card actually renders (see `dim_stock.sql`'s coalesce) -- against
-a periodically-refreshed cached snapshot of yfinance's own `info.longName`
+`ticker_overrides.csv` and `company_name_overrides.csv` (both `dbt_analytics/seeds/`) are
+applied, the same "final" name the card actually renders (see `dim_stock.sql`'s coalesce)
+-- against a periodically-refreshed cached snapshot of yfinance's own `info.longName`
 (`scripts/refresh_yfinance_names.py`). Catches the class of defect that shipped as 11 wrong
 `jp_nikkei225` company names in one session, caught previously only by a one-off manual
 script: the two existing seed guards in `tests/ingestion/test_market_onboarding.py` only

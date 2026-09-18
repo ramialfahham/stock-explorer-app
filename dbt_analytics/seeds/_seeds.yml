@@ -121,3 +121,41 @@ seeds:
           Drives the frontend per-type card. Value membership is validated in
           tests/tooling/test_metric_catalogue.py (accepted_values cannot check a compound pipe-delimited cell).
         tests: [not_null]
+
+  - name: ticker_overrides
+    description: >
+      Manual corrections for a constituent's `ticker`, applied in
+      `ingestion/constituents/seeds.py`'s `_apply_ticker_overrides` -- before any yfinance
+      fetch, not in a dbt model. A wrong ticker here means zero data for that row rather
+      than a display defect, so it cannot wait for dbt like `company_name_overrides` does.
+      One row per (market_code, ticker) needing a fix; a ticker not listed here is fetched
+      unchanged.
+    config:
+      column_types:
+        market_code: varchar
+        ticker: varchar
+        corrected_ticker: varchar
+        reason: varchar
+    columns:
+      - name: market_code
+        description: "Registry partition key, matching the constituent row this corrects."
+        data_tests:
+          - not_null
+      - name: ticker
+        description: "The wrong symbol as it appears in the raw constituent seed."
+        data_tests:
+          - not_null
+      - name: corrected_ticker
+        description: "The symbol actually fetched from yfinance in its place."
+        data_tests:
+          - not_null
+      - name: reason
+        description: "Why the override exists, for the next person reading this file."
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - market_code
+              - ticker
