@@ -17,29 +17,21 @@ one or two lines and let the archive keep the detail._
 
 **Metric-preset filter bug: MERGED (!197).** Two of five presets (Low debt, Growing
 revenue) checked fields `DECK_COLUMNS` never fetched, so the omit-never-fake rule silently
-passed everything -- fixed by fetching both fields. `metric_preset_options(cards)` now
+passed everything -- fixed by fetching both fields, and `metric_preset_options(cards)` now
 hides a preset only when its target company type(s) have zero eligible cards, data-driven
-rather than hardcoded. **Correction mid-task, told to the owner directly:** first suspected
-`Cash-safe` was permanently empty from an unpaginated, undeduped scratchpad query; redone
-properly, 2 eligible pre_revenue cards actually exist -- owner decided to leave it visible.
+rather than hardcoded (`Cash-safe` stays visible -- 2 eligible pre_revenue cards exist).
 
-**Discover control-tier contrast: FIXED, MR !198 open, awaiting owner review.** Owner
-flagged (screenshot) that
-non-"Discover" interactive elements read as too similar to the near-black background.
-Owner rejected a new accent color (stay monochrome) and then rejected two rounds of ad hoc
-color tweaks as inconsistent ("no concept") before landing on a real system: two tonal
-tiers by FUNCTION -- content (rows, card, expander, chips: unchanged) vs control (every
-actual button/input: `button[kind="secondary"]`, link-buttons, popover triggers, text
-input: `--ss-surface-control`/`--ss-border-control`, one step lighter). Applied via the
-existing shared selectors app-wide, which is what fixed the `Saved` pill and `⋯` overflow
-trigger without touching them directly -- owner had flagged both as still-buried mid-review
-before this framing was applied. **Durable lesson: when live visual iteration keeps getting
+**Discover control-tier contrast: MERGED (!198).** Owner rejected a new accent color (stay
+monochrome) and two rounds of ad hoc color tweaks as inconsistent ("no concept") before
+landing on a real system: two tonal tiers by FUNCTION -- content (rows, card, expander,
+chips: unchanged) vs control (every actual button/input: `--ss-surface-control`/
+`--ss-border-control`, one step lighter), applied via the existing shared selectors
+app-wide -- which is what also fixed the `Saved` pill and `⋯` overflow trigger without
+touching them directly. **Durable lesson: when live visual iteration keeps getting
 rejected as "random," stop tweaking hex values and ask what FUNCTIONAL categories the
 elements fall into first** -- the fix was a 2-tier concept, not a better color pick.
 `docs/context_budget.yml`'s cap for `docs/ui/design_system.md` raised 10000 -> 10700 (its
-own header sanctions this given a stated reason). Took 3 review rounds -- round 2 correctly
-FAILed on `contract.md` describing a heading section that didn't ship (folded into the
-existing Tokens section instead, for budget) plus a miscounted selector list.
+own header sanctions this given a stated reason).
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
