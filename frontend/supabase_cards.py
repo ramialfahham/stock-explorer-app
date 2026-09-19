@@ -20,8 +20,15 @@ PAGE_SIZE = 1000
 #   company_type, currency         -- pick and format the row's lead metric
 #   ebit_margin_basis              -- metric_label()'s "(annual)" variant
 #   ebit/roe/runway                -- card_copy._LEAD_METRIC_BY_TYPE, one per company type
-# Adding a column here costs every visitor on the cold path; adding one to the card face costs
-# nobody until that card is opened.
+#   net_debt_to_ebitda             -- explore_filters.METRIC_PRESETS "Low debt"
+#   revenue_growth_yoy_pct         -- explore_filters.METRIC_PRESETS "Growing revenue"
+# net_debt_to_ebitda/revenue_growth_yoy_pct were missing here until a real card_matches_metric_
+# presets() bug: a metric absent from the row is treated as "unknown, don't exclude" (the same
+# omit-never-fake rule as everywhere else in this app), so both presets silently matched every
+# card regardless of its actual debt or growth. Two more floats per row costs ~50-60 KB across
+# the whole deck (measured), against an already-~1.4 MB payload -- not the kind of cost this
+# column list exists to keep out. Adding a column here costs every visitor on the cold path;
+# adding one to the card face costs nobody until that card is opened.
 DECK_COLUMNS: tuple[str, ...] = (
     "market_code",
     "ticker",
@@ -35,6 +42,8 @@ DECK_COLUMNS: tuple[str, ...] = (
     "ebit_margin_pct",
     "statement_roe_pct",
     "cash_runway_months",
+    "net_debt_to_ebitda",
+    "revenue_growth_yoy_pct",
 )
 
 

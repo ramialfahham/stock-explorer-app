@@ -15,6 +15,34 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
+**Metric-preset filter bug: FIXED, MR !197 open, awaiting owner review.** Owner report:
+"removing the filters seemed to be buggy, not going back to the full sample." Root cause
+(found by live reproduction, not from the owner's own framing of "removal" being broken):
+two of five metric-preset filters (Low debt, Growing revenue) checked
+`net_debt_to_ebitda`/`revenue_growth_yoy_pct`, neither fetched by `DECK_COLUMNS` --
+`_card_matches_preset`'s omit-never-fake rule treats a missing value as an automatic pass,
+so both silently matched everything. Fixed by adding both columns. Live-verified against
+production data: `Low debt` 1023 -> 617; `Low debt` + `Growing revenue` -> 546; removing
+just `Low debt` -> 878 (not a reset) -- the exact reported scenario, confirmed fixed.
+`metric_preset_options(cards)` now hides a preset only when its target company type(s) have
+zero eligible cards, general and data-driven rather than a hardcoded hide.
+**Correction mid-task, told to the owner directly:** first suspected `Cash-safe` was
+permanently empty (0 pre_revenue cards) from an unpaginated, undeduped scratchpad query.
+Redone with full pagination + dedup: 2 eligible pre_revenue cards exist (`au_asx200/DYL`,
+`au_asx200/NXG`). Owner decision after the correction: leave `Cash-safe` visible as-is
+(it's still visually inert today for a different reason -- both cards pass the check -- but
+that's not a "zero population" case the general guard should act on). 844 tests pass,
+em-dash check clean, both reviewers PASS.
+
+**Discover list color/contrast for interactive elements: NOT STARTED.** Owner flagged
+(screenshot review) that non-"Discover" interactive elements (list rows, Filters button,
+search box) read as too visually similar to the dark background -- only the gold "Discover"
+active-nav pill stands out. Owner explicitly chose to **stay within the existing monochrome
+constraint** (`docs/ui/design_system.md`'s Authority line, from `north_star.md`) rather than
+introduce a new accent color -- add contrast via shade/border within monochrome, understated,
+not as loud as the gold pill. Interrupted before any exploration of `frontend/styles.py`'s
+actual color tokens or a concrete proposal. Next session: start there.
+
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
 (outside this repo). #2/#4/#6/#1 closed no code; #14/#15/#17/#18 skip/wait. **Lesson:
@@ -34,16 +62,12 @@ closing a session (renaming a live session's own cwd breaks its shell mid-sessio
 parenthetical, even accurate, is still unauthorized owner-reserved copy (round-2 catch).
 
 **Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184). Issue #22
-RESOLVED: MR !195 open.** Manually triggering the schedule dropped the ai_read null rate
-878/1045 (84%) -> 129/1047 (12.3%); the 87% remainder traced to one brittle regex
-requiring the literal "on these figures"/"on these numbers" phrase. Owner rejected a
-regex-widening fix as unsystematic; replaced with a structured tool-schema field
-(`verdict_meaning`, enum healthy/mixed/fragile) the model self-reports, checked against
-the deterministic verdict and against the read text itself -- same pattern
-`referenced_metrics` already uses. Verified against the real API 3x (before/after/re-check
-after a follow-up fix), not simulated. **Durable lesson: when a fix "feels like a hack,"
-the tell is usually real -- pattern-matching free text to infer something the model
-already knows is the wrong layer; make it state that structurally instead.**
+MERGED (!195).** Manually triggering the schedule dropped the ai_read null rate 84% ->
+12.3%; the remainder traced to a brittle regex on the read's closing phrase, replaced with
+a structured tool-schema field (`verdict_meaning`) the model self-reports, checked against
+the deterministic verdict and the read text itself. **Durable lesson: when a fix "feels
+like a hack," the tell is usually real -- pattern-matching free text to infer something the
+model already knows is the wrong layer; make it state that structurally instead.**
 
 **GitHub recovered/published (!185), search-card focus (!186), README AI-read diagram
 (!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
@@ -215,45 +239,22 @@ Numbered defects and gaps:
    the atomic export (MR !115) deletes the `(market, date)` pairs a payload covers, so a ticker
    leaves the deck when those take ALL its remaining rows. Whether it should evict BY SNAPSHOT
    AGE is still an owner call.
-2. **CLOSED 2026-09-15.** The growth metric's card copy told readers "one quarter can be
-   noisy, so look for a pattern over time" while the verdict's own growth gate
-   (`GROWTH_DECLINE_THRESHOLD_PCT = 0.0`) reacts to any single-quarter decline, no tolerance
-   -- a deliberate design the owner already confirmed by rejecting a -5% tolerance on this
-   exact argument. Owner decision: reword the catalogue copy (`revenue_growth_yoy_pct`'s
-   `interpretation`/`learn` fields) to state the genuine, verdict-consistent caveats
-   (selling off part of the business, currency swings, a contract landing in a different
-   quarter) instead of telling the reader to discount the signal.
-3. **The financial-type card's capital-adequacy caveat: closed.** MR !100 made it a
-   deterministic card-face line (`FINANCIAL_CAPITAL_ADEQUACY_CAVEAT`, owner wording); MR !137
-   moved it out of the health block so a withheld block no longer drops it (issue #11).
-   The wording states only the one invariant fact; "this bank" and "profitability only" were
-   both rejected in review as overclaims.
-4. **All 4 confirmed bugs from the Discover/Saved/Search UX findings fixed and merged**
-   (was `docs/backlog/discover_saved_search_ux_findings.md`, retired by Phase 3 -- its one open
-   tail is now issue #14): the stale Search selection resurfacing on an unrelated later query,
-   and the Search box / Discover filter both losing their value on tab switch, fixed 2026-09-04
-   (root cause: a KEYED Streamlit widget's session_state is evicted too when the widget isn't
-   rendered for one script run, not just unkeyed ones as first guessed -- the original doc's own
-   candidate fix, a bare `key=` on the Search box, would not have worked; fixed by making both
-   widgets unkeyed and managing their durable value as a plain session_state entry instead).
-   "Clear saved" had no confirmation/undo, fixed 2026-09-05 (in-place two-click popover swap;
-   also added per-item Saved removal, previously impossible).
-5. **CLOSED 2026-09-15 by Phase 3.** The 3 backlog docs that were genuinely open
-   (`discover_metric_filters_phase2.md`, `name_vs_yfinance_audit_guard.md`, and item 4's Saved
-   pagination tail) are retired; their content is now GitLab issues #13, #19, and #14
-   respectively, on milestones "1 · Discover depth" / "2 · Data quality".
-6. **Free-tier Supabase idle-pause: CLOSED 2026-09-08.** Two UptimeRobot monitors now exist,
-   documented in `docs/operations_guide.md`: one on `stock-explorer-app.onrender.com` (Render
-   sleeps the web service after ~15 min idle) and one hitting the Supabase REST API directly
-   (the project pauses after ~7 days with no activity). **The app monitor alone never covered
-   the database**, which is the trap worth remembering: a plain HTTP request to a Streamlit
-   app returns only the static shell, because Streamlit runs the app script on websocket
-   connect, not on GET. Verified by response body, which contains no card data. Until the
-   second monitor was added the database was uncovered and only survived on real visits.
-   **Closed on the setup being in place, not on observed effect** -- the database monitor
-   cannot be seen working for ~7 days. `docs/operations_guide.md` records how to verify it.
-   The app monitor's interval is recorded there (5 min); the database monitor's configured
-   interval was not captured, only the requirement that it be well under 7 days.
+2. **CLOSED 2026-09-15.** Growth metric card copy contradicted the verdict's own
+   zero-tolerance growth gate; reworded to state genuine, verdict-consistent caveats
+   instead of telling the reader to discount the signal. Detail in that MR's contract.md.
+3. **CLOSED.** Financial-card capital-adequacy caveat: deterministic card-face line
+   (MR !100), moved out of the health block so a withheld block no longer drops it (MR !137,
+   issue #11).
+4. **CLOSED.** All 4 Discover/Saved/Search UX bugs fixed (stale Search selection
+   resurfacing, Search/filter value loss on tab switch -- root cause: KEYED widgets evict
+   too, not just unkeyed; Clear-saved confirmation/undo + per-item removal). Detail in each
+   MR's contract.md/review.md.
+5. **CLOSED 2026-09-15 by Phase 3.** 3 backlog docs retired; content is now GitLab issues
+   #13, #19, #14.
+6. **CLOSED 2026-09-08.** Free-tier Supabase idle-pause: two UptimeRobot monitors
+   (`docs/operations_guide.md`), one on the Render app, one hitting Supabase directly --
+   **the app monitor alone never covered the database**, a plain HTTP GET only returns
+   Streamlit's static shell (websocket-driven), not a real page load.
 7. **`supabase/migrations/001_initial_schema.sql`'s `user_interactions.action` CHECK
    constraint only allows `('save', 'skip')`**, stale as of 2026-09-05 against the app-level
    introduction of a third action, `'unsave'` (per-item Saved removal). No live path writes to

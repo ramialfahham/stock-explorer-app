@@ -479,7 +479,7 @@ def _render_explore_filters(client) -> None:
                 st.session_state["explore_sector"] = selected_sector
                 _on_filter_change()
                 st.rerun()
-            preset_ids = metric_preset_options()
+            preset_ids = metric_preset_options(cards)
             stored_presets = [p for p in metric_presets if p in preset_ids]
             selected_presets = st.pills(
                 "Metric filters",
