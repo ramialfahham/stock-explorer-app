@@ -153,49 +153,6 @@ def test_save_card_from_discover_appears_in_saved(app_test: AppTest, cookie_scri
     assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
 
-def test_not_now_review_list_round_trip(app_test: AppTest, cookie_scripts) -> None:
-    """Issue #16: a company tapped "Not now" on Discover must be reachable again -- via
-    the overflow menu's "Not now" list -- and Save from there must move it into Saved."""
-    at = app_test.run()
-    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
-    _assert_clean(at)
-    at = at.button(key="discover_skip").click().run()
-    _assert_clean(at)
-
-    # The overflow menu's button is reachable regardless of the popover's visual open
-    # state -- AppTest tracks the widget tree, not rendered visibility.
-    at = at.button(key="menu_open_not_now").click().run()
-    _assert_clean(at)
-    assert _row_button(at, "not_now_row_us_sp500::ALFA") is not None
-    assert _row_button(at, "not_now_row_us_sp500::BETA") is None
-
-    at = at.button(key="not_now_row_us_sp500::ALFA").click().run()
-    _assert_clean(at)
-    at = at.button(key="not_now_save").click().run()
-    _assert_clean(at)
-
-    at = at.button(key="menu_open_not_now").click().run()
-    _assert_clean(at)
-    assert _row_button(at, "not_now_row_us_sp500::ALFA") is None
-
-    at = at.button(key="nav_saved").click().run()
-    _assert_clean(at)
-    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
-
-
-def test_not_now_panel_closes_when_switching_tabs(app_test: AppTest) -> None:
-    at = app_test.run()
-    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
-    at = at.button(key="discover_skip").click().run()
-    at = at.button(key="menu_open_not_now").click().run()
-    _assert_clean(at)
-    assert at.session_state["not_now_open"] is True
-
-    at = at.button(key="nav_saved").click().run()
-    _assert_clean(at)
-    assert at.session_state["not_now_open"] is False
-
-
 def test_reclicking_discover_while_a_discover_card_is_open_returns_to_the_list(
     app_test: AppTest,
 ) -> None:
@@ -239,78 +196,61 @@ def test_reclicking_saved_while_a_saved_card_is_open_returns_to_the_list(
     assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
 
-def test_reclicking_discover_while_the_not_now_panel_is_open_closes_it(
-    app_test: AppTest,
-) -> None:
-    """Third manifestation of the same root cause: the Not-now overlay is only ever closed
-    by a genuine tab switch or its own Close button -- re-tapping the tab you're already on
-    used to be a no-op here too."""
-    at = app_test.run()
-    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
-    at = at.button(key="discover_skip").click().run()
-    at = at.button(key="menu_open_not_now").click().run()
-    _assert_clean(at)
-    assert at.session_state["not_now_open"] is True
-
-    at = at.button(key="nav_discover").click().run()
-    _assert_clean(at)
-    assert at.session_state["not_now_open"] is False
-    assert _row_button(at, "discover_row_us_sp500::BETA") is not None
-
-
-def test_skip_queues_a_cookie_write(app_test: AppTest, cookie_scripts) -> None:
-    """The regression this guards: skip/unskip used to be session-only (browser_storage.py's
-    own docstring said so), which was fine while nothing visible depended on it surviving a
-    reload. Issue #16 makes Not-now a real, revisitable list, so a skip must now persist the
-    same way a save does -- under its own cookie namespace, not the saved one."""
-    at = app_test.run()
-    at = at.button(key="discover_row_us_sp500::ALFA").click().run()
-    writes_before = [b for b in cookie_scripts if "ss_skipped_" in b]
-    assert writes_before == []
-    at = at.button(key="discover_skip").click().run()
-    _assert_clean(at)
-    writes = [b for b in cookie_scripts if "ss_skipped_" in b]
-    assert len(writes) == 1
-    assert "us_sp500:ALFA:" in writes[0]
-
-
-def test_clear_saved_does_not_clear_the_not_now_list(app_test: AppTest, cookie_scripts) -> None:
-    """Clear saved's own confirmation names only the saved count -- it must not silently
-    also wipe Not-now, which it would have before this task since clear_interactions()
-    reset the whole interactions list wholesale."""
+def test_clear_saved_confirms_before_clearing(app_test: AppTest, cookie_scripts) -> None:
+    """`Clear saved` lives on the Saved tab itself now, next to the count it acts on (moved
+    out of the shared overflow menu) -- confirms in place before wiping, same two-step
+    flow as before under its new key names."""
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     at = at.button(key="discover_save").click().run()
-    at = at.button(key="nav_discover").click().run()
-    at = at.button(key="discover_row_us_sp500::BETA").click().run()
-    at = at.button(key="discover_skip").click().run()
+    at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
-    at = at.button(key="menu_clear_saved").click().run()
-    at = at.button(key="menu_clear_saved_confirm").click().run()
+    at = at.button(key="saved_clear").click().run()
     _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None, (
+        "clicking Clear saved must ask for confirmation, not clear immediately"
+    )
 
-    at = at.button(key="menu_open_not_now").click().run()
+    at = at.button(key="saved_clear_confirm").click().run()
     _assert_clean(at)
-    assert _row_button(at, "not_now_row_us_sp500::BETA") is not None
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is None
 
 
-def test_not_now_remove_drops_it_without_saving(app_test: AppTest) -> None:
+def test_clear_saved_cancel_leaves_the_list_untouched(app_test: AppTest) -> None:
     at = app_test.run()
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
-    at = at.button(key="discover_skip").click().run()
-    at = at.button(key="menu_open_not_now").click().run()
-    at = at.button(key="not_now_row_us_sp500::ALFA").click().run()
-    at = at.button(key="not_now_remove").click().run()
+    at = at.button(key="discover_save").click().run()
+    at = at.button(key="nav_saved").click().run()
+    at = at.button(key="saved_clear").click().run()
+    at = at.button(key="saved_clear_cancel").click().run()
     _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is not None
 
-    at = at.button(key="menu_open_not_now").click().run()
-    _assert_clean(at)
-    assert _row_button(at, "not_now_row_us_sp500::ALFA") is None
+
+def test_saved_row_has_its_own_remove_button(app_test: AppTest) -> None:
+    """Each Saved row carries its own `Remove` control now, so dropping one company no
+    longer requires opening its card first -- owner feedback: "why not making it possible
+    to remove individual stocks as well" against the old clear-all-only flow."""
+    at = app_test.run()
+    at.session_state["interactions"] = [
+        _save_interaction("ALFA", seconds=1),
+        _save_interaction("BETA", seconds=2),
+    ]
+    at.session_state["_interactions_storage_loaded"] = True
+    at = at.run()
 
     at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
-    assert _row_button(at, "saved_row_us_sp500::ALFA") is None
+    assert _row_button(at, "saved_row_remove_us_sp500::ALFA") is not None
+
+    at = at.button(key="saved_row_remove_us_sp500::ALFA").click().run()
+    _assert_clean(at)
+    assert _row_button(at, "saved_row_us_sp500::ALFA") is None, "removed, not just closed"
+    assert _row_button(at, "saved_row_us_sp500::BETA") is not None, (
+        "removal must be scoped to the row's own Remove button, not the whole list"
+    )
 
 
 def test_remove_from_saved_only_removes_that_card(app_test: AppTest) -> None:
@@ -385,17 +325,17 @@ def test_discover_persistent_search_replaces_filters_and_pool(app_test: AppTest)
     assert _row_button(at, "discover_row_us_sp500::ALFA") is not None
     assert _row_button(at, "discover_row_us_sp500::BETA") is None
     assert _scope_stats_line_present(at), "the count still shows -- now the search-match count"
-    assert any('match “ALFA”' in v for v in _rendered_markdown(at)), (
-        "the label must name the search, not claim a filter narrowed the list"
+    stats_lines = [v for v in _rendered_markdown(at) if "ss-header-stats" in v]
+    assert any("1 company" in v for v in stats_lines), (
+        "the label counts the search-matched pool, same form as plain browsing"
     )
-    assert not any("match your filters" in v for v in _rendered_markdown(at))
 
 
-def test_discover_persistent_search_selected_card_has_save_and_not_now_buttons(
+def test_discover_persistent_search_selected_card_has_save_button(
     app_test: AppTest,
 ) -> None:
     """A card opened from search is exactly as capable as one opened from the filtered
-    list -- Save/Not now, not read-only. The earlier read-only carve-out (AskUserQuestion,
+    list -- Save, not read-only. The earlier read-only carve-out (AskUserQuestion,
     "a separately-scoped follow-up") was itself a symptom of search being a second, lesser
     code path; unifying search into the same list-to-card mechanism the filtered list uses
     removes the special case rather than requiring a flag to preserve it."""
@@ -404,7 +344,6 @@ def test_discover_persistent_search_selected_card_has_save_and_not_now_buttons(
     at = at.button(key="discover_row_us_sp500::ALFA").click().run()
     _assert_clean(at)
     assert _row_button(at, "discover_save") is not None
-    assert _row_button(at, "discover_skip") is not None
 
 
 def test_discover_persistent_search_selected_card_enters_focused_state(
@@ -578,7 +517,10 @@ def test_saved_count_shows_only_on_the_saved_tab(app_test: AppTest, cookie_scrip
 
     at = at.button(key="nav_saved").click().run()
     _assert_clean(at)
-    assert any("1 saved" in v and "ss-header-stats--solo" in v for v in _rendered_markdown(at))
+    assert any("1 saved" in v and "ss-header-stats--inline" in v for v in _rendered_markdown(at)), (
+        "the Saved-tab list header shows the saved count, now alongside its own "
+        "Clear saved control"
+    )
 
     at = at.button(key="saved_row_us_sp500::ALFA").click().run()
     _assert_clean(at)

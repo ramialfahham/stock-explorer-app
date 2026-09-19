@@ -2,50 +2,50 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: 248031f2361e623f17db06c9bb6036e8911d61ec95d72ef5cb2d2b93dc93e84d
+diff_sha256: 6faeceec4d23ac0c8b98a8d9ff9cb99e8f983b94705f192ecaf7be95c3c8969a
 
-Round 1 (before `docs/context_budget.yml` entered scope): both PASS.
-Round 2 (after the budget-bump file was added to scope, before the contract was corrected to
-match the actual doc shape): both FAIL -- `contract.md` claimed a new "Content vs control
-tier" H2 heading in `docs/ui/design_system.md` that did not exist (the content was folded
-into the existing Tokens section to stay inside the byte budget), the required anti-pattern
-bullet was missing, and `impact_map` miscounted the repointed selector blocks as six instead
-of five. All three fixed in `contract.md` and `docs/ui/design_system.md`.
+This task ran many review rounds; only the final passing round is recorded in full below,
+per this file's own convention. Every prior round found a real, concrete gap and required a
+real fix before the next round -- summarized in `.claude/task/contract.md`'s objective
+points 6-7, not restated here.
 
-## cto-reviewer (round 3, final)
+## cto-reviewer (final)
 VERDICT: PASS
 risks_checked:
-- Guard integrity on `docs/context_budget.yml`: the budget for `docs/ui/design_system.md`
-  was raised 10000 -> 10700. `scripts/check_context_budget.py`'s own docstring explicitly
-  sanctions raising the number in the same MR with a stated reason; measured the actual
-  post-diff file at 10621 bytes (CRLF-collapsed), comfortably under the new cap. Pre-diff
-  size was 9853 bytes, confirming this is real growth from new content, not a pre-existing
-  overage being papered over.
-- `done_when` vs actual diff shape: the diff adds two rows to the existing Tokens table
-  plus an extension to the existing "Two radius tiers..." paragraph -- no new H2 heading
-  anywhere in the file. `contract.md` now describes exactly this.
-- `impact_map` selector count: counted the diff's five repointed selector blocks
-  (`button[kind="secondary"]`, the combined link-button secondary/tertiary rule,
-  `stPopoverButton`, its icon-button variant, `stTextInput`) -- matches the corrected count.
-- Anti-pattern bullet present verbatim as described in the contract.
-- No test breakage: `tests/frontend/test_styles.py`'s token-aware assertions
-  (`TOKEN_DECL`, `FONT_SIZE_DECL`) only match rem/px/em/%-valued declarations, so the two
-  new hex-color tokens fall outside their scope.
-- Em-dash rule: every newly added line uses plain `--`; the only dash-character hits in the
-  diff land on unchanged context lines.
-- Content-tier isolation: `.ss-row`, `.ss-card`, `stExpander` remain untouched, still on
-  `--ss-surface`/`--ss-border`.
-- No new mechanism, dependency, secret, or cost/frequency change.
+- New mechanisms: diff touches only `frontend/`, `docs/`, `tests/`, and the two task files --
+  zero changes under `scripts/`, `.gitlab-ci.yml`, `.claude/review_routing.json`, or any
+  hook/dependency file. No new dependency, service, lifecycle hook, or workflow step.
+- Guard-path integrity: `review_input.patch` verified against `git diff --cached --stat`
+  line-for-line. Both budget raises (`.claude/task/contract.md` 8000 -> 9500,
+  `docs/ui/discover_header.md` 9000 -> 9300) checked against the actual diff and both carry
+  a stated reason in `done_when`.
+- Re-run gates directly: `check_context_budget.py`, `check_no_em_dash.py`, `pytest tests/`
+  (828 passed) all run fresh, not trusted from the contract's claim.
+- Cost/secrets: no requirements/lockfile change, no CI frequency or API-volume change,
+  nothing resembling a credential in the diff.
+- Repo-wide dead-code/stale-doc sweep (not scope-limited): every removed name
+  (`render_row_list`, `.ss-menu-*`, `discover_pool_summary`, `SKIP_COOKIE_PREFIX`,
+  `skipped_state`, `skipped_keys_with_order`, `render_overflow_menu`, `not_now_*`, `⋯`) has
+  zero remaining live reference outside historical-removal prose or the two exempt archived
+  handover docs.
+- `impact_map` accuracy: correctly states "seven" `frontend/` files and lists exactly seven.
 
-## scope-auditor (round 3, final)
+## scope-auditor (final)
 VERDICT: PASS
 risks_checked:
-- Control-tier selector coverage: all five selector blocks consistently repointed from
-  `--ss-surface`/`--ss-border` to `--ss-surface-control`/`--ss-border-control` with no
-  partial or missed updates.
-- Content-tier selector preservation: `.ss-row` and `stExpander` remain completely
-  untouched, keeping their original token bindings.
-- Documentation sync: `docs/ui/design_system.md` landed all four required additions (two
-  token rows, extended paragraph, anti-pattern bullet, extended checklist line);
-  `docs/context_budget.yml` raised the budget with the stated reason.
-- No em-dashes or en-dashes on any added or edited line across the branch diff.
+- Every user-visible copy string this diff touches (`frontend/overflow_menu.py`'s About
+  intro and sourcing line, `frontend/app.py`'s stats line and nav/button labels) traces to a
+  recorded owner decision with an actual owner quote in `contract.md` objective points 1, 3
+  and 5 -- no silently-invented wording.
+- `scope_paths` covers all 26 files in the diff exactly, no stale entries beyond the
+  not-yet-staged `review.md` itself (expected).
+- `review_input.patch` byte-identical to a fresh `git diff --cached` -- not stale.
+- Whole-repo grep for "not now"/`skip`/`unskip`/`⋯` as a live mechanic: none found outside
+  historical-removal explanations and the two exempt archived handover docs. One pre-existing,
+  already-flagged, out-of-scope item (`supabase/migrations/001_initial_schema.sql`'s
+  `user_interactions.action` CHECK constraint) predates this task and has no live write path
+  -- not a new finding.
+- No stray `·` leak in any live f-string; the one remaining `·` in `overflow_menu.py` quotes
+  the old dropped copy inside a docstring, not rendered UI text.
+- No em-dash/en-dash on any added/edited line across the whole 2476-line patch.
+- No new dependency, widget type, or CI change.

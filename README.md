@@ -1,7 +1,7 @@
 # Stock Explorer
 
 An explore-and-learn stock app for finance-curious beginners — it turns company
-fundamentals into plain-language "snapshots" you scan one at a time, save, or skip.
+fundamentals into plain-language "snapshots" you scan one at a time and save the ones worth revisiting.
 Learning tool, **not** investment advice; batch fundamentals, **not** real-time trading.
 
 **About this project:** built to explore working with AI end to end, both in development

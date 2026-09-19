@@ -1,8 +1,10 @@
 """Shared row primitive — bordered, tappable HTML row + invisible overlay button.
 
-Used by Saved-list and Search results (Slice 6a). Mirrors card_ui.py's split: a pure
-build_*_html() function plus a render_*() function that calls Streamlit. See
-docs/ui/design_system.md for the token/primitive spec this implements.
+Used by Discover's list (`render_rich_row_list`, one lead metric per row -- also serves
+search results, which share Discover's own pool and rendering) and the Saved list
+(`render_removable_row_list`, a per-row `Remove` button alongside the tap target). Mirrors
+card_ui.py's split: a pure build_*_html() function plus a render_*() function that calls
+Streamlit. See docs/ui/design_system.md for the token/primitive spec this implements.
 """
 
 from __future__ import annotations
@@ -64,31 +66,6 @@ def build_rich_row_html(
     )
 
 
-def render_row_list(
-    items: list[_T],
-    *,
-    key_prefix: str,
-    on_select: Callable[[_T], None],
-    title_fn: Callable[[_T], str],
-    subtitle_fn: Callable[[_T], str],
-    row_key_fn: Callable[[_T], str],
-) -> None:
-    """Render a list of bordered, tappable rows.
-
-    Each row's whole surface is the tap target: HTML row content plus an invisible,
-    full-row overlay st.button (the button's own label is never shown — Streamlit centers
-    button text, so visible row copy always comes from the HTML, never the button label).
-    """
-    _render_tappable_rows(
-        items,
-        key_prefix=key_prefix,
-        on_select=on_select,
-        title_fn=title_fn,
-        row_key_fn=row_key_fn,
-        html_fn=lambda item: build_row_html(title_fn(item), subtitle_fn(item)),
-    )
-
-
 def render_rich_row_list(
     items: list[_T],
     *,
@@ -99,7 +76,10 @@ def render_rich_row_list(
     metric_fn: Callable[[_T], tuple[str, str] | None],
     row_key_fn: Callable[[_T], str],
 ) -> None:
-    """Same tap-target mechanics as `render_row_list`, using the richer row instead."""
+    """Bordered, tappable rows with one lead metric alongside title/subtitle. Each row's
+    whole surface is the tap target: HTML row content plus an invisible, full-row overlay
+    st.button (the button's own label is never shown -- Streamlit centers button text, so
+    visible row copy always comes from the HTML, never the button label)."""
     _render_tappable_rows(
         items,
         key_prefix=key_prefix,
@@ -110,6 +90,43 @@ def render_rich_row_list(
             title_fn(item), subtitle_fn(item), metric_fn(item)
         ),
     )
+
+
+def render_removable_row_list(
+    items: list[_T],
+    *,
+    key_prefix: str,
+    on_select: Callable[[_T], None],
+    on_remove: Callable[[_T], None],
+    title_fn: Callable[[_T], str],
+    subtitle_fn: Callable[[_T], str],
+    row_key_fn: Callable[[_T], str],
+) -> None:
+    """Bordered, tappable rows (same tap-target mechanics as `render_rich_row_list`, minus
+    the lead metric) plus a per-row `Remove` button in its own column, outside the row's own
+    invisible overlay -- tapping the row opens the card, tapping `Remove` drops it from the
+    list without opening it. Used by the Saved list, so dropping one company no longer
+    requires opening it first."""
+    st.markdown('<div class="ss-row-group" aria-hidden="true"></div>', unsafe_allow_html=True)
+    for item in items:
+        with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+            with st.container(width="stretch"):
+                st.markdown(
+                    build_row_html(title_fn(item), subtitle_fn(item)), unsafe_allow_html=True
+                )
+                if st.button(
+                    title_fn(item),
+                    key=f"{key_prefix}_{row_key_fn(item)}",
+                    use_container_width=True,
+                    type="secondary",
+                ):
+                    on_select(item)
+                    st.rerun()
+            if st.button(
+                "Remove", key=f"{key_prefix}_remove_{row_key_fn(item)}", type="secondary"
+            ):
+                on_remove(item)
+                st.rerun()
 
 
 def _render_tappable_rows(

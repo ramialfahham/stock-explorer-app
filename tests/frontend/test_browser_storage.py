@@ -50,19 +50,9 @@ def test_saved_state_keeps_the_latest_action_per_key_and_only_saves() -> None:
         _row("AAPL", "save", "2026-09-01T10:00:00+00:00"),
         _row("MSFT", "save", "2026-09-02T10:00:00+00:00"),
         _row("AAPL", "unsave", "2026-09-03T10:00:00+00:00"),
-        _row("SAP.DE", "skip", "2026-09-03T11:00:00+00:00", market="de_dax"),
+        _row("SAP.DE", "other", "2026-09-03T11:00:00+00:00", market="de_dax"),
     ]
     assert bs.saved_state(rows) == [["us_sp500", "MSFT", 1788343200]]
-
-
-def test_skipped_state_keeps_the_latest_action_per_key_and_only_skips() -> None:
-    rows = [
-        _row("AAPL", "skip", "2026-09-01T10:00:00+00:00"),
-        _row("MSFT", "skip", "2026-09-02T10:00:00+00:00"),
-        _row("AAPL", "unskip", "2026-09-03T10:00:00+00:00"),
-        _row("SAP.DE", "save", "2026-09-03T11:00:00+00:00", market="de_dax"),
-    ]
-    assert bs.skipped_state(rows) == [["us_sp500", "MSFT", 1788343200]]
 
 
 def test_saved_state_orders_by_save_time() -> None:
@@ -94,12 +84,12 @@ def test_encode_decode_round_trip_including_dots_and_dashes_in_tickers() -> None
     assert bs.decode_cookies({"ss_saved_0": chunks[0]}) == state
 
 
-def test_decode_cookies_uses_the_skip_prefix_independently_of_the_saved_one() -> None:
+def test_decode_cookies_reads_only_its_own_prefix() -> None:
     saved_chunks = bs.encode_cookies([["us_sp500", "AAPL", 1]])
-    skip_chunks = bs.encode_cookies([["us_sp500", "MSFT", 2]])
-    cookies = {"ss_saved_0": saved_chunks[0], "ss_skipped_0": skip_chunks[0]}
+    other_chunks = bs.encode_cookies([["us_sp500", "MSFT", 2]])
+    cookies = {"ss_saved_0": saved_chunks[0], "ss_other_0": other_chunks[0]}
     assert bs.decode_cookies(cookies, prefix=bs.COOKIE_PREFIX) == [["us_sp500", "AAPL", 1]]
-    assert bs.decode_cookies(cookies, prefix=bs.SKIP_COOKIE_PREFIX) == [["us_sp500", "MSFT", 2]]
+    assert bs.decode_cookies(cookies, prefix="ss_other_") == [["us_sp500", "MSFT", 2]]
 
 
 def test_encode_splits_a_long_list_across_numbered_cookies_and_decode_rejoins() -> None:
@@ -140,16 +130,6 @@ def test_ensure_loaded_reads_the_cookie_once_and_flags_a_sync(monkeypatch) -> No
     assert [r["ticker"] for r in bs.ensure_interactions_loaded()] == ["MMM"]
 
 
-def test_ensure_loaded_combines_saved_and_skipped_cookies(monkeypatch) -> None:
-    monkeypatch.setattr(
-        bs,
-        "_request_cookies",
-        lambda: {"ss_saved_0": "us_sp500:AAPL:1", "ss_skipped_0": "us_sp500:MSFT:2"},
-    )
-    rows = bs.ensure_interactions_loaded()
-    assert {(r["ticker"], r["action"]) for r in rows} == {("AAPL", "save"), ("MSFT", "skip")}
-
-
 def test_ensure_loaded_with_no_cookie_gives_an_empty_list_and_no_rerun(
     monkeypatch, fake_reruns
 ) -> None:
@@ -159,26 +139,12 @@ def test_ensure_loaded_with_no_cookie_gives_an_empty_list_and_no_rerun(
     assert fake_reruns == []
 
 
-def test_a_save_queues_the_save_write_not_the_skip_one(monkeypatch) -> None:
+def test_a_save_queues_the_write(monkeypatch) -> None:
     monkeypatch.setattr(bs, "_request_cookies", lambda: {})
     bs.ensure_interactions_loaded()
     bs.append_interaction({"market_code": "us_sp500", "ticker": "MMM"}, "save")
     chunks = st.session_state[bs._WRITE_PENDING_KEY]
     assert len(chunks) == 1 and chunks[0].startswith("us_sp500:MMM:")
-    assert bs._SKIP_WRITE_PENDING_KEY not in st.session_state
-
-
-def test_a_skip_queues_the_skip_write_not_the_save_one(monkeypatch) -> None:
-    """The regression this guards: skip/unskip used to be session-only (no cookie write at
-    all), which was fine while nothing visible depended on it surviving a reload. Issue #16
-    makes Not-now a real, revisitable list, so a skip must persist too -- under its own
-    cookie namespace, not the saved one."""
-    monkeypatch.setattr(bs, "_request_cookies", lambda: {})
-    bs.ensure_interactions_loaded()
-    bs.append_interaction({"market_code": "us_sp500", "ticker": "MMM"}, "skip")
-    chunks = st.session_state[bs._SKIP_WRITE_PENDING_KEY]
-    assert len(chunks) == 1 and chunks[0].startswith("us_sp500:MMM:")
-    assert bs._WRITE_PENDING_KEY not in st.session_state
 
 
 def test_unsave_queues_a_write_without_the_key(monkeypatch) -> None:
@@ -195,25 +161,6 @@ def test_clear_queues_an_empty_write_and_reruns(monkeypatch, fake_reruns) -> Non
     assert bs.get_interactions() == []
     assert st.session_state[bs._WRITE_PENDING_KEY] == [""]
     assert len(fake_reruns) == 1
-
-
-def test_clear_interactions_leaves_skip_rows_untouched(monkeypatch, fake_reruns) -> None:
-    """Clear saved's own confirmation names only the saved count -- it must not silently
-    also wipe Not-now (issue #16), which the pre-issue-#16 clear_interactions() would have
-    done by resetting the whole interactions list wholesale."""
-    monkeypatch.setattr(
-        bs,
-        "_request_cookies",
-        lambda: {"ss_saved_0": "us_sp500:AAPL:1", "ss_skipped_0": "us_sp500:MSFT:2"},
-    )
-    bs.ensure_interactions_loaded()
-    bs.clear_interactions()
-    remaining = bs.get_interactions()
-    assert [r["ticker"] for r in remaining] == ["MSFT"]
-    assert remaining[0]["action"] == "skip"
-    assert bs._SKIP_WRITE_PENDING_KEY not in st.session_state, (
-        "clear_interactions must not touch the skip cookie at all"
-    )
 
 
 # --- the rendered scripts ---
@@ -233,20 +180,6 @@ def test_flush_renders_the_write_script_once_then_nothing(monkeypatch, rendered_
     assert f"max-age={bs.COOKIE_MAX_AGE_SECONDS}" in script
     bs.flush_storage_writes()
     assert len(rendered_html) == 1
-
-
-def test_flush_renders_both_scripts_when_save_and_skip_are_both_pending(
-    monkeypatch, rendered_html
-) -> None:
-    monkeypatch.setattr(bs, "_request_cookies", lambda: {"ss_saved_0": "us_sp500:MMM:1"})
-    st.session_state[bs._MIGRATION_CHECKED_FLAG] = True
-    bs.ensure_interactions_loaded()
-    bs.append_interaction({"market_code": "de_dax", "ticker": "SAP.DE"}, "save")
-    bs.append_interaction({"market_code": "us_sp500", "ticker": "MMM"}, "skip")
-    bs.flush_storage_writes()
-    assert len(rendered_html) == 2
-    assert any('"ss_saved_"' in s for s in rendered_html)
-    assert any('"ss_skipped_"' in s for s in rendered_html)
 
 
 def test_flush_renders_the_migration_only_on_a_cookieless_first_run(

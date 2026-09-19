@@ -1,18 +1,11 @@
-"""Tests for overflow menu copy helpers."""
+"""Tests for the About popover's copy helpers."""
 
 from __future__ import annotations
 
 from datetime import date
 
-from explore_filters import ALL_MARKETS, ALL_SECTORS  # noqa: E402
-from markets import eligible_breakdown_lines, latest_snapshot_label  # noqa: E402
-from overflow_menu import (  # noqa: E402
-    MENU_METRICS_LINE,
-    discover_scope_line,
-    markets_line,
-    quick_tip_line,
-    right_now_line,
-)
+from markets import latest_snapshot_label  # noqa: E402
+from overflow_menu import MENU_ABOUT_INTRO, MENU_METRICS_LINE, markets_line  # noqa: E402
 
 
 def test_markets_line_names_only_markets_that_have_cards() -> None:
@@ -36,53 +29,28 @@ def test_markets_line_is_empty_without_cards() -> None:
     assert markets_line({}) == ""
 
 
-def test_markets_line_and_the_breakdown_cannot_disagree() -> None:
-    """Both lines render in the same expander, so a drifted order is visible to one user.
-
-    They shared a copied sort key in two modules until `markets_in_deck_order` was extracted.
-    This pins the property rather than the extraction, so it still holds if either is rewritten.
-    """
-    counts = {"jp_nikkei225": 60, "us_sp500": 400, "au_asx200": 180, "de_dax": 39}
-    from_line = markets_line(counts).removeprefix("Markets: ").split(", ")
-    from_breakdown = [entry.rsplit(": ", 1)[0] for entry in eligible_breakdown_lines(counts)]
-    assert from_line == from_breakdown
+def test_about_intro_does_not_describe_its_own_tone() -> None:
+    """Regression guard: an earlier draft said the app "turns filings into a plain-language
+    read" -- describing its own tone rather than just being plain, flagged directly by the
+    owner ("you don't just say it's plain language, you just be plain"). Pins the phrasing
+    this must not regress back to, not the exact wording, which is free to keep changing."""
+    assert "plain-language" not in MENU_ABOUT_INTRO.lower()
+    assert "plain language" not in MENU_ABOUT_INTRO.lower()
 
 
-def test_discover_scope_all_markets_sectors() -> None:
-    line = discover_scope_line(
-        market=ALL_MARKETS,
-        sector=ALL_SECTORS,
-    )
-    assert line == "Exploring: All markets · All sectors"
-
-
-def test_right_now_saved_tab() -> None:
-    line = right_now_line(active_tab="Saved", saved_count=3)
-    assert line == "3 saved companies on this device"
-    assert "learning list" not in line.lower()
-
-
-def test_right_now_saved_tab_singular() -> None:
-    line = right_now_line(active_tab="Saved", saved_count=1)
-    assert line == "1 saved company on this device"
+def test_about_intro_mentions_the_ai_read_is_grounded_in_the_cards_own_numbers() -> None:
+    assert "AI" in MENU_ABOUT_INTRO
+    assert "those same numbers" in MENU_ABOUT_INTRO
 
 
 def test_menu_metrics_line_has_no_stale_metric_count() -> None:
-    """Regression guard: this constant ("About the data" menu section) has been
-    rewritten multiple times in one task alone to drop a stale "five" metric-count
-    claim, each time caught only by manual inspection, not a test — the card's
-    per-company-type metric count varies (8/7/4, never exactly 5), so this must
-    never assert a specific number again."""
+    """Regression guard: this constant has been rewritten multiple times to drop a stale
+    "five" metric-count claim, each time caught only by manual inspection, not a test -- the
+    card's per-company-type metric count varies (8/7/4, never exactly 5), so this must never
+    assert a specific number again."""
     assert "five" not in MENU_METRICS_LINE.lower()
     assert "—" not in MENU_METRICS_LINE
     assert MENU_METRICS_LINE == "Fundamentals per company, no substitutes"
-
-
-def test_quick_tip_varies_by_tab() -> None:
-    discover = quick_tip_line(active_tab="Discover")
-    assert "Save keeps" in discover
-    assert "learning list" not in discover.lower()
-    assert "headlines" in quick_tip_line(active_tab="Saved")
 
 
 def test_latest_snapshot_label_picks_max_date() -> None:

@@ -23,8 +23,10 @@ that company's type, plain language, optional depth. **Discover** is scoped expl
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
 buys or sells.
 
-**Interaction model:** **Save** and **Not now** (formerly Skip) — not swipe gestures or
-dating-app patterns.
+**Interaction model:** **Save** -- not swipe gestures or dating-app patterns. A second
+action, **Not now**, existed through v2.5 and was removed: it only ever returned to the
+list, the same as the list's own back control, and its `skip` interaction had no
+downstream effect anything read.
 
 ---
 
@@ -37,8 +39,8 @@ dating-app patterns.
 | Tone | Fun but serious; education integrated, never gimmicky |
 | Builder lens | Dashboard-like reduced overview; v1 optimizes for beginners |
 
-Use **“explore”**, **“save”**, **“not now”**, **“learning list”**. Do not use dating-app
-metaphors or opaque queue counters (e.g. global `1/834`) in product copy.
+Use **”explore”**, **”save”**, **”learning list”**. Do not use dating-app metaphors or
+opaque queue counters (e.g. global `1/834`) in product copy.
 
 ---
 
@@ -152,15 +154,7 @@ The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 - Entry point for headlines and external research (Yahoo Finance link on card footer).
 - Reversible: removing a company from Saved re-adds it to the scoped discover pool.
 
-### Not now (Skip)
-
-**Meaning:** “Not for me **right now**” — not “bad stock,” not permanent rejection.
-
-- Recorded as an interaction, with no visible effect on the list; the reader simply moves on
-  to whatever they choose next.
-- Always reachable via Discover's search box.
-
-Neither action deletes pipeline data.
+Save doesn't delete pipeline data.
 
 ### Saved — return habit (learning list)
 
@@ -209,7 +203,7 @@ Layout-level specs for agents and reviewers — ASCII wireframes, anti-patterns,
 |------|--------|
 | [`ui/design_system.md`](ui/design_system.md) | Design tokens (spacing, radius, type scale), shared row/button primitives |
 | [`ui/saved_list.md`](ui/saved_list.md) | Saved learning list rows, focus + headlines, freshness line |
-| [`ui/discover_header.md`](ui/discover_header.md) | Brand → tagline → nav (+ ⋯ inline) → filters → stats |
+| [`ui/discover_header.md`](ui/discover_header.md) | Brand → tagline → nav (+ About inline) → filters → stats |
 | [`ui/card_metric_cell.md`](ui/card_metric_cell.md) | Label / value / gloss hierarchy, value-aware copy |
 | [`ui/disclosure_pattern.md`](ui/disclosure_pattern.md) | Read more / Show less for long copy |
 

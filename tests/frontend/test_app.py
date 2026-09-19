@@ -82,7 +82,7 @@ def test_discover_page_slice_last_page_is_a_partial_page() -> None:
 
 
 def test_discover_page_slice_clamps_a_page_index_past_the_end() -> None:
-    """The pool can shrink after a page index was chosen (a filter change, a save/skip, a
+    """The pool can shrink after a page index was chosen (a filter change, a save, a
     shorter market) -- an unclamped index would slice past the end into an empty page instead
     of showing something."""
     pool = [{"ticker": str(i)} for i in range(10)]
@@ -257,14 +257,10 @@ def test_card_open_on_saved_follows_the_saved_focus_key() -> None:
     assert _card_open("Discover") is False
 
 
-# --- _save_card: the one place "save" is recorded, from any surface. Must also clear skip
-# status (issue #16) -- found the hard way in the Not-now panel's own Save button, then
-# generalized so no other Save button (e.g. Discover's sticky action) could reintroduce it.
+# --- _save_card: the one place "save" is recorded, from any surface.
 
 
-def test_save_card_also_clears_skip_status(monkeypatch: pytest.MonkeyPatch) -> None:
-    from explore_filters import skipped_keys_with_order
-
+def test_save_card_records_a_save_interaction(monkeypatch: pytest.MonkeyPatch) -> None:
     interactions: list[dict] = []
 
     def fake_append(card: dict, action: str) -> None:
@@ -274,7 +270,5 @@ def test_save_card_also_clears_skip_status(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(app_module, "append_interaction", fake_append)
     card = {"market_code": "us_sp500", "ticker": "ALFA"}
-    app_module.append_interaction(card, "skip")
-    assert skipped_keys_with_order(interactions) == {("us_sp500", "ALFA"): ""}
     app_module._save_card(card)
-    assert skipped_keys_with_order(interactions) == {}
+    assert interactions == [{"market_code": "us_sp500", "ticker": "ALFA", "action": "save"}]

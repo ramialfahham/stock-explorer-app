@@ -63,14 +63,14 @@ per-screen.
 Bordered, filled (`var(--ss-surface)`), `var(--ss-radius-surface)` corners. The whole row is
 the tap target — an invisible, full-row overlay `st.button` sits over the HTML row (never a
 visible button label; Streamlit centers button text, so visible copy always comes from the
-HTML). Implementation: `frontend/row_ui.py` — `build_row_html()` (pure) + `render_row_list()`
-(Streamlit-calling), mirroring `card_ui.py`'s own pure/render split.
+HTML). Implementation: `frontend/row_ui.py`, mirroring `card_ui.py`'s own pure/render split.
 
-**Who uses this today:** Saved-list rows and search results, via the plain row
-(`row_ui.render_row_list`); Discover's list, via the richer variant that adds one lead
-metric (`row_ui.render_rich_row_list`, see [`discover_list.md`](discover_list.md)).
-**Who doesn't:** every focus view (Discover, Saved, and a selected search result): those
-render the full card, not a row.
+**Who uses this today:** Discover's list and search results (they share one pool and one
+rendering path) via `row_ui.render_rich_row_list`, the richer variant that adds one lead
+metric (see [`discover_list.md`](discover_list.md)); the Saved list via
+`row_ui.render_removable_row_list`, which adds a per-row `Remove` button in its own column
+instead (see [`saved_list.md`](saved_list.md)). **Who doesn't:** every focus view (Discover,
+Saved, and a selected search result): those render the full card, not a row.
 
 ---
 
@@ -79,38 +79,32 @@ render the full card, not a row.
 - **Base radius + color** (global, Slice 6a + 6b): every `st.button` gets `var(--ss-radius-control)`
   by default (`[data-testid="stButton"] button`), and every `button[kind="primary"]`/
   `button[kind="secondary"]` gets the same accent-gold / bordered-surface skin app-wide — one
-  rule each, no per-surface scoping. Overflow's button and the Discover action bar render
-  identically as a result.
-- **Icon-button variant:** a marker div (`.ss-icon-btn-marker`) rendered immediately before
-  the trigger, e.g. `st.popover("⋯")`. Styled via `:has()` rather than DOM position
-  (`:last-child`) — position-based selectors silently jump to the wrong element if the row
-  is ever reordered. Any future icon-only trigger opts in by dropping the same marker
-  immediately before it.
-- **Nav pills use the base button variant, not a native widget.** The Discover/Saved nav
-  pills are plain `st.button()`s (`type="primary"` for the active tab, `"secondary"`
-  otherwise), not `st.segmented_control` -- that widget cannot report a click on the option
-  already selected, which made re-tapping the active tab a silent no-op. Plain buttons
-  fire on every click, so they get the same primary/secondary skin as any other button
-  here, no separate theming.
+  rule each, no per-surface scoping.
+- **Nav pills use the base button variant, not a native widget.** Discover/Saved/About are
+  three plain `st.button()`/`st.popover()` siblings (`type="primary"` for the active tab,
+  `"secondary"` otherwise), not `st.segmented_control` -- that widget cannot report a click
+  on the option already selected, which made re-tapping the active tab a silent no-op.
+  Plain buttons fire on every click, so they get the same primary/secondary skin as any
+  other button here, no separate theming. `About`'s label reads dimmer and keeps
+  Streamlit's own chevron (control-tier color override, see `docs/ui/discover_header.md`),
+  signaling "opens in place," not a fourth nav destination.
 
 ---
 
 ## Popover trigger (Slice 6b)
 
 Every `st.popover` trigger gets a base surface/border/`var(--ss-radius-control)` skin —
-one rule, `[data-testid="stPopoverButton"]` — so a text-labeled trigger like **Filters** and
-an icon-only one like **⋯** both read as the same control-tier chrome. The icon-button
-variant above layers its own square sizing on top of this base; it doesn't replace it.
+one rule, `[data-testid="stPopoverButton"]` -- so every text-labeled trigger (**Filters**,
+**About**) reads as the same control-tier chrome.
 
 ## Expander (Slice 6b)
 
 `st.expander` gets the same surface-tier treatment as the card and rows —
 `var(--ss-surface)` fill, `var(--ss-radius-surface)` corners, one rule,
-`[data-testid="stExpander"]` — instead of default Streamlit chrome. Covers every instance
-app-wide (currently: Overflow's "About the data", the card's one learn panel — "Understand
-these numbers", Slice 6c — which consolidated what used to be a separate HTML `<details>`
-plus a second "Practice with hypothetical numbers" expander into this single one); no
-per-surface exceptions.
+`[data-testid="stExpander"]` -- instead of default Streamlit chrome. Currently one instance:
+the card's own "Understand these numbers" learn panel (Slice 6c -- consolidated what used to
+be a separate HTML `<details>` plus a second "Practice with hypothetical numbers" expander
+into this single one); no per-surface exceptions.
 
 ## Link button (Slice 6b)
 
@@ -155,18 +149,18 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 
 ## 480px smoke
 
-- [ ] Saved row and a search-result row render with identical corner radius and padding
-- [ ] Overflow trigger's icon-button radius matches other control-tier elements
-- [ ] Overflow's "Clear saved" button renders with the same accent/surface skin as the
-      Discover action bar
-- [ ] Filters trigger and the ⋯ trigger render with the same surface/border chrome,
-      visibly lighter than a row, without looking loud
-- [ ] Both `st.expander` instances (Overflow "About the data", the card's one "Understand
-      these numbers" learn panel) render bordered/filled, not default Streamlit grey
+- [ ] Saved row and a search-result row render with identical corner radius and padding;
+      each Saved row's own `Remove` button sits outside the row's invisible tap target
+- [ ] `Filters` trigger and the `About` nav trigger render with the same surface/border
+      chrome, visibly lighter than a row, without looking loud
+- [ ] `Clear saved` (Saved tab, next to the saved count) renders with the same
+      accent/surface skin as the Discover action bar
+- [ ] The card's "Understand these numbers" `st.expander` renders bordered/filled, not
+      default Streamlit grey
 - [ ] Metric-label chips and the verdict badge render with the same control-tier radius
       as buttons/popover triggers
 - [ ] The card footer's "Yahoo Finance" link renders with the same secondary-button skin
-      as "Not now" on the sticky actions below it
+      as "Save" on the sticky action below it
 - [ ] No new bare `border-radius:`/`padding:` literal introduced in touched sections of
       `styles.py` — every value traces to a token in the table above
 
