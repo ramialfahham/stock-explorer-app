@@ -3,71 +3,73 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Owner-reported bug: "removing the filters seemed to be buggy, not going back to
-  the full sample of companies." Root cause, found by live reproduction across single- and
-  multi-filter scenarios, was not in filter removal itself -- the market/sector/metric-preset
-  widget state machinery is unkeyed by design (documented eviction-avoidance pattern) and
-  verified working correctly throughout. The real bug: two of five metric-preset filters
-  ("Low debt": `net_debt_to_ebitda`, "Growing revenue": `revenue_growth_yoy_pct`) checked
-  fields absent from `DECK_COLUMNS`, the slim column set the Discover/Saved list fetches.
-  `_card_matches_preset`'s "omit, never fake" rule treats a missing metric value as an
-  automatic pass, so both presets silently matched every card regardless of real debt/growth
-  -- selecting either did nothing, and removing one while another (also broken) preset stayed
-  selected looked like "removal doesn't restore the full sample."
+objective: Owner report (screenshot review): non-"Discover" interactive elements (list
+  rows, Filters, search box) read as too visually similar to the near-black page
+  background -- only the gold "Discover" active-nav pill stands out. Owner explicitly
+  chose to stay within the existing monochrome constraint (`docs/ui/design_system.md`'s
+  Authority line, from `north_star.md`) rather than introduce a new accent color.
 
-  Fix: added both fields to `DECK_COLUMNS`. Verified against live production Supabase data
-  (paginated, deduped to latest snapshot -- matching what the app itself does): "Low debt"
-  alone narrows 1023 -> 617; "Low debt" + "Growing revenue" together -> 546; removing just
-  "Low debt" -> 878 (the correct "Growing revenue"-only count, not a reset to 1023 and not
-  stuck at 546). This is the exact reported scenario, confirmed fixed live in the browser.
+  Iterated live (mockups, then a real dev-server trial) to reach a concept, not a one-off
+  color pick, after the owner rejected two earlier ad hoc passes as inconsistent ("sometimes
+  with a border, sometimes without... no concept"). Landed concept: two tonal tiers split by
+  FUNCTION, not by screen -- **content tier** (rows, the card, `st.expander`, chips: read or
+  tapped to navigate, no button chrome of their own, unchanged fill/border) vs **control
+  tier** (every actual button/input a user operates: `button[kind="secondary"]`, its
+  link-button twin, `st.popover` triggers incl. the icon variant, `st.text_input`: one step
+  lighter fill + a visibly brighter border). Applied via the existing shared selectors, so
+  it reaches every control app-wide in one rule, not just the ones on the Discover screen --
+  this is what fixed the `Saved` nav pill and the `⋯` overflow trigger without touching them
+  directly; the owner flagged both as still buried mid-review, before this app-wide framing
+  was applied. Gold (`button[kind="primary"]`) stays reserved for the one primary action per
+  view, untouched.
 
-  Separately investigated whether "Cash-safe" (pre_revenue only) should be hidden when its
-  target population is empty -- first diagnosed as always-empty (0 pre_revenue cards) from
-  an unpaginated, undeduped scratchpad query; owner asked to hide it on that basis. Redone
-  properly (full pagination + dedup): 2 eligible pre_revenue cards actually exist
-  (au_asx200/DYL, au_asx200/NXG), so the population is not empty -- corrected this to the
-  owner before proceeding. Built `metric_preset_options()` as a general, data-driven guard
-  (hides a preset only when its target company type(s) have zero eligible cards in the
-  current deck) rather than a hardcoded hide, so it doesn't act on the disproven premise.
-  Live-tested selecting "Cash-safe" alone: count stays at 1023 (both pre_revenue cards pass
-  the check -- one genuinely, one via the same omit-on-missing-data rule), so it's still
-  visually inert today, for a different reason (nothing in a real, non-empty population
-  currently fails it) than the one first reported. Owner decision on record: leave it
-  visible as-is; no further code change for that case.
+  Live-verified at mobile width (375px) against the real dev server, not synthetic swatches:
+  Discover's search box, Filters, the nav row's `Saved` pill and `⋯` overflow trigger, and a
+  card's `Not now` secondary action all read as one consistent "control" tier, visibly
+  lighter than rows/the card, without any of them reading as loud as the gold pill. Owner
+  confirmed: "looks better, write it up and open the MR."
 
 scope_paths:
-  - frontend/supabase_cards.py
-  - frontend/explore_filters.py
-  - frontend/app.py
-  - tests/frontend/test_explore_filters.py
+  - frontend/styles.py
+  - docs/ui/design_system.md
+  - docs/context_budget.yml
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Cash-safe hide-when-empty vs leave-visible was escalated after the
-  premise correction -- owner chose "leave visible as-is" (§6 metric-preset visibility is a
-  product call). No other decision reserved: the DECK_COLUMNS fix was owner-requested
-  directly ("what is it that you suggest" -> this fix, confirmed after deeper verification).
+decisions_reserved: Product/UX contrast direction was escalated and answered across this
+  task's own back-and-forth -- monochrome vs new accent (owner: stay monochrome), and the
+  final concept + values (owner: confirmed live against the real dev server, not a mockup).
+  No decision left open.
 
 done_when:
-  - `DECK_COLUMNS` includes `net_debt_to_ebitda` and `revenue_growth_yoy_pct`, with the
-    justifying comment block updated per this list's own "minimal and justified" convention.
-  - `metric_preset_options(cards)` excludes a preset only when every company type its checks
-    target has zero eligible cards in `cards`; an omitted/empty `cards` still returns all
-    five (unchanged default for any caller with no deck in scope).
-  - `frontend/app.py`'s one call site passes the current deck's `cards` in.
-  - `pytest tests/frontend/test_explore_filters.py` covers: the no-cards fallback, hiding a
-    preset with zero eligible cards of its type, keeping a preset visible when its type is
-    present, and ignoring ineligible cards when computing type presence.
-  - `pytest tests/` (full suite, 844 tests) passes.
+  - `--ss-surface-control`/`--ss-border-control` tokens exist in `frontend/styles.py`'s
+    `:root` block, documented with a WHY comment distinguishing content vs control tier.
+  - Every control-tier selector (`button[kind="secondary"]`,
+    `a[data-testid="stBaseLinkButton-secondary"]`/`-tertiary`, `[data-testid="stPopoverButton"]`
+    incl. the icon-button variant, `[data-testid="stTextInput"] input`) uses the new tokens;
+    every content-tier selector (`.ss-row`, `stExpander`) is unchanged from before this task.
+  - `docs/ui/design_system.md` documents the two new tokens in its existing Tokens table,
+    with the content-vs-control rationale folded into the existing "Two radius tiers..."
+    paragraph immediately below that table (not a new heading -- kept inline to stay inside
+    this file's byte budget; the token table plus that paragraph is where a reader already
+    looks for tier rules, per the radius precedent right above it), an anti-pattern bullet
+    against dressing a content-tier element in control-tier chrome or vice versa, and an
+    extended 480px smoke line for the visible content/control contrast.
+  - `pytest tests/frontend/` passes (335 tests -- no color-token assertions existed to
+    break, this is a pure visual/CSS change).
   - `check_no_em_dash.py` passes on the changed files.
-  - Live-verified against the real Streamlit dev server + production Supabase data (not
-    simulated): the exact reported multi-filter-removal scenario, both newly-functional
-    presets individually, and Cash-safe's current (correct, data-driven) visibility -- done,
-    documented above.
+  - `check_context_budget.py` passes -- `docs/ui/design_system.md` grew past its original
+    10000-byte cap; `docs/context_budget.yml`'s own header sanctions raising the number in
+    the same MR with a stated reason, done here (bumped to 10700, file sits at ~10620).
+  - Live-verified against the real Streamlit dev server, mobile width -- done, owner
+    confirmed directly in this session, not merely via a static mockup.
 
-impact_map: frontend/supabase_cards.py (DECK_COLUMNS, two more float columns on the cold
-  list-view fetch path, ~50-60 KB measured against an existing view of Supabase row sizes),
-  frontend/explore_filters.py (metric_preset_options signature + behavior change),
-  frontend/app.py (one call site updated to match), matching test coverage. No schema/CI
-  change. `_ensure_all_cards`'s existing `deck_rows_lack_columns` self-heal already handles
-  the stale-cache-shape transition for any session with a warm cache from before this merge.
+impact_map: `frontend/styles.py` (two new color tokens, five existing selector blocks
+  repointed at them: `button[kind="secondary"]`, the combined link-button secondary/tertiary
+  rule, `stPopoverButton`, its icon-button variant, and `stTextInput`; no new selector
+  added), `docs/ui/design_system.md` (two new token rows + one extended paragraph + one
+  anti-pattern bullet + one extended checklist line, no new heading), `docs/context_budget.yml`
+  (one budget line raised, with the reason recorded here and in the MR description). No new
+  component, no new Streamlit widget, no layout change -- pure recolor of existing chrome,
+  so no mobile wireframe needed per the UX PR gate (`docs/working_agreement.md`), just the
+  480px smoke already run live.

@@ -34,6 +34,8 @@ the row/button building blocks those specs assume. This doc is that missing laye
 | `--ss-caption-size` | `0.8125rem` (13px) | Meta lines, freshness, filter summary, range-mark axis labels, row subtitles, toggles |
 | `--ss-label` | `0.75rem` (12px) | Chips and small uppercase headings; the floor, nothing renders smaller |
 | `--ss-value` | `1.5rem` (24px) | The metric value |
+| `--ss-surface-control` | `#242429` | Fill for a button/input a user operates |
+| `--ss-border-control` | `#6e6e78` | Border for the same |
 
 Every `font-size` in `frontend/styles.py` is one of these tokens; the brand wordmark and the
 icon-button glyph are the two literal exceptions, and `tests/frontend/test_styles.py` refuses
@@ -42,7 +44,10 @@ where it sits: an explanation is body even inside a small panel.
 
 Two radius tiers, not one flat value: **control** (small interactive chrome — buttons,
 icon triggers) and **surface** (content containers — the card, rows). A row and the card
-share the surface tier; a button never does.
+share the surface tier; a button never does. The same split governs fill/border color:
+content stays on `--ss-surface`/`--ss-border`; a button/input a user operates moves to
+`--ss-surface-control`/`--ss-border-control`, one shared rule per selector, never
+per-screen.
 
 ---
 
@@ -134,6 +139,8 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
   ships silently dead.
 - A position-based selector (`:last-child`, `:first-child`) for anything that could be
   reordered — use an explicit marker.
+- Content-tier chrome (`--ss-surface`/`--ss-border`) on a button/input, or control-tier
+  chrome on a row/card/expander -- pick the tier by function, never by screen.
 - A bare `:has(.ss-row)` to scope a row-only rule to "the stVerticalBlock containing a row" --
   `:has()` matches at any descendant depth, so it also matches the single big stVerticalBlock
   wrapping the *entire* list, not just each row's own small container. Confirmed live:
@@ -152,7 +159,8 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
 - [ ] Overflow trigger's icon-button radius matches other control-tier elements
 - [ ] Overflow's "Clear saved" button renders with the same accent/surface skin as the
       Discover action bar
-- [ ] Filters trigger and the ⋯ trigger render with the same surface/border chrome
+- [ ] Filters trigger and the ⋯ trigger render with the same surface/border chrome,
+      visibly lighter than a row, without looking loud
 - [ ] Both `st.expander` instances (Overflow "About the data", the card's one "Understand
       these numbers" learn panel) render bordered/filled, not default Streamlit grey
 - [ ] Metric-label chips and the verdict badge render with the same control-tier radius
