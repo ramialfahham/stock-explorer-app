@@ -11,6 +11,13 @@ def inject_global_css() -> None:
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
 
+/* Two tonal tiers, by FUNCTION not by screen -- see docs/ui/design_system.md "Content vs
+   control tier". Content tier (--ss-surface/--ss-border): rows, the card, expander, chips --
+   read, or tapped to navigate, with no button chrome of their own. Control tier
+   (--ss-surface-control/--ss-border-control): every actual button/input a user operates --
+   secondary buttons, link-buttons, popover triggers, text inputs -- one step lighter so they
+   read as chrome against the content around them. Applied via the existing shared selectors
+   (button[kind="secondary"], stPopoverButton, stTextInput, ...), never scoped to one screen. */
 :root {
     --ss-bg: #0a0a0b;
     --ss-surface: #141416;
@@ -20,6 +27,8 @@ def inject_global_css() -> None:
     --ss-accent: #c9a962;
     --ss-border: #27272a;
     --ss-track: #38383d;
+    --ss-surface-control: #242429;
+    --ss-border-control: #6e6e78;
     --ss-value: 1.5rem;
     --ss-title: 1.0625rem;
     --ss-body: 0.875rem;
@@ -972,9 +981,9 @@ button[kind="primary"] {
     font-weight: 700 !important;
 }
 button[kind="secondary"] {
-    background: var(--ss-surface) !important;
+    background: var(--ss-surface-control) !important;
     color: var(--ss-muted) !important;
-    border: 1px solid var(--ss-border) !important;
+    border: 1px solid var(--ss-border-control) !important;
 }
 /* st.link_button renders as <a data-testid="stBaseLinkButton-{kind}">, not <button kind="...">,
    so the two rules above never reach it — cover all three kinds Streamlit's link_button
@@ -993,9 +1002,9 @@ a[data-testid="stBaseLinkButton-primary"] {
 }
 a[data-testid="stBaseLinkButton-secondary"],
 a[data-testid="stBaseLinkButton-tertiary"] {
-    background: var(--ss-surface) !important;
+    background: var(--ss-surface-control) !important;
     color: var(--ss-muted) !important;
-    border: 1px solid var(--ss-border) !important;
+    border: 1px solid var(--ss-border-control) !important;
     border-radius: var(--ss-radius-control) !important;
 }
 
@@ -1058,8 +1067,8 @@ a[data-testid="stBaseLinkButton-tertiary"] {
    before this; both now match the app's surface/border language instead of default
    Streamlit chrome. See docs/ui/design_system.md. */
 [data-testid="stPopoverButton"] {
-    background: var(--ss-surface) !important;
-    border: 1px solid var(--ss-border) !important;
+    background: var(--ss-surface-control) !important;
+    border: 1px solid var(--ss-border-control) !important;
     border-radius: var(--ss-radius-control) !important;
 }
 [data-testid="stExpander"] {
@@ -1081,8 +1090,8 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     min-height: 2.35rem !important;
     height: 2.35rem !important;
     width: 2.35rem !important;
-    background: var(--ss-surface) !important;
-    border: 1px solid var(--ss-border) !important;
+    background: var(--ss-surface-control) !important;
+    border: 1px solid var(--ss-border-control) !important;
     border-radius: var(--ss-radius-control) !important;
     color: var(--ss-muted) !important;
     box-shadow: none !important;
@@ -1108,8 +1117,8 @@ a[data-testid="stBaseLinkButton-tertiary"] {
 }
 
 [data-testid="stTextInput"] input {
-    background: var(--ss-surface) !important;
-    border-color: var(--ss-border) !important;
+    background: var(--ss-surface-control) !important;
+    border-color: var(--ss-border-control) !important;
     color: var(--ss-text) !important;
 }
 [data-testid="stAlert"] {
