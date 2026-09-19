@@ -79,8 +79,23 @@ METRIC_PRESETS: dict[str, dict[str, Any]] = {
 }
 
 
-def metric_preset_options() -> list[str]:
-    return list(METRIC_PRESETS)
+def metric_preset_options(cards: Iterable[dict[str, Any]] = ()) -> list[str]:
+    """Preset IDs to offer, excluding any whose target company_type(s) have zero eligible
+    cards in the current deck. A preset that can never match anything (e.g. Cash-safe when
+    no pre_revenue company is currently onboarded) is worse than merely inert -- it looks
+    identical to a genuinely broken filter, which is the exact bug this guards against. An
+    An omitted `cards` (e.g. from a caller with no deck in scope) falls back to offering
+    every preset, matching the old unconditional behavior -- distinct from a `cards` that was
+    passed but turned out to have no eligible rows, which offers none."""
+    cards = list(cards)
+    if not cards:
+        return list(METRIC_PRESETS)
+    types_present = {card.get("company_type") for card in cards if card.get("is_card_eligible")}
+    return [
+        preset_id
+        for preset_id, spec in METRIC_PRESETS.items()
+        if any(company_type in types_present for company_type, *_ in spec["checks"])
+    ]
 
 
 def metric_preset_label(preset_id: str) -> str:

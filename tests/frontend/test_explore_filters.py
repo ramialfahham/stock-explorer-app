@@ -181,8 +181,34 @@ def test_filter_pool_single_market_scope_unaffected_by_dedup() -> None:
     assert {c["ticker"] for c in pool} == {"AIR.PA", "BMW"}
 
 
-def test_metric_preset_options_has_five_presets() -> None:
+def test_metric_preset_options_has_five_presets_with_no_cards() -> None:
+    """No cards in scope (e.g. a caller with no deck) falls back to offering every preset --
+    the pre-parameterization behavior, preserved as the default."""
     assert len(metric_preset_options()) == 5
+
+
+def test_metric_preset_options_hides_preset_with_no_eligible_type_present() -> None:
+    """cash_safe targets pre_revenue only -- with zero pre_revenue cards in the deck, it
+    can never match anything, so it must not be offered as a choice at all."""
+    operating_card = _card("AAPL", "Technology")
+    operating_card["company_type"] = "operating"
+    assert "cash_safe" not in metric_preset_options([operating_card])
+    assert "high_margin" in metric_preset_options([operating_card])
+
+
+def test_metric_preset_options_keeps_preset_when_type_present() -> None:
+    pre_revenue_card = _card("MRNA", "Health Care")
+    pre_revenue_card["company_type"] = "pre_revenue"
+    assert "cash_safe" in metric_preset_options([pre_revenue_card])
+
+
+def test_metric_preset_options_ignores_ineligible_cards() -> None:
+    """A card that failed the deck's own eligibility gate shouldn't make a preset appear
+    offerable -- it's not part of what a user can actually filter into."""
+    pre_revenue_card = _card("MRNA", "Health Care")
+    pre_revenue_card["company_type"] = "pre_revenue"
+    pre_revenue_card["is_card_eligible"] = False
+    assert "cash_safe" not in metric_preset_options([pre_revenue_card])
 
 
 def test_metric_preset_label_is_plain_language() -> None:

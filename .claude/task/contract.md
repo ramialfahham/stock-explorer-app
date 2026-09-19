@@ -3,70 +3,71 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Refs #22. Manually triggering the scheduled pipeline (recorded on that issue)
-  dropped the ai_read null rate from 84% to 12.3%, and the remaining gap was overwhelmingly
-  (87%) one single style check: "does not end on the verdict's meaning" -- a regex requiring
-  the literal phrase "on these figures"/"on these numbers" to appear in the read.
+objective: Owner-reported bug: "removing the filters seemed to be buggy, not going back to
+  the full sample of companies." Root cause, found by live reproduction across single- and
+  multi-filter scenarios, was not in filter removal itself -- the market/sector/metric-preset
+  widget state machinery is unkeyed by design (documented eviction-avoidance pattern) and
+  verified working correctly throughout. The real bug: two of five metric-preset filters
+  ("Low debt": `net_debt_to_ebitda`, "Growing revenue": `revenue_growth_yoy_pct`) checked
+  fields absent from `DECK_COLUMNS`, the slim column set the Discover/Saved list fetches.
+  `_card_matches_preset`'s "omit, never fake" rule treats a missing metric value as an
+  automatic pass, so both presets silently matched every card regardless of real debt/growth
+  -- selecting either did nothing, and removing one while another (also broken) preset stayed
+  selected looked like "removal doesn't restore the full sample."
 
-  Owner asked to fix this. First attempt was to widen the regex to accept the phrase in
-  either word order (confirmed live: Claude routinely writes "These figures show a healthy
-  company" instead of "...healthy on these figures", both fully compliant with the prompt,
-  only one recognized by the old check). Owner pushed back on a regex-based fix as
-  unsystematic -- correctly: no amount of pattern-widening changes that this is a heuristic
-  guessing at sentence structure to infer something the code cannot otherwise verify from
-  free text. Switched approach instead: the write_card_read tool schema now has a third
-  field, `verdict_meaning`, enum-constrained to "healthy"/"mixed"/"fragile" -- the model
-  states which meaning its own closing sentence lands on as structured output, exactly the
-  same pattern already used for `referenced_metrics` (the numeric hallucination guard). Two
-  checks replace the old regex: (1) the reported word must match the verdict this row's
-  rules already decided (never the model's own call), (2) the reported word must actually
-  appear in the read text too, so the field can't be right while the prose is wrong.
+  Fix: added both fields to `DECK_COLUMNS`. Verified against live production Supabase data
+  (paginated, deduped to latest snapshot -- matching what the app itself does): "Low debt"
+  alone narrows 1023 -> 617; "Low debt" + "Growing revenue" together -> 546; removing just
+  "Low debt" -> 878 (the correct "Growing revenue"-only count, not a reset to 1023 and not
+  stuck at 546). This is the exact reported scenario, confirmed fixed live in the browser.
 
-  Verified against real production data three times, not simulated: a 20-card sample against
-  the live API with the OLD schema (3 genuine verdict-ending failures, all the "leading form"
-  word-order case) confirmed the root cause; a 20-card sample with the NEW schema (20 of 20
-  passed, every verdict_meaning field agreeing with the real verdict) confirmed the fix works
-  in practice; a further 5-card sample after fixing round 1's finding below (4 of 5 passed --
-  the one rejection was the field-vs-text check correctly catching a genuine case where the
-  model's structured self-report and its own prose disagreed, not a bug) confirmed nothing
-  regressed.
-
-  Round 1 review found two real gaps, both fixed before round 2: scope-auditor caught that
-  READ_SYSTEM_PROMPT still told the model to call the tool "with two fields" after this task
-  added a third (verdict_meaning) -- a factual field-count correction, not a voice/content
-  change, so within scope despite the prompt otherwise being off-limits here. cto-reviewer
-  noted `verdict_meaning`'s malformed-payload case (not isinstance(..., str)) had no dedicated
-  test, unlike its sibling `referenced_metrics` check on the same line -- added.
+  Separately investigated whether "Cash-safe" (pre_revenue only) should be hidden when its
+  target population is empty -- first diagnosed as always-empty (0 pre_revenue cards) from
+  an unpaginated, undeduped scratchpad query; owner asked to hide it on that basis. Redone
+  properly (full pagination + dedup): 2 eligible pre_revenue cards actually exist
+  (au_asx200/DYL, au_asx200/NXG), so the population is not empty -- corrected this to the
+  owner before proceeding. Built `metric_preset_options()` as a general, data-driven guard
+  (hides a preset only when its target company type(s) have zero eligible cards in the
+  current deck) rather than a hardcoded hide, so it doesn't act on the disproven premise.
+  Live-tested selecting "Cash-safe" alone: count stays at 1023 (both pre_revenue cards pass
+  the check -- one genuinely, one via the same omit-on-missing-data rule), so it's still
+  visually inert today, for a different reason (nothing in a real, non-empty population
+  currently fails it) than the one first reported. Owner decision on record: leave it
+  visible as-is; no further code change for that case.
 
 scope_paths:
-  - scripts/assessment_rules.py
-  - scripts/generate_assessments.py
-  - tests/tooling/test_assessment_rules.py
-  - tests/tooling/test_generate_assessments.py
+  - frontend/supabase_cards.py
+  - frontend/explore_filters.py
+  - frontend/app.py
+  - tests/frontend/test_explore_filters.py
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: none -- the owner asked for the fix directly, reviewed and rejected the
-  first (regex) approach on the spot, and asked for the structured-field approach by name.
+decisions_reserved: Cash-safe hide-when-empty vs leave-visible was escalated after the
+  premise correction -- owner chose "leave visible as-is" (§6 metric-preset visibility is a
+  product call). No other decision reserved: the DECK_COLUMNS fix was owner-requested
+  directly ("what is it that you suggest" -> this fix, confirmed after deeper verification).
 
 done_when:
-  - `READ_TOOL_SCHEMA` requires `verdict_meaning`, enum-constrained to
-    healthy/mixed/fragile.
-  - `verdict_meaning_violation()` checks the reported word against the verdict already
-    decided and against the read text itself; `find_read_style_violations()` no longer
-    contains any verdict-ending logic (moved out, not duplicated).
-  - `_generate_read()` rejects a mismatch the same way it already rejects a hallucinated
-    metric or a style violation -- fail closed, self-heals next run.
-  - `pytest tests/tooling/test_assessment_rules.py tests/tooling/test_generate_assessments.py`
-    passes, including new coverage for the leading-word-order case (the exact real failure)
-    and for a reported-word/verdict mismatch and a reported-word/text mismatch.
-  - `pytest tests/` (full suite) passes.
-  - `check_no_em_dash.py`, `check_context_budget.py` pass.
-  - Live-verified against the real Anthropic API (not just unit tests) both before writing
-    the fix (to find real failures) and after (to confirm the new field works) -- done, 20
-    real cards each pass, documented above.
+  - `DECK_COLUMNS` includes `net_debt_to_ebitda` and `revenue_growth_yoy_pct`, with the
+    justifying comment block updated per this list's own "minimal and justified" convention.
+  - `metric_preset_options(cards)` excludes a preset only when every company type its checks
+    target has zero eligible cards in `cards`; an omitted/empty `cards` still returns all
+    five (unchanged default for any caller with no deck in scope).
+  - `frontend/app.py`'s one call site passes the current deck's `cards` in.
+  - `pytest tests/frontend/test_explore_filters.py` covers: the no-cards fallback, hiding a
+    preset with zero eligible cards of its type, keeping a preset visible when its type is
+    present, and ignoring ineligible cards when computing type presence.
+  - `pytest tests/` (full suite, 844 tests) passes.
+  - `check_no_em_dash.py` passes on the changed files.
+  - Live-verified against the real Streamlit dev server + production Supabase data (not
+    simulated): the exact reported multi-filter-removal scenario, both newly-functional
+    presets individually, and Cash-safe's current (correct, data-driven) visibility -- done,
+    documented above.
 
-impact_map: scripts/assessment_rules.py (tool schema, one new function, one function's
-  narrowed scope), scripts/generate_assessments.py (`_generate_read`'s validation sequence),
-  matching test coverage. No schema/data/CI change; next scheduled or manually-triggered
-  pipeline run is the first real-world exercise of this in production.
+impact_map: frontend/supabase_cards.py (DECK_COLUMNS, two more float columns on the cold
+  list-view fetch path, ~50-60 KB measured against an existing view of Supabase row sizes),
+  frontend/explore_filters.py (metric_preset_options signature + behavior change),
+  frontend/app.py (one call site updated to match), matching test coverage. No schema/CI
+  change. `_ensure_all_cards`'s existing `deck_rows_lack_columns` self-heal already handles
+  the stale-cache-shape transition for any session with a warm cache from before this merge.
