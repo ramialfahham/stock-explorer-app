@@ -7,8 +7,7 @@ from typing import Any
 
 from card_copy import format_snapshot_date
 
-# v1 hero market: the market called out by name in "About the data" summaries and listed
-# first in its per-market breakdown (markets_in_deck_order below).
+# v1 hero market: named first in the About panel's Markets line (markets_in_deck_order below).
 HERO_MARKET_CODE = "us_sp500"
 
 # Active ingest markets only; order matches registry ingest_active set.
@@ -43,33 +42,10 @@ def eligible_counts_by_market(cards: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
-def discover_pool_summary(counts: dict[str, int]) -> str:
-    total = sum(counts.values())
-    if total == 0:
-        return "No card-ready companies yet"
-    hero_count = counts.get(HERO_MARKET_CODE, 0)
-    hero_label = market_display_name(HERO_MARKET_CODE)
-    if hero_count:
-        return f"{total} card-ready · {hero_count} in {hero_label}"
-    return f"{total} card-ready companies"
-
-
 def markets_in_deck_order(counts: dict[str, int]) -> list[str]:
-    """Hero market first, then alphabetical by code.
-
-    One definition because two lines in the same "About the data" panel render this order: the
-    coverage line and the per-market breakdown under it. They were separate copies of the sort
-    key in two modules, which meant they agreed only by coincidence and would drift apart in the
-    same panel the moment one changed.
-    """
+    """Hero market first, then alphabetical by code -- the order the About panel's
+    `markets_line` names markets in."""
     return sorted(counts, key=lambda code: (code != HERO_MARKET_CODE, code))
-
-
-def eligible_breakdown_lines(counts: dict[str, int]) -> list[str]:
-    return [
-        f"{market_display_name(code)}: {counts[code]}"
-        for code in markets_in_deck_order(counts)
-    ]
 
 
 def latest_snapshot_label(cards: list[dict[str, Any]]) -> str | None:

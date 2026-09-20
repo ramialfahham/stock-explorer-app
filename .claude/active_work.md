@@ -15,6 +15,20 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
+**Nav/About redesign + Not-now removal: MR !200 OPEN, awaiting owner review/merge.**
+Overflow menu (`⋯`) rewritten into a text-labeled `About` popover (one flat panel, no
+nested expander); Not-now removed end-to-end, including its whole skip-cookie layer
+(verified first that `skip` was never read by `filter_pool`); `Clear saved` moved to the
+Saved tab next to its count, with new per-row `Remove` there; nav row flattened to three
+equal-width siblings (fixed a real Streamlit margin-bug along the way). All touched copy
+owner-reviewed word by word live -- see `contract.md` objective point 5 for exact quotes.
+**Durable lesson: an objective copy DEFECT (stray separator, filler word, em-dash-style
+break) is a mechanical fix, not an approval round-trip -- only a change to what the copy
+CLAIMS needs asking.** Nine review rounds, each catching a real incomplete-removal or
+stale-doc gap; final verdicts in `review.md`. Popover-panel alignment (~2.4px edge gap)
+tried twice, reverted both times, left as an accepted Streamlit limitation per owner
+instruction to stop.
+
 **Metric-preset filter bug: MERGED (!197).** Two of five presets (Low debt, Growing
 revenue) checked fields `DECK_COLUMNS` never fetched, so the omit-never-fake rule silently
 passed everything -- fixed by fetching both fields, and `metric_preset_options(cards)` now

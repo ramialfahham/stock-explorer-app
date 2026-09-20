@@ -1,4 +1,4 @@
-"""Browser-side persistence for save/skip interactions (v1, no auth): cookies.
+"""Browser-side persistence for saved interactions (v1, no auth): cookies.
 
 The saved list used to live in localStorage behind streamlit_extras' local_storage_manager,
 a components-v2 widget. Mounting it froze the browser for about 3.5 s on every page load and
@@ -9,12 +9,13 @@ known before the first element is drawn, and a write is a few lines of JavaScrip
 only in the run that changes something.
 
 What persists is the current state, not the event log: the saved (market_code, ticker) keys
-with the epoch second of their save, and separately the skipped keys with the epoch second
-of their skip -- two independent cookie namespaces (`COOKIE_PREFIX`/`SKIP_COOKIE_PREFIX`),
-since Save and Not-now are two independent lists a reader can revisit (issue #16). Until
-then skips had no effect on any screen and stayed session-only; that premise no longer
-holds, which is why this module now persists both. One cookie holds about 130 entries;
-beyond that a list's value is split across its own numbered cookies.
+with the epoch second of their save, under one cookie namespace (`COOKIE_PREFIX`). One
+cookie holds about 130 entries; beyond that a list's value is split across its own numbered
+cookies. A second namespace, `ss_skipped_`, backed the "Not now" review list (issue #16);
+that feature was removed (its "skip" interaction never excluded anything from Discover, so
+the list it fed offered nothing a reader couldn't already reach), and this module along
+with it -- a browser still carrying an old `ss_skipped_*` cookie just has it go unread from
+here on, the same as any other cookie this app no longer looks at.
 """
 
 from __future__ import annotations
@@ -27,7 +28,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 COOKIE_PREFIX = "ss_saved_"
-SKIP_COOKIE_PREFIX = "ss_skipped_"
 COOKIE_MAX_AGE_SECONDS = 365 * 24 * 3600
 # Browsers refuse a cookie whose name plus value passes 4096 bytes; the budget below leaves
 # room for the name and the attributes. Entries are "market:ticker:epoch" joined by "|",
@@ -43,7 +43,6 @@ LEGACY_LOCAL_STORAGE_KEY = "st_extras___interactions"
 _LOADED_FLAG = "_interactions_storage_loaded"
 _SYNC_PENDING_FLAG = "_storage_sync_pending"
 _WRITE_PENDING_KEY = "_cookie_write_pending"
-_SKIP_WRITE_PENDING_KEY = "_skip_cookie_write_pending"
 _MIGRATION_CHECKED_FLAG = "_cookie_migration_checked"
 
 
@@ -58,10 +57,10 @@ def _state_for_actions(
     interactions: list[dict[str, Any]], *, add_action: str, remove_action: str
 ) -> list[list[Any]]:
     """The persisted form: [market_code, ticker, epoch_second] per currently-active key for
-    one add/remove action pair, in action order. Shared by `saved_state` (save/unsave) and
-    `skipped_state` (skip/unskip, issue #16) so the two lists' encoding can't diverge --
-    mirrors `explore_filters._latest_action_keys`'s tie-break logic, which this predates and
-    cannot import from (frontend/ has no shared module for it; duplicated once already)."""
+    one add/remove action pair, in action order. Parameterized by action pair rather than
+    hardcoded to save/unsave -- mirrors `explore_filters._latest_action_keys`'s tie-break
+    logic, which this predates and cannot import from (frontend/ has no shared module for
+    it; duplicated once already)."""
     latest: dict[tuple[str, str], tuple[str, str]] = {}
     for row in interactions:
         action = row.get("action")
@@ -90,19 +89,10 @@ def saved_state(interactions: list[dict[str, Any]]) -> list[list[Any]]:
     return _state_for_actions(interactions, add_action="save", remove_action="unsave")
 
 
-def skipped_state(interactions: list[dict[str, Any]]) -> list[list[Any]]:
-    """The persisted form for Not-now (issue #16): mirrors `saved_state` for the
-    skip/unskip action pair, as `skipped_keys_with_order` decides."""
-    return _state_for_actions(interactions, add_action="skip", remove_action="unskip")
-
-
-def interactions_from_state(
-    state: list[list[Any]], *, action: str = "save"
-) -> list[dict[str, Any]]:
-    """The in-memory form the rest of the app reads: one `action` row per persisted key.
-    `action` is "save" for the Saved cookie, "skip" for the Not-now cookie -- each cookie's
-    entries carry no action of their own (just market/ticker/epoch), so the caller supplies
-    which list it decoded."""
+def interactions_from_state(state: list[list[Any]]) -> list[dict[str, Any]]:
+    """The in-memory form the rest of the app reads: one "save" row per persisted key. The
+    Saved cookie's entries carry no action of their own (just market/ticker/epoch), so this
+    supplies it."""
     rows = []
     for item in state:
         if not (isinstance(item, list) and len(item) == 3):
@@ -113,7 +103,7 @@ def interactions_from_state(
         created = _iso(epoch)
         if created is None:
             continue
-        rows.append({"market_code": market, "ticker": ticker, "action": action, "created_at": created})
+        rows.append({"market_code": market, "ticker": ticker, "action": "save", "created_at": created})
     return rows
 
 
@@ -129,7 +119,7 @@ def encode_cookies(state: list[list[Any]]) -> list[str]:
 
 def decode_cookies(cookies: dict[str, str], *, prefix: str = COOKIE_PREFIX) -> list[list[Any]]:
     """Reassemble the numbered cookies under `prefix`; an entry that does not parse is
-    skipped. `prefix` defaults to the Saved cookie; pass `SKIP_COOKIE_PREFIX` for Not-now."""
+    dropped. `prefix` defaults to the Saved cookie, the only one this app writes now."""
     parts = []
     index = 0
     while f"{prefix}{index}" in cookies:
@@ -157,18 +147,14 @@ def _request_cookies() -> dict[str, str]:
 
 
 def ensure_interactions_loaded() -> list[dict[str, Any]]:
-    """Read the saved AND not-now lists from the request's cookies into session state, once
-    per session. No component, no rerun: the cookies arrive with the websocket handshake."""
+    """Read the saved list from the request's cookies into session state, once per session.
+    No component, no rerun: the cookies arrive with the websocket handshake."""
     if "interactions" not in st.session_state:
         st.session_state["interactions"] = []
     if st.session_state.get(_LOADED_FLAG):
         return list(st.session_state["interactions"])
     cookies = _request_cookies()
-    interactions = interactions_from_state(
-        decode_cookies(cookies, prefix=COOKIE_PREFIX), action="save"
-    ) + interactions_from_state(
-        decode_cookies(cookies, prefix=SKIP_COOKIE_PREFIX), action="skip"
-    )
+    interactions = interactions_from_state(decode_cookies(cookies, prefix=COOKIE_PREFIX))
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
     if interactions:
@@ -188,12 +174,6 @@ def _queue_write() -> None:
     st.session_state[_WRITE_PENDING_KEY] = encode_cookies(saved_state(get_interactions()))
 
 
-def _queue_skip_write() -> None:
-    st.session_state[_SKIP_WRITE_PENDING_KEY] = encode_cookies(
-        skipped_state(get_interactions())
-    )
-
-
 def append_interaction(card: dict[str, Any], action: str) -> None:
     row = {
         "market_code": card["market_code"],
@@ -205,21 +185,13 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
     interactions.append(row)
     st.session_state["interactions"] = interactions
     st.session_state[_LOADED_FLAG] = True
-    if action in ("save", "unsave"):
-        _queue_write()
-    elif action in ("skip", "unskip"):
-        _queue_skip_write()
+    _queue_write()
 
 
 def clear_interactions() -> None:
-    """Clears Saved only. Not-now (issue #16) is a separate, independent list -- this is
-    the overflow menu's "Clear saved" action, and its own confirmation dialog names only
-    the saved count, so wiping skip/unskip rows too would silently drop the Not-now list
-    without ever telling the reader that was going to happen."""
-    remaining = [
-        row for row in get_interactions() if row.get("action") not in ("save", "unsave")
-    ]
-    st.session_state["interactions"] = remaining
+    """The Saved tab's "Clear saved" action -- save/unsave is the only interaction pair
+    left, so this clears everything, not a filtered subset."""
+    st.session_state["interactions"] = []
     st.session_state[_LOADED_FLAG] = True
     _queue_write()
     st.rerun()
@@ -233,9 +205,8 @@ def _js_literal(value: object) -> str:
 
 def write_script(chunks: list[str], *, prefix: str = COOKIE_PREFIX) -> str:
     """JavaScript that sets the numbered cookies under `prefix` to `chunks` and expires any
-    leftover chunk from a previously longer list. `prefix` defaults to the Saved cookie;
-    pass `SKIP_COOKIE_PREFIX` for Not-now. Runs inside Streamlit's component iframe; its
-    srcdoc origin is the page's own, so window.parent.document is reachable."""
+    leftover chunk from a previously longer list. Runs inside Streamlit's component iframe;
+    its srcdoc origin is the page's own, so window.parent.document is reachable."""
     attrs = f"path=/; max-age={COOKIE_MAX_AGE_SECONDS}; samesite=lax"
     return (
         "<script>(function(){"
@@ -292,16 +263,12 @@ def migration_script() -> str:
 
 
 def flush_storage_writes() -> None:
-    """Render the cookie-writing script(s) when a save or skip changed something this run,
-    and the one-time localStorage migration on a session's first run without a saved-list
-    cookie. Called once per run from app.main, after everything else, so it never delays a
-    paint."""
+    """Render the cookie-writing script when a save changed something this run, and the
+    one-time localStorage migration on a session's first run without a saved-list cookie.
+    Called once per run from app.main, after everything else, so it never delays a paint."""
     chunks = st.session_state.pop(_WRITE_PENDING_KEY, None)
     if chunks is not None:
         components.html(write_script(chunks, prefix=COOKIE_PREFIX), height=0)
-    skip_chunks = st.session_state.pop(_SKIP_WRITE_PENDING_KEY, None)
-    if skip_chunks is not None:
-        components.html(write_script(skip_chunks, prefix=SKIP_COOKIE_PREFIX), height=0)
     if not st.session_state.get(_MIGRATION_CHECKED_FLAG):
         st.session_state[_MIGRATION_CHECKED_FLAG] = True
         if not decode_cookies(_request_cookies()):

@@ -248,8 +248,8 @@ def _latest_action_keys(
 ) -> dict[tuple[str, str], str]:
     """Currently-active (market_code, ticker) keys for one add/remove action pair, each
     mapped to its latest action's timestamp. A key's most recent action determines current
-    state -- absent entirely if removed, or never added. Shared tie-break logic for
-    save/unsave and skip/unskip (issue #16) so the two pairs can't silently diverge."""
+    state -- absent entirely if removed, or never added. Parameterized by action pair
+    rather than hardcoded to save/unsave, the only pair this app still tracks."""
     latest: dict[tuple[str, str], tuple[str, str]] = {}
     for row in interactions:
         action = row.get("action")
@@ -269,13 +269,6 @@ def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str,
     source of truth for "is this saved" so Discover's exclusion and the Saved tab's own
     list can never disagree."""
     return _latest_action_keys(interactions, add_action="save", remove_action="unsave")
-
-
-def skipped_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
-    """Currently-"not now"-ed (market_code, ticker) keys, each mapped to its latest skip
-    timestamp. Mirrors `saved_keys_with_order` for the skip/unskip action pair (issue #16)
-    -- public for the same reason, shared with app.py's Not-now panel."""
-    return _latest_action_keys(interactions, add_action="skip", remove_action="unskip")
 
 
 def _dedupe_by_ticker(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:

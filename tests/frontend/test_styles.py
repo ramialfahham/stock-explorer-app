@@ -42,8 +42,8 @@ CORRECT_SIBLING_PATTERN = re.compile(
 )
 
 # Floor, not an exact count -- a future refactor that changes how many rules use this
-# pattern shouldn't break this test for no reason. Today: .ss-card-footer-shell (x3),
-# .ss-action-shell (x1), .ss-nav-row-marker (x11), .ss-icon-btn-marker (x1) = 16.
+# pattern shouldn't break this test for no reason. Today: .ss-nav-row-marker (x6),
+# .ss-card-footer-shell (x3), .ss-action-shell (x1), .ss-back-row-marker (x1) = 11.
 MIN_CORRECT_INSTANCES = 5
 
 

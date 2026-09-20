@@ -222,7 +222,7 @@ manual run made immediately after applying a migration.
 |-------|---------|
 | `markets` | Registry mirror (seeded from migrations) |
 | `mart_stock_cards` | Export target for dbt marts → Streamlit card UI |
-| `user_interactions` | Save / skip events per authenticated user |
+| `user_interactions` | Save events per authenticated user |
 | `schema_migrations` | Tracks applied migration files |
 
 Row Level Security: stock data is publicly readable; interactions are scoped to the signed-in user.

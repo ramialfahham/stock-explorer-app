@@ -16,20 +16,22 @@ User scans saved companies and opens **one** at a time to continue learning.
 
 ## List row wireframe (480px)
 
-Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with an invisible full-row tap layer. No separate **Open** control and **no visible button label** (Streamlit centers button text).
+Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with an invisible full-row tap layer, plus its own `Remove` button in a second column outside that tap layer -- the one exception to "no visible button label," since it's a distinct action, not the row's own open gesture.
 
 ```
 ┌─────────────────────────────────────────────┐
+│ 2 saved                          Clear saved │  ← tab-top stats + bulk action
+├─────────────────────────────────────────────┤
 │ Fundamentals as of June 8, 2026             │  ← once at tab top (list mode only)
 ├─────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────────┐ │
-│ │ Apple Inc.                              │ │  ← whole row tappable
-│ │ AAPL · Technology                       │ │
-│ └─────────────────────────────────────────┘ │
-│ ┌─────────────────────────────────────────┐ │
-│ │ HSBC Holdings                           │ │
-│ │ HSBA · Financial Services               │ │
-│ └─────────────────────────────────────────┘ │
+│ ┌───────────────────────────────┐ ┌───────┐ │
+│ │ Apple Inc.                    │ │Remove │ │  ← row tappable, Remove separate
+│ │ AAPL · Technology             │ │       │ │
+│ └───────────────────────────────┘ └───────┘ │
+│ ┌───────────────────────────────┐ ┌───────┐ │
+│ │ HSBC Holdings                 │ │Remove │ │
+│ │ HSBA · Financial Services     │ │       │ │
+│ └───────────────────────────────┘ └───────┘ │
 └─────────────────────────────────────────────┘
 ```
 
@@ -42,7 +44,8 @@ Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with 
 
 | Rule | Detail |
 |------|--------|
-| Row structure | `st.container` per row: HTML `.ss-row` + invisible overlay `st.button` (company name for screen readers only) |
+| Row structure | `row_ui.render_removable_row_list`: `st.container(horizontal=True)` per row -- the row itself (HTML `.ss-row` + invisible overlay `st.button`) in one column, `Remove` in a second, outside the overlay's bounds so the two never fight for the same click |
+| Bulk clear | `Clear saved` sits on the tab, next to `{N} saved` (`_render_saved_scope_stats`) -- not a shared menu. Confirms in place: swaps to "Clear all N saved companies?" with Cancel/Clear-all |
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
 | Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) then Company Snapshot — **no duplicate name/sector row** above the card |
 | Empty state | One `st.info` — no fake rows |
@@ -69,9 +72,10 @@ Headlines load automatically when the user opens a saved company (Yahoo Finance,
 └─────────────────────────────────────────────┘
 ```
 
-**Remove from saved:** a single click, no confirmation (unlike the bulk "Clear saved" action
-in the "⋯" menu, which does confirm -- see `discover_header.md`). Removes just this one company
-and returns to the list; the ticker reappears in the scoped Discover pool.
+**Remove from saved:** a single click, no confirmation (unlike `Clear saved`, which does --
+see Layout rules above). Returns to the list; the ticker reappears in the scoped Discover
+pool. The list view's own per-row `Remove` button is the same one-click removal, reachable
+without opening the card first.
 
 Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.md`](disclosure_pattern.md).
 
@@ -80,7 +84,8 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 ## Anti-patterns (do not ship)
 
 - **Auto-opening focus view** when the user has only one save (breaks “Back to list”).
-- **Separate Open button column** — wastes vertical space; row itself is the control.
+- **Separate Open button column** -- wastes vertical space; the row itself is the open
+  control. `Remove` is the one legitimate second column: a distinct action, not another way in.
 - **Never put row copy inside a visible `st.button` label** — Streamlit centers it; use HTML + invisible tap layer.
 - **Never repeat “As of …” on every row** — clutters the learning list.
 - **Never use the full card or metric grid in list mode** — list is for picking, not reading numbers.
@@ -93,8 +98,10 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 
 - [ ] No horizontal scroll on the list
 - [ ] Company name + ticker · sector readable in each row
-- [ ] Whole row tappable (bordered field), no tiny Open button
+- [ ] Whole row tappable (bordered field); its own `Remove` button sits outside that tap
+      target and never triggers the row's open action
 - [ ] Tab open shows list first (1 or N saves)
+- [ ] `Clear saved` and each row's `Remove` both reachable without scrolling on a short list
 
 ---
 

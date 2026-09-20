@@ -917,47 +917,9 @@ section[data-testid="stSidebar"] {
     color: var(--ss-caption);
 }
 
-/* Overflow menu panel */
-.ss-menu-panel {
-    margin: 0 0 0.65rem;
-}
-/* All three scoped under .ss-menu-panel, their always-present wrapper (menu_context_html())
-   -- see the .ss-metric .ss-metric-gloss comment below for why. */
-.ss-menu-panel .ss-menu-label {
-    font-size: var(--ss-label);
-    font-weight: 600;
-    color: var(--ss-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 0 0 0.2rem;
-}
-.ss-menu-panel .ss-menu-label + .ss-menu-body {
-    margin-top: 0;
-}
-.ss-menu-panel .ss-menu-label:not(:first-child) {
-    margin-top: 0.55rem;
-}
-.ss-menu-panel .ss-menu-body {
-    font-size: var(--ss-body);
-    color: var(--ss-text);
-    line-height: 1.4;
-    margin: 0;
-}
-.ss-menu-panel .ss-menu-tip {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-muted);
-    line-height: 1.45;
-    margin: 0;
-    font-style: italic;
-}
-.ss-menu-actions-divider {
-    border-top: 1px solid var(--ss-border);
-    margin: 0.45rem 0 0.55rem;
-}
-
-/* Fixed action bar (Save / Skip). .ss-action-shell's own next sibling is nothing -- same
+/* Fixed action bar (Save). .ss-action-shell's own next sibling is nothing -- same
    broken assumption as .ss-card-footer-shell above (confirmed live: this rule matched zero
-   elements, so Save/Skip has never actually been pinned to the viewport bottom; reaching it
+   elements, so Save has never actually been pinned to the viewport bottom; reaching it
    required scrolling through the whole card). Real relationship is one level up,
    stElementContainer -> stLayoutWrapper, same corrected pattern as the footer fixes. */
 [data-testid="stElementContainer"]:has(.ss-action-shell) + [data-testid="stLayoutWrapper"] {
@@ -1008,17 +970,20 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     border-radius: var(--ss-radius-control) !important;
 }
 
-/* Nav row: Discover / Saved + overflow menu (single line on mobile). Same broken
-   sibling assumption as .ss-card-footer-shell/.ss-action-shell above (confirmed live: this
-   prefix matched zero elements) -- fixed the same way. Less visibly broken than the action
-   bar only by coincidence: st.container(horizontal=True) already renders flex/row natively,
-   so the top-level intent happened to hold anyway; the gap/width/segmented-control sub-rules
-   below did not (confirmed live: 16px gap instead of the intended --ss-space-1, and the
-   segmented control at ~50% width instead of 100%). Descends one level further than the
-   footer/action-bar fixes (`... [data-testid="stHorizontalBlock"]`, not just
-   `[data-testid="stLayoutWrapper"]`) because these are flex-CONTAINER properties
+/* Nav row: Discover / Saved / About, three plain siblings in one flex row (single line on
+   mobile). Same broken sibling assumption as .ss-card-footer-shell/.ss-action-shell above
+   (confirmed live: this prefix matched zero elements) -- fixed the same way. Descends one
+   level further than the footer/action-bar fixes (`... [data-testid="stHorizontalBlock"]`,
+   not just `[data-testid="stLayoutWrapper"]`) because these are flex-CONTAINER properties
    (align-items/flex-direction/gap) -- they only do anything on the actual `display:flex`
-   element, confirmed live to be stLayoutWrapper's direct child, not stLayoutWrapper itself. */
+   element, confirmed live to be stLayoutWrapper's direct child, not stLayoutWrapper itself.
+
+   Flat on purpose: an earlier version nested Discover/Saved inside their own inner
+   stHorizontalBlock, with About as a separate sibling -- Streamlit's own default block
+   spacing (a ~7.2px margin-bottom on that inner row) made Discover/Saved sit 3.6px higher
+   than About, confirmed live via getBoundingClientRect() on both. Removing the extra
+   nesting removes the extra margin with it: all three buttons are now direct children of
+   the same row, so they share one flex context and one baseline. */
 [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] {
     align-items: center !important;
     flex-direction: row !important;
@@ -1028,40 +993,42 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     margin: 0 0 0.45rem !important;
     gap: var(--ss-space-1) !important;
 }
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] > div:first-child,
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-    width: auto !important;
-}
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] > div:last-child,
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
-    flex: 0 0 auto !important;
-    width: auto !important;
-    min-width: 0 !important;
-    display: flex;
-    align-items: stretch;
-}
-/* Discover/Saved are two plain st.button()s, not st.segmented_control -- that widget never
-   reports a click on the option already selected (confirmed against Streamlit's own source,
-   not fixable by reading its return value differently), so re-tapping the active tab was
-   silently a no-op. A plain button fires on every click regardless. One nesting level
-   deeper than the rules above: the buttons sit in their own inner stHorizontalBlock
-   (st.container(horizontal=True, width="stretch")), itself the outer row's first column. */
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] {
-    width: 100% !important;
-    gap: var(--ss-space-1) !important;
-}
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stHorizontalBlock"] [data-testid="stButton"] {
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] > * {
     flex: 1 1 0 !important;
-    width: auto !important;
     min-width: 0 !important;
+    width: auto !important;
+    align-self: center !important;
+    margin: 0 !important;
 }
-[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButton"] button {
+/* All three siblings share the row's own uniform gap and flex:1 width (base rule above) --
+   an asymmetric gap and a narrower About, tried first, kept reading as uneven/accidental
+   at small widths no matter how the exact values were tuned (owner feedback across several
+   rounds: "not good spacing", "looks shit" on a small screen). Uniform spacing removes that
+   surface area entirely; "About works differently" is carried by its dimmer label color and
+   kept chevron (below), not by breaking the row's own rhythm. */
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stButton"] button,
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stPopoverButton"] {
     font-size: var(--ss-body) !important;
     font-weight: 600 !important;
     min-height: 2.35rem !important;
     width: 100% !important;
+    white-space: nowrap !important;
+}
+/* About keeps the same plain-pill chrome as Discover/Saved but a dimmer label color (see
+   the spacing comment above). It DOES keep Streamlit's own "expand_more" chevron, unlike
+   the small icon-only trigger this replaced -- with a real label next to it, the chevron
+   reads as "opens and closes in place" (a disclosure), not a fourth control, and is the
+   one honest way to say "this isn't a nav tab" without a page-navigation icon, which would
+   be wrong: About never leaves the current screen. justify-content stays centered so the
+   label+chevron pair sits together as a unit rather than pinned to opposite edges (their
+   default arrangement), and gap gives them breathing room from each other. */
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stPopoverButton"] {
+    color: var(--ss-caption) !important;
+}
+[data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="stPopoverButton"] > div {
+    justify-content: center !important;
+    gap: 0.3rem;
+    width: 100%;
 }
 /* Native widget theming (Slice 6b) — st.popover and st.expander rendered fully unstyled
    before this; both now match the app's surface/border language instead of default
@@ -1076,46 +1043,6 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     border: 1px solid var(--ss-border) !important;
     border-radius: var(--ss-radius-surface) !important;
 }
-/* Icon-button variant (Slice 6a): keyed to an explicit marker, not DOM position — the
-   prior :last-child selector would silently jump to the wrong button if the nav row is
-   ever reordered. Reusable by any future icon-only popover trigger via the same marker.
-   Streamlit wraps st.markdown in stElementContainer and st.popover in stLayoutWrapper —
-   both direct children of the same stHorizontalBlock, hence :has() rather than a plain +
-   on the marker itself (the marker is nested one level inside its own wrapper). Redeclares
-   background/border/radius from the base popover-trigger rule above plus its own square
-   sizing — same harmless redundant-match pattern used elsewhere in this file. */
-[data-testid="stElementContainer"]:has(.ss-icon-btn-marker) + [data-testid="stLayoutWrapper"] [data-testid="stPopoverButton"] {
-    font-size: 1.05rem !important;
-    padding: 0 !important;
-    min-height: 2.35rem !important;
-    height: 2.35rem !important;
-    width: 2.35rem !important;
-    background: var(--ss-surface-control) !important;
-    border: 1px solid var(--ss-border-control) !important;
-    border-radius: var(--ss-radius-control) !important;
-    color: var(--ss-muted) !important;
-    box-shadow: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 0 !important;
-}
-@media (max-width: 640px) {
-    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-    }
-    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"] {
-        width: auto !important;
-    }
-    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:first-child {
-        flex: 1 1 0 !important;
-    }
-    [data-testid="stElementContainer"]:has(.ss-nav-row-marker) + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] [data-testid="column"]:last-child {
-        flex: 0 0 auto !important;
-    }
-}
-
 [data-testid="stTextInput"] input {
     background: var(--ss-surface-control) !important;
     border-color: var(--ss-border-control) !important;

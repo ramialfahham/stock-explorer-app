@@ -471,8 +471,8 @@ def test_at_least_one_market_is_active() -> None:
 def test_market_display_names_hold_no_market_that_is_not_active() -> None:
     """The converse of the per-market display-name check, and it guards a user-facing claim.
 
-    The overflow menu's "About the data" panel derives its coverage line from the cards actually
-    in the deck, not from this map, so a name added early cannot overstate coverage there. It
+    The About panel derives its coverage line from the cards actually in the deck, not from
+    this map, so a name added early cannot overstate coverage there. It
     would still mislabel the market filter. Kept one-line cheap because the failure is silent.
     """
     from markets import MARKET_DISPLAY_NAMES

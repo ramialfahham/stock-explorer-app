@@ -50,7 +50,7 @@ the value is missing).
 
 ```
 ┌─────────────────────────────────────────────┐
-│ 924 match your filters · 0 saved             │  ← stats line (header, not this spec)
+│ 924 companies · 0 saved                      │  ← stats line (header, not this spec)
 ├─────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────┐ │
 │ │ Diageo                            31.4% │ │  ← whole row tappable
@@ -87,16 +87,15 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
 | Ordering | Alphabetical by company name, not the retired walk's round-robin/skip order: a list should be stable and re-findable |
 | Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measures at ~2.4s before Streamlit even registers a click. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
 | Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and search results already use, unchanged |
-| Sticky actions | Save / Not now render on the **focus card only** (matching where they already lived), not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` already rejects |
+| Sticky action | **Save** renders on the **focus card only** (matching where it already lived), not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` already rejects. A second sticky action, **Not now**, was removed: it only ever returned to the list, the same as `← Back to list`, and logged a `skip` interaction nothing downstream ever read |
 | Empty state | One `st.info`, no fake rows |
-| Not now | Recorded as an interaction, with **no visible effect on the list**. There is no walk position left to deprioritize it from; see `north_star.md`'s "Not now (Skip)" section |
 
 ---
 
 ## Anti-patterns (do not ship)
 
-- **A second tap target per row** (a save icon, a checkbox). Save and Not now live on the
-  focus card, matching Saved's own precedent.
+- **A second tap target per row** (a save icon, a checkbox). Save lives on the focus card,
+  matching Saved's own precedent.
 - **The full metric grid in list mode.** One lead metric only; list is for picking, the focus
   card is for reading numbers.
 - **Reviving the retired walk's ordering** for the list. Round-robin/skip-deprioritization is
@@ -116,7 +115,7 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
       neither column crowding the other
 - [ ] Whole row tappable, no tiny separate control
 - [ ] Filters row + stats + top of the list fit without horizontal scroll
-- [ ] Save / Not now reachable when a card is focused
+- [ ] Save reachable when a card is focused
 - [ ] Previous/Next reachable without horizontal scroll, disabled state visibly distinct from
       enabled
 

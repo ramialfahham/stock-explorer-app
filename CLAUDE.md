@@ -4,7 +4,7 @@
 > every session, so the hard rules a session must not miss are surfaced here as POINTERS.
 > **Never:** the substance itself. Where this file summarises, the linked doc wins on conflict.
 
-A card-based stock dashboard. Users are shown stock cards per session and save/skip them.
+A card-based stock dashboard. Users browse stock cards per session and save the ones worth revisiting.
 Pipeline: Python ingestion (yfinance → raw parquet) → dbt transforms on an ephemeral
 DuckDB → export marts to Supabase (Postgres) → Streamlit reads the card marts. Markets are
 partitioned by `market_code` from [`docs/market_registry.yml`](docs/market_registry.yml).

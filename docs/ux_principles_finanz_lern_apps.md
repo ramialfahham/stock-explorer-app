@@ -4,7 +4,7 @@ Supplementary pedagogy reference for Stock Explorer. Original research (German):
 [UX-Prinzipien für Finanz-Lern-Apps](https://docs.google.com/document/d/1iy3_5qxfiJpskdIeIYLauE2c8Kfxuoa0ot92ZGNONiI/edit).
 
 When this document conflicts with [`north_star.md`](north_star.md) on product behavior, **north_star wins**
-(metric set, Save/Not now model, no auth in v1).
+(metric set, the Save interaction model, no auth in v1).
 
 ---
 
@@ -53,7 +53,7 @@ No streaks, XP, or leaderboards in v1. Optional “understood this metric” che
 - Set `st.set_page_config` first to avoid layout jump
 - **List rows:** use HTML for left-aligned copy + invisible overlay `st.button` — never visible
   button labels for multi-line row text (Streamlit centers labels)
-- **Nav row:** use `st.container(horizontal=True)` for tabs + ⋯ — `st.columns` stacks below 640px viewport
+- **Nav row:** use `st.container(horizontal=True)` for tabs + About -- `st.columns` stacks below 640px viewport
 
 ---
 
