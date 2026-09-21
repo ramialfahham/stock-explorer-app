@@ -1446,7 +1446,55 @@ def test_verdict_meaning_violation_catches_a_mismatch_against_the_actual_verdict
 def test_verdict_meaning_violation_catches_a_reported_word_missing_from_the_text() -> None:
     # The structured field alone is not trusted -- it must correspond to something the
     # reader actually sees in the prose, not just an internally consistent self-report.
-    read = "Margins are strong and debt is low."
+    # (Avoids "strong" here since it is now an accepted healthy-synonym -- see below.)
+    read = "Margins are thin and debt is high."
     violation = rules.verdict_meaning_violation("green", read, "healthy")
+    assert violation is not None
+    assert "does not actually appear in the read text" in violation
+
+
+# --- Issue #22: a production run found the canonical-word-only check rejected compliant
+# reads that expressed the same meaning with a different word (4 of 10 failures in one run).
+# VERDICT_MEANING_SYNONYMS widens the second check to a small, fixed word list.
+
+
+def test_verdict_meaning_violation_accepts_a_healthy_synonym() -> None:
+    read = "Margins are strong and debt is low, which is a solid position on these figures."
+    assert rules.verdict_meaning_violation("green", read, "healthy") is None
+
+
+def test_verdict_meaning_violation_accepts_a_mixed_synonym() -> None:
+    read = "Margins are thin but cash is stable, an uneven picture on these figures."
+    assert rules.verdict_meaning_violation("yellow", read, "mixed") is None
+
+
+def test_verdict_meaning_violation_accepts_a_fragile_synonym() -> None:
+    read = "Debt is high and cash is falling, a strained position on these figures."
+    assert rules.verdict_meaning_violation("red", read, "fragile") is None
+
+
+def test_verdict_meaning_violation_still_rejects_an_unlisted_near_miss_word() -> None:
+    # "promising" is a plausible near-miss a model might reach for, but it is not on the
+    # approved healthy-synonym list -- the widened check must still reject it.
+    read = "Margins are improving, a promising direction on these figures."
+    violation = rules.verdict_meaning_violation("green", read, "healthy")
+    assert violation is not None
+    assert "does not actually appear in the read text" in violation
+
+
+def test_verdict_meaning_violation_rejects_a_synonym_as_a_bare_substring() -> None:
+    # "solid" is an accepted healthy-synonym, but "consolidated" is ordinary financial
+    # vocabulary unrelated to health -- a plain substring check would wrongly accept this.
+    read = "Consolidated revenue held steady this quarter."
+    violation = rules.verdict_meaning_violation("green", read, "healthy")
+    assert violation is not None
+    assert "does not actually appear in the read text" in violation
+
+
+def test_verdict_meaning_violation_rejects_a_fragile_synonym_as_a_bare_substring() -> None:
+    # "strained" is an accepted fragile-synonym, but "constrained"/"restrained" are ordinary
+    # words that don't themselves assert fragility.
+    read = "Spending remains constrained while cash reserves are restrained by covenants."
+    violation = rules.verdict_meaning_violation("red", read, "fragile")
     assert violation is not None
     assert "does not actually appear in the read text" in violation
