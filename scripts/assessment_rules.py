@@ -480,6 +480,18 @@ VERDICT_MEANING_WORD: dict[str, str] = {
     VERDICT_RED: "fragile",
 }
 
+# Words in the read text that count as expressing each meaning, checked by
+# verdict_meaning_violation's second check (issue #22): a compliant read can close on the
+# same meaning with a different word than the canonical one, so requiring only the exact
+# word reintroduced the same brittleness the structured verdict_meaning field was meant to
+# fix, one level down (word instead of phrase). A small, fixed list, not open-ended synonym
+# matching.
+VERDICT_MEANING_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "healthy": ("healthy", "strong", "solid", "sound"),
+    "mixed": ("mixed", "uneven", "in between"),
+    "fragile": ("fragile", "strained", "weak", "struggling"),
+}
+
 
 # Forces structured output instead of free text: the model must name which facts it used, in the
 # exact form it was given them, so scripts/generate_assessments.py can check the read against
@@ -976,8 +988,17 @@ def verdict_meaning_violation(verdict: str, read: str, reported_meaning: str) ->
     "healthy"/"mixed"/"fragile") rather than us inferring it from the prose. Two checks, not one:
     (1) that reported classification must match the verdict this row's rules ALREADY decided --
     never the model's own call, catching a read whose content drifts from the actual verdict
-    color; (2) the reported word must genuinely appear in the read text too, so the structured
-    field can't be right while what the reader actually sees is wrong or missing it entirely.
+    color; (2) the reported meaning must genuinely be expressed in the read text too, so the
+    structured field can't be right while what the reader actually sees is wrong or missing it
+    entirely -- checked against VERDICT_MEANING_SYNONYMS' small, fixed word list per meaning
+    rather than the one canonical word alone, since a compliant read is equally free to express
+    "fragile" as "strained" as it is to reorder the sentence (production data: 4 of 10 rejected
+    reads in one run used a same-meaning word the canonical-only check didn't recognize).
+
+    Matched on whole-word boundaries, not a plain substring: several of the approved words are
+    short morphemes that collide with ordinary financial vocabulary as substrings ("solid" in
+    "consolidated", "strained" in "constrained"/"restrained", "weak" in "tweak") -- a bare `in`
+    check would accept a read that never actually expresses the verdict's meaning.
 
     Returns a description of the violation, or None if the read has none.
     """
@@ -987,6 +1008,8 @@ def verdict_meaning_violation(verdict: str, read: str, reported_meaning: str) ->
             f'reported verdict_meaning "{reported_meaning}" does not match the verdict '
             f'"{verdict}" (expected "{expected}")'
         )
-    if expected not in read.lower():
+    read_lower = read.lower()
+    accepted_words = VERDICT_MEANING_SYNONYMS.get(expected, (expected,))
+    if not any(re.search(rf"\b{re.escape(word)}\b", read_lower) for word in accepted_words):
         return f'verdict_meaning "{expected}" does not actually appear in the read text'
     return None

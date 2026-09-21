@@ -15,6 +15,18 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
+**Issue #22, verdict_meaning synonym fix: MR !202 OPEN.** Triggered `data-pipeline` after
+`8c53a75e`'s structured `verdict_meaning` fix -- confirmed it worked, but 4/10 failures
+needed the LITERAL word ("healthy"/"mixed"/"fragile"), rejecting same-meaning synonyms.
+Fixed: owner-approved synonym list per meaning, whole-word-boundary matched (round 1 caught
+a plain substring colliding with "consolidated" etc). **#22 not closed** -- null backlog
+mostly resolved (878/1045 -> 129/1047), but no run has exercised this fix yet. **Next:
+after !202 merges, trigger/wait for a run, then close #22.**
+
+**Git push auth flakiness (2026-09-21):** failed once ("HTTP Basic: Access denied"), retry
+hung on an interactive prompt (TaskStop'd), third attempt clean; `glab`'s token unaffected.
+If recurring: ask the owner, don't touch the credential store.
+
 **Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu rewritten into a
 text-labeled `About` popover; Not-now removed end-to-end including its skip-cookie layer;
 per-row `Remove` added to Saved; nav row flattened to three equal-width siblings. Nine
@@ -29,17 +41,11 @@ passed everything -- fixed by fetching both fields, and `metric_preset_options(c
 hides a preset only when its target company type(s) have zero eligible cards, data-driven
 rather than hardcoded (`Cash-safe` stays visible -- 2 eligible pre_revenue cards exist).
 
-**Discover control-tier contrast: MERGED (!198).** Owner rejected a new accent color (stay
-monochrome) and two rounds of ad hoc color tweaks as inconsistent ("no concept") before
-landing on a real system: two tonal tiers by FUNCTION -- content (rows, card, expander,
-chips: unchanged) vs control (every actual button/input: `--ss-surface-control`/
-`--ss-border-control`, one step lighter), applied via the existing shared selectors
-app-wide -- which is what also fixed the `Saved` pill and `⋯` overflow trigger without
-touching them directly. **Durable lesson: when live visual iteration keeps getting
-rejected as "random," stop tweaking hex values and ask what FUNCTIONAL categories the
-elements fall into first** -- the fix was a 2-tier concept, not a better color pick.
-`docs/context_budget.yml`'s cap for `docs/ui/design_system.md` raised 10000 -> 10700 (its
-own header sanctions this given a stated reason).
+**Discover control-tier contrast: MERGED (!198).** Owner rejected a new accent color and
+two rounds of ad hoc tweaks as inconsistent before landing on two tonal tiers by FUNCTION:
+content (unchanged) vs control (every button/input, one step lighter), one shared-selector
+rule app-wide. **Durable lesson: when visual iteration keeps getting rejected as "random,"
+stop tweaking hex values and ask what FUNCTIONAL categories the elements fall into first.**
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
@@ -59,13 +65,11 @@ closing a session (renaming a live session's own cwd breaks its shell mid-sessio
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
 parenthetical, even accurate, is still unauthorized owner-reserved copy (round-2 catch).
 
-**Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184). Issue #22
-MERGED (!195).** Manually triggering the schedule dropped the ai_read null rate 84% ->
-12.3%; the remainder traced to a brittle regex on the read's closing phrase, replaced with
-a structured tool-schema field (`verdict_meaning`) the model self-reports, checked against
-the deterministic verdict and the read text itself. **Durable lesson: when a fix "feels
-like a hack," the tell is usually real -- pattern-matching free text to infer something the
-model already knows is the wrong layer; make it state that structurally instead.**
+**Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).** Issue #22's
+first fix landed in !195 (see the current #22 entry above for status -- issue itself still
+open). **Durable lesson: when a fix "feels like a hack," the tell is usually real --
+pattern-matching free text to infer something the model already knows is the wrong layer;
+make it state that structurally instead.**
 
 **GitHub recovered/published (!185), search-card focus (!186), README AI-read diagram
 (!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
