@@ -15,13 +15,11 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Issue #22, verdict_meaning synonym fix: MR !202 OPEN.** Triggered `data-pipeline` after
-`8c53a75e`'s structured `verdict_meaning` fix -- confirmed it worked, but 4/10 failures
-needed the LITERAL word ("healthy"/"mixed"/"fragile"), rejecting same-meaning synonyms.
-Fixed: owner-approved synonym list per meaning, whole-word-boundary matched (round 1 caught
-a plain substring colliding with "consolidated" etc). **#22 not closed** -- null backlog
-mostly resolved (878/1045 -> 129/1047), but no run has exercised this fix yet. **Next:
-after !202 merges, trigger/wait for a run, then close #22.**
+**Issue #22, verdict_meaning synonym fix: MERGED (!202).** `verdict_meaning_violation` now
+accepts a small synonym list per meaning (whole-word-boundary matched), not just the
+literal word. **Issue #22 itself still OPEN**: null backlog mostly resolved (878/1045 ->
+129/1047) but no run has exercised this fix yet. **Next: trigger or wait for a run
+(2026-10-01), check the null count, close #22 if clean.**
 
 **Git push auth flakiness (2026-09-21):** failed once ("HTTP Basic: Access denied"), retry
 hung on an interactive prompt (TaskStop'd), third attempt clean; `glab`'s token unaffected.
