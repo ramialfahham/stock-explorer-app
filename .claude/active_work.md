@@ -15,17 +15,15 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**dbt-layer audit + em-dash cleanup: MR !205 OPEN.** Owner found `dbt-doctor` (GitHub
-Action), asked if the transformation layer is clean. Manual audit (12 models vs.
-`docs/layering.md`/`docs/engineering_standards.md`, all 4 gates run): clean, no layer
-violations, full doc/test coverage. Only real gap: 8 files had leftover em/en-dashes,
-grandfathered by `check_no_em_dash.py`'s diff-only design. Fixed -- `--` everywhere, one
-owner-approved exception for numeric ranges (plain hyphen). **Durable lesson: a
+**dbt-layer audit + em-dash cleanup: MERGED (!205).** Manual audit vs.
+`docs/layering.md`/`docs/engineering_standards.md`: transformation layer clean, no layer
+violations, full doc/test coverage. Only real gap (8 files' leftover em/en-dashes,
+grandfathered by `check_no_em_dash.py`'s diff-only design) fixed. **Durable lesson: a
 "mechanical" rule needing a judgment call IS the owner's -- six review rounds here were the
 same root cause, an undocumented exception invented along the way.** Three minor findings
-not acted on: `fct_fundamentals_snapshot` is "latest state" not true history despite the
-name; `int_stock__sector_benchmarks.sql` has ~50 near-identical CASE blocks; staging
-bypasses `source()` for `raw_parquet_union()` (freshness still works).
+not acted on, owner's call: `fct_fundamentals_snapshot` is "latest state" not true history
+despite the name; `int_stock__sector_benchmarks.sql` has ~50 near-identical CASE blocks;
+staging bypasses `source()` for `raw_parquet_union()` (freshness still works).
 
 **Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified against a
 real run: `reads generated=10 carried=1030 capped=0 failed=0` -- zero failures, ai_read
