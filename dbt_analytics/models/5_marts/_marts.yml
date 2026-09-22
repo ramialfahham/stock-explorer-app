@@ -82,13 +82,13 @@ models:
         data_type: bigint
       - name: forward_pe
         description: >
-          Forward P/E (multiple). No longer catalogued — still computed and
+          Forward P/E (multiple). No longer catalogued -- still computed and
           exported, no card renders it, and it no longer gates eligibility. See
           data_contract § card metrics.
         data_type: double
       - name: ebit_margin_pct
         description: >
-          Card metric 2 — operating margin percent (0–100 scale).
+          Card metric 2 -- operating margin percent (0-100 scale).
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -99,11 +99,11 @@ models:
                 severity: warn
       - name: ebit_margin_basis
         description: >
-          Period basis for ebit_margin_pct — ttm_quarterly or annual_latest.
+          Period basis for ebit_margin_pct -- ttm_quarterly or annual_latest.
         data_type: varchar
       - name: revenue_growth_yoy_pct
         description: >
-          Card metric 3 — revenue growth YoY percent (0–100 scale).
+          Card metric 3 -- revenue growth YoY percent (0-100 scale).
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -121,7 +121,7 @@ models:
         data_type: double
       - name: net_debt_to_ebitda
         description: >
-          Card metric 4 — net debt to EBITDA ratio.
+          Card metric 4 -- net debt to EBITDA ratio.
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -139,7 +139,7 @@ models:
         data_type: double
       - name: fcf_margin_pct
         description: >
-          Card metric 5 — free cash flow margin percent (0–100 scale).
+          Card metric 5 -- free cash flow margin percent (0-100 scale).
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -157,7 +157,7 @@ models:
         data_type: double
       - name: debt_to_equity
         description: >
-          Operating-card solvency metric — total debt / shareholders' equity (statement-based,
+          Operating-card solvency metric -- total debt / shareholders' equity (statement-based,
           nullable). Rendered per company_type; not part of is_card_eligible.
         data_type: double
         data_tests:
@@ -169,12 +169,12 @@ models:
                 severity: warn
       - name: current_ratio_stmt
         description: >
-          Operating-card liquidity metric — current assets / current liabilities (statement-based,
+          Operating-card liquidity metric -- current assets / current liabilities (statement-based,
           nullable; null for financials). Rendered per company_type; not part of is_card_eligible.
         data_type: double
       - name: statement_roe_pct
         description: >
-          Returns metric — net income to common stockholders / shareholders' equity × 100
+          Returns metric -- net income to common stockholders / shareholders' equity × 100
           (statement-based, period-end; nullable). On the operating and financial cards; required
           for financial-card eligibility.
         data_type: double
@@ -187,12 +187,12 @@ models:
                 severity: warn
       - name: price_to_tangible_book
         description: >
-          Market cap / tangible book value (nullable). No longer catalogued —
+          Market cap / tangible book value (nullable). No longer catalogued --
           still computed and exported, no card renders it, not part of eligibility.
         data_type: double
       - name: net_margin_pct
         description: >
-          Financial-card profitability metric — net income / revenue × 100 (nullable). Required for
+          Financial-card profitability metric -- net income / revenue × 100 (nullable). Required for
           financial-card eligibility.
         data_type: double
         data_tests:
@@ -204,7 +204,7 @@ models:
                 severity: warn
       - name: roa_pct
         description: >
-          Financial-card returns metric — net income / total assets × 100 (statement-based,
+          Financial-card returns metric -- net income / total assets × 100 (statement-based,
           period-end; nullable). Rendered for financials; not part of eligibility.
         data_type: double
       - name: dividend_yield_pct
@@ -220,7 +220,7 @@ models:
         data_type: double
       - name: net_cash
         description: >
-          Pre-revenue-card cash metric — cash − total debt, a money amount in the company's
+          Pre-revenue-card cash metric -- cash − total debt, a money amount in the company's
           reporting currency (nullable). Required for pre_revenue-card eligibility.
         data_type: double
         data_tests:
@@ -232,7 +232,7 @@ models:
                 severity: warn
       - name: working_capital
         description: >
-          Pre-revenue-card liquidity metric — current assets − current liabilities, a currency amount
+          Pre-revenue-card liquidity metric -- current assets − current liabilities, a currency amount
           (nullable; null for banks). Rendered for pre_revenue; not part of eligibility.
         data_type: double
         data_tests:
@@ -244,7 +244,7 @@ models:
                 severity: warn
       - name: cash_runway_months
         description: >
-          Pre-revenue-card cash metric — months of cash left at the current burn (nullable; null when
+          Pre-revenue-card cash metric -- months of cash left at the current burn (nullable; null when
           not burning). Rendered for pre_revenue; not part of eligibility.
         data_type: double
         data_tests:
@@ -256,7 +256,7 @@ models:
                 severity: warn
       - name: burn_rate_monthly
         description: >
-          Pre-revenue-card cash metric — average monthly cash burn, a currency amount (nullable; null
+          Pre-revenue-card cash metric -- average monthly cash burn, a currency amount (nullable; null
           when not burning). Rendered for pre_revenue; not part of eligibility.
         data_type: double
         data_tests:
@@ -277,7 +277,7 @@ models:
           - not_null
       - name: company_type
         description: >
-          Sector/lifecycle classification for the Router — operating, financial, or pre_revenue.
+          Sector/lifecycle classification for the Router -- operating, financial, or pre_revenue.
           Always non-null (defaults to operating when revenue is a data gap). Drives which metrics
           the card renders per company type and selects the per-type eligibility branch behind
           is_card_eligible.

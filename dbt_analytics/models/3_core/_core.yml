@@ -40,7 +40,7 @@ models:
 
   - name: fct_fundamentals_snapshot
     description: >
-      **What:** Latest fundamentals fact per ticker — system of record for raw Yahoo fields.
+      **What:** Latest fundamentals fact per ticker -- system of record for raw Yahoo fields.
       **Grain:** One row per (market_code, ticker).
       **Source:** base_yf__fundamentals (most recent snapshot_date per ticker).
       **Used by:** int_stock__card_metrics for card metric calculations.

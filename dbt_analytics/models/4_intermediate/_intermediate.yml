@@ -84,7 +84,7 @@ models:
           Operating profit coalesces row-label fallbacks and Operating Revenue minus Expense.
       - name: ebit_margin_basis
         description: >
-          Period basis for ebit_margin_pct — ttm_quarterly or annual_latest.
+          Period basis for ebit_margin_pct -- ttm_quarterly or annual_latest.
       - name: revenue_growth_yoy_pct
         description: >
           YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
@@ -116,11 +116,11 @@ models:
           Data-only: not in eligibility, the catalogue or the Supabase export.
       - name: current_ratio
         description: >
-          Current assets / current liabilities (Yahoo currentRatio passthrough). Data-only — not in
+          Current assets / current liabilities (Yahoo currentRatio passthrough). Data-only -- not in
           eligibility, the metric catalogue, or the Supabase export yet.
       - name: price_to_book
         description: >
-          Price / book value per share (Yahoo priceToBook passthrough). Data-only — not in eligibility,
+          Price / book value per share (Yahoo priceToBook passthrough). Data-only -- not in eligibility,
           the metric catalogue, or the Supabase export yet.
       - name: price_to_sales
         description: >
@@ -128,13 +128,13 @@ models:
           Data-only: not in eligibility, the catalogue or the Supabase export.
       - name: ev_to_ebitda
         description: >
-          Enterprise value / EBITDA (Yahoo enterpriseToEbitda passthrough). Data-only — not in
+          Enterprise value / EBITDA (Yahoo enterpriseToEbitda passthrough). Data-only -- not in
           eligibility, the metric catalogue, or the Supabase export yet.
       - name: fcf_yield_pct
         description: >
           Free cash flow yield percent: info_free_cashflow / info_market_cap × 100 (Yahoo trailing
           freeCashflow over current marketCap; guarded against null/zero market cap). Nullable (null for
-          financials with no freeCashflow); not clipped. Data-only — not in eligibility, the metric
+          financials with no freeCashflow); not clipped. Data-only -- not in eligibility, the metric
           catalogue, or the Supabase export yet.
       - name: stmt_stockholders_equity
         description: >
@@ -151,7 +151,7 @@ models:
           Catalogued operating-card metric and exported; not in eligibility.
       - name: interest_coverage
         description: >
-          Operating income (eff_stmt_op) / abs(stmt_interest_expense) — abs() defends against the
+          Operating income (eff_stmt_op) / abs(stmt_interest_expense) -- abs() defends against the
           landed interest sign. Guarded against null/zero interest. Operating-company solvency lens.
           Data-only: not in eligibility, the catalogue or the Supabase export.
       - name: current_ratio_stmt
@@ -175,11 +175,11 @@ models:
       - name: roa_pct
         description: >
           Return on assets percent: stmt_net_income / stmt_total_assets * 100 (total net income over
-          total assets — leverage-neutral; the financials returns anchor). Guarded against null/zero
+          total assets -- leverage-neutral; the financials returns anchor). Guarded against null/zero
           assets. Catalogued financial-card metric and exported; not in eligibility.
       - name: statement_roe_pct
         description: >
-          Statement ROE percent: stmt_net_income_common / stmt_stockholders_equity * 100 — common
+          Statement ROE percent: stmt_net_income_common / stmt_stockholders_equity * 100 -- common
           income over common (parent-only) equity, both excluding minority interest (resolves the
           consolidated-NI-over-parent-equity mismatch). Guarded against null/zero equity. Coexists with
           the info-scalar roe_pct. Catalogued for operating and financial cards, exported, and in
@@ -196,7 +196,7 @@ models:
         description: >
           Transparent free cash flow: stmt_operating_cash_flow + stmt_capital_expenditure (capex is
           negative). Distinct from the pre-packaged stmt_free_cash_flow / info_free_cashflow; the burn
-          basis for cash_runway_months. Data-only — not in eligibility, the metric catalogue, or the
+          basis for cash_runway_months. Data-only -- not in eligibility, the metric catalogue, or the
           Supabase export yet.
       - name: cash_runway_months
         description: >
@@ -211,7 +211,7 @@ models:
         description: >
           Net cash relative to enterprise value: (stmt_cash_and_equivalents - stmt_total_debt) /
           (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents). Guarded against zero EV.
-          Data-only — superseded on the pre-revenue card by net_cash (a money amount); not in the
+          Data-only -- superseded on the pre-revenue card by net_cash (a money amount); not in the
           catalogue or export.
       - name: net_cash_to_market_cap
         description: >
@@ -254,7 +254,7 @@ models:
       - name: missing_metrics
         description: >
           VARCHAR list of card metric column names that are null for this snapshot.
-          Empty list when is_card_eligible is true. Internal QA only — not exported to Supabase.
+          Empty list when is_card_eligible is true. Internal QA only -- not exported to Supabase.
 
   - name: int_stock__sector_benchmarks
     description: >
