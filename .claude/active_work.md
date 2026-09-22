@@ -15,22 +15,30 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
+**Null-when doc enforcement: MR !207 OPEN.** `check_dbt_documentation.py` never checked
+`engineering_standards.md`'s own "Null when: ..." anatomy for core/intermediate/marts
+columns. Added `check_null_when_documented` (exempts `info_`/`stmt_`/`qtr_` raw
+passthroughs, owner-approved). Found 32 real violations, fixed with clauses derived from
+the actual SQL, plus 2 pre-existing-but-wrong claims caught by review. **Durable lesson: a
+description already containing "null" can still be incomplete -- cost 2 of 4 review
+rounds.** A larger family (~50 sector-benchmark columns, same gap) deferred to issue #23.
+
 **dbt-layer audit + em-dash cleanup: MERGED (!205).** Manual audit vs.
 `docs/layering.md`/`docs/engineering_standards.md`: transformation layer clean, no layer
 violations, full doc/test coverage. Only real gap (8 files' leftover em/en-dashes,
 grandfathered by `check_no_em_dash.py`'s diff-only design) fixed. **Durable lesson: a
 "mechanical" rule needing a judgment call IS the owner's -- six review rounds here were the
-same root cause, an undocumented exception invented along the way.** Three minor findings
-not acted on, owner's call: `fct_fundamentals_snapshot` is "latest state" not true history
-despite the name; `int_stock__sector_benchmarks.sql` has ~50 near-identical CASE blocks;
-staging bypasses `source()` for `raw_parquet_union()` (freshness still works).
+same root cause, an undocumented exception invented along the way.** Two minor findings
+not acted on: `fct_fundamentals_snapshot` is "latest state" not true history despite the
+name; staging bypasses `source()` for `raw_parquet_union()` (freshness still works). Third
+(`int_stock__sector_benchmarks.sql`'s repetitive CASE blocks, same file the ~50-column
+docs gap below tracks) is now covered by issue #23.
 
-**Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified against a
-real run: `reads generated=10 carried=1030 capped=0 failed=0` -- zero failures, ai_read
-null backlog fully cleared.
+**Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified: zero
+read-generation failures, ai_read null backlog fully cleared.
 
-**Git push auth flakiness (2026-09-21):** failed once, retry hung on an interactive prompt
-(TaskStop'd), third attempt clean; `glab`'s token unaffected. If recurring: ask the owner,
+**Git push auth flakiness:** failed once, retry hung on an interactive prompt (TaskStop'd),
+third attempt clean; `glab`'s token unaffected. If recurring: ask the owner,
 don't touch the credential store.
 
 **Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu rewritten into a
@@ -75,8 +83,7 @@ open). **Durable lesson: when a fix "feels like a hack," the tell is usually rea
 pattern-matching free text to infer something the model already knows is the wrong layer;
 make it state that structurally instead.**
 
-**GitHub recovered/published (!185), search-card focus (!186), README AI-read diagram
-(!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
+**GitHub recovered/published (!185-!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
 
 **Search unified into Discover's filtered list (!188, !189): MERGED.** Owner hit three
 separate search bugs across narrow point-fixes, gave sharp feedback: stop patching
@@ -85,14 +92,10 @@ filter-matched rows, `_render_discover_tab()` renders either identically -- one 
 row list, one focus key, one back button. **Durable lesson: a THIRD bug on one feature
 after two narrow fixes means stop patching symptoms, find the shared root cause.**
 
-**Nav buttons fixed when the active tab is re-tapped: MERGED (!191).** Re-clicking the
-already-active nav pill did nothing -- `st.segmented_control` only reports a NEW selection,
-not fixable by reading the return value differently. Same cause also silently broke
-Saved's own focused-card state and the Not-now overlay. Owner rejected hiding/disabling
-the broken pill as patching around the defect. Fix: nav pills are plain `st.button()`s
-now -- always fire, one handler (`_go_to_nav_page`) makes every click land on that tab's
-list, fixing all three cases at once. `bottom_nav` session key deleted; `active_page` is
-the sole source of truth. Round 1 review caught stale UI docs -- fixed before commit.
+**Nav buttons fixed when re-tapping the active tab: MERGED (!191).** `st.segmented_control`
+only reports a NEW selection, silently broke Saved's focus state too. Owner rejected
+hiding/disabling the pill as patching around it. Fix: plain `st.button()`s, always fire,
+one handler for every click; `bottom_nav` session key deleted, `active_page` sole truth.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
 !165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
