@@ -15,13 +15,25 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified against a
-real run (2026-09-21, pipeline 2868730351): `reads generated=10 carried=1030 capped=0
-failed=0` -- zero failures, ai_read null backlog fully cleared.
+**dbt-layer audit + em-dash cleanup: MR !205 OPEN.** Owner found `dbt-doctor` (GitHub
+Action), asked if the transformation layer is clean. Manual audit (12 models vs.
+`docs/layering.md`/`docs/engineering_standards.md`, all 4 gates run): clean, no layer
+violations, full doc/test coverage. Only real gap: 8 files had leftover em/en-dashes,
+grandfathered by `check_no_em_dash.py`'s diff-only design. Fixed -- `--` everywhere, one
+owner-approved exception for numeric ranges (plain hyphen). **Durable lesson: a
+"mechanical" rule needing a judgment call IS the owner's -- six review rounds here were the
+same root cause, an undocumented exception invented along the way.** Three minor findings
+not acted on: `fct_fundamentals_snapshot` is "latest state" not true history despite the
+name; `int_stock__sector_benchmarks.sql` has ~50 near-identical CASE blocks; staging
+bypasses `source()` for `raw_parquet_union()` (freshness still works).
 
-**Git push auth flakiness (2026-09-21):** failed once ("HTTP Basic: Access denied"), retry
-hung on an interactive prompt (TaskStop'd), third attempt clean; `glab`'s token unaffected.
-If recurring: ask the owner, don't touch the credential store.
+**Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified against a
+real run: `reads generated=10 carried=1030 capped=0 failed=0` -- zero failures, ai_read
+null backlog fully cleared.
+
+**Git push auth flakiness (2026-09-21):** failed once, retry hung on an interactive prompt
+(TaskStop'd), third attempt clean; `glab`'s token unaffected. If recurring: ask the owner,
+don't touch the credential store.
 
 **Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu rewritten into a
 text-labeled `About` popover; Not-now removed end-to-end including its skip-cookie layer;
@@ -45,17 +57,15 @@ stop tweaking hex values and ask what FUNCTIONAL categories the elements fall in
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
-(outside this repo). #2/#4/#6/#1 closed no code; #14/#15/#17/#18 skip/wait. **Lesson:
-citing past incidents as precedent is not the owner deciding fresh (working-agreement.md
-SS7).**
+(outside this repo). **Lesson: citing past incidents as precedent is not the owner
+deciding fresh (working-agreement.md SS7).**
 
 **Repo renamed stock-swipe-app -> stock-explorer-app: MERGED (!194), token repointed.**
 GitLab project, GitHub mirror, local `gitlab` remote all renamed; every live in-repo
 reference fixed. Push-mirror's stored GitHub token was gone -- owner generated a fresh
-fine-grained PAT (Contents: Read-and-write), mirror re-added pointing at the new URL,
-verified end to end (local/GitLab/GitHub main all at the same commit). **Local folder
-`D:\Projects\stock-swipe-app` still NOT renamed** -- owner will do it themselves after
-closing a session (renaming a live session's own cwd breaks its shell mid-session).
+fine-grained PAT (Contents: Read-and-write), mirror re-added, verified end to end.
+**Local folder `D:\Projects\stock-swipe-app` still NOT renamed** -- owner will do it after
+closing a session (renaming a live session's cwd breaks its shell mid-session).
 
 **README scope note added: MERGED (!193).** Owner's exact wording, several chat rounds.
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
