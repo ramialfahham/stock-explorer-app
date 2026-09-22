@@ -61,19 +61,23 @@ models:
           - not_null
       - name: company_name
         description: >
-          Display name from dim_stock for card header.
+          Display name from dim_stock for card header. Null when: dim_stock itself has no
+          name for this ticker (both the seed name and info_long_name were missing there).
       - name: sector
         description: >
-          Sector for peer grouping: coalesce(snapshot info_sector, dim_stock.sector).
+          Sector for peer grouping: coalesce(snapshot info_sector, dim_stock.sector). Null
+          when: both sides of the coalesce are missing for this ticker.
       - name: currency
         description: >
-          Display currency: coalesce(snapshot info_currency, dim_stock.currency).
+          Display currency: coalesce(snapshot info_currency, dim_stock.currency). Null
+          when: both sides of the coalesce are missing for this ticker.
       - name: business_summary
         description: >
           Company description from Yahoo longBusinessSummary; nullable context for card UI.
       - name: company_founded_year
         description: >
-          Company founding year from Yahoo when available; prefixes plain summary on the card.
+          Company founding year from Yahoo when available; prefixes plain summary on the
+          card. Null when: Yahoo does not report a founding year for this ticker.
       - name: forward_pe
         description: >
           Forward P/E ratio from info_forward_pe. Unit: multiple (x). Null when Yahoo omits forwardPE.
@@ -82,9 +86,13 @@ models:
           Operating margin percent: TTM from four quarterly operating-profit and revenue
           sums when complete; else latest annual operating profit / annual Total Revenue.
           Operating profit coalesces row-label fallbacks and Operating Revenue minus Expense.
+          Null when: neither the four-quarter TTM inputs nor the annual-statement inputs
+          are complete, or the revenue denominator on the available path (summed quarterly,
+          or annual) is exactly zero.
       - name: ebit_margin_basis
         description: >
-          Period basis for ebit_margin_pct -- ttm_quarterly or annual_latest.
+          Period basis for ebit_margin_pct -- ttm_quarterly or annual_latest. Null when:
+          ebit_margin_pct itself is null (no basis to report).
       - name: revenue_growth_yoy_pct
         description: >
           YoY revenue growth as percent: info_revenue_growth × 100. Null when revenueGrowth missing.
@@ -117,19 +125,23 @@ models:
       - name: current_ratio
         description: >
           Current assets / current liabilities (Yahoo currentRatio passthrough). Data-only -- not in
-          eligibility, the metric catalogue, or the Supabase export yet.
+          eligibility, the metric catalogue, or the Supabase export yet. Null when: Yahoo
+          does not report currentRatio for this ticker.
       - name: price_to_book
         description: >
           Price / book value per share (Yahoo priceToBook passthrough). Data-only -- not in eligibility,
-          the metric catalogue, or the Supabase export yet.
+          the metric catalogue, or the Supabase export yet. Null when: Yahoo does not report
+          priceToBook for this ticker.
       - name: price_to_sales
         description: >
           Price / sales per share, trailing twelve months (Yahoo priceToSalesTrailing12Months passthrough).
-          Data-only: not in eligibility, the catalogue or the Supabase export.
+          Data-only: not in eligibility, the catalogue or the Supabase export. Null when:
+          Yahoo does not report this figure for this ticker.
       - name: ev_to_ebitda
         description: >
           Enterprise value / EBITDA (Yahoo enterpriseToEbitda passthrough). Data-only -- not in
-          eligibility, the metric catalogue, or the Supabase export yet.
+          eligibility, the metric catalogue, or the Supabase export yet. Null when: Yahoo
+          does not report enterpriseToEbitda for this ticker.
       - name: fcf_yield_pct
         description: >
           Free cash flow yield percent: info_free_cashflow / info_market_cap × 100 (Yahoo trailing
@@ -167,7 +179,9 @@ models:
         description: >
           Price-to-tangible-book: info_market_cap / stmt_tangible_book_value (both totals; guarded to
           tangible book > 0). Point-in-time market cap vs latest-annual tangible book. Financials
-          valuation lens. Exported but no longer catalogued; not in eligibility.
+          valuation lens. Exported but no longer catalogued; not in eligibility. Null when:
+          market cap or tangible book value is missing, or tangible book value is not
+          positive.
       - name: net_margin_pct
         description: >
           Net margin percent: stmt_net_income / stmt_total_revenue * 100. Guarded against null/zero
@@ -191,17 +205,20 @@ models:
           below 0.05 is scaled by 100. On the data the rule was set on nothing genuine sat below 0.05%
           and no fraction row belonged to a 5%+ payer; either would break it.
           assert_dividend_yield_suspects counts those rows each run. Exported and stored, but no
-          card renders it: not in eligibility and not in the metric catalogue.
+          card renders it: not in eligibility and not in the metric catalogue. Null when:
+          Yahoo does not report dividendYield for this ticker.
       - name: computed_fcf
         description: >
           Transparent free cash flow: stmt_operating_cash_flow + stmt_capital_expenditure (capex is
           negative). Distinct from the pre-packaged stmt_free_cash_flow / info_free_cashflow; the burn
           basis for cash_runway_months. Data-only -- not in eligibility, the metric catalogue, or the
-          Supabase export yet.
+          Supabase export yet. Null when: operating cash flow or capital expenditure is
+          missing.
       - name: cash_runway_months
         description: >
           Months of cash at the current burn: stmt_cash_and_equivalents / (-computed_fcf) * 12, only
-          when computed_fcf < 0 (burning); null otherwise. Pre-revenue survival lens. On the pre-revenue
+          when computed_fcf < 0 (burning) and stmt_cash_and_equivalents is present; null
+          otherwise. Pre-revenue survival lens. On the pre-revenue
           card (catalogued + exported); not part of eligibility.
       - name: burn_rate_monthly
         description: >
@@ -212,14 +229,16 @@ models:
           Net cash relative to enterprise value: (stmt_cash_and_equivalents - stmt_total_debt) /
           (info_market_cap + stmt_total_debt - stmt_cash_and_equivalents). Guarded against zero EV.
           Data-only -- superseded on the pre-revenue card by net_cash (a money amount); not in the
-          catalogue or export.
+          catalogue or export. Null when: market cap, total debt, or cash is missing, or the
+          computed enterprise value is exactly zero.
       - name: net_cash_to_market_cap
         description: >
           Net cash relative to market cap: (stmt_cash_and_equivalents - stmt_total_debt) /
           info_market_cap. Guarded against zero market cap. Monotonic (no sign flip). Superseded
           by net_cash: this ratio divides by market cap, so it moves with the share price,
           which a twice-monthly pipeline cannot keep current. Still computed and exported; NO LONGER
-          catalogued, so no card renders it, and no longer part of eligibility.
+          catalogued, so no card renders it, and no longer part of eligibility. Null when:
+          market cap, cash, or total debt is missing, or market cap is exactly zero.
       - name: net_cash
         description: >
           Net cash as a money amount in the company's reporting currency:
@@ -250,7 +269,8 @@ models:
           financial: statement_roe_pct + net_margin_pct; pre_revenue: net_cash). forward_pe was
           dropped from the operating and financial sets because a card must not be
           gated on a metric it no longer displays, which widens eligibility. False excludes the
-          ticker from the discover pool.
+          ticker from the discover pool. Never null in practice: every company_type branch of
+          this CASE resolves to true or false; no `not_null` test is declared here yet.
       - name: missing_metrics
         description: >
           VARCHAR list of card metric column names that are null for this snapshot.
@@ -381,7 +401,9 @@ models:
           - not_null
       - name: sector_peer_count
         description: >
-          Count of card-eligible tickers in this market and sector.
+          Count of card-eligible tickers in this market and sector. Never null: a
+          COUNT(*) aggregate, always populated for every (market_code, sector) group in
+          this table.
       - name: sector_median_forward_pe
         description: >
           Median forward_pe among eligible peers. Null when sector_peer_count < 8.

@@ -31,12 +31,18 @@ models:
       - name: company_name
         description: >
           Display name: seed company_name, else latest info_long_name from fundamentals.
+          Null when: both the seed name and fundamentals' info_long_name are missing for
+          this ticker.
       - name: sector
         description: >
           GICS-style sector from latest fundamentals info_sector; used for benchmarks.
+          Null when: no fundamentals row has matched this ticker, or the matched row's own
+          info_sector is null (Yahoo did not report a sector for that snapshot).
       - name: currency
         description: >
-          Trading/reporting currency from latest fundamentals info_currency.
+          Trading/reporting currency from latest fundamentals info_currency. Null when: no
+          fundamentals row has matched this ticker, or the matched row's own info_currency
+          is null (Yahoo did not report a currency for that snapshot).
 
   - name: fct_fundamentals_snapshot
     description: >

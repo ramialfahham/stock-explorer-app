@@ -62,15 +62,20 @@ models:
           - not_null
       - name: company_name
         description: >
-          Company display name on the swipe card.
+          Company display name on the swipe card. Null when: neither the seed name nor
+          Yahoo's info_long_name is available for this ticker.
         data_type: varchar
       - name: sector
         description: >
-          Sector label for UI and benchmark join.
+          Sector label for UI and benchmark join. Null when: this row's own info_sector is
+          missing AND dim_stock has no sector for this ticker either (no fundamentals match
+          there, or that row's own info_sector was also missing).
         data_type: varchar
       - name: currency
         description: >
-          Currency code for formatted metric display.
+          Currency code for formatted metric display. Null when: this row's own
+          info_currency is missing AND dim_stock has no currency for this ticker either (no
+          fundamentals match there, or that row's own info_currency was also missing).
         data_type: varchar
       - name: business_summary
         description: >
@@ -84,11 +89,14 @@ models:
         description: >
           Forward P/E (multiple). No longer catalogued -- still computed and
           exported, no card renders it, and it no longer gates eligibility. See
-          data_contract § card metrics.
+          data_contract § card metrics. Null when: Yahoo does not report forwardPE for
+          this ticker.
         data_type: double
       - name: ebit_margin_pct
         description: >
-          Card metric 2 -- operating margin percent (0-100 scale).
+          Card metric 2 -- operating margin percent (0-100 scale). Null when: neither the
+          four-quarter TTM inputs nor the annual-statement inputs are complete, or the
+          revenue denominator on the available path is exactly zero.
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -99,11 +107,13 @@ models:
                 severity: warn
       - name: ebit_margin_basis
         description: >
-          Period basis for ebit_margin_pct -- ttm_quarterly or annual_latest.
+          Period basis for ebit_margin_pct -- ttm_quarterly or annual_latest. Null when:
+          ebit_margin_pct itself is null (no basis to report).
         data_type: varchar
       - name: revenue_growth_yoy_pct
         description: >
-          Card metric 3 -- revenue growth YoY percent (0-100 scale).
+          Card metric 3 -- revenue growth YoY percent (0-100 scale). Null when: Yahoo does
+          not report revenueGrowth for this ticker.
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -121,7 +131,8 @@ models:
         data_type: double
       - name: net_debt_to_ebitda
         description: >
-          Card metric 4 -- net debt to EBITDA ratio.
+          Card metric 4 -- net debt to EBITDA ratio. Null when: net debt (or the total
+          debt minus cash fallback) or EBITDA is missing, or EBITDA is zero.
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -139,7 +150,8 @@ models:
         data_type: double
       - name: fcf_margin_pct
         description: >
-          Card metric 5 -- free cash flow margin percent (0-100 scale).
+          Card metric 5 -- free cash flow margin percent (0-100 scale). Null when: free
+          cash flow or total revenue is missing, or revenue is zero.
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -245,7 +257,8 @@ models:
       - name: cash_runway_months
         description: >
           Pre-revenue-card cash metric -- months of cash left at the current burn (nullable; null when
-          not burning). Rendered for pre_revenue; not part of eligibility.
+          not burning, or when cash and equivalents is missing). Rendered for pre_revenue;
+          not part of eligibility.
         data_type: double
         data_tests:
           - dbt_utils.accepted_range:
@@ -557,13 +570,18 @@ models:
           - not_null
       - name: company_name
         description: >
-          Company display name for ops debugging.
+          Company display name for ops debugging. Null when: neither the seed name nor
+          Yahoo's info_long_name is available for this ticker.
       - name: sector
         description: >
-          Sector label for grouping gap patterns.
+          Sector label for grouping gap patterns. Null when: this row's own info_sector is
+          missing AND dim_stock has no sector for this ticker either (no fundamentals match
+          there, or that row's own info_sector was also missing).
       - name: missing_metrics
         description: >
           List of null card metric column names blocking eligibility.
       - name: is_card_eligible
         description: >
-          Always false on this mart.
+          Always false on this mart (it only lists tickers that failed the eligibility
+          gate); never null -- every company_type branch upstream resolves to true or
+          false.

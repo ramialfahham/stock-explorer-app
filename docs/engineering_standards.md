@@ -174,6 +174,14 @@ description: >
 
 Staging columns: map to yfinance/parquet field name; note raw vs derived.
 
+A column that stays an unmodified passthrough of a raw source field in a later layer --
+identifiable by keeping its `info_`/`stmt_`/`qtr_` prefix, assigned once in staging and
+never renamed downstream -- carries the same lighter staging-column rule wherever it
+lands, not the full "Null when" requirement: its nullability is inherited from the
+provider, not a computed condition to restate at every layer that passes it through.
+`scripts/check_dbt_documentation.py`'s `check_null_when_documented` enforces "Null when"
+for core/intermediate/marts columns on exactly this basis.
+
 ### Shared long text
 
 Use `docs` blocks in `dbt_analytics/models/_docs.md` and `'{{ doc("block_name") }}'`
