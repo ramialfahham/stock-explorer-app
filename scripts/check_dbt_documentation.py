@@ -24,6 +24,19 @@ WHAT_OR_SOURCE_PATTERN = re.compile(
 )
 REQUIRED_META_KEYS = ("owner", "domain", "criticality")
 
+# Layers where engineering_standards.md §2's full column anatomy (business meaning,
+# unit/scale, "Null when: ...") applies -- staging/base have their own lighter rule
+# ("map to source field name, note raw vs derived") and are not checked here.
+NULL_WHEN_LAYERS = ("3_core", "4_intermediate", "5_marts")
+
+# This repo's own established naming convention for a column carried through unmodified
+# from a raw source field (assigned once in staging, e.g. stg_yf__fundamentals.sql, never
+# renamed downstream): its nullability is inherited from the provider, not a computed
+# condition worth restating in every layer that passes it through.
+RAW_PASSTHROUGH_PREFIXES = ("info_", "stmt_", "qtr_")
+
+NULL_MENTION_PATTERN = re.compile(r"null", re.IGNORECASE)
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     if not path.is_file():
@@ -115,6 +128,52 @@ def check_column_descriptions(
                 errors.append(f"model {node['name']}.{col_name}: missing column description")
 
 
+def _not_null_columns(manifest: dict[str, Any]) -> set[tuple[str, str]]:
+    """(model_node_id, column_name.lower()) pairs covered by a not_null test -- these have
+    no null case to document, so the null-when check below skips them."""
+    covered: set[tuple[str, str]] = set()
+    for node in manifest.get("nodes", {}).values():
+        if node.get("resource_type") != "test":
+            continue
+        test_metadata = node.get("test_metadata") or {}
+        if test_metadata.get("name") != "not_null":
+            continue
+        column = test_metadata.get("kwargs", {}).get("column_name")
+        if not column:
+            continue
+        for dep in node.get("depends_on", {}).get("nodes", []):
+            covered.add((dep, column.lower()))
+    return covered
+
+
+def check_null_when_documented(manifest: dict[str, Any], errors: list[str]) -> None:
+    """engineering_standards.md §2's column anatomy for core/intermediate/marts requires
+    "Null when: ..." -- checkable for any column that can genuinely be null (no not_null
+    test) and isn't a raw-source passthrough (nullability inherited from the provider, not
+    a computed condition to restate)."""
+    not_null = _not_null_columns(manifest)
+
+    for node in manifest.get("nodes", {}).values():
+        if node.get("resource_type") != "model":
+            continue
+        path = (node.get("path") or "").replace("\\", "/")
+        layer = path.split("/")[0] if path else ""
+        if layer not in NULL_WHEN_LAYERS:
+            continue
+
+        for col_name, col in (node.get("columns") or {}).items():
+            if (node["unique_id"], col_name.lower()) in not_null:
+                continue
+            if col_name.lower().startswith(RAW_PASSTHROUGH_PREFIXES):
+                continue
+            desc = (col.get("description") or "").strip()
+            if desc and not NULL_MENTION_PATTERN.search(desc):
+                errors.append(
+                    f"model {node['name']}.{col_name}: nullable column description must "
+                    "say when it can be null (no not_null test, not a raw passthrough)"
+                )
+
+
 def check_sources(errors: list[str]) -> None:
     if not SOURCES_PATH.is_file():
         errors.append("sources.yml: missing")
@@ -152,6 +211,7 @@ def main() -> int:
 
     check_model_descriptions(manifest, errors)
     check_column_descriptions(manifest, catalog, errors)
+    check_null_when_documented(manifest, errors)
     check_sources(errors)
 
     if errors:
