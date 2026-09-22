@@ -7,7 +7,7 @@ dbt project for the Stock Explorer transform layer.
 - [`docs/layering.md`](../docs/layering.md)
 - [`docs/engineering_standards.md`](../docs/engineering_standards.md)
 - [`docs/working_agreement.md`](../docs/working_agreement.md)
-- [`docs/project_context.md`](../docs/project_context.md) — DuckDB layout, yfinance naming, export
+- [`docs/project_context.md`](../docs/project_context.md) -- DuckDB layout, yfinance naming, export
 
 ## Layout
 

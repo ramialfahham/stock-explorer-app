@@ -2,46 +2,40 @@
 > DISPOSABLE. **Owns:** verdicts + diff hash for THIS task's staged change.
 > **Never:** narrative of how the round went. Overwritten by the next task.
 
-diff_sha256: ccc0c7bebe1625292d79e56f5bbfc05ed7e8453475880fe38efe179cc85dd167
+diff_sha256: e4c1d1e2bfb97af9299c83da3addcc65799af4c861523a599c67d00806e7ef61
 
-Round 1: both FAIL. cto-reviewer found `VERDICT_MEANING_SYNONYMS`' "solid"/"strained"/"weak"
-collide with ordinary financial vocabulary as bare substrings ("consolidated" contains
-"solid", "constrained"/"restrained" contain "strained", "tweak" contains "weak"). scope-auditor
-found `done_when` claimed a test "still passes unmodified" that the diff actually edited
-(fixture text changed to avoid a new synonym collision). Both fixed: matching switched from
-plain substring to whole-word-boundary regex (`\bword\b`), applied uniformly including the
-canonical word (also closes the pre-existing "healthy"/"unhealthy" hole); `done_when`
-corrected to describe the fixture change accurately.
+This task ran six review rounds; only the final passing round is recorded in full below.
+Every prior round found a real, concrete gap -- first an unauthorized colon exception with
+no in-file precedent, then that the whole colon mechanism had no basis in the written rule
+at all, then two missed lines, then two counting errors in this contract's own narrative,
+then one incomplete exclusion path -- each fixed before the next round. Full history in
+`.claude/task/contract.md`.
 
-## cto-reviewer (final)
+## analytics-engineer-reviewer (final)
 VERDICT: PASS
 risks_checked:
-- Regex correctness: ran the fixed regex against the exact collision strings from round 1's
-  finding -- zero matches now, where the old plain-substring code did match. "unhealthy" no
-  longer matches "healthy" either. `re.escape` present on every word for defense-in-depth.
-  Check (1) (reported meaning vs. deterministic verdict) confirmed byte-for-byte untouched.
-- Regression-test validity: manually re-ran both new bare-substring tests' fixtures against
-  the pre-fix logic and confirmed they would have wrongly passed -- real regressions, not
-  tautological. The changed fixture for the "missing from text" test still exercises what it
-  always tested.
-- `scope_paths` matches the actual diff exactly; `review_input.patch` matches
-  `git diff --cached --stat` exactly.
-- No new dependency/mechanism/cost; `pytest tests/` (834 passed), `check_no_em_dash.py`,
-  `check_context_budget.py` all run fresh and pass.
-- `done_when` verified line-by-line against the actual diff; no stale claims.
+- `logs/` exclusion wording verified accurate: `dbt_analytics/.gitignore` genuinely
+  gitignores it, confirmed via `git check-ignore -v`, contents are dbt-generated logs.
+- Zero em/en-dash anywhere under `dbt_analytics/` (excluding `dbt_packages/`, `target/`,
+  `logs/`), verified via raw UTF-8 byte-level grep, not just Python (which has a known
+  cp1252-stdin-decode trap on this machine, independently triggered and caught this round).
+- Numeric-range exception applied at exactly its 3 approved sites, all genuine bounded
+  percentage ranges; no stray colon anywhere in the final diff.
+- Every changed line across all 8 `dbt_analytics/` files sits inside a `description:` or
+  comment block -- `data_type:`, `data_tests:`, grain claims, and SQL logic are all
+  untouched context lines, confirmed by direct read of every hunk.
+- `dbt parse`, `check_no_em_dash.py`, `check_context_budget.py`, `pytest tests/` (834
+  passed) all re-run fresh this round and pass.
 
 ## scope-auditor (final)
 VERDICT: PASS
 risks_checked:
-- `VERDICT_MEANING_SYNONYMS` matches the owner-approved word list exactly -- the
-  word-boundary-matching change added, dropped, or reworded nothing.
-- Word-boundary regex confirmed a pure mechanism fix, not a smuggled content decision: the
-  approved words are unchanged, only how they're matched changed. Verified `\b` correctly
-  excludes each collision case cited in round 1.
-- `done_when`'s fixture-change claim matches the diff exactly; the three other named tests
-  are genuinely absent from the diff (unmodified).
-- `scope_paths` covers every file in the diff, no stale entries.
-- No em-dash/en-dash on any added line (checked via explicit UTF-8 scan, not a piped grep).
-- No owner-decision provenance wording leaked into any code comment or docstring -- checked
-  directly against the diff's added lines, not pre-existing ones.
-- No new dependency/mechanism: `re` was already imported before this diff.
+- `logs/` exclusion wording independently re-verified against `.gitignore` and the live
+  filesystem, not taken on trust.
+- Whole-tree scan (not diff-only) confirms zero U+2014/U+2013 anywhere under
+  `dbt_analytics/` excluding the three vendored/generated paths.
+- `decisions_reserved` ("One -- the numeric-range plain-hyphen exception, asked and
+  approved live") unchanged and still accurate; this round's edit was a factual correction
+  to `done_when`'s wording, not a new or silent decision.
+- No em-dash/en-dash on any added line, including inside `contract.md`'s own new prose.
+- `scope_paths` covers every file in the diff; no new dependency, mechanism, or cost.

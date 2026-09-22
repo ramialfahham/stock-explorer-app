@@ -40,7 +40,7 @@ seeds:
 
   - name: metric_catalogue
     description: >
-      Single source of truth for every card metric — one row per (metric_id, entity). Captures the
+      Single source of truth for every card metric -- one row per (metric_id, entity). Captures the
       formula as a spec (base_relation + numerator_expr / denominator_expr over the base's real
       columns), the analytical definition (calculation / interpretation / applicability), the display
       format, the display taxonomy (perspective, importance_tier, display_order, direction), the
@@ -73,7 +73,7 @@ seeds:
         description: "Plain-English definition: what the metric measures and its source."
         tests: [not_null]
       - name: calculation
-        description: "How the metric is computed, in plain language — the analytical definition."
+        description: "How the metric is computed, in plain language -- the analytical definition."
         tests: [not_null]
       - name: interpretation
         description: "What a higher or lower value means for the company; beginner-facing reasoning."
