@@ -15,11 +15,9 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Issue #22, verdict_meaning synonym fix: MERGED (!202).** `verdict_meaning_violation` now
-accepts a small synonym list per meaning (whole-word-boundary matched), not just the
-literal word. **Issue #22 itself still OPEN**: null backlog mostly resolved (878/1045 ->
-129/1047) but no run has exercised this fix yet. **Next: trigger or wait for a run
-(2026-10-01), check the null count, close #22 if clean.**
+**Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified against a
+real run (2026-09-21, pipeline 2868730351): `reads generated=10 carried=1030 capped=0
+failed=0` -- zero failures, ai_read null backlog fully cleared.
 
 **Git push auth flakiness (2026-09-21):** failed once ("HTTP Basic: Access denied"), retry
 hung on an interactive prompt (TaskStop'd), third attempt clean; `glab`'s token unaffected.
