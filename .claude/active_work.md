@@ -15,13 +15,12 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Null-when doc enforcement: MR !207 OPEN.** `check_dbt_documentation.py` never checked
-`engineering_standards.md`'s own "Null when: ..." anatomy for core/intermediate/marts
-columns. Added `check_null_when_documented` (exempts `info_`/`stmt_`/`qtr_` raw
-passthroughs, owner-approved). Found 32 real violations, fixed with clauses derived from
-the actual SQL, plus 2 pre-existing-but-wrong claims caught by review. **Durable lesson: a
-description already containing "null" can still be incomplete -- cost 2 of 4 review
-rounds.** A larger family (~50 sector-benchmark columns, same gap) deferred to issue #23.
+**Null-when doc enforcement: MERGED (!207).** Added `check_null_when_documented` to
+`check_dbt_documentation.py` (exempts `info_`/`stmt_`/`qtr_` raw passthroughs,
+owner-approved); fixed 32 real violations plus 2 pre-existing-but-wrong null claims.
+**Durable lesson: a description already containing "null" can still be incomplete -- cost
+2 of 4 review rounds.** A larger family (~50 sector-benchmark columns, same gap) deferred
+to issue #23, not yet picked up.
 
 **dbt-layer audit + em-dash cleanup: MERGED (!205).** Manual audit vs.
 `docs/layering.md`/`docs/engineering_standards.md`: transformation layer clean, no layer
