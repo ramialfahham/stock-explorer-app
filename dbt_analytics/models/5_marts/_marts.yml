@@ -302,225 +302,315 @@ models:
                 values: ["operating", "financial", "pre_revenue"]
       - name: sector_peer_count
         description: >
-          Eligible peer count in sector; null when sector unknown or no benchmark row.
+          Eligible peer count in sector. Null for every pre_revenue card by design (the
+          mart join excludes pre_revenue rows from the benchmark entirely, since none of
+          its metrics are benchmarkable) -- otherwise null only if the sector itself is
+          unknown or has no benchmark row.
         data_type: bigint
       - name: sector_median_forward_pe
         description: >
-          Sector median benchmark for forward P/E; null if peer count < 8.
+          Sector median benchmark for forward P/E; null if fewer than 8 of the sector's peers
+          report forward_pe -- not required by either company type's eligibility gate, and Yahoo
+          often omits it.
         data_type: double
       - name: sector_min_forward_pe
         description: >
-          Sector minimum for forward P/E; null if peer count < 8. No card renders this mark since forward_pe left the catalogue; the column is kept, unused.
+          Sector minimum for forward P/E. No card renders this mark since forward_pe left the
+          catalogue; the column is kept, unused. Null if fewer than 8 of the sector's peers
+          report forward_pe -- not required by either company type's eligibility gate, and
+          Yahoo often omits it.
         data_type: double
       - name: sector_max_forward_pe
         description: >
-          Sector maximum for forward P/E; null if peer count < 8. No card renders this mark since forward_pe left the catalogue; the column is kept, unused.
+          Sector maximum for forward P/E. No card renders this mark since forward_pe left the
+          catalogue; the column is kept, unused. Null if fewer than 8 of the sector's peers
+          report forward_pe -- not required by either company type's eligibility gate, and
+          Yahoo often omits it.
         data_type: double
       - name: sector_median_ebit_margin_pct
         description: >
-          Sector median benchmark for EBIT margin; null if peer count < 8.
+          Sector median benchmark for EBIT margin; null if fewer than 8 of the sector's peers
+          report it -- guaranteed in an operating-type sector (gates operating eligibility), not
+          required in a financial-type sector.
         data_type: double
       - name: sector_min_ebit_margin_pct
         description: >
-          Sector minimum for EBIT margin (card range mark); null if peer count < 8.
+          Sector minimum for EBIT margin (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_max_ebit_margin_pct
         description: >
-          Sector maximum for EBIT margin (card range mark); null if peer count < 8.
+          Sector maximum for EBIT margin (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_q1_ebit_margin_pct
         description: >
-          Sector 25th percentile for EBIT margin (outlier-aware range-mark display clamp,
-          Gemini feedback point 5); null if peer count < 8.
+          Sector 25th percentile for EBIT margin (outlier-aware range-mark display clamp, Gemini
+          feedback point 5); null if fewer than 8 of the sector's peers report it -- guaranteed
+          in an operating-type sector (gates operating eligibility), not required in a
+          financial-type sector.
         data_type: double
       - name: sector_q3_ebit_margin_pct
         description: >
-          Sector 75th percentile for EBIT margin (outlier-aware range-mark display clamp);
-          null if peer count < 8.
+          Sector 75th percentile for EBIT margin (outlier-aware range-mark display clamp); null
+          if fewer than 8 of the sector's peers report it -- guaranteed in an operating-type
+          sector (gates operating eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_median_revenue_growth_yoy_pct
         description: >
-          Sector median benchmark for revenue growth; null if peer count < 8.
+          Sector median benchmark for revenue growth; null if fewer than 8 of the sector's peers
+          report it -- guaranteed in an operating-type sector (gates operating eligibility), not
+          required in a financial-type sector.
         data_type: double
       - name: sector_min_revenue_growth_yoy_pct
         description: >
-          Sector minimum for revenue growth (card range mark); null if peer count < 8.
+          Sector minimum for revenue growth (card range mark); null if fewer than 8 of the
+          sector's peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_max_revenue_growth_yoy_pct
         description: >
-          Sector maximum for revenue growth (card range mark); null if peer count < 8.
+          Sector maximum for revenue growth (card range mark); null if fewer than 8 of the
+          sector's peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_q1_revenue_growth_yoy_pct
         description: >
           Sector 25th percentile for revenue growth (outlier-aware range-mark display clamp,
-          Gemini feedback point 5); null if peer count < 8.
+          Gemini feedback point 5); null if fewer than 8 of the sector's peers report it --
+          guaranteed in an operating-type sector (gates operating eligibility), not required in
+          a financial-type sector.
         data_type: double
       - name: sector_q3_revenue_growth_yoy_pct
         description: >
           Sector 75th percentile for revenue growth (outlier-aware range-mark display clamp);
-          null if peer count < 8.
+          null if fewer than 8 of the sector's peers report it -- guaranteed in an
+          operating-type sector (gates operating eligibility), not required in a financial-type
+          sector.
         data_type: double
       - name: sector_median_net_debt_to_ebitda
         description: >
-          Sector median benchmark for leverage; null if peer count < 8.
+          Sector median benchmark for leverage; null if fewer than 8 of the sector's peers
+          report it -- guaranteed in an operating-type sector (gates operating eligibility), not
+          required in a financial-type sector.
         data_type: double
       - name: sector_min_net_debt_to_ebitda
         description: >
-          Sector minimum for leverage (card range mark); null if peer count < 8.
+          Sector minimum for leverage (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_max_net_debt_to_ebitda
         description: >
-          Sector maximum for leverage (card range mark); null if peer count < 8.
+          Sector maximum for leverage (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_q1_net_debt_to_ebitda
         description: >
           Sector 25th percentile for leverage (outlier-aware range-mark display clamp, Gemini
-          feedback point 5); null if peer count < 8.
+          feedback point 5); null if fewer than 8 of the sector's peers report it -- guaranteed
+          in an operating-type sector (gates operating eligibility), not required in a
+          financial-type sector.
         data_type: double
       - name: sector_q3_net_debt_to_ebitda
         description: >
           Sector 75th percentile for leverage (outlier-aware range-mark display clamp); null if
-          peer count < 8.
+          fewer than 8 of the sector's peers report it -- guaranteed in an operating-type sector
+          (gates operating eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_median_fcf_margin_pct
         description: >
-          Sector median benchmark for FCF margin; null if peer count < 8.
+          Sector median benchmark for FCF margin; null if fewer than 8 of the sector's peers
+          report it -- guaranteed in an operating-type sector (gates operating eligibility), not
+          required in a financial-type sector.
         data_type: double
       - name: sector_min_fcf_margin_pct
         description: >
-          Sector minimum for FCF margin (card range mark); null if peer count < 8.
+          Sector minimum for FCF margin (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_max_fcf_margin_pct
         description: >
-          Sector maximum for FCF margin (card range mark); null if peer count < 8.
+          Sector maximum for FCF margin (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in an operating-type sector (gates operating
+          eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_q1_fcf_margin_pct
         description: >
           Sector 25th percentile for FCF margin (outlier-aware range-mark display clamp, Gemini
-          feedback point 5); null if peer count < 8.
+          feedback point 5); null if fewer than 8 of the sector's peers report it -- guaranteed
+          in an operating-type sector (gates operating eligibility), not required in a
+          financial-type sector.
         data_type: double
       - name: sector_q3_fcf_margin_pct
         description: >
           Sector 75th percentile for FCF margin (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          if fewer than 8 of the sector's peers report it -- guaranteed in an operating-type
+          sector (gates operating eligibility), not required in a financial-type sector.
         data_type: double
       - name: sector_median_debt_to_equity
         description: >
           Sector median benchmark for debt-to-equity, among peers with positive stockholders'
-          equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped); null
-          if peer count < 8.
+          equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped);
+          null if fewer than 8 of the sector's peers have it after the positive-equity filter --
+          not required by either company type's eligibility gate, and the filter itself drops
+          any negative-equity peer.
         data_type: double
       - name: sector_min_debt_to_equity
         description: >
           Sector minimum for debt-to-equity among peers with positive stockholders' equity (card
-          range mark); null if peer count < 8.
+          range mark); null if fewer than 8 of the sector's peers have it after the
+          positive-equity filter -- not required by either company type's eligibility gate, and
+          the filter itself drops any negative-equity peer.
         data_type: double
       - name: sector_max_debt_to_equity
         description: >
           Sector maximum for debt-to-equity among peers with positive stockholders' equity (card
-          range mark); null if peer count < 8.
+          range mark); null if fewer than 8 of the sector's peers have it after the
+          positive-equity filter -- not required by either company type's eligibility gate, and
+          the filter itself drops any negative-equity peer.
         data_type: double
       - name: sector_q1_debt_to_equity
         description: >
-          Sector 25th percentile for debt-to-equity among peers with positive stockholders' equity
-          (outlier-aware range-mark display clamp); null if peer count < 8.
+          Sector 25th percentile for debt-to-equity among peers with positive stockholders'
+          equity (outlier-aware range-mark display clamp); null if fewer than 8 of the sector's
+          peers have it after the positive-equity filter -- not required by either company
+          type's eligibility gate, and the filter itself drops any negative-equity peer.
         data_type: double
       - name: sector_q3_debt_to_equity
         description: >
-          Sector 75th percentile for debt-to-equity among peers with positive stockholders' equity
-          (outlier-aware range-mark display clamp); null if peer count < 8.
+          Sector 75th percentile for debt-to-equity among peers with positive stockholders'
+          equity (outlier-aware range-mark display clamp); null if fewer than 8 of the sector's
+          peers have it after the positive-equity filter -- not required by either company
+          type's eligibility gate, and the filter itself drops any negative-equity peer.
         data_type: double
       - name: sector_median_current_ratio_stmt
         description: >
-          Sector median benchmark for current ratio; null if peer count < 8.
+          Sector median benchmark for current ratio; null if fewer than 8 of the sector's peers
+          report it -- not required by either company type's eligibility gate.
         data_type: double
       - name: sector_min_current_ratio_stmt
         description: >
-          Sector minimum for current ratio (card range mark); null if peer count < 8.
+          Sector minimum for current ratio (card range mark); null if fewer than 8 of the
+          sector's peers report it -- not required by either company type's eligibility gate.
         data_type: double
       - name: sector_max_current_ratio_stmt
         description: >
-          Sector maximum for current ratio (card range mark); null if peer count < 8.
+          Sector maximum for current ratio (card range mark); null if fewer than 8 of the
+          sector's peers report it -- not required by either company type's eligibility gate.
         data_type: double
       - name: sector_q1_current_ratio_stmt
         description: >
-          Sector 25th percentile for current ratio (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          Sector 25th percentile for current ratio (outlier-aware range-mark display clamp);
+          null if fewer than 8 of the sector's peers report it -- not required by either company
+          type's eligibility gate.
         data_type: double
       - name: sector_q3_current_ratio_stmt
         description: >
-          Sector 75th percentile for current ratio (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          Sector 75th percentile for current ratio (outlier-aware range-mark display clamp);
+          null if fewer than 8 of the sector's peers report it -- not required by either company
+          type's eligibility gate.
         data_type: double
       - name: sector_median_statement_roe_pct
         description: >
           Sector median benchmark for return on equity, among peers with positive stockholders'
-          equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped); null
-          if peer count < 8.
+          equity (a negative-equity peer's sign-flipped ratio is excluded, not just clamped);
+          null if fewer than 8 of the sector's peers have it after the positive-equity filter --
+          guaranteed in a financial-type sector (gates financial eligibility), not required in
+          an operating-type sector; the filter itself also drops any negative-equity peer.
         data_type: double
       - name: sector_min_statement_roe_pct
         description: >
-          Sector minimum for return on equity among peers with positive stockholders' equity (card
-          range mark); null if peer count < 8.
+          Sector minimum for return on equity among peers with positive stockholders' equity
+          (card range mark); null if fewer than 8 of the sector's peers have it after the
+          positive-equity filter -- guaranteed in a financial-type sector (gates financial
+          eligibility), not required in an operating-type sector; the filter itself also drops
+          any negative-equity peer.
         data_type: double
       - name: sector_max_statement_roe_pct
         description: >
-          Sector maximum for return on equity among peers with positive stockholders' equity (card
-          range mark); null if peer count < 8.
+          Sector maximum for return on equity among peers with positive stockholders' equity
+          (card range mark); null if fewer than 8 of the sector's peers have it after the
+          positive-equity filter -- guaranteed in a financial-type sector (gates financial
+          eligibility), not required in an operating-type sector; the filter itself also drops
+          any negative-equity peer.
         data_type: double
       - name: sector_q1_statement_roe_pct
         description: >
           Sector 25th percentile for return on equity among peers with positive stockholders'
-          equity (outlier-aware range-mark display clamp); null if peer count < 8.
+          equity (outlier-aware range-mark display clamp); null if fewer than 8 of the sector's
+          peers have it after the positive-equity filter -- guaranteed in a financial-type
+          sector (gates financial eligibility), not required in an operating-type sector; the
+          filter itself also drops any negative-equity peer.
         data_type: double
       - name: sector_q3_statement_roe_pct
         description: >
           Sector 75th percentile for return on equity among peers with positive stockholders'
-          equity (outlier-aware range-mark display clamp); null if peer count < 8.
+          equity (outlier-aware range-mark display clamp); null if fewer than 8 of the sector's
+          peers have it after the positive-equity filter -- guaranteed in a financial-type
+          sector (gates financial eligibility), not required in an operating-type sector; the
+          filter itself also drops any negative-equity peer.
         data_type: double
       - name: sector_median_net_margin_pct
         description: >
-          Sector median benchmark for net margin; null if peer count < 8.
+          Sector median benchmark for net margin; null if fewer than 8 of the sector's peers
+          report it -- guaranteed in a financial-type sector (gates financial eligibility), not
+          required in an operating-type sector.
         data_type: double
       - name: sector_min_net_margin_pct
         description: >
-          Sector minimum for net margin (card range mark); null if peer count < 8.
+          Sector minimum for net margin (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in a financial-type sector (gates financial
+          eligibility), not required in an operating-type sector.
         data_type: double
       - name: sector_max_net_margin_pct
         description: >
-          Sector maximum for net margin (card range mark); null if peer count < 8.
+          Sector maximum for net margin (card range mark); null if fewer than 8 of the sector's
+          peers report it -- guaranteed in a financial-type sector (gates financial
+          eligibility), not required in an operating-type sector.
         data_type: double
       - name: sector_q1_net_margin_pct
         description: >
           Sector 25th percentile for net margin (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          if fewer than 8 of the sector's peers report it -- guaranteed in a financial-type
+          sector (gates financial eligibility), not required in an operating-type sector.
         data_type: double
       - name: sector_q3_net_margin_pct
         description: >
           Sector 75th percentile for net margin (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          if fewer than 8 of the sector's peers report it -- guaranteed in a financial-type
+          sector (gates financial eligibility), not required in an operating-type sector.
         data_type: double
       - name: sector_median_roa_pct
         description: >
-          Sector median benchmark for return on assets; null if peer count < 8.
+          Sector median benchmark for return on assets; null if fewer than 8 of the sector's
+          peers report it -- not required by either company type's eligibility gate.
         data_type: double
       - name: sector_min_roa_pct
         description: >
-          Sector minimum for return on assets (card range mark); null if peer count < 8.
+          Sector minimum for return on assets (card range mark); null if fewer than 8 of the
+          sector's peers report it -- not required by either company type's eligibility gate.
         data_type: double
       - name: sector_max_roa_pct
         description: >
-          Sector maximum for return on assets (card range mark); null if peer count < 8.
+          Sector maximum for return on assets (card range mark); null if fewer than 8 of the
+          sector's peers report it -- not required by either company type's eligibility gate.
         data_type: double
       - name: sector_q1_roa_pct
         description: >
-          Sector 25th percentile for return on assets (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          Sector 25th percentile for return on assets (outlier-aware range-mark display clamp);
+          null if fewer than 8 of the sector's peers report it -- not required by either company
+          type's eligibility gate.
         data_type: double
       - name: sector_q3_roa_pct
         description: >
-          Sector 75th percentile for return on assets (outlier-aware range-mark display clamp); null
-          if peer count < 8.
+          Sector 75th percentile for return on assets (outlier-aware range-mark display clamp);
+          null if fewer than 8 of the sector's peers report it -- not required by either company
+          type's eligibility gate.
         data_type: double
       - name: snapshot_date
         description: >

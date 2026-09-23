@@ -15,22 +15,23 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Sector-benchmark per-metric coverage gate (issue #24): MR !209 open, awaiting owner
-review/merge** (branch `fix/sector-benchmark-per-metric-coverage-gate`, review passed).
-Found while scoping issue #23: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
+**Sector-benchmark null-when docs (issue #23): MR !210 open, awaiting owner
+review/merge** (branch `docs/sector-benchmark-null-when-docs`, review passed). Re-scoped
+against #24 (below, MERGED via !209): rewrote all ~50 `sector_median/min/max/q1/q3_*`
+descriptions in `_intermediate.yml`/`_marts.yml` to name each metric's actual null
+condition against the corrected gate; also fixed `mart_stock_cards.sector_peer_count`'s
+description (pre_revenue join exclusion is the dominant cause). Doc-only.
+
+**Sector-benchmark per-metric coverage gate (issue #24): MERGED via MR !209.** Found while
+scoping #23 above: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
 on `sector_peer_count >= 8` (peer GROUP size), not on how many of those peers had a
 non-null value for that specific metric -- SQL aggregates silently skip nulls, so a
 never-gated or wrong-type-gated metric could render off far fewer than 8 real values.
 Fix (owner-approved 2026-09-23): each of the 10 metrics gets its own post-filter
 `count()`/`n_<metric>` in `sector_medians`; `combined` gates on that, not
 `sector_peer_count` (unchanged, still exposed). Full design in
-`.claude/task/contract.md`. Reviewer's non-blocking note: the ~50 column docs still say
-"Null when sector_peer_count < 8," now stale -- deferred to #23. **Next: check !209's
-status; if merged, pick up #23 against the corrected behavior.**
-
-**Issue #23 (sector-benchmark null-when docs), SUPERSEDED, not started.** Owner decision
-2026-09-23: fix the SQL gate first (#24 above), then rewrite the docs against the
-corrected behavior -- docs for a gate about to be replaced would be thrown away.
+`.claude/task/contract.md`. Reviewer's non-blocking note (now resolved by #23 above): the
+~50 column docs said "Null when sector_peer_count < 8," stale against this fix.
 
 **Null-when doc enforcement: MERGED (!207).** Added `check_null_when_documented` to
 `check_dbt_documentation.py` (exempts `info_`/`stmt_`/`qtr_` raw passthroughs,
@@ -51,10 +52,10 @@ name; staging bypasses `source()` for `raw_parquet_union()` (freshness still wor
 docs gap below tracks) is now covered by issue #23.
 
 **Issue #22 CLOSED.** `verdict_meaning_violation` synonym fix (!202) verified: zero
-read-gen failures, ai_read null backlog cleared.
+read-gen failures, backlog cleared.
 
-**Git push auth flakiness:** failed once, retry hung (TaskStop'd), third attempt clean;
-`glab`'s token unaffected. If recurring: ask the owner, don't touch the credential store.
+**Git push auth flakiness:** failed once, retry hung (TaskStop'd), third clean; `glab`'s
+token unaffected. If recurring: ask the owner, don't touch the credential store.
 
 **Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu -> text-labeled
 `About` popover; Not-now removed end-to-end; per-row `Remove` added to Saved. **Lesson:
@@ -80,7 +81,7 @@ GitHub mirror, local `gitlab` remote, every in-repo reference, and the push-mirr
 all fixed/verified. **Local folder `D:\Projects\stock-swipe-app` still NOT renamed** --
 owner will do it after closing a session (renaming a live session's cwd breaks its shell).
 
-**README scope note added: MERGED (!193).** Owner's exact wording used verbatim.
+**README scope note: MERGED (!193).** Owner's exact wording, verbatim.
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
 parenthetical, even accurate, is still unauthorized owner-reserved copy.
 
@@ -113,8 +114,8 @@ owner's call**, ideally after one clean scheduled run's real counts.
 **Load-time work (owner 2026-09-14, zero spend), CLOSED for now.** !140-!143 merged:
 first-paint splash, cookie-based saved list, telemetry/file-watcher off, lazy yfinance.
 Warm-run server time re-measured: 141ms -- fast, not the bottleneck anymore. **NEXT,
-owner's calls:** Hugging Face Spaces migration (owner creates the Space); httpx deck fetch
-instead of the Supabase client library, a mechanism change.
+owner's calls:** Hugging Face Spaces migration; httpx deck fetch instead of the Supabase
+client library (mechanism change).
 
 **Owner question left open by !130:** a decimals-based discriminator for fraction-scale
 yields would catch a fraction row at any yield but mis-scale a genuine four-decimal
@@ -126,11 +127,10 @@ none urgent -- detail in !126's own contract.md/review.md if revisited. **Side f
 not root-caused (!158):** `ebit_margin_pct` = 44,944.9% for IAG (au_asx200), no explanation.
 
 **Merged, issue #9 pipeline-audit closure batch (!118-!158, all fully merged and closed)**:
-fundamentals gate, precision caps, mart grain, fill floor, `accepted_range` guards, AI-read
-labels/fold/cost fix, catalogue wording, dividendYield scale, load-time work (first paint,
-lazy yfinance, file watcher off), `--max-reads` cap (CI value still unset -- owner's call),
-`.claude/working-agreement.md` routed to cto-reviewer. Detail in each MR's own
-contract.md/review.md, not repeated here.
+fundamentals gate, precision caps, mart grain, fill floor, `accepted_range` guards,
+AI-read fixes, catalogue wording, dividendYield scale, load-time work, `--max-reads` cap
+(CI value still unset), `.claude/working-agreement.md` routed to cto-reviewer. Detail in
+each MR's own contract.md/review.md.
 
 ## Atomic card export (MR !115, merged `f98f4025`)
 
