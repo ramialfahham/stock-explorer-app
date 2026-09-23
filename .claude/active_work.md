@@ -15,6 +15,17 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
+**README screenshot/demo refresh, branch `docs/readme-screenshot-refresh`, review
+passed, not yet committed/pushed/MR'd.** Owner supplied 4 new screenshots into
+`docs/media/` (Discover list, search, opened-card detail split across 2 images),
+replacing the old `discover-card.png`. Also recorded a demo GIF
+(`docs/media/discover-demo.gif`) via Claude in Chrome's `gif_creator` against the live
+Render deploy -- re-recorded once at owner's request without the tool's default
+click-indicator/action-label/progress-bar overlays (looked busy/debug-like). Owner
+confirmed layout: GIF on top, 4 stills below. Also fixed a pre-existing copy defect:
+README called a static PNG "the recording below" -- accurate now. Doc/asset-only, no
+Streamlit change. **Next: commit, push, open MR.**
+
 **Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
 aggregates were gated on `sector_peer_count >= 8` (peer GROUP size), not on how many
 peers actually had a non-null value for the specific metric -- fixed with a per-metric
