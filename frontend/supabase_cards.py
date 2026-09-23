@@ -9,26 +9,8 @@ from explore_filters import attach_assessments, dedupe_to_latest_snapshot
 # PostgREST default max rows per request.
 PAGE_SIZE = 1000
 
-# The only columns the Discover/Saved list, filter, count, sort, and search paths read. The card
-# FACE needs the other ~67 columns, but it needs them for one card at a time -- fetching all of
-# them for the whole deck downloads ~9-18 MB before anything can render, and `business_summary`
-# alone is 66% of that. Keep this list minimal and justified:
-#   market_code, ticker            -- the card key, plus search matching
-#   company_name, sector           -- row title/subtitle, search matching, sector filter
-#   is_card_eligible               -- filter_pool's eligibility gate
-#   snapshot_date                  -- dedupe_to_latest_snapshot, Saved's freshness line
-#   company_type, currency         -- pick and format the row's lead metric
-#   ebit_margin_basis              -- metric_label()'s "(annual)" variant
-#   ebit/roe/runway                -- card_copy._LEAD_METRIC_BY_TYPE, one per company type
-#   net_debt_to_ebitda             -- explore_filters.METRIC_PRESETS "Low debt"
-#   revenue_growth_yoy_pct         -- explore_filters.METRIC_PRESETS "Growing revenue"
-# net_debt_to_ebitda/revenue_growth_yoy_pct were missing here until a real card_matches_metric_
-# presets() bug: a metric absent from the row is treated as "unknown, don't exclude" (the same
-# omit-never-fake rule as everywhere else in this app), so both presets silently matched every
-# card regardless of its actual debt or growth. Two more floats per row costs ~50-60 KB across
-# the whole deck (measured), against an already-~1.4 MB payload -- not the kind of cost this
-# column list exists to keep out. Adding a column here costs every visitor on the cold path;
-# adding one to the card face costs nobody until that card is opened.
+# Only what the list, search, filter and sort paths read: every column added here is paid by
+# every visitor, while the card face fetches its other ~67 columns one card at a time.
 DECK_COLUMNS: tuple[str, ...] = (
     "market_code",
     "ticker",
@@ -42,6 +24,7 @@ DECK_COLUMNS: tuple[str, ...] = (
     "ebit_margin_pct",
     "statement_roe_pct",
     "cash_runway_months",
+    # A preset metric missing from the rows makes that preset silently match every card.
     "net_debt_to_ebitda",
     "revenue_growth_yoy_pct",
 )
@@ -132,10 +115,8 @@ def fetch_card_detail(
     return attach_assessments(dedupe_to_latest_snapshot(rows), assessments)[0]
 
 
-# Postgres SQLSTATE for "column does not exist". PostgREST passes it through as the error
-# `code`. Named because the probe below MUST treat it as an answer, not a failure: an export
-# predating migration 004 has no `business_summary` column at all, which is precisely the
-# state the overflow menu's caption exists to announce.
+# Postgres "column does not exist": the probe below treats it as an answer (a pre-migration-004
+# export), not a failure.
 UNDEFINED_COLUMN_SQLSTATE = "42703"
 
 

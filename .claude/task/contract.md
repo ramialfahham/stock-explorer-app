@@ -3,30 +3,40 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Bring SQL comments under `dbt_analytics/` in line with
-  `docs/engineering_standards.md` §1.2 (why not what, one sentence, no multi-line blocks, no
-  history). Comments only: no SQL token changes, so compiled models are unchanged. First of
-  two slices; the frontend layer is its own MR.
+objective: Slice 2 of the comment trim: bring `#` comments and docstrings under `frontend/`
+  in line with `docs/engineering_standards.md` §1.2 (why not what, one sentence, no multi-line
+  blocks, no history). Comments and docstrings only: no code and no user-visible string
+  changes. `frontend/styles.py` is out of scope (its triple-quoted text is CSS, not prose).
 
 scope_paths:
-  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
-  - dbt_analytics/models/4_intermediate/int_stock__sector_benchmarks.sql
-  - dbt_analytics/models/5_marts/mart_stock_cards.sql
-  - dbt_analytics/models/2_base/yfinance/base_yf__constituents.sql
-  - dbt_analytics/tests/assert_eligible_mart_rows_have_all_metrics.sql
-  - dbt_analytics/tests/assert_metric_fill_floor.sql
-  - dbt_analytics/tests/assert_percent_scale_passthroughs.sql
+  - frontend/app.py
+  - frontend/browser_storage.py
+  - frontend/card_copy.py
+  - frontend/card_ui.py
+  - frontend/disclosure_html.py
+  - frontend/explore_filters.py
+  - frontend/live_quote.py
+  - frontend/markets.py
+  - frontend/metric_school.py
+  - frontend/nav_pages.py
+  - frontend/overflow_menu.py
+  - frontend/row_ui.py
+  - frontend/saved_news.py
+  - frontend/settings.py
+  - frontend/supabase_cards.py
+  - frontend/supabase_client.py
+  - frontend/timing.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved: none -- §1.2 already codifies the target; no metric, label or output
+decisions_reserved: none -- §1.2 already codifies the target; no copy, label or behaviour
   changes.
 
 done_when:
-  - Every edited comment is at most two lines and one sentence, states why, carries no history.
-  - Diff with comments stripped is empty (`git diff -w` on non-comment lines), and
-    `dbt compile` output matches `main`'s once comments are stripped.
-  - `scripts/check_no_em_dash.py`, `scripts/check_no_narrative_dates.py`,
-    `scripts/check_dbt_sql_structure.py` pass.
+  - No `#` block over two lines; every edited comment is one sentence stating why, with no
+    history; docstrings keep a summary line plus only what a caller needs.
+  - Each touched file's AST, docstrings removed, is identical to `main`'s.
+  - `pytest tests/frontend`, `scripts/check_no_em_dash.py`, `scripts/check_no_narrative_dates.py`
+    pass.
   - Review cycle run per `.claude/review_routing.json`, committed, MR opened. Not merged.

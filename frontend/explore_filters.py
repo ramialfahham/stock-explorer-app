@@ -1,4 +1,4 @@
-"""Discover session filters — market, sector, and scoped card pool."""
+"""Discover session filters -- market, sector, and scoped card pool."""
 
 from __future__ import annotations
 
@@ -13,11 +13,9 @@ ALL_SECTORS = "all"
 
 def market_filter_options(cards: list[dict[str, Any]]) -> list[tuple[str, str]]:
     """Only markets with at least one eligible card, so the Filters popover never offers a
-    choice that silently returns an empty list -- a market can be registered in
-    `MARKET_DISPLAY_NAMES` (onboarded) with zero exported data yet (pipeline hasn't run for it
-    since onboarding). Preserves `MARKET_DISPLAY_NAMES`'s own registry-ingest-order ordering
-    among the markets actually shown, matching `sectors_for_market()`'s pattern of deriving
-    options from live cards rather than a static list."""
+    choice that silently returns an empty list -- a market can be onboarded with zero
+    exported data yet. Preserves `MARKET_DISPLAY_NAMES`'s registry order among the markets
+    actually shown."""
     eligible_codes = {
         card.get("market_code") for card in cards if card.get("is_card_eligible")
     }
@@ -81,12 +79,9 @@ METRIC_PRESETS: dict[str, dict[str, Any]] = {
 
 def metric_preset_options(cards: Iterable[dict[str, Any]] = ()) -> list[str]:
     """Preset IDs to offer, excluding any whose target company_type(s) have zero eligible
-    cards in the current deck. A preset that can never match anything (e.g. Cash-safe when
-    no pre_revenue company is currently onboarded) is worse than merely inert -- it looks
-    identical to a genuinely broken filter, which is the exact bug this guards against. An
-    An omitted `cards` (e.g. from a caller with no deck in scope) falls back to offering
-    every preset, matching the old unconditional behavior -- distinct from a `cards` that was
-    passed but turned out to have no eligible rows, which offers none."""
+    cards in the current deck -- a preset that can never match anything looks identical to
+    a genuinely broken filter. An omitted `cards` (no deck in scope) offers every preset;
+    a `cards` that was passed but has no eligible rows offers none."""
     cards = list(cards)
     if not cards:
         return list(METRIC_PRESETS)
@@ -103,21 +98,11 @@ def metric_preset_label(preset_id: str) -> str:
 
 
 def _card_matches_preset(card: dict[str, Any], preset_id: str) -> bool:
-    """Each check is scoped by company_type, not by which metric happens to be non-null.
-    `ebit_margin_pct` and `net_margin_pct` are NOT mutually exclusive in the data --
-    int_stock__card_metrics.sql computes both straight from statement fields with no
-    company_type gate, so most operating cards also carry a non-null net_margin_pct.
-    Selecting checks by presence alone would silently AND the two margins together for an
-    operating card instead of checking only the one that applies to its type. Matching by
-    `card["company_type"]` instead removes that ambiguity regardless of which metrics
-    happen to be co-populated.
-
-    A card whose company_type has no check in this preset passes through untouched (e.g.
-    `cash_safe` against an operating card) -- the same "omit, never fake" rule the health
-    verdict and metric stack already follow. A card whose type DOES have a check, but is
-    still missing that specific metric's value (a metric not in that type's mandatory
-    eligibility set, e.g. `statement_roe_pct` for operating), also passes through rather
-    than being excluded for data it was never guaranteed to have."""
+    """Checks are scoped by `card["company_type"]`, not by which metric happens to be
+    non-null -- `ebit_margin_pct` and `net_margin_pct` are not mutually exclusive in the
+    data, so presence alone would silently AND the two margins together for an operating
+    card. A card whose type has no check in this preset, or is missing that metric's value,
+    passes through untouched rather than being excluded."""
     checks = METRIC_PRESETS[preset_id]["checks"]
     card_type = card.get("company_type")
     applicable = [(m, op, t) for ctype, m, op, t in checks if ctype == card_type]
@@ -169,9 +154,8 @@ def _dedupe_by_latest_snapshot(
     cards: list[dict[str, Any]], key_fn: Callable[[dict[str, Any]], Any]
 ) -> list[dict[str, Any]]:
     """Keep one row per key_fn(card) -- latest snapshot_date wins. Shared by
-    `dedupe_to_latest_snapshot` (key: market_code+ticker) and `_dedupe_by_ticker` (key:
-    ticker alone), so the business_summary backfill below stays in one place rather than
-    two copies that can silently drift apart."""
+    `dedupe_to_latest_snapshot` and `_dedupe_by_ticker` so the business_summary backfill
+    below stays in one place rather than two copies that can drift apart."""
     latest: dict[Any, dict[str, Any]] = {}
     for card in cards:
         key = key_fn(card)
@@ -206,27 +190,17 @@ def attach_assessments(
     cards: list[dict[str, Any]],
     assessments: dict[tuple[str, str], dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Copy health_verdict/ai_read onto each card when a matching card_assessments row
-    exists AND was computed from the snapshot the card is showing. No match (the assessments
-    pipeline runs after export and can lag a newly-eligible card) -> card returned unchanged.
-    Callers must treat a missing health_verdict key as "omit the health block", never a
-    placeholder.
+    """Copy health_verdict/ai_read onto each card when a card_assessments row matches it AND
+    was computed from the same snapshot the card is showing -- printing a verdict from a
+    different snapshot over the card's own numbers would contradict them, so a mismatch (or
+    no match; the assessments pipeline runs after export and can lag) returns the card
+    unchanged. Callers must treat a missing health_verdict key as "omit the health block",
+    never a placeholder.
 
-    The snapshot check is what keeps a card from contradicting itself. A verdict and AI read
-    computed from one snapshot printed over another snapshot's numbers is worse than no
-    verdict: the badge is the product's central claim and the reader cannot see the mismatch.
-    Both directions are real. The assessments step can fail after a successful export, leaving
-    an older verdict over newer numbers; and the export can roll a card back to an earlier
-    snapshot while the verdict stays on the newer one. A healthy run writes both from the same
-    mart, so a working pipeline never trips this.
-
-    One case does NOT self-heal, and the card stays verdict-less indefinitely: a ticker the
-    export evicted from its newest snapshot keeps its old assessment row forever, because
-    generate_assessments.py builds records only from mart rows and never deletes.
-
-    Do not "simplify" the gate. Comparing through _snapshot_sort_key is deliberate: a bare
-    str() would blank every badge app-wide, silently, if the column ever gained a time
-    component. Mutation-verified in both directions."""
+    A ticker evicted from its newest export snapshot keeps its old assessment row forever
+    (`generate_assessments.py` never deletes), so it stays verdict-less indefinitely.
+    Compare via `_snapshot_sort_key`, not bare equality, so a `snapshot_date` column gaining
+    a time component can't silently blank every badge."""
     result: list[dict[str, Any]] = []
     for card in cards:
         row = assessments.get(_card_key(card))
@@ -249,7 +223,7 @@ def _latest_action_keys(
     """Currently-active (market_code, ticker) keys for one add/remove action pair, each
     mapped to its latest action's timestamp. A key's most recent action determines current
     state -- absent entirely if removed, or never added. Parameterized by action pair
-    rather than hardcoded to save/unsave, the only pair this app still tracks."""
+    rather than hardcoded to save/unsave, the only pair this app tracks."""
     latest: dict[tuple[str, str], tuple[str, str]] = {}
     for row in interactions:
         action = row.get("action")
@@ -264,10 +238,9 @@ def _latest_action_keys(
 
 def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
     """Currently-saved (market_code, ticker) keys, each mapped to its latest save
-    timestamp. Shared with app.py's `_saved_count`/`_saved_cards`, which is why this is
-    public rather than the usual module-private underscore convention -- it's the single
-    source of truth for "is this saved" so Discover's exclusion and the Saved tab's own
-    list can never disagree."""
+    timestamp. Public (not underscore-prefixed) because app.py's `_saved_count`/
+    `_saved_cards` share it as the single source of truth for "is this saved", so
+    Discover's exclusion and the Saved tab's own list can never disagree."""
     return _latest_action_keys(interactions, add_action="save", remove_action="unsave")
 
 
@@ -275,8 +248,7 @@ def _dedupe_by_ticker(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Keep one row per ticker -- latest snapshot_date wins. A company listed in two
     indices (e.g. Airbus in both the DAX and CAC 40) resolves to the same yfinance ticker
     and would otherwise appear as two cards differing only by market_code. Only meaningful
-    for the ALL_MARKETS scope -- a single-market filter never has two rows sharing a
-    ticker, since each market's constituent seed lists a ticker at most once."""
+    for the ALL_MARKETS scope -- a single-market filter never has two rows sharing a ticker."""
     return _dedupe_by_latest_snapshot(cards, lambda card: card["ticker"])
 
 
@@ -371,15 +343,11 @@ def deck_rows_lack_columns(
     """True when a held deck row is missing a column the current code reads.
 
     A cheap shape invariant, not a cross-deploy guard: both the deck cache and session_state
-    are in-process (`@st.cache_data` defaults to `persist=None`), so a redeploy drops both and
-    the reachable case is narrow -- a long-lived session holding rows from before an in-place
-    change to what the list paths read. Callers must clear the deck CACHE as well as
-    session_state when this fires, or the same rows come straight back (see app.py's
+    are in-process (`@st.cache_data` defaults to `persist=None`), so a redeploy drops both
+    and the reachable case is narrow -- a long-lived session holding rows from before an
+    in-place change to what the list paths read. Callers must clear the deck cache as well
+    as session_state when this fires, or the same rows come straight back (see app.py's
     `_ensure_all_cards`).
-
-    This replaces an earlier `business_summary`-specific version: that column is deliberately
-    no longer in the deck (66% of the mart payload, read only by the card face), so the old
-    check would have fired on every run and re-fetched forever.
     """
     if not cards:
         return False

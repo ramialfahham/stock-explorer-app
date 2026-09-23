@@ -26,7 +26,7 @@ def disclosure_html(
     details_class: str = "ss-disclosure",
 ) -> str:
     """Preview is plain text (escaped by caller), or "" to omit the preview paragraph
-    entirely — for callers whose own always-visible teaser lives outside this component.
+    entirely -- for callers whose own always-visible teaser lives outside this component.
     full_body_html is trusted inner HTML."""
     preview_html = f'<p class="ss-disclosure-preview">{preview}</p>' if preview else ""
     return (

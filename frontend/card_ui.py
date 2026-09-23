@@ -1,4 +1,4 @@
-"""Stock card layout — scannable HTML, numbers-first."""
+"""Stock card layout -- scannable HTML, numbers-first."""
 
 from __future__ import annotations
 
@@ -45,34 +45,28 @@ from metric_school import render_metric_playgrounds
 
 def _range_point_html(row_class: str, left: str, text: str) -> str:
     """One min/median/max entry, center-aligned on its real bar position via a shared
-    CSS class (transform: translateX(-50%)) — only the dynamic `left` is inline."""
+    CSS class (transform: translateX(-50%)) -- only the dynamic `left` is inline."""
     return f'<span class="{row_class}" style="left:{left}">{text}</span>'
 
 
 def _off_scale_arrow_html(side: str) -> str:
-    """A small arrow at the track's edge when this card's own value fell outside the
-    displayed (fence-clamped) range -- the raw value shown in the value row above is
-    completely unaffected; this only flags that the marker's position doesn't reach as far
-    as the true value would put it. See docs/ui/card_metric_cell.md's Range mark mechanics."""
+    """Arrow at the track's edge when this card's value falls outside the displayed
+    (fence-clamped) range -- the raw value shown above is unaffected; this only flags that
+    the marker can't reach as far as the true value. See docs/ui/card_metric_cell.md."""
     edge_class = "ss-metric-range-offscale-low" if side == "low" else "ss-metric-range-offscale-high"
     glyph = "◂" if side == "low" else "▸"
     return f'<span class="ss-metric-range-offscale {edge_class}">{glyph}</span>'
 
 
 def _metric_range_html(card: dict, metric: str) -> str:
-    """Monochrome range mark: numbers row (min/median/max values) above the bar, the bar
-    itself (two segments with a gap at the median, plus this company's marker), then a
-    word-labels row ("min"/"median"/"max") below — all three points center-aligned on
-    their real position using the identical rule, so min/median/max read as one
-    consistent reference framework and the marker is the only thing that moves within
-    it. Replaces the old inline "Higher/Lower than sector median" text on the card face —
-    see docs/ui/card_metric_cell.md.
+    """Monochrome range mark: a min/median/max numbers row above the bar, the bar itself,
+    then a min/median/max word-labels row below, all sharing one center-alignment rule so
+    the marker is the only thing that moves within it. See docs/ui/card_metric_cell.md.
 
-    min/median/max come from benchmark_range()'s outlier-aware display range (a Tukey-fence
-    clamp, not necessarily the sector's raw extreme) -- when this card's own value falls
-    outside that range, the marker pins to the near edge and _off_scale_arrow_html() adds a
-    small directional arrow there. The card's raw value in _metric_cell_html()'s value row is
-    untouched either way."""
+    min/median/max come from benchmark_range()'s Tukey-fence-clamped range, not the sector's
+    raw extreme -- an out-of-range value pins the marker to the near edge and adds an arrow
+    via _off_scale_arrow_html(), leaving the raw value in _metric_cell_html()'s value row
+    unaffected."""
     for m_key, median_key, _direction in BENCHMARK_METRICS:
         if m_key != metric:
             continue
@@ -85,10 +79,8 @@ def _metric_range_html(card: dict, metric: str) -> str:
         median_label = _esc(format_metric_value(metric, rng["median"], currency))
         median_pct = rng["median_pct"]
         value_pct = rng["position_pct"]
-        # min/max sit exactly at the track's own edges (0%/100%) -- nothing to collide
-        # with there but the container's own padding. median can fall anywhere between
-        # them, so its *label* position (not the bar's own gap, which stays exact) is
-        # floored 3rem from either edge to keep it clear of the min/max text.
+        # median's *label* position (not the bar's own gap, which stays exact) is floored
+        # 3rem from either edge so it doesn't collide with the min/max text.
         median_left = f"clamp(3rem, {median_pct}%, calc(100% - 3rem))"
         numbers_row = (
             _range_point_html("ss-metric-range-number", "0%", min_label)
@@ -123,10 +115,9 @@ def _metric_range_html(card: dict, metric: str) -> str:
 
 
 def _metric_range_unavailable_html() -> str:
-    """Stand-in for _metric_range_html() when it returns "" (never benchmarked, or
-    this card's sector is below the peer threshold) -- without it, the card jumps
-    straight from value to gloss with no visual cue that the gap is deliberate,
-    which reads as a missing/broken element rather than an absence of data."""
+    """Stand-in for _metric_range_html() when it returns "" (never benchmarked, or below
+    the peer threshold) -- without it the card jumps straight from value to gloss with no
+    cue that the gap is deliberate, reading as broken rather than absent data."""
     return '<p class="ss-metric-range-unavailable">No sector comparison for this metric.</p>'
 
 
@@ -192,12 +183,12 @@ def _format_market_code(market_code: str | None) -> str:
 
 def build_learn_panel_body_html(card: dict) -> str:
     """Inner HTML for the one learn expander: benchmark compare, then flattened metric
-    definitions (each with its own Read more/Show less). No outer toggle — that's the
-    st.expander itself now.
+    definitions (each with its own Read more/Show less). No outer toggle -- st.expander is
+    it.
 
-    Company description does NOT render here — it has its own inline toggle on the card
-    face (`_company_summary_html`), right where a reader would expect to click it, instead
-    of living at the bottom of a panel titled for explaining numbers."""
+    Company description does not render here -- it has its own inline toggle on the card
+    face (`_company_summary_html`), where a reader expects to click it, not at the bottom
+    of a panel titled for explaining numbers."""
     compare = _benchmark_compare_body(card)
     compare_section = ""
     if compare:
@@ -223,19 +214,12 @@ def build_learn_panel_body_html(card: dict) -> str:
     )
 
 
-# Card-face section labels. These name the SOURCE of each block, not its topic: the
-# assessment is model-written prose, the description is the company's own text passed
-# through untouched. A reader who cannot tell those apart is the problem these solve.
-# Owner-chosen copy (§6), not to be reworded without the owner. "AI-written"
-# deliberately, not "AI summary": the read is
-# written from the card's figures, it does not condense a longer text.
+# Labels name the SOURCE of each block (model-written vs the company's own text), not its
+# topic. "AI-written", not "AI summary": the read is written from the figures, not condensed.
 BLOCK_LABEL_ASSESSMENT = "What the numbers say · AI-written"
 BLOCK_LABEL_DESCRIPTION = "About the company"
-# Heads VERDICT_FALLBACK_READ (card_copy.py) when ai_read is absent. Deliberately NOT
-# BLOCK_LABEL_ASSESSMENT's "AI-written" -- this text is a deterministic, human-authored
-# one-liner naming what the verdict means, not model output, and labelling it "AI-written"
-# would be the same false attribution BLOCK_LABEL_ASSESSMENT already avoids in the other
-# direction. Owner-chosen (§6).
+# Deliberately not BLOCK_LABEL_ASSESSMENT's "AI-written": this text is a deterministic,
+# human-authored one-liner naming the verdict, not model output.
 BLOCK_LABEL_VERDICT_MEANING = "What the verdict means"
 
 
@@ -244,11 +228,10 @@ def _block_label_html(text: str) -> str:
 
 
 def _company_summary_html(card: dict) -> str:
-    """Card-face preview, in its own labelled block. When truncated, gets its own inline
-    Read more/Show less right where a reader would click it — not a separate section at
-    the bottom of the learn panel. Short descriptions render plain, nothing more to
-    reveal. The wrapper is what visually separates this from the assessment above it, so
-    it is emitted whenever there is any description at all."""
+    """Card-face preview, in its own labelled block. Truncated text gets its own inline
+    Read more/Show less at the point of truncation, not a separate section in the learn
+    panel. The wrapper renders whenever there is any description, since it is what
+    visually separates this block from the assessment above it."""
     preview = business_summary_preview(card)
     if not preview:
         return ""
@@ -267,22 +250,10 @@ def _company_summary_html(card: dict) -> str:
 
 
 def _health_block_html(card: dict) -> str:
-    """Verdict badge + narrative, or "" when no card_assessments row was attached to this card
-    -- never a placeholder. Both always visible when present, no click needed. attach_assessments
-    withholds a row whose snapshot_date differs from the card's, so a row can exist in
-    card_assessments and still render "" here.
+    """Verdict badge plus the AI read (or VERDICT_FALLBACK_READ), or "" with no assessment.
 
-    The narrative is either the AI-written read (when ai_read is present) or a deterministic
-    fallback one-liner (VERDICT_FALLBACK_READ) naming what the verdict means, when it is
-    absent -- 5a always writes a verdict, but 5b's read can be pending, a per-card API failure,
-    or a hallucination-guard reject (scripts/generate_assessments.py's validate_read_metrics).
-    A bare badge with nothing else read as broken to a reader, not "not yet written" (owner
-    feedback); the fallback fills that gap under its own honest heading, never
-    BLOCK_LABEL_ASSESSMENT's "AI-written", which the fallback text is not.
-
-    FINANCIAL_CAPITAL_ADEQUACY_CAVEAT is NOT part of this block: it renders under the metrics
-    on every financial-type card (_financial_caveat_html), so withholding the block never
-    withholds the caveat (gitlab issue #11).
+    "" also covers an assessment from a different snapshot, which attach_assessments withholds.
+    The fallback never carries the "AI-written" label, since it is not model output.
     """
     token = health_verdict_token(card)
     if not token:
@@ -293,11 +264,7 @@ def _health_block_html(card: dict) -> str:
         f'<span class="ss-verdict-label">{_esc(VERDICT_BADGE_LABEL[token])}</span>'
         f"</p>"
     )
-    # The badge comes FIRST, above the label, and that ordering is load-bearing: the
-    # verdict is decided by fixed rules in scripts/assessment_rules.py, never by the model
-    # (see that file's header, docs/data_contract.md and docs/north_star.md, which all say
-    # so). Putting an "AI-written" label above the badge would credit the one auditable,
-    # deterministic part of this block to a language model -- exactly backwards.
+    # Badge before the "AI-written" label: the verdict comes from fixed rules, not the model.
     read = ai_read(card)
     if read:
         label = _block_label_html(BLOCK_LABEL_ASSESSMENT)
@@ -314,20 +281,18 @@ def _health_block_html(card: dict) -> str:
 def _bullets_html(text: str, *, list_class: str) -> str:
     """One `<li>` per sentence, always fully visible -- no fold, no truncation. Used for
     both the AI-written read (`ss-ai-read-list`) and the deterministic fallback
-    (`ss-verdict-fallback-list`) -- two distinct classes styled identically (same
-    `.ss-health-block .ss-ai-read-list, .ss-health-block .ss-verdict-fallback-list` rule in
-    styles.py) so the two stay distinguishable in the DOM and in tests, matching how
-    `.ss-ai-read`/`.ss-verdict-fallback` worked before this became a bullet list."""
+    (`ss-verdict-fallback-list`) -- distinct classes styled identically in styles.py, kept
+    apart so the two stay distinguishable in the DOM and in tests."""
     items = "".join(f"<li>{_esc(sentence)}</li>" for sentence in ai_read_sentences(text))
     return f'<ul class="{list_class}">{items}</ul>'
 
 
 def _financial_caveat_html(card: dict) -> str:
-    """FINANCIAL_CAPITAL_ADEQUACY_CAVEAT under the metrics of every financial-type card (the
-    whole GICS "Financial Services" sector, not banks specifically), in every state of the
-    health block including its absence. The LLM is only prompted, never required, to state
-    this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT), so the
-    card says it deterministically. "" for every other company type."""
+    """FINANCIAL_CAPITAL_ADEQUACY_CAVEAT under the metrics of every financial-type card
+    (GICS "Financial Services", not just banks), regardless of the health block's state --
+    the LLM is only prompted, never required, to state this limit
+    (assessment_rules.py's READ_SYSTEM_PROMPT), so the card states it deterministically.
+    "" for every other type."""
     if (card.get("company_type") or DEFAULT_COMPANY_TYPE) != "financial":
         return ""
     return f'<p class="ss-financial-caveat">{_esc(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)}</p>'
@@ -335,10 +300,10 @@ def _financial_caveat_html(card: dict) -> str:
 
 def _metric_stack_with_groups(card: dict, cell_fn) -> str:
     """Render metrics_for_card(card) through cell_fn, inserting a lens group heading
-    whenever the perspective changes. metrics_for_card() already sorts every metric by
-    lens (see card_copy.py's _LENS_ORDER) — this makes that grouping visible instead of
-    silently only affecting order. Shared by the card face and the learn panel so both
-    group the same way."""
+    whenever the perspective changes. metrics_for_card() already sorts metrics by lens
+    (card_copy.py's _LENS_ORDER); this makes that grouping visible rather than only
+    affecting order. Shared by the card face and the learn panel so both group the same
+    way."""
     blocks: list[str] = []
     current_group: str | None = None
     for metric in metrics_for_card(card):
@@ -414,8 +379,8 @@ def build_card_html(
 
 def render_learn_panel(card: dict, *, widget_key_prefix: str = "card") -> None:
     """The one learn panel: benchmark compare, then per-metric definitions (each behind its
-    own Read more/Show less), then the interactive practice widgets — all in a single
-    st.expander. Company description does NOT render here — see
+    own Read more/Show less), then the interactive practice widgets -- all in a single
+    st.expander. Company description does not render here -- see
     `_company_summary_html`'s own inline toggle on the card face."""
     with st.expander("Understand these numbers", expanded=False):
         body = build_learn_panel_body_html(card)

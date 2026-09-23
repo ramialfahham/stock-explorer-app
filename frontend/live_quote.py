@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-# Active markets only — keep in sync with docs/market_registry.yml ingest_active entries.
+# Active markets only -- keep in sync with docs/market_registry.yml ingest_active entries.
 _EXCHANGE_SUFFIX: dict[str, str] = {
     "us_sp500": "",
     "uk_ftse100": ".L",

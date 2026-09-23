@@ -1,21 +1,13 @@
 """Browser-side persistence for saved interactions (v1, no auth): cookies.
 
-The saved list used to live in localStorage behind streamlit_extras' local_storage_manager,
-a components-v2 widget. Mounting it froze the browser for about 3.5 s on every page load and
-forced a second script run before anything past it rendered (measured: rows at 0.6 s with
-the component absent, 4.7 s with it present). Cookies need no component: Streamlit hands
-the request's cookies to the first script run (st.context.cookies), so the saved list is
-known before the first element is drawn, and a write is a few lines of JavaScript rendered
-only in the run that changes something.
+Cookies need no component: Streamlit hands the request's cookies to the first script run
+(st.context.cookies), so the saved list is known before the first element is drawn, and a
+write is a few lines of JavaScript rendered only in the run that changes something.
 
 What persists is the current state, not the event log: the saved (market_code, ticker) keys
 with the epoch second of their save, under one cookie namespace (`COOKIE_PREFIX`). One
 cookie holds about 130 entries; beyond that a list's value is split across its own numbered
-cookies. A second namespace, `ss_skipped_`, backed the "Not now" review list (issue #16);
-that feature was removed (its "skip" interaction never excluded anything from Discover, so
-the list it fed offered nothing a reader couldn't already reach), and this module along
-with it -- a browser still carrying an old `ss_skipped_*` cookie just has it go unread from
-here on, the same as any other cookie this app no longer looks at.
+cookies.
 """
 
 from __future__ import annotations
@@ -29,9 +21,8 @@ import streamlit.components.v1 as components
 
 COOKIE_PREFIX = "ss_saved_"
 COOKIE_MAX_AGE_SECONDS = 365 * 24 * 3600
-# Browsers refuse a cookie whose name plus value passes 4096 bytes; the budget below leaves
-# room for the name and the attributes. Entries are "market:ticker:epoch" joined by "|",
-# characters a cookie value may carry raw and that no market code or ticker contains.
+# Browsers refuse a cookie whose name plus value passes 4096 bytes; this budget leaves
+# room for the name and attributes ("market:ticker:epoch" entries joined by "|").
 COOKIE_CHUNK_BYTES = 3800
 _ENTRY_SEP = "|"
 _FIELD_SEP = ":"
@@ -57,10 +48,9 @@ def _state_for_actions(
     interactions: list[dict[str, Any]], *, add_action: str, remove_action: str
 ) -> list[list[Any]]:
     """The persisted form: [market_code, ticker, epoch_second] per currently-active key for
-    one add/remove action pair, in action order. Parameterized by action pair rather than
-    hardcoded to save/unsave -- mirrors `explore_filters._latest_action_keys`'s tie-break
-    logic, which this predates and cannot import from (frontend/ has no shared module for
-    it; duplicated once already)."""
+    one add/remove action pair, in action order. Parameterized by action pair, not hardcoded
+    to save/unsave, mirroring `explore_filters._latest_action_keys`'s tie-break logic (no
+    shared module in frontend/ to import it from)."""
     latest: dict[tuple[str, str], tuple[str, str]] = {}
     for row in interactions:
         action = row.get("action")
@@ -189,8 +179,8 @@ def append_interaction(card: dict[str, Any], action: str) -> None:
 
 
 def clear_interactions() -> None:
-    """The Saved tab's "Clear saved" action -- save/unsave is the only interaction pair
-    left, so this clears everything, not a filtered subset."""
+    """The Saved tab's "Clear saved" action -- save/unsave is the only interaction pair,
+    so this clears everything, not a filtered subset."""
     st.session_state["interactions"] = []
     st.session_state[_LOADED_FLAG] = True
     _queue_write()
@@ -224,11 +214,10 @@ def write_script(chunks: list[str], *, prefix: str = COOKIE_PREFIX) -> str:
 
 
 def migration_script() -> str:
-    """One-time move of a saved list left in localStorage by the previous storage. Runs only
-    when no cookie exists; when it finds saves it writes the cookies in the same chunks
-    encode_cookies would, and only if the browser accepted the first chunk does it remove
-    the localStorage copy and reload once so the server's first run sees them. A browser
-    that refuses the cookie keeps its localStorage list and does not reload."""
+    """One-time move of a saved list left in localStorage by the prior storage mechanism.
+    Runs only when no cookie exists. On finding saves it writes the cookies, then removes
+    the localStorage copy and reloads once, only if the browser accepted the first cookie
+    chunk; otherwise the localStorage list is left in place and there is no reload."""
     key = json.dumps(LEGACY_LOCAL_STORAGE_KEY)
     prefix = json.dumps(COOKIE_PREFIX)
     return (

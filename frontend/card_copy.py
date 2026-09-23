@@ -1,9 +1,8 @@
 """Plain-language metric lines for beginners (north_star).
 
-Metric display definitions (label, format, direction, tier/order, and the plain-language
-gloss / analogy / learn copy) come from `frontend/metrics.json`, generated from the
-`metric_catalogue` seed by `scripts/export_metric_definitions_json.py`. The seed is the single
-source of truth; do not hand-edit metrics.json or reintroduce hardcoded metric dicts here.
+Metric label/format/gloss/analogy/learn copy comes from `frontend/metrics.json`, generated
+from the `metric_catalogue` seed by `scripts/export_metric_definitions_json.py`. Do not
+hand-edit metrics.json or reintroduce hardcoded metric dicts here.
 """
 
 import json
@@ -38,10 +37,8 @@ _METRIC_BASIS_COLUMN = {m["metric_id"]: (m["basis_column"] or None) for m in _ME
 DEFAULT_COMPANY_TYPE = "operating"
 _METRIC_APPLIES_TO = {m["metric_id"]: tuple(m.get("applies_to") or ()) for m in _METRICS}
 
-# Canonical analytical-lens order (matches the metric_catalogue `perspective` taxonomy). A card's
-# metrics group by lens, then display_order within a lens — so each per-type card reads coherently
-# from its own subset. This is identity-preserving for the operating card (its display_order already
-# follows lens order) and gives disjoint per-type sets (bank, pre-revenue) a lens-grouped order too.
+# Analytical-lens order (matches metric_catalogue's `perspective` taxonomy); cards group metrics
+# by lens then display_order, so this order directly shapes every per-type card's layout.
 _LENS_ORDER = ("valuation", "profitability", "growth", "solvency", "liquidity", "cash", "returns")
 _LENS_RANK = {lens: rank for rank, lens in enumerate(_LENS_ORDER)}
 _PERSPECTIVE_BY_METRIC = {m["metric_id"]: m["perspective"] for m in _METRICS}
@@ -57,19 +54,10 @@ _LEAD_METRIC_BY_TYPE = {
 def lead_metric_for_row(card: dict) -> tuple[str, str] | None:
     """The one metric a Discover list row leads with.
 
-    Operating margin for operating companies, Return on equity for financial firms, cash
-    runway for pre-revenue: each is a CORE, verdict-deciding input to that company type's
-    own verdict rule in scripts/assessment_rules.py, not just any input of any weight.
-    `statement_roe_pct` was the first choice for both operating and financial, but for
-    `_verdict_operating` it is only a supporting axis that "can break a tie but never rescue
-    a red flag" (that function's own comment); the axes that actually decide red/green for
-    an operating card are net_debt_to_ebitda, ebit_margin_pct, and fcf_margin_pct. A metric
-    that only weakly relates to the actual verdict rule, on the majority company type, would
-    misrepresent what decides that company's assessment. `ebit_margin_pct` is the one of
-    those three axes with importance_tier 1 in the metric catalogue, already the headline
-    profitability figure for an operating card. Returns None, not format_metric_value()'s
-    em-dash placeholder, when the value is missing, so the row degrades to title/subtitle
-    only rather than showing a blank or invented number.
+    Operating margin for operating companies, return on equity for financial firms, cash
+    runway for pre-revenue: each is a core, verdict-deciding input to that company type's
+    own verdict rule in scripts/assessment_rules.py. Returns None, not format_metric_value()'s
+    em-dash placeholder, when the value is missing, so the row falls back to title/subtitle only.
     """
     company_type = card.get("company_type") or DEFAULT_COMPANY_TYPE
     metric_id = _LEAD_METRIC_BY_TYPE.get(company_type)
@@ -81,19 +69,17 @@ def lead_metric_for_row(card: dict) -> tuple[str, str] | None:
 
 
 def metric_perspective_label(metric: str) -> str:
-    """Group-header text for this metric's lens (catalogue `perspective`, title-cased) —
-    the same lens metrics_for_card() already sorts by, just made visible on the card
-    face and in the learn panel instead of only ordering silently."""
+    """Group-header text for this metric's lens (catalogue `perspective`, title-cased) -- the
+    same lens metrics_for_card() sorts by, now shown on the card face and learn panel."""
     return _PERSPECTIVE_BY_METRIC.get(metric, "").title()
 
 
 def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
     """Metric ids to render for this card, grouped by analytical lens then display order.
 
-    A metric shows only when it applies to the card's ``company_type`` **and** has a value —
-    so a lens that is blank for a type (e.g. financial-firm solvency) or missing for a row is
-    omitted, never rendered as an em-dash. A missing/None ``company_type`` defaults to
-    ``operating`` (the classifier's own default and the current universe's majority).
+    Shows a metric only when it applies to the card's ``company_type`` and has a value, so a
+    blank lens or missing value is omitted rather than rendered as an em-dash. A missing
+    ``company_type`` defaults to ``operating``.
     """
     company_type = card.get("company_type") or DEFAULT_COMPANY_TYPE
     selected: list[dict] = []
@@ -111,7 +97,7 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
     )
     return tuple(d["metric_id"] for d in selected)
 
-# (metric, sector-median column, short direction) — derived from the catalogue.
+# (metric, sector-median column, short direction) -- derived from the catalogue.
 _DIRECTION_SHORT = {"higher_better": "higher", "lower_better": "lower", "neutral": "neutral"}
 # Every catalogued metric's direction, not just the 9 benchmarkable ones -- backs
 # metric_direction()/metric_gloss()'s universal "Higher/Lower is better." cue.
@@ -209,37 +195,14 @@ def metric_gloss(
 ) -> str:
     """Card-face gloss; value-aware where the story depends on the number.
 
-    `benchmarked=True` (the range mark actually rendered for this metric on this card --
-    the caller already knows this from `_metric_range_html()`'s own return) inserts ", vs
-    sector" before the direction cue, so the min/median/max bar's population is named where
-    a reader is actually looking, rather than only in the "Industrials (74 companies)" sector
-    line higher up the card, which a reader scrolling straight to a metric would miss. Not
-    the caller's job to recompute peer-count/benchmarkable eligibility a second time.
-
-    Ends with a plain "Higher is better."/"Lower is better." for every metric with a
-    known catalogue direction -- a ceteris-paribus statement about that metric's own
-    axis (owner's call: this holds even for metrics whose free-text `interpretation`
-    carries a caveat, e.g. revenue growth's "growth is not health -- a company can grow into
-    losses" -- the caveat is about using the metric as a standalone judgment, not about
-    which way its own axis points. The example used to be forward P/E's "always read next
-    to growth", which stopped being checkable when that metric was dropped;
-    this one is a live catalogue row on purpose, so a reader can verify it). Applies whether or not the metric currently has a range mark; a metric
-    without one (not in the 9 benchmarked today) still gets the same plain cue.
-    Suppressed for net_debt_to_ebitda's value-aware "Net cash" branch and
-    debt_to_equity's "Negative equity" branch -- both already state the actual
-    situation directly, and appending "Lower is better." on top would imply a more
-    negative number is a better version of the same good news, when it's actually a
-    different, broken state the ratio's normal direction no longer describes.
-
-    Deliberately on EVERY metric rather than only the inverted ones -- a cue that appears on
-    some metrics and not others makes its own absence ambiguous, which is worse than not
-    having it. The bar itself carries no direction (right is only "bigger"), so for the two
-    benchmarked inverted metrics (net_debt_to_ebitda, debt_to_equity) a beginner has no way to
-    read the mark without this line -- and only 9 of the 13 catalogued metrics are
-    benchmarkable at all, so for the other 4 (pre-revenue's working_capital, net_cash,
-    cash_runway_months, burn_rate_monthly) this cue is the ONLY direction signal anywhere on
-    the card face. The gloss renders a step larger and lighter than the range mark's own axis
-    labels, to keep it from reading as clutter.
+    `benchmarked=True` inserts ", vs sector" before the direction cue. Ends with a plain
+    "Higher/Lower is better." for every metric with a known catalogue direction, benchmarked
+    or not, since the range bar itself carries no direction and this is the only direction
+    signal on the card face for the metrics with no range mark. Suppressed for
+    net_debt_to_ebitda's "Net cash" branch and debt_to_equity's "Negative equity" branch,
+    which already state the actual situation directly; appending the cue there would imply a
+    more negative number is a better version of the same good news, not the different broken
+    state it actually is.
     """
     if metric == "net_debt_to_ebitda" and value is not None and value < 0:
         return "Net cash: cash on hand exceeds debt"
@@ -356,10 +319,8 @@ _VALUE_FORMATTERS = {
     "ratio_2": lambda value: f"{value:.2f}",
 }
 
-# Mirrors scripts/assessment_rules.py so the read names the currency the card face shows. Not
-# every registry-driven market is here: CHF has no entry and falls back to the bare code, which
-# the owner settled as correct, the rule being to use each currency's real-world
-# form. Keep this map identical to the one in scripts/assessment_rules.py; a test pins it.
+# Mirrors scripts/assessment_rules.py's currency map so the AI read matches the card face; a
+# test pins them identical. CHF has no entry here and falls back to the bare ISO code by design.
 _CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
 
 
@@ -419,9 +380,8 @@ def benchmark_position(
     return "at"
 
 
-# Standard box-plot outlier-fence multiplier (Tukey, 1977) -- not a value picked to fit any
-# one card. Used by benchmark_range() to clamp the displayed range so one extreme peer no
-# longer dominates every other peer's marker position in the same sector.
+# Standard box-plot outlier-fence multiplier (Tukey, 1977), not tuned to any one card; clamps
+# the displayed range in benchmark_range() so one extreme peer can't dominate every other peer's marker position.
 _TUKEY_FENCE_MULTIPLIER = 1.5
 
 
@@ -429,24 +389,13 @@ def benchmark_range(card: dict, metric: str, median_key: str) -> dict | None:
     """Position this card's value within its sector's outlier-aware display range, median
     labeled.
 
-    The display range clamps to a Tukey fence (Q1 - 1.5*IQR .. Q3 + 1.5*IQR) whenever the
-    sector's quartiles are present, so one extreme peer no longer dominates every other peer's
-    marker position in the same sector -- the exact case documented in
-    docs/ui/card_metric_cell.md's "Known data-quality interaction" note (Deep Yellow/DYL,
-    -129,810.5% FCF margin, ASX Energy). Falls back to the raw [sector_min, sector_max] range
-    when quartiles are null (a sector exported before this shipped, or any transitional state),
-    so nothing regresses to "no mark". For a sector with no real outlier, the fence is wider
-    than the true min/max, so the clamp is a no-op and the displayed range is unchanged.
-
-    Returns None when unavailable (peer count < 8, same threshold benchmark_position already
-    applies) or degenerate (the display range collapses to zero width -- every eligible peer
-    reports the same value). `min`/`max` in the returned dict are the DISPLAYED bound -- what
-    actually renders at the 0%/100% track edges -- which is the fence-clamped value when a
-    fence narrows the range, not necessarily the single most extreme peer's raw value.
-
-    `low_off_scale` / `high_off_scale` report whether this card's OWN value fell outside the
-    displayed range on that side; its raw value is never affected, only its marker position.
-    position_pct / median_pct are clamped to [0, 100] defensively.
+    Clamps to a Tukey fence (Q1 - 1.5*IQR .. Q3 + 1.5*IQR) when sector quartiles are present,
+    so one extreme peer can't dominate every other peer's marker position; falls back to the
+    raw [sector_min, sector_max] range when quartiles are null. Returns None when unavailable
+    (peer count < 8) or degenerate (range collapses to zero width). `min`/`max` in the result
+    are the displayed bound, fence-clamped when a fence narrows the range, not necessarily the
+    raw peer extreme. `low_off_scale`/`high_off_scale` flag only this card's marker position,
+    never its raw value.
     """
     if not _benchmark_eligible(card):
         return None
@@ -496,11 +445,8 @@ def benchmark_indicator_label(card: dict, metric: str, median_key: str) -> str |
     return _BENCHMARK_INDICATOR_LABELS[position]
 
 
-# Worst-case gap between two HEALTHY scheduled runs under the 1st/15th cron, plus one day
-# of slack: 15th -> 1st is 14 days after a non-leap February, 17 days after any 31-day
-# month. A threshold at or below that worst case would flag the normal tail of a healthy
-# cycle as stale, same failure mode this constant is supposed to catch. Was 7, matched to
-# the prior weekly cadence the same way — recalibrate this again if the cron changes.
+# Worst-case gap between two healthy 1st/15th-cron runs, plus one day of slack (17 days after
+# a 31-day month); a lower threshold would flag the normal tail of a healthy cycle as stale.
 STALE_SNAPSHOT_DAYS = 18
 
 # Yahoo longBusinessSummary preview length on the card face (tap to expand).
@@ -532,7 +478,7 @@ def business_summary_preview(
     *,
     max_words: int = BUSINESS_SUMMARY_PREVIEW_WORDS,
 ) -> str | None:
-    """Card-face preview from Yahoo text — original wording, word-limited."""
+    """Card-face preview from Yahoo text -- original wording, word-limited."""
     full = business_summary_full(card)
     if not full:
         return None
@@ -540,15 +486,8 @@ def business_summary_preview(
     return preview or None
 
 
-# Requires whitespace after the terminator (a decimal point like "3.0%" has none, so a
-# percentage never breaks mid-number) AND a capital letter starting what follows (scope-
-# auditor's round-1 finding: an abbreviation like "U.S." has whitespace after its own period,
-# so the whitespace check alone still split "U.S. markets rose" into "U" / "S. markets rose").
-# A real sentence boundary is followed by a new sentence, which in READ_SYSTEM_PROMPT's plain,
-# properly-cased prose always starts capitalized; the text after an abbreviation inside the
-# same sentence almost never does ("U.S. markets", not "U.S. Markets"), so this one heuristic
-# -- no abbreviation dictionary needed -- resolves the case that mattered without adding the
-# complexity scripts/assessment_rules.py's own _SENTENCE_GAP comment already flags as a hazard.
+# Splits only where a terminator is followed by whitespace and a capital letter, so "3.0%"
+# (no following space) and "U.S. markets" (lowercase after) are not mistaken for sentence ends.
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
 
 
@@ -573,62 +512,28 @@ def business_summary_is_truncated(
     return truncated
 
 
-# Health verdict (Slice 6c) — token -> emoji/label.
 VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
-# Owner-chosen (§6), replacing Sturdy/Mixed/Strained: "sturdy" is not a word
-# people use. Health framing, deliberately not Strong/Weak, which read closer to a verdict on
-# the SHARE than on the company's finances — this app never implies buy or sell. These MUST
-# stay in step with VERDICT_MEANING in scripts/assessment_rules.py, which tells the model how
-# to end its paragraph; if they drift, a card's prose contradicts its own badge.
+# Health framing, not Strong/Weak, which would read as a verdict on the SHARE rather than the
+# company's finances. Must stay in step with VERDICT_MEANING in scripts/assessment_rules.py, or a card's prose contradicts its own badge.
 VERDICT_BADGE_LABEL = {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
 
-# Deterministic fallback for the health block's narrative when ai_read is absent (5a wrote the
-# verdict; 5b's read is pending, a per-card API failure, or a hallucination-guard reject -- see
-# scripts/generate_assessments.py's validate_read_metrics). A bare badge with nothing else read
-# as broken to a reader, not "not yet written" (owner feedback) -- this fills that
-# gap under its own honest heading ("What the verdict means" in frontend/card_ui.py, never
-# BLOCK_LABEL_ASSESSMENT's "AI-written", which this text is not). Owner-authored wording (§6): a
-# general one-line summary, not a description of the verdict engine's internal logic -- the
-# engine's decisive-vs-supporting metric split and its per-metric thresholds have no
-# representation anywhere in the UI, so text that leaned on either would assert something a
-# reader has no way to check. No mechanical sync test against VERDICT_MEANING is possible or
-# intended (deliberately different in kind, not just phrasing); tests/frontend/test_card_ui.py
-# only checks this covers the same three verdict tokens. Keep these strings free of apostrophes
-# and em/en-dashes -- _esc() HTML-entity-escapes them, which is fine for rendering but breaks a
-# literal-substring test match.
+# Fallback health-block text for when ai_read is absent; keep it a general summary, never the
+# verdict engine's internal thresholds. No apostrophes/em-dashes: _esc() breaks a literal-substring test match on them.
 VERDICT_FALLBACK_READ = {
     "green": "Strong across all financial-health metrics, with zero red flags.",
     "yellow": "No severe financial vulnerabilities, but not every metric clears the bar for strong.",
     "red": "Exhibits at least one severe financial vulnerability that impairs overall stability.",
 }
 
-# Shown on a "financial" company-type card (the whole GICS "Financial Services" sector --
-# banks, insurers, payment networks, asset managers, exchanges, ratings agencies -- not banks
-# specifically, see docs/data_contract.md's company_type classification) in every narrative
-# state, whether or not ai_read is present -- the LLM is only prompted, never required, to
-# state this limit in its own prose (scripts/assessment_rules.py's READ_SYSTEM_PROMPT,
-# "financial" company-type lens), so relying on the model to say it every time would silently
-# reintroduce the gap this exists to close. It renders under the metrics (card_ui.py's
-# _financial_caveat_html), outside the health block, so withholding that block never withholds
-# the caveat (gitlab issue #11). Deliberately says "this company", not
-# "this bank" -- mirrors READ_SYSTEM_PROMPT's own already-reviewed "financial company" framing
-# rather than the bank-specific framing an earlier draft used, which was wrong for the non-bank
-# share of this sector (equity-analyst-reviewer finding). Deliberately states only what's
-# MISSING, not an enumeration of what's shown -- an earlier draft said "profitability only" /
-# "profitability and returns only" and was wrong
-# both times as soon as checked against metric_catalogue.csv's actual applies_to=financial set
-# (also includes a growth metric), because that set is data-driven and can change independently
-# of this string. Stating only the one invariant fact (capital adequacy is never assessed here)
-# can't go stale the same way. Owner-authored wording (§6), approved verbatim. Same constraint
-# as VERDICT_FALLBACK_READ above: no apostrophe, no em/en dash (_esc() escaping breaks a
-# literal-substring test match on those) -- "do not", not "don't".
+# Always shown on "financial" cards regardless of ai_read (the model is only prompted, not
+# required, to state this). States only what's missing, not what's shown, since the shown-metric set is data-driven; same no-apostrophe/em-dash rule as VERDICT_FALLBACK_READ above.
 FINANCIAL_CAPITAL_ADEQUACY_CAVEAT = (
     "These numbers do not show whether this company holds enough capital to stay safe."
 )
 
 
 def health_verdict_token(card: dict) -> str | None:
-    """The card's health_verdict token if present and a known value, else None — a missing
+    """The card's health_verdict token if present and a known value, else None -- a missing
     or unrecognized token means "no assessment", never a placeholder."""
     token = card.get("health_verdict")
     return token if token in VERDICT_EMOJI else None
