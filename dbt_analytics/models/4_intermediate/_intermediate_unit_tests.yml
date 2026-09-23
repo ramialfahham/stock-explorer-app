@@ -544,38 +544,21 @@ unit_tests:
             sector_q3_statement_roe_pct: 20.5,
             sector_max_statement_roe_pct: 24.0,
           }
-  - name: sector_benchmarks_excludes_negative_equity_peer_from_debt_to_equity_and_roe
+  - name: sector_benchmarks_equity_filter_drop_below_threshold_nulls_debt_to_equity_and_roe
     model: int_stock__sector_benchmarks
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          # 7 clean peers with a REAL spread (not degenerate -- a repeated single value can't
-          # distinguish "guard applied" from "guard removed" for quantile_cont's interpolated
-          # Q1/Q3: analytics-engineer-reviewer's round-2 catch, hand-verified below) and ordinary
-          # positive equity. debt_to_equity 1.0..7.0 step 1; statement_roe_pct 10.0..70.0 step 10,
-          # same relative shape so both metrics hand-verify the same way. The 8th peer has
-          # NEGATIVE stmt_stockholders_equity: its debt_to_equity (-100.0) and statement_roe_pct
-          # (-1000.0) are sign-flipped per assessment_rules.py's own documented failure mode, and
-          # must be excluded from ALL FIVE of these 2 metrics' statistics, not just min -- an
-          # extreme low value like this would otherwise become the new sector_min AND pull every
-          # other statistic (median, Q1, Q3) toward it too.
-          #
-          # Hand-computed via DuckDB's linear-interpolation formula (h = (n-1)*p), same method
-          # already used elsewhere in this file, not derived from the SQL under test:
-          # WITH the guard (n=7, contaminated peer excluded): sorted [1,2,3,4,5,6,7].
-          #   min=1.0, max=7.0, median: h=6*0.5=3 -> idx3=4.0 (exact).
-          #   Q1: h=6*0.25=1.5 -> idx1+0.5*(idx2-idx1) = 2+0.5*(3-2) = 2.5.
-          #   Q3: h=6*0.75=4.5 -> idx4+0.5*(idx5-idx4) = 5+0.5*(6-5) = 5.5.
-          #   statement_roe_pct is the same shape x10: min=10.0, median=40.0, Q1=25.0, Q3=55.0,
-          #   max=70.0.
-          # WITHOUT the guard (n=8, contaminated peer included): sorted [-100,1,2,3,4,5,6,7].
-          #   min=-100.0 (0-indexed idx0), median: h=7*0.5=3.5 -> idx3+0.5*(idx4-idx3) =
-          #   3+0.5*(4-3) = 3.5. Q1: h=7*0.25=1.75 -> idx1+0.75*(idx2-idx1) = 1+0.75*(2-1) = 1.75.
-          #   Q3: h=7*0.75=5.25 -> idx5+0.25*(idx6-idx5) = 5+0.25*(6-5) = 5.25.
-          # Every statistic but max differs between the two (max is unaffected either way since
-          # the contaminant is an extreme LOW value, never the max) -- so this fixture actually
-          # discriminates "guard applied" from "guard removed" on min, median, Q1, and Q3 alike,
-          # unlike the all-equal-clean-peer fixture this test used before.
+          # 7 clean (positive-equity) peers, debt_to_equity 1.0..7.0 / statement_roe_pct
+          # 10.0..70.0, plus an 8th peer with NEGATIVE stmt_stockholders_equity (sign-flipped
+          # debt_to_equity/statement_roe_pct per assessment_rules.py's documented failure mode,
+          # excluded by the model's positive-equity filter). sector_peer_count is 8 (the raw,
+          # unfiltered card-eligible count) but only 7 peers survive the filter for these two
+          # metrics -- n_debt_to_equity/n_statement_roe_pct = 7 < peer_threshold (8), so
+          # combined's per-metric gate must null both metrics out even though sector_peer_count
+          # itself clears 8. Before the per-metric gate (issue #24), this fixture's 7 clean
+          # values rendered anyway because the gate only checked the unfiltered
+          # sector_peer_count -- the exact defect this test now proves is fixed.
           - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
@@ -590,16 +573,95 @@ unit_tests:
             market_code: us_sp500,
             sector: Industrials,
             sector_peer_count: 8,
+            sector_min_debt_to_equity: null,
+            sector_q1_debt_to_equity: null,
+            sector_median_debt_to_equity: null,
+            sector_q3_debt_to_equity: null,
+            sector_max_debt_to_equity: null,
+            sector_min_statement_roe_pct: null,
+            sector_q1_statement_roe_pct: null,
+            sector_median_statement_roe_pct: null,
+            sector_q3_statement_roe_pct: null,
+            sector_max_statement_roe_pct: null,
+          }
+  - name: sector_benchmarks_excludes_negative_equity_peer_when_coverage_sufficient
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # Same shape as the null case above, but with a 9th clean peer added so 8 positive-
+          # equity peers survive the filter (n_debt_to_equity = n_statement_roe_pct = 8, meeting
+          # peer_threshold) alongside the same negative-equity contaminant. Proves the filter
+          # still correctly EXCLUDES the contaminant from every statistic (not just min) once
+          # coverage is sufficient -- an extreme low value like -100.0 would otherwise become
+          # the new sector_min and pull median/Q1/Q3 toward it too.
+          #
+          # Hand-computed via DuckDB's linear-interpolation formula (h = (n-1)*p), same method
+          # used elsewhere in this file, not derived from the SQL under test. n=8, sorted
+          # [1,2,3,4,5,6,7,8]: min=1.0, max=8.0. Q1: h=7*0.25=1.75 -> arr[1]+0.75*(arr[2]-arr[1])
+          # = 2+0.75*(3-2) = 2.75. median: h=7*0.5=3.5 -> arr[3]+0.5*(arr[4]-arr[3]) =
+          # 4+0.5*(5-4) = 4.5. Q3: h=7*0.75=5.25 -> arr[5]+0.25*(arr[6]-arr[5]) =
+          # 6+0.25*(7-6) = 6.25. statement_roe_pct is the same shape x10.
+          - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T4, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 4.0, statement_roe_pct: 40.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T5, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 5.0, statement_roe_pct: 50.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T6, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 6.0, statement_roe_pct: 60.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T7, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 7.0, statement_roe_pct: 70.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T8, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 8.0, statement_roe_pct: 80.0, stmt_stockholders_equity: 40000.0}
+          - {market_code: us_sp500, ticker: T9, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: -100.0, statement_roe_pct: -1000.0, stmt_stockholders_equity: -5000.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Industrials,
+            sector_peer_count: 9,
             sector_min_debt_to_equity: 1.0,
-            sector_q1_debt_to_equity: 2.5,
-            sector_median_debt_to_equity: 4.0,
-            sector_q3_debt_to_equity: 5.5,
-            sector_max_debt_to_equity: 7.0,
+            sector_q1_debt_to_equity: 2.75,
+            sector_median_debt_to_equity: 4.5,
+            sector_q3_debt_to_equity: 6.25,
+            sector_max_debt_to_equity: 8.0,
             sector_min_statement_roe_pct: 10.0,
-            sector_q1_statement_roe_pct: 25.0,
-            sector_median_statement_roe_pct: 40.0,
-            sector_q3_statement_roe_pct: 55.0,
-            sector_max_statement_roe_pct: 70.0,
+            sector_q1_statement_roe_pct: 27.5,
+            sector_median_statement_roe_pct: 45.0,
+            sector_q3_statement_roe_pct: 62.5,
+            sector_max_statement_roe_pct: 80.0,
+          }
+  - name: sector_benchmarks_ungated_metric_null_below_own_coverage_despite_peer_count
+    model: int_stock__sector_benchmarks
+    given:
+      - input: ref('int_stock__card_metrics')
+        rows:
+          # 8 card-eligible operating peers (sector_peer_count = 8, clearing peer_threshold) all
+          # reporting the 4 metrics that gate operating eligibility (ebit_margin_pct/
+          # revenue_growth_yoy_pct/net_debt_to_ebitda/fcf_margin_pct -- guaranteed non-null by
+          # construction), but only 3 of the 8 report forward_pe, which no eligibility rule
+          # requires (int_stock__card_metrics.sql dropped it from both gates). Before the
+          # per-metric gate (issue #24), forward_pe's median/min/max rendered anyway because the
+          # gate only checked sector_peer_count -- the exact defect this test proves is fixed:
+          # n_forward_pe = 3 < peer_threshold nulls forward_pe out, while the fully-covered
+          # ebit_margin_pct still computes in the same sector.
+          - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T4, sector: Technology, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T5, sector: Technology, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T6, sector: Technology, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T7, sector: Technology, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+          - {market_code: us_sp500, ticker: T8, sector: Technology, is_card_eligible: true, company_type: operating, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
+    expect:
+      rows:
+        - {
+            market_code: us_sp500,
+            sector: Technology,
+            sector_peer_count: 8,
+            sector_median_forward_pe: null,
+            sector_min_forward_pe: null,
+            sector_max_forward_pe: null,
+            sector_median_ebit_margin_pct: 20.0,
+            sector_min_ebit_margin_pct: 20.0,
+            sector_max_ebit_margin_pct: 20.0,
           }
   - name: card_metrics_statement_metrics_computed
     model: int_stock__card_metrics

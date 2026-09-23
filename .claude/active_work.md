@@ -15,6 +15,24 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
+**Sector-benchmark per-metric coverage gate (issue #24), branch
+`fix/sector-benchmark-per-metric-coverage-gate`, review passed (scope-auditor +
+analytics-engineer-reviewer), not yet committed/pushed/MR'd.** Found while scoping issue
+#23: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
+on `sector_peer_count >= 8` (peer GROUP size), not on how many of those peers had a
+non-null value for that specific metric -- SQL aggregates silently skip nulls, so a
+never-gated or wrong-type-gated metric could render off far fewer than 8 real values.
+Fix (owner-approved 2026-09-23): each of the 10 metrics gets its own post-filter
+`count()`/`n_<metric>` in `sector_medians`; `combined` gates on that, not
+`sector_peer_count` (unchanged, still exposed). Full design in
+`.claude/task/contract.md`. Reviewer's one non-blocking note: the ~50 column docs still
+say "Null when sector_peer_count < 8," now stale -- deferred to #23. **Next session:
+commit, push, open MR.**
+
+**Issue #23 (sector-benchmark null-when docs), SUPERSEDED, not started.** Owner decision
+2026-09-23: fix the SQL gate first (#24 above), then rewrite the docs against the
+corrected behavior -- docs for a gate about to be replaced would be thrown away.
+
 **Null-when doc enforcement: MERGED (!207).** Added `check_null_when_documented` to
 `check_dbt_documentation.py` (exempts `info_`/`stmt_`/`qtr_` raw passthroughs,
 owner-approved); fixed 32 real violations plus 2 pre-existing-but-wrong null claims.
@@ -33,48 +51,39 @@ name; staging bypasses `source()` for `raw_parquet_union()` (freshness still wor
 (`int_stock__sector_benchmarks.sql`'s repetitive CASE blocks, same file the ~50-column
 docs gap below tracks) is now covered by issue #23.
 
-**Issue #22 CLOSED.** `verdict_meaning_violation`'s synonym fix (!202) verified: zero
-read-generation failures, ai_read null backlog fully cleared.
+**Issue #22 CLOSED.** `verdict_meaning_violation` synonym fix (!202) verified: zero
+read-gen failures, ai_read null backlog cleared.
 
-**Git push auth flakiness:** failed once, retry hung on an interactive prompt (TaskStop'd),
-third attempt clean; `glab`'s token unaffected. If recurring: ask the owner,
-don't touch the credential store.
+**Git push auth flakiness:** failed once, retry hung (TaskStop'd), third attempt clean;
+`glab`'s token unaffected. If recurring: ask the owner, don't touch the credential store.
 
-**Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu rewritten into a
-text-labeled `About` popover; Not-now removed end-to-end including its skip-cookie layer;
-per-row `Remove` added to Saved; nav row flattened to three equal-width siblings. Nine
-review rounds each caught a real incomplete-removal or stale-doc gap. **Durable lesson: an
-objective copy DEFECT (stray separator, filler word, em-dash-style break) is a mechanical
-fix, not an approval round-trip -- only a change to what the copy CLAIMS needs asking.**
-Popover-panel alignment (~2.4px edge gap) stays unfixed, accepted Streamlit limitation.
+**Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu -> text-labeled
+`About` popover; Not-now removed end-to-end; per-row `Remove` added to Saved. **Lesson:
+an objective copy DEFECT is a mechanical fix, not an approval round-trip -- only a change
+to what the copy CLAIMS needs asking.** Popover alignment (~2.4px gap) accepted as-is.
 
-**Metric-preset filter bug: MERGED (!197).** Two of five presets (Low debt, Growing
-revenue) checked fields `DECK_COLUMNS` never fetched, so the omit-never-fake rule silently
-passed everything -- fixed by fetching both fields, and `metric_preset_options(cards)` now
-hides a preset only when its target company type(s) have zero eligible cards, data-driven
-rather than hardcoded (`Cash-safe` stays visible -- 2 eligible pre_revenue cards exist).
+**Metric-preset filter bug: MERGED (!197).** Two of five presets checked fields
+`DECK_COLUMNS` never fetched, silently passing everything -- fixed; `metric_preset_options`
+now hides a preset only when its target type(s) have zero eligible cards, data-driven.
 
-**Discover control-tier contrast: MERGED (!198).** Owner rejected a new accent color and
-two rounds of ad hoc tweaks as inconsistent before landing on two tonal tiers by FUNCTION:
-content (unchanged) vs control (every button/input, one step lighter), one shared-selector
-rule app-wide. **Durable lesson: when visual iteration keeps getting rejected as "random,"
-stop tweaking hex values and ask what FUNCTIONAL categories the elements fall into first.**
+**Discover control-tier contrast: MERGED (!198).** Landed on two tonal tiers by FUNCTION:
+content (unchanged) vs control (every button/input, one step lighter). **Lesson: when
+visual iteration keeps getting rejected as "random," ask what FUNCTIONAL categories the
+elements fall into first, don't keep tweaking hex values.**
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
 merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
 (outside this repo). **Lesson: citing past incidents as precedent is not the owner
 deciding fresh (working-agreement.md SS7).**
 
-**Repo renamed stock-swipe-app -> stock-explorer-app: MERGED (!194), token repointed.**
-GitLab project, GitHub mirror, local `gitlab` remote all renamed; every live in-repo
-reference fixed. Push-mirror's stored GitHub token was gone -- owner generated a fresh
-fine-grained PAT (Contents: Read-and-write), mirror re-added, verified end to end.
-**Local folder `D:\Projects\stock-swipe-app` still NOT renamed** -- owner will do it after
-closing a session (renaming a live session's cwd breaks its shell mid-session).
+**Repo renamed stock-swipe-app -> stock-explorer-app: MERGED (!194).** GitLab project,
+GitHub mirror, local `gitlab` remote, every in-repo reference, and the push-mirror's PAT
+all fixed/verified. **Local folder `D:\Projects\stock-swipe-app` still NOT renamed** --
+owner will do it after closing a session (renaming a live session's cwd breaks its shell).
 
-**README scope note added: MERGED (!193).** Owner's exact wording, several chat rounds.
+**README scope note added: MERGED (!193).** Owner's exact wording used verbatim.
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
-parenthetical, even accurate, is still unauthorized owner-reserved copy (round-2 catch).
+parenthetical, even accurate, is still unauthorized owner-reserved copy.
 
 **Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).** Issue #22's
 first fix landed in !195 (see the current #22 entry above for status -- issue itself still
@@ -84,26 +93,23 @@ make it state that structurally instead.**
 
 **GitHub recovered/published (!185-!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
 
-**Search unified into Discover's filtered list (!188, !189): MERGED.** Owner hit three
-separate search bugs across narrow point-fixes, gave sharp feedback: stop patching
-symptoms, design ONE concept. Fix: `_discover_pool()` picks search-matched or
-filter-matched rows, `_render_discover_tab()` renders either identically -- one pool, one
-row list, one focus key, one back button. **Durable lesson: a THIRD bug on one feature
-after two narrow fixes means stop patching symptoms, find the shared root cause.**
+**Search unified into Discover's filtered list (!188, !189): MERGED.** Three narrow
+point-fixes for separate search bugs replaced with one concept: `_discover_pool()` picks
+search- or filter-matched rows, `_render_discover_tab()` renders either identically.
+**Lesson: a THIRD bug on one feature after two narrow fixes means find the shared root
+cause, stop patching symptoms.**
 
 **Nav buttons fixed when re-tapping the active tab: MERGED (!191).** `st.segmented_control`
-only reports a NEW selection, silently broke Saved's focus state too. Owner rejected
-hiding/disabling the pill as patching around it. Fix: plain `st.button()`s, always fire,
-one handler for every click; `bottom_nav` session key deleted, `active_page` sole truth.
+only reports a NEW selection, silently broke Saved's focus too. Fix: plain `st.button()`s,
+always fire, one handler; `bottom_nav` session key deleted, `active_page` sole truth.
 
 **Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
-!165, !167, !169).** Detail in each phase's own MR; lasting process lessons folded into
-"Context / operational notes" below. Plan file fully executed, nothing outstanding.
+!165, !167, !169).** Detail in each phase's own MR; lessons folded into "Context /
+operational notes" below.
 
 **Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost) and MR !116's
-guardrail gaps resolved; detail in each MR. **The `--max-reads` value for the
-`data-pipeline` CI job is still unset -- owner's call**, ideally after one clean scheduled
-run's real counts. Nothing else open from this push.
+guardrail gaps resolved. **`--max-reads` for the `data-pipeline` CI job still unset --
+owner's call**, ideally after one clean scheduled run's real counts.
 
 **Load-time work (owner 2026-09-14, zero spend), CLOSED for now.** !140-!143 merged:
 first-paint splash, cookie-based saved list, telemetry/file-watcher off, lazy yfinance.
