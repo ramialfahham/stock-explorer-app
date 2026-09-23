@@ -16,9 +16,8 @@ one or two lines and let the archive keep the detail._
 ## In flight
 
 **Comment trim to engineering_standards.md section 1.2.** Slice 1 (SQL) MERGED (!214).
-Slice 2 (`frontend/*.py` comments + docstrings, not `styles.py`) IN PROGRESS on
-`refactor/frontend-comment-trim`; proof of no behaviour change is an AST diff vs `main`
-with docstrings removed. Owner's portfolio order after that: revenue-growth fallback check
+Slice 2 (`frontend/*.py` comments + docstrings, not `styles.py`) OPEN, MR !215
+(`refactor/frontend-comment-trim`), both reviewers PASS, awaiting CI and owner merge. Owner's portfolio order after that: revenue-growth fallback check
 (open item 1), incremental dbt models, README product-first, `.mailmap` -- each needs its
 own go.
 
