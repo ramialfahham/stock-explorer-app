@@ -17,9 +17,16 @@ and in one product feature.
 > a cold visit can take up to a minute to wake up. The recording below shows the
 > interaction regardless.
 
-<img src="docs/media/discover-card.png" width="400" alt="A company snapshot — save it to your learning list or move on">
+<p align="center">
+  <img src="docs/media/discover-demo.gif" width="500" alt="Searching for a company, opening its snapshot, and scrolling through its sector-compared metrics">
+</p>
 
-<!-- optional: add docs/media/swipe-demo.gif for a short motion capture of save / not-now -->
+<p align="center">
+  <img src="docs/media/discover-card-1.PNG" width="220" alt="Discover tab: a scrollable list of company snapshots with search and sector filters">
+  <img src="docs/media/discover-card-2.png" width="220" alt="Searching by ticker or company name narrows the list instantly">
+  <img src="docs/media/discover-card-3.PNG" width="220" alt="An opened card: an AI-written, plain-language read of the numbers, plus company and sector context">
+  <img src="docs/media/discover-card-4.PNG" width="220" alt="An opened card: profitability, growth, and solvency metrics shown against the sector range">
+</p>
 
 ## Architecture
 

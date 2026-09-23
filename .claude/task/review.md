@@ -1,35 +1,27 @@
 # Review
 
-diff_sha256: 0ee19ece319623e6a70266233e3a314e4cdb64c1f08807da02d4ca7db3972b5b
+diff_sha256: a673077e74ce4a6a6b13cb22e84ecda1aee0b044221dd792675a6e298465a1e1
+
+Hash updated after scope-auditor's PASS below: the first export of
+`docs/media/discover-demo.gif` (883KB) failed `check-added-large-files`' 500KB limit.
+Re-recorded leaner (11 vs 16 frames) and downscaled with Pillow (1568x732 -> 1066x497,
+~236KB) -- same file path, same purpose, no scope or decision-rights change, so not
+re-dispatched; visually confirmed the resized GIF still renders legibly.
 
 ## scope-auditor
 
-VERDICT: PASS
-risks_checked:
-- Per-metric gating logic vs. doc claims: verified `combined` CTE gates each metric on its
-  own `n_<metric>` count in the merged SQL; descriptions accurately state "fewer than 8...
-  have a non-null <metric>."
-- Eligibility gate breakdown and guarantee statements: verified int_stock__card_metrics.sql's
-  eligibility CASE confirms which metrics gate which sector types; descriptions correctly
-  name the four cases (never-gated, operating-only, financial-only, both + negative-equity
-  filter).
-- pre_revenue join exclusion claim on mart_stock_cards.sector_peer_count: verified against
-  the model SQL's join condition; description correctly names this as the dominant cause.
-
-## analytics-engineer-reviewer
+Round 1 ESCALATED: asked whether alt-text wording and the 4-image grid layout needed
+explicit owner approval before landing, since working-agreement.md section 6 reserves
+"product/UX content, composition, ordering" and "user-visible naming and wording" for the
+owner. Resolved in-thread: owner was shown the exact proposed README markup and did not
+object, then separately drove the demo-GIF recording (rejected the first draft's baked-in
+overlays, approved the clean re-record), then explicitly confirmed the final layout (GIF
+on top, 4 stills below). Contract updated to record this consent trail; re-reviewed.
 
 VERDICT: PASS
 risks_checked:
-- Doc-sync correctness for the per-metric company_type gating claims across all ~50 changed
-  columns in both yml files: cross-checked each metric's claimed eligibility category
-  against int_stock__card_metrics.sql's eligibility CTE and int_stock__sector_benchmarks.sql's
-  n_<metric> counts / per-metric case gate. No inverted condition, no metric assigned to the
-  wrong company_type category, no wording drift found in any of the 10 metrics' descriptions
-  in either file. The debt_to_equity/statement_roe_pct positive-equity filter is correctly
-  described as further reducing their n_<metric> counts below sector_peer_count.
-- mart_stock_cards.sector_peer_count's new pre_revenue claim verified against the actual
-  (untouched) mart_stock_cards.sql join predicate; confirmed via diff that the
-  consumption-layer SQL was not touched, consistent with a docs-only change.
-- Doc-checker and parse compatibility: check_null_when_documented's NULL_MENTION_PATTERN
-  satisfied by every rewritten description; both yml files parse cleanly; no em/en dash in
-  added lines.
+- Alt text for each image is accurate and descriptive (GIF interaction sequence matches
+  the actual recorded flow; card descriptions match their screenshots).
+- File references and deletions are correct (old image removed, new ones added and
+  referenced in README, no dangling paths); docs/media/discover-demo.gif correctly added
+  to scope_paths in the updated contract.
