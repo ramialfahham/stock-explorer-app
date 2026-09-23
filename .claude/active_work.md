@@ -15,9 +15,7 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Comment trim to engineering_standards.md section 1.2.** Slice 1 (SQL) MERGED (!214).
-Slice 2 (`frontend/*.py`) OPEN, MR !215, reviewers PASS. Its `.claude/task/contract.md` and
-`review.md` now conflict with main (!216 rewrote both): take either side, they are per-task.
+**Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
 **Stale-card eviction: MERGED (!216), verified live.** Migration 020 applied by CI; the
 `current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
