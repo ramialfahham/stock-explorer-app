@@ -1,6 +1,5 @@
--- A metric a company type is supposed to show must be present on at least half of that type's
--- eligible cards per market; a provider dropping a field takes it to zero. Floor and rationale:
--- docs/data_contract.md, percent-scale guard, "What this does NOT cover".
+-- Catches a provider dropping a field: each shown metric must fill half of a type's eligible
+-- cards per market (docs/data_contract.md, "Fill floor").
 {% set operating = ['ebit_margin_pct', 'revenue_growth_yoy_pct', 'net_debt_to_ebitda', 'fcf_margin_pct'] %}
 {% set statement = ['debt_to_equity', 'current_ratio_stmt', 'statement_roe_pct', 'net_margin_pct', 'roa_pct'] %}
 {% set pre_revenue = ['net_cash', 'working_capital', 'cash_runway_months', 'burn_rate_monthly'] %}

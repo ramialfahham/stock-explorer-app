@@ -2,9 +2,7 @@ with staged as (
     select * from {{ ref('stg_yf__constituents') }}
 ),
 
--- A wrong or legal-register company_name is corrected here rather than in the raw seed --
--- the seed CSVs are not hand-edited. This is entity resolution, which is what this layer
--- is for; docs/layering.md forbids the correction in staging.
+-- Name corrections are entity resolution, so they live here, not in the seeds or staging.
 overrides as (
     select * from {{ ref('stg_manual__company_name_overrides') }}
 ),

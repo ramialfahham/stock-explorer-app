@@ -1,6 +1,4 @@
--- Export contract: an eligible card must have its company_type's required metrics populated
--- (operating on the four-metric set; financial on the pair; pre_revenue on net_cash). forward_pe left
--- both sets with the metric itself: a card must not be gated on something it never shows.
+-- Export contract: an eligible card has every required metric for its company_type populated.
 with
 mart as (
     select * from {{ ref('mart_stock_cards') }}

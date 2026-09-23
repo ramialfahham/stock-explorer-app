@@ -1,6 +1,5 @@
--- Percent-scale guard for three Yahoo passthroughs; bands and rationale in docs/data_contract.md.
--- The dividend branch reads the RAW value: int_stock__card_metrics scales fraction-scale rows
--- back to percent (issue #10), which would hide a wholesale units flip from this guard.
+-- Percent-scale guard for three Yahoo passthroughs (bands in docs/data_contract.md); dividends
+-- are read raw because the model's fraction rescale (issue #10) would hide a units flip.
 with
 metrics as (
     select
