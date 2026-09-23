@@ -15,19 +15,18 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Sector-benchmark per-metric coverage gate (issue #24), branch
-`fix/sector-benchmark-per-metric-coverage-gate`, review passed (scope-auditor +
-analytics-engineer-reviewer), not yet committed/pushed/MR'd.** Found while scoping issue
-#23: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
+**Sector-benchmark per-metric coverage gate (issue #24): MR !209 open, awaiting owner
+review/merge** (branch `fix/sector-benchmark-per-metric-coverage-gate`, review passed).
+Found while scoping issue #23: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
 on `sector_peer_count >= 8` (peer GROUP size), not on how many of those peers had a
 non-null value for that specific metric -- SQL aggregates silently skip nulls, so a
 never-gated or wrong-type-gated metric could render off far fewer than 8 real values.
 Fix (owner-approved 2026-09-23): each of the 10 metrics gets its own post-filter
 `count()`/`n_<metric>` in `sector_medians`; `combined` gates on that, not
 `sector_peer_count` (unchanged, still exposed). Full design in
-`.claude/task/contract.md`. Reviewer's one non-blocking note: the ~50 column docs still
-say "Null when sector_peer_count < 8," now stale -- deferred to #23. **Next session:
-commit, push, open MR.**
+`.claude/task/contract.md`. Reviewer's non-blocking note: the ~50 column docs still say
+"Null when sector_peer_count < 8," now stale -- deferred to #23. **Next: check !209's
+status; if merged, pick up #23 against the corrected behavior.**
 
 **Issue #23 (sector-benchmark null-when docs), SUPERSEDED, not started.** Owner decision
 2026-09-23: fix the SQL gate first (#24 above), then rewrite the docs against the
