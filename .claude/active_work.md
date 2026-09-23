@@ -239,20 +239,12 @@ Numbered defects and gaps:
    reason is past global-file edits breaking sibling projects (operational notes). Detail in
    MR !116/!118's own contract.md/review.md.
 
-1. **BXB, RMS, SPK stuck on a stale snapshot**
-   (re-verified against live production; the rest of `au_asx200` is on 2026-09-01), 14 days
-   and 4+ runs stale. **Root cause found**: `revenue_growth_yoy_pct` (one of the four
-   operating-eligibility fields, computed straight from Yahoo's `info.revenueGrowth` scalar
-   with no fallback) is `None` for all three in live yfinance data right now, confirmed by
-   direct probe, though it had a real value as of the 08-20 snapshot -- a genuine, current
-   Yahoo data gap for these specific tickers, not an app bug. **Owner decision 2026-09-03:
-   leave it for now** -- known, accepted category of yfinance noise, not worth building a
-   revenue-growth fallback (e.g. computed from ingested total-revenue statement rows instead
-   of the fragile info scalar) for three cards. Revisit if Yahoo's data doesn't recover, or if
-   this pattern shows up on more tickers. **Eviction is now REACHABLE, and still undecided:**
-   the atomic export (MR !115) deletes the `(market, date)` pairs a payload covers, so a ticker
-   leaves the deck when those take ALL its remaining rows. Whether it should evict BY SNAPSHOT
-   AGE is still an owner call.
+1. **Stale cards: decided, MR open (`feat/evict-stale-cards`).** Re-checked 2026-09-23: 10
+   tickers stale (BXB/RMS/SPK still no `info.revenueGrowth`; BBOX empty `info`; four uk trusts
+   lost `info.sector`; ASK and SATS "quote not found"). Owner: evict by age, no revenue-growth
+   fallback (MVP). Migration 020's `current_cards` view, which the deck reads, drops a company
+   28+ days behind its market's newest snapshot (two missed runs) from the deck and Saved until
+   it refreshes. Rule: `docs/data_contract.md` Freshness. Next run should drop BXB/RMS/SPK.
 2. **CLOSED 2026-09-15.** Growth metric card copy contradicted the verdict's own
    zero-tolerance growth gate; reworded to state genuine, verdict-consistent caveats
    instead of telling the reader to discount the signal. Detail in that MR's contract.md.
