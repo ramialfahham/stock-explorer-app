@@ -1,27 +1,33 @@
 # Review
 
-diff_sha256: a673077e74ce4a6a6b13cb22e84ecda1aee0b044221dd792675a6e298465a1e1
+diff_sha256: 9fcaf263c736f54cca8d711835e3c696ca935d33cc7f45c2f5da6d08dadb121e
 
-Hash updated after scope-auditor's PASS below: the first export of
-`docs/media/discover-demo.gif` (883KB) failed `check-added-large-files`' 500KB limit.
-Re-recorded leaner (11 vs 16 frames) and downscaled with Pillow (1568x732 -> 1066x497,
-~236KB) -- same file path, same purpose, no scope or decision-rights change, so not
-re-dispatched; visually confirmed the resized GIF still renders legibly.
+Reviewers dispatched as general-purpose agents reading their own dbt-agent-kit role files
+(agent types not registered in this session), cold, read-only, against
+`.claude/task/review_input.patch`.
 
 ## scope-auditor
 
-Round 1 ESCALATED: asked whether alt-text wording and the 4-image grid layout needed
-explicit owner approval before landing, since working-agreement.md section 6 reserves
-"product/UX content, composition, ordering" and "user-visible naming and wording" for the
-owner. Resolved in-thread: owner was shown the exact proposed README markup and did not
-object, then separately drove the demo-GIF recording (rejected the first draft's baked-in
-overlays, approved the clean re-record), then explicitly confirmed the final layout (GIF
-on top, 4 stills below). Contract updated to record this consent trail; re-reviewed.
+VERDICT: PASS
+risks_checked:
+- Every staged path is in scope_paths; only comment lines changed in the 7 SQL files.
+- Rewritten comments stay true to the code; no owner-reserved decision touched.
+- §1.2/§1.3: one sentence, at most two lines, no dates, no em-dash.
+
+## analytics-engineer-reviewer
 
 VERDICT: PASS
 risks_checked:
-- Alt text for each image is accurate and descriptive (GIF interaction sequence matches
-  the actual recorded flow; card descriptions match their screenshots).
-- File references and deletions are correct (old image removed, new ones added and
-  referenced in README, no dangling paths); docs/media/discover-demo.gif correctly added
-  to scope_paths in the updated contract.
+- No SQL/Jinja token changed; `check_dbt_sql_structure.py`, `check_no_em_dash.py`,
+  `check_no_narrative_dates.py` pass.
+- "Kept raw (not exported)" comments verified against `scripts/assessment_rules.py` and
+  `scripts/export_to_supabase.py`'s `EXPORT_COLUMNS`.
+- Dividend-yield, fill-floor and sector-benchmark comments verified against
+  `assert_dividend_yield_suspects.sql`, `docs/data_contract.md` "Fill floor", and the
+  `combined` CTE's per-metric gates.
+- Non-blocking note: a null `stmt_stockholders_equity` passing the negative-equity filter is
+  safe only because the ratios are already null when their denominator is. Not added: it
+  follows from the division itself.
+
+Independent check: `dbt compile` of all 45 selected nodes on this branch vs `main`; the 7
+touched files differ, none differs once comments are stripped.
