@@ -3,40 +3,37 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Slice 2 of the comment trim: bring `#` comments and docstrings under `frontend/`
-  in line with `docs/engineering_standards.md` §1.2 (why not what, one sentence, no multi-line
-  blocks, no history). Comments and docstrings only: no code and no user-visible string
-  changes. `frontend/styles.py` is out of scope (its triple-quoted text is CSS, not prose).
+objective: Evict stale cards from the deck. A company whose newest snapshot is 28 or more days
+  behind its market's newest snapshot (two missed scheduled runs) leaves the Discover deck
+  instead of showing old numbers as current. Resolves the eviction half of active_work.md open
+  item 1; the revenue-growth fallback half is declined for the MVP.
 
 scope_paths:
-  - frontend/app.py
-  - frontend/browser_storage.py
-  - frontend/card_copy.py
-  - frontend/card_ui.py
-  - frontend/disclosure_html.py
-  - frontend/explore_filters.py
-  - frontend/live_quote.py
-  - frontend/markets.py
-  - frontend/metric_school.py
-  - frontend/nav_pages.py
-  - frontend/overflow_menu.py
-  - frontend/row_ui.py
-  - frontend/saved_news.py
-  - frontend/settings.py
+  - supabase/migrations/020_current_cards_view.sql
   - frontend/supabase_cards.py
-  - frontend/supabase_client.py
-  - frontend/timing.py
+  - tests/frontend/test_supabase_cards.py
+  - tests/tooling/test_current_cards_view_guard.py
+  - docs/data_contract.md
+  - docs/supabase_setup.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved: none -- §1.2 already codifies the target; no copy, label or behaviour
-  changes.
+decisions_reserved: settled by the owner in-thread before implementation -- evict by age (yes),
+  cutoff two missed runs, about 4 weeks (28 days), mechanism a Postgres view rather than a
+  frontend filter, a stale saved company is simply hidden from Saved (no new copy), no
+  revenue-growth fallback.
 
 done_when:
-  - No `#` block over two lines; every edited comment is one sentence stating why, with no
-    history; docstrings keep a summary line plus only what a caller needs.
-  - Each touched file's AST, docstrings removed, is identical to `main`'s.
-  - `pytest tests/frontend`, `scripts/check_no_em_dash.py`, `scripts/check_no_narrative_dates.py`
-    pass.
-  - Review cycle run per `.claude/review_routing.json`, committed, MR opened. Not merged.
+  - Migration 020 creates `public.current_cards` (security_invoker, one row per company, 28-day
+    rule relative to the company's own market) and grants select to the roles 011 grants on the
+    table.
+  - `fetch_deck_rows` reads the view; `fetch_card_detail` and the business_summary probe keep
+    reading the table (the detail backfill needs every snapshot).
+  - A tooling test fails when a later migration alters `mart_stock_cards` without recreating
+    the view, proven by a synthetic violating migration.
+  - The view's SELECT, run read-only against production, keeps 1047 of 1050 companies and
+    drops exactly BXB/RMS/SPK; the migration applied and rolled back in one transaction runs
+    clean.
+  - `pytest tests/`, em-dash and narrative-date checks pass; review cycle run; MR opened. Not
+    merged.
