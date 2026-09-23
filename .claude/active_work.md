@@ -20,8 +20,9 @@ one or two lines and let the archive keep the detail._
 **Stale-card eviction: MERGED (!216), verified live.** Migration 020 applied by CI; the
 `current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
 
-**Owner's portfolio order, each needs its own go:** incremental dbt models, README
-product-first, `.mailmap`. Revenue-growth fallback DECLINED (MVP).
+**Owner's portfolio order, each needs its own go:** raw-data archive (issue #25, awaiting
+go), README product-first, `.mailmap`. DECLINED: revenue-growth fallback (MVP); incremental
+dbt models (ephemeral DuckDB, nothing to increment from). Hard constraint: zero cost.
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
 default overlays for portfolio recordings.
