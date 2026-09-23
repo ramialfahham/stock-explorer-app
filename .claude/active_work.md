@@ -15,23 +15,15 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Sector-benchmark null-when docs (issue #23): MR !210 open, awaiting owner
-review/merge** (branch `docs/sector-benchmark-null-when-docs`, review passed). Re-scoped
-against #24 (below, MERGED via !209): rewrote all ~50 `sector_median/min/max/q1/q3_*`
-descriptions in `_intermediate.yml`/`_marts.yml` to name each metric's actual null
-condition against the corrected gate; also fixed `mart_stock_cards.sector_peer_count`'s
-description (pre_revenue join exclusion is the dominant cause). Doc-only.
+**Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
+aggregates were gated on `sector_peer_count >= 8` (peer GROUP size), not on how many
+peers actually had a non-null value for the specific metric -- fixed with a per-metric
+`n_<metric>` count each metric now gates on instead.
 
-**Sector-benchmark per-metric coverage gate (issue #24): MERGED via MR !209.** Found while
-scoping #23 above: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
-on `sector_peer_count >= 8` (peer GROUP size), not on how many of those peers had a
-non-null value for that specific metric -- SQL aggregates silently skip nulls, so a
-never-gated or wrong-type-gated metric could render off far fewer than 8 real values.
-Fix (owner-approved 2026-09-23): each of the 10 metrics gets its own post-filter
-`count()`/`n_<metric>` in `sector_medians`; `combined` gates on that, not
-`sector_peer_count` (unchanged, still exposed). Full design in
-`.claude/task/contract.md`. Reviewer's non-blocking note (now resolved by #23 above): the
-~50 column docs said "Null when sector_peer_count < 8," stale against this fix.
+**Issue #23 CLOSED, MERGED (!210).** Follow-on doc fix: rewrote all ~50
+`sector_median/min/max/q1/q3_*` descriptions in `_intermediate.yml`/`_marts.yml` to match
+#24's corrected gate, and fixed `mart_stock_cards.sector_peer_count`'s description
+(pre_revenue join exclusion is the dominant cause).
 
 **Null-when doc enforcement: MERGED (!207).** Added `check_null_when_documented` to
 `check_dbt_documentation.py` (exempts `info_`/`stmt_`/`qtr_` raw passthroughs,
