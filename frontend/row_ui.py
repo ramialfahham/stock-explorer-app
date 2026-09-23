@@ -1,4 +1,4 @@
-"""Shared row primitive — bordered, tappable HTML row + invisible overlay button.
+"""Shared row primitive -- bordered, tappable HTML row + invisible overlay button.
 
 Used by Discover's list (`render_rich_row_list`, one lead metric per row -- also serves
 search results, which share Discover's own pool and rendering) and the Saved list
@@ -40,10 +40,6 @@ def build_rich_row_html(
     Keeps the base `ss-row` class so it inherits every tap-target and hover rule the plain
     row already has (see styles.py); only the internal layout differs. `metric` is optional:
     a card with no value for its type's lead metric still renders the row, just without it.
-
-    Previously also carried a health-verdict dot; removed by owner instruction
-    after it stayed visually misaligned even once its known emoji-glyph-metrics cause was
-    fixed.
     """
     metric_html = ""
     if metric:
@@ -105,8 +101,7 @@ def render_removable_row_list(
     """Bordered, tappable rows (same tap-target mechanics as `render_rich_row_list`, minus
     the lead metric) plus a per-row `Remove` button in its own column, outside the row's own
     invisible overlay -- tapping the row opens the card, tapping `Remove` drops it from the
-    list without opening it. Used by the Saved list, so dropping one company no longer
-    requires opening it first."""
+    list without opening it."""
     st.markdown('<div class="ss-row-group" aria-hidden="true"></div>', unsafe_allow_html=True)
     for item in items:
         with st.container(horizontal=True, vertical_alignment="center", gap="small"):

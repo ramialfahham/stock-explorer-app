@@ -18,14 +18,12 @@ MENU_METRICS_LINE = "Fundamentals per company, no substitutes"
 
 
 def markets_line(counts: dict[str, int]) -> str:
-    """Which markets this panel claims to cover, derived from the cards in the deck.
-
-    Not from the registry and not from `MARKET_DISPLAY_NAMES`. A market is onboarded on one
-    branch and first exports cards on the next production run, so those two answers disagree for
-    as long as a run is pending, and this is the panel whose whole job is data trust. Written out
-    as a literal it went stale in the other direction: it still said "US, UK, Japan, Australia,
-    Germany" while nine markets were registered. Empty when there are no cards: saying nothing
-    beats claiming coverage that cannot be substantiated.
+    """Which markets this panel claims to cover, derived from the cards in the deck -- not
+    from the registry and not from `MARKET_DISPLAY_NAMES`. A market is onboarded on one
+    branch and first exports cards on the next production run, so those two answers can
+    disagree while a run is pending, and this is the panel whose whole job is data trust.
+    Empty when there are no cards: saying nothing beats claiming coverage that cannot be
+    substantiated.
     """
     if not counts:
         return ""
@@ -36,13 +34,9 @@ def render_about_panel(
     *, cards: list[dict[str, Any]], counts: dict[str, int], descriptions_missing: bool
 ) -> None:
     """The `About` popover's body -- what the app and its AI read do, then where the data
-    comes from. Content only, no nested `st.expander`: this used to be a second click inside
-    the popover (tap `⋯`, then tap to expand "About"), which was one click too many for the
-    only thing left in the menu. `Clear saved` lives on the Saved tab itself
-    (`_render_saved_scope_stats` in `app.py`), next to the count it acts on. Per-market card
-    counts (once shown here as "1050 card-ready · 500 in S&P 500" plus a breakdown line)
-    were dropped: internal pipeline detail, not something a reader needs to know, and
-    redundant with the plain-language `markets_line` right above it."""
+    comes from. Content only, no nested `st.expander`, so opening the popover is the only
+    tap this menu needs. `Clear saved` lives on the Saved tab itself
+    (`_render_saved_scope_stats` in `app.py`), next to the count it acts on."""
     st.markdown(MENU_ABOUT_INTRO)
     snapshot = latest_snapshot_label(cards)
     if snapshot:

@@ -1,4 +1,4 @@
-"""Stock Explorer — card discovery app (Streamlit + Supabase)."""
+"""Stock Explorer -- card discovery app (Streamlit + Supabase)."""
 
 from __future__ import annotations
 
@@ -93,20 +93,17 @@ def _init_state() -> None:
     st.session_state["active_page"] = normalize_nav_page(st.session_state.get("active_page"))
 
 
-# Short enough that a pipeline export shows up the same day without a redeploy, and short
-# enough that ordinary traffic keeps querying Supabase -- the free tier pauses after ~7 idle
-# days, so a long TTL would turn the cache into an outage risk (open item 6). Kept inside a
-# 15-60 minute band; moving outside that band is a §6 decision, not a tuning choice.
+# Bounded 15-60 min: longer risks masking a Supabase free-tier idle-pause (~7 days) as an
+# outage; shorter defeats the cache. Widening the band is a §6 decision, not a tuning choice.
 _DECK_TTL_SECONDS = 30 * 60
 
 
 @st.cache_data(ttl=_DECK_TTL_SECONDS, show_spinner=False)
 def _cached_deck(_client) -> list[dict]:
-    """Deck rows shared across ALL browser sessions on this instance.
+    """Deck rows shared across all browser sessions on this instance.
 
-    `_client` is underscore-prefixed so Streamlit skips hashing it; with no other argument the
-    cache key is constant, which is the point -- the previous session_state cache made every
-    first-time visitor re-download and re-dedupe the whole deck before anything rendered.
+    `_client` is underscore-prefixed so Streamlit skips hashing it, making the cache key
+    constant -- every session shares one cached deck instead of fetching its own.
     """
     return fetch_deck(_client)
 
@@ -122,16 +119,12 @@ def _cached_descriptions_missing(_client) -> bool:
 
 
 def _descriptions_missing(client) -> bool:
-    """The probe runs on every script run, not only when the menu is opened: a st.popover's
-    body is computed eagerly unless it opts into `on_change="rerun"`. The cache is what keeps
-    that to one round trip per TTL window. Catching OUTSIDE the cached call matters -- a
-    transient PostgREST error raised through @st.cache_data is not stored, so the diagnostic
-    retries on the next run instead of reporting "no problem" for the full TTL.
+    """Whether the export is missing `business_summary` (predates migration 004).
 
-    A missing `business_summary` COLUMN is not a failure to swallow -- it IS the state the
-    caption announces (an export predating migration 004), so it answers True. Any other
-    error stays silent: showing an operator a data-quality alarm because of a transient
-    network blip would be worse than showing nothing."""
+    Runs every script run since a st.popover body evaluates eagerly, so caching bounds it
+    to one round trip per TTL. Caught outside the cache because @st.cache_data drops a
+    raised exception, so a transient failure retries instead of caching a false "no
+    problem". Any other error stays silent rather than alarming on a network blip."""
     try:
         return _cached_descriptions_missing(client)
     except Exception as exc:  # noqa: BLE001
@@ -149,9 +142,8 @@ def _load_cards(client) -> list[dict]:
 def _ensure_all_cards(client) -> list[dict]:
     cards = st.session_state.get("all_cards") or []
     if cards and deck_rows_lack_columns(cards, DECK_COLUMNS):
-        # Both copies hold the stale shape. Clearing only session_state would re-read the same
-        # rows straight back out of the cross-session cache and trip this guard again on every
-        # rerun -- a spin, not a recovery.
+        # Must clear both caches: clearing only session_state would re-read the same stale
+        # rows straight back out of the cross-session cache and re-trip this guard.
         _cached_deck.clear()
         cards = []
         st.session_state["all_cards"] = []
@@ -164,10 +156,9 @@ def _ensure_all_cards(client) -> list[dict]:
 def _hydrate(client, card: dict | None) -> dict | None:
     """Swap a slim deck row for the full card row the card face needs.
 
-    Falls back to the slim row on a fetch failure: a card missing its metrics still renders
-    its name, sector and lead metric, which beats an exception on the only screen that
-    matters. Reuses _load_cards' existing error wording rather than introducing a second
-    string -- user-visible copy changes go through working agreement §6."""
+    Returns the slim row on fetch failure instead of raising, so the card still renders
+    with reduced data. Reuses the existing "Could not load cards" wording rather than a
+    new string -- user-visible copy changes need owner sign-off (working agreement §6)."""
     if not card:
         return card
     try:
@@ -194,15 +185,12 @@ def _sync_eligible_counts(client) -> None:
 
 
 def _discover_pool(client) -> list[dict]:
-    """The rows Discover's list (and, from it, the focused card) draws from -- a search
-    query and the market/sector/preset filters both narrow this SAME pool, through the
-    same list, same pagination, same focus/back mechanism. Search stays global (matches
-    against the full deck, not scoped to the current market/sector/preset filters --
-    decided via AskUserQuestion, issue #20) and replaces filter-narrowing entirely rather
-    than combining with it, but it is not a separate system: it is simply which rows end
-    up in `pool` this run. A card opened from a search hit is exactly as capable (Save) as
-    one opened from the filtered list, because there is no longer a second, lesser code
-    path for it to have been opened from."""
+    """The rows Discover's list and its focused card draw from.
+
+    A search query replaces market/sector/preset filtering entirely (matching the full
+    deck) rather than combining with it, but both paths just decide which rows land in
+    `pool` this run -- the same list, pagination, and focus mechanism render either way, so
+    a card opened via search is exactly as saveable as one opened from the filtered list."""
     cards = _ensure_all_cards(client)
     query = st.session_state.get("search_query", "")
     if query:
@@ -239,9 +227,7 @@ def _discover_page_slice(pool: list[dict], page: int) -> tuple[list[dict], int]:
 
 
 def _cards_for_order(client, order: dict[tuple[str, str], str]) -> list[dict]:
-    """Deck rows matching an (market_code, ticker) -> timestamp map, most recent first.
-    Shared by Saved and the Not-now panel (issue #16) so the two lists can't diverge in how
-    they resolve keys back to cards or order them."""
+    """Deck rows matching an (market_code, ticker) -> timestamp map, most recent first."""
     cards = _ensure_all_cards(client)
     matched = [c for c in cards if (c["market_code"], c["ticker"]) in order]
     matched.sort(key=lambda c: order.get((c["market_code"], c["ticker"]), ""), reverse=True)
@@ -262,8 +248,8 @@ def _clear_saved_session() -> None:
 
 def brand_header_html(*, compact: bool = False) -> str:
     """compact: brand only, while a card is open on Discover or Saved. The tagline and
-    disclosure stay on every list view, where each visit starts; on the card view they drop
-    to save vertical space (owner composition call, docs/ui/discover_header.md)."""
+    disclosure stay on every list view, dropping on the card view to save vertical space
+    (see docs/ui/discover_header.md)."""
     if compact:
         return (
             '<div class="ss-brand-header ss-brand-header--compact">'
@@ -319,10 +305,9 @@ def _render_discover_scope_stats(*, remaining: int) -> None:
 
 
 def _render_saved_scope_stats(*, saved_count: int) -> None:
-    """The saved count, with `Clear saved` beside it -- moved out of the shared overflow
-    menu (issue raised by owner review: "Clear saved is disconnected from saved") onto the
-    one tab it actually acts on. Confirms in place, same as before: swaps to a "Clear all N
-    saved companies?" message with Cancel/Clear-all, no second popover."""
+    """The saved count, with `Clear saved` beside it -- lives on the one tab it acts on,
+    not the shared overflow menu. Confirms in place: swaps to a "Clear all N saved
+    companies?" message with Cancel/Clear-all, no second popover."""
     with st.container(horizontal=True, vertical_alignment="center", gap="small"):
         with st.container(width="stretch"):
             st.markdown(
@@ -344,21 +329,17 @@ def _render_saved_scope_stats(*, saved_count: int) -> None:
                 st.rerun()
         with col_confirm:
             if st.button("Clear all", key="saved_clear_confirm", use_container_width=True):
-                # clear_interactions() ends with its own st.rerun(), which halts the rest
-                # of this script run -- so the flag reset and _clear_saved_session() must
-                # run BEFORE calling it, not after, or they'd never execute.
+                # clear_interactions() ends with its own st.rerun(), which halts this run --
+                # the flag reset and _clear_saved_session() must happen before calling it.
                 st.session_state["confirm_clear_saved"] = False
                 _clear_saved_session()
                 clear_interactions()
 
 
 def _go_to_nav_page(target: str) -> None:
-    """The one rule behind every nav click: land on TARGET's plain list, whatever was open.
-    Used for both a genuine switch and a re-click of the tab already active -- deliberately
-    not conditioned on which one this is, because `st.button` (unlike `st.segmented_control`,
-    see `_render_bottom_nav`) cannot tell the two apart from a click alone, and a reader
-    re-tapping the tab they're already on expects exactly this: back to its root, the same
-    as any standard tab bar."""
+    """Land on TARGET's plain list, whatever was open -- for both a genuine switch and a
+    re-click of the already-active tab, since `st.button` can't tell the two apart from a
+    click alone (see `_render_bottom_nav`)."""
     if target == "Discover":
         st.session_state["discover_focus_key"] = None
         _clear_search()
@@ -372,14 +353,8 @@ def _render_bottom_nav(*, saved_count: int, client) -> str:
 
     st.markdown('<div class="ss-nav-row-marker"></div>', unsafe_allow_html=True)
     with st.container(horizontal=True, vertical_alignment="center", gap="small"):
-        # Three plain, equal-family buttons in one row -- Discover/Saved are real nav
-        # destinations, About is a popover, but all three read as one aligned control group
-        # (styles.py gives Discover extra flex-grow so it reads as the primary tab). Plain
-        # st.button, not st.segmented_control: that widget only reports a NEW selection, so
-        # clicking the tab already active returns no signal at all -- confirmed against
-        # Streamlit's own source, not fixable by reading its return value differently. A
-        # real st.button fires on every click regardless, which is what makes re-tapping
-        # the active tab actually able to do something (see _go_to_nav_page).
+        # Plain st.button, not st.segmented_control: that widget only reports a NEW
+        # selection, so re-tapping the already-active tab would return no signal at all.
         for page in NAV_PAGES:
             is_active = page == active
             if st.button(
@@ -408,10 +383,7 @@ def _save_card(card: dict) -> None:
 def _render_sticky_actions(card: dict) -> None:
     """The one action on a focus card: Save. Returns to the list, excluding the ticker
     from the pool going forward (filter_pool's existing save exclusion). Declining to save
-    needs no separate button -- `← Back to list` already returns to the list unchanged;
-    a "Not now" button that also just returned to the list, with no effect of its own,
-    was removed as dead weight (its "skip" interaction never excluded anything from
-    Discover, so it offered nothing a reader couldn't already reach by scrolling)."""
+    needs no separate button -- `← Back to list` already returns to the list unchanged."""
     st.markdown('<div class="ss-action-shell"></div>', unsafe_allow_html=True)
     if st.button("Save", type="primary", use_container_width=True, key="discover_save"):
         _save_card(card)
@@ -426,14 +398,12 @@ def _on_filter_change() -> None:
 
 def _render_explore_filters(client) -> None:
     """Market/sector selectboxes and the metric-preset pills are deliberately unkeyed.
-    A `key=`-bound widget's
-    session_state entry is evicted by Streamlit whenever the widget isn't instantiated on the
-    immediately preceding run -- true even with an explicit key, not just for unkeyed widgets --
-    and this popover's content only renders while on Discover (frontend/app.py's own
-    `if active == "Discover"` guard), so one glance at Saved was silently wiping the
-    selection. Reading/writing the plain (non-widget) session_state value directly and seeding
-    each render's `index=` from it survives that eviction, since nothing here is tied to a
-    widget's own key lifecycle."""
+
+    A `key=`-bound widget's session_state entry is evicted whenever the widget isn't
+    instantiated on the immediately preceding run, and this popover only renders on
+    Discover -- so a keyed widget would silently lose its selection on a glance at Saved.
+    Reading/writing the plain session_state value and seeding `index=` from it each render
+    survives that eviction instead."""
     cards = _ensure_all_cards(client)
     market, sector = _explore_filters()
     metric_presets = _explore_metric_presets()
@@ -657,23 +627,19 @@ def _render_saved_tab(client, interactions: list[dict]) -> None:
 
 def _sync_search_query(query: str) -> None:
     """Persist the query -- plain session_state bookkeeping, no Streamlit widget involved,
-    so it's unit-tested directly (test_app.py). Does not need to clear a pinned selection:
-    search no longer has its own focus concept, `discover_focus_key` is the only one, and a
-    query change naturally changes what `_discover_pool` returns, which `_render_discover_tab`
-    already re-validates the focused key against (clearing it if the focused card fell out
-    of the new pool) -- one mechanism, not two kept in sync by hand."""
+    so it's unit-tested directly (test_app.py). A query change naturally changes what
+    `_discover_pool` returns, which `_render_discover_tab` already re-validates
+    `discover_focus_key` against, so no separate focus-clearing logic is needed here."""
     st.session_state["search_query"] = query
 
 
 def _clear_search() -> None:
-    """The one way out of an active search, besides deleting every typed character by
-    hand. Resets the plain mirror and DROPS the widget's own keyed state -- `del`, not
-    assignment: Streamlit forbids writing to an already-instantiated keyed widget's
-    session_state entry within the same run (the Clear button's own click handler runs
-    after `_search_query_widget` already rendered this run), but removing the key entirely
-    is allowed. On the next run (`st.rerun()`, called by every caller right after this),
-    the key is simply absent, and `_search_query_widget`'s own reseed-when-absent logic
-    (its own docstring) picks that up and seeds it from the now-empty `search_query`."""
+    """Resets the plain mirror and drops the widget's own keyed state.
+
+    Pops the key rather than assigning to it: Streamlit forbids writing to an
+    already-instantiated keyed widget's session_state entry within the same run. The
+    following `st.rerun()` leaves the key absent, which `_search_query_widget`'s own
+    reseed-when-absent logic then picks up from the now-empty `search_query`."""
     st.session_state["search_query"] = ""
     st.session_state.pop(_SEARCH_QUERY_WIDGET_KEY, None)
 
@@ -684,22 +650,13 @@ _SEARCH_QUERY_WIDGET_KEY = "search_query_widget"
 def _search_query_widget(*, placeholder: str) -> str:
     """The `key=`-owned text_input behind Discover's persistent search box.
 
-    NOT a `value=`-seeded unkeyed widget, despite that being this file's usual pattern for
-    surviving cross-tab eviction (see `_render_explore_filters`). That pattern is wrong
-    here specifically: an unkeyed widget's identity is a function of its `value=` argument,
-    and this widget's seed (`search_query`) is written from the widget's OWN output on
-    every edit (`_sync_search_query`) -- so the identity moves out from under itself after
-    the very first keystroke, and Streamlit treats every following run as a brand-new
-    widget that ignores whatever the frontend is trying to submit. Confirmed as a real, live
-    bug against a running dev server, not an AppTest artifact: typing a second query, or
-    clearing the box, silently did nothing (found when this app still had a separate
-    standalone Search tab sharing this same widget, since removed as redundant -- the bug
-    itself was in this widget, not in having two entry points).
-
-    The fix: give the widget a stable `key=` so Streamlit owns its live value across edits
-    with no identity churn, and re-seed `st.session_state[key]` from `search_query` only
-    when the key is ABSENT (the tab-switch eviction case this file's usual pattern exists
-    to survive) -- never unconditionally, which would reintroduce the same churn."""
+    Deliberately not the unkeyed `value=`-seeded pattern used elsewhere (see
+    `_render_explore_filters`): this widget's seed (`search_query`) is written from the
+    widget's own output on every edit, so an unkeyed widget's identity would churn after
+    the first keystroke and Streamlit would treat each run as a new widget, ignoring
+    input. Instead a stable `key=` owns the live value, reseeded from `search_query` only
+    when the key is absent (the tab-switch eviction case) -- never unconditionally, which
+    would reintroduce the same churn."""
     if _SEARCH_QUERY_WIDGET_KEY not in st.session_state:
         st.session_state[_SEARCH_QUERY_WIDGET_KEY] = st.session_state.get("search_query", "")
     query = st.text_input(
@@ -728,15 +685,10 @@ def _search_matches(cards: list[dict], query: str) -> list[dict]:
 
 
 def _render_discover_search_box() -> str:
-    """Persistent search above Discover's list (issue #20) -- always visible on the list
-    view. The only search entry point; the earlier separate Search tab was redundant with
-    this and removed.
+    """Persistent search above Discover's list, always visible on the list view.
 
-    A "Clear" control appears once there's a query -- the explicit, always-visible way out
-    of search a reader actually needs (found live by the owner: clicking the already-active
-    Discover nav pill did nothing, since Streamlit's segmented_control gives no signal that
-    the same option was reselected; a nav click was never going to be a reliable escape
-    hatch, an explicit control in the search row is)."""
+    A "Clear" control appears once there's a query -- an explicit, always-visible way out
+    of search, since re-tapping the Discover nav pill is not a reliable escape hatch."""
     with st.container(horizontal=True, vertical_alignment="center", gap="small"):
         with st.container(width="stretch"):
             query = _search_query_widget(placeholder="Search ticker or company name")
@@ -759,9 +711,8 @@ def _discovery_page(client) -> None:
     loading.empty()
     timing.mark("deck")
     saved_count = _saved_count(interactions)
-    # Ahead of the nav row, not after: the About popover it renders reads eligible_counts
-    # too, and used to render one script run behind (its Markets line stayed blank on a
-    # fresh load) because this sync used to run after the nav row instead of before it.
+    # Ahead of the nav row, not after: the About popover it renders also reads
+    # eligible_counts, so it needs this synced before that popover can render.
     _sync_eligible_counts(client)
 
     # The brand header is already on screen (main() renders it first); the nav reads the same
@@ -779,12 +730,8 @@ def _discovery_page(client) -> None:
     discover_search_query = ""
     if active == "Discover" and not discover_focused:
         discover_search_query = _render_discover_search_box()
-        # A query replaces filter-narrowing entirely rather than combining with it -- a
-        # market/sector filter is meaningless once the query is searching globally
-        # (decided via AskUserQuestion, issue #20). Beyond that, search is not a separate
-        # system: _discover_pool decides what's in scope (filtered, or search-matched),
-        # and _render_discover_tab renders whatever that is -- same list, same pagination,
-        # same focus/back mechanism -- regardless of which one put it there.
+        # A query replaces filter-narrowing entirely: a market/sector filter is
+        # meaningless once the query is searching the full deck globally.
         if not discover_search_query:
             _render_explore_filters(client)
 
@@ -812,8 +759,7 @@ def main() -> None:
     inject_global_css()
     timing.mark("css")
     # First pixels before anything that can wait: the storage gate below may force a full
-    # rerun and the deck fetch can take seconds, and Streamlit paints nothing until the first
-    # element arrives. The header depends only on session state, so it goes out first.
+    # rerun and the deck fetch can take seconds, so the session-state-only header goes first.
     _render_brand_header(compact=_card_open(
         normalize_nav_page(st.session_state.get("active_page"))
     ))
