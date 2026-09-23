@@ -406,180 +406,353 @@ models:
           this table.
       - name: sector_median_forward_pe
         description: >
-          Median forward_pe among eligible peers. Null when sector_peer_count < 8.
+          Median forward_pe among eligible peers. Null when fewer than 8 of the sector's
+          eligible peers have a non-null forward_pe -- that per-metric count can fall short of
+          sector_peer_count because forward_pe isn't required by either company_type's
+          eligibility gate, and Yahoo frequently omits it.
       - name: sector_min_forward_pe
         description: >
-          Minimum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue; the column is kept, unused. Null when sector_peer_count < 8.
+          Minimum forward_pe among eligible peers (card range mark). No card renders this mark
+          since forward_pe left the catalogue; the column is kept, unused. Null when fewer than
+          8 of the sector's eligible peers have a non-null forward_pe -- that per-metric count
+          can fall short of sector_peer_count because forward_pe isn't required by either
+          company_type's eligibility gate, and Yahoo frequently omits it.
       - name: sector_max_forward_pe
         description: >
-          Maximum forward_pe among eligible peers (card range mark). No card renders this mark since forward_pe left the catalogue; the column is kept, unused. Null when sector_peer_count < 8.
+          Maximum forward_pe among eligible peers (card range mark). No card renders this mark
+          since forward_pe left the catalogue; the column is kept, unused. Null when fewer than
+          8 of the sector's eligible peers have a non-null forward_pe -- that per-metric count
+          can fall short of sector_peer_count because forward_pe isn't required by either
+          company_type's eligibility gate, and Yahoo frequently omits it.
       - name: sector_median_ebit_margin_pct
         description: >
-          Median ebit_margin_pct among eligible peers. Null when sector_peer_count < 8.
+          Median ebit_margin_pct among eligible peers. Null when fewer than 8 of the sector's
+          eligible peers have a non-null ebit_margin_pct -- guaranteed for every peer in an
+          operating-type sector (this metric gates operating eligibility), but not required in a
+          financial-type sector, where the per-metric count can fall short of sector_peer_count.
       - name: sector_min_ebit_margin_pct
         description: >
-          Minimum ebit_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum ebit_margin_pct among eligible peers (card range mark). Null when fewer than 8
+          of the sector's eligible peers have a non-null ebit_margin_pct -- guaranteed for every
+          peer in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_max_ebit_margin_pct
         description: >
-          Maximum ebit_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum ebit_margin_pct among eligible peers (card range mark). Null when fewer than 8
+          of the sector's eligible peers have a non-null ebit_margin_pct -- guaranteed for every
+          peer in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_q1_ebit_margin_pct
         description: >
           25th percentile (continuous interpolation, same family as the median above) of
           ebit_margin_pct among eligible peers -- feeds the card range mark's outlier-aware
-          display clamp (Gemini feedback point 5). Null when sector_peer_count < 8.
+          display clamp (Gemini feedback point 5). Null when fewer than 8 of the sector's
+          eligible peers have a non-null ebit_margin_pct -- guaranteed for every peer in an
+          operating-type sector (this metric gates operating eligibility), but not required in a
+          financial-type sector, where the per-metric count can fall short of sector_peer_count.
       - name: sector_q3_ebit_margin_pct
         description: >
           75th percentile (continuous interpolation) of ebit_margin_pct among eligible peers --
-          feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of the
+          sector's eligible peers have a non-null ebit_margin_pct -- guaranteed for every peer
+          in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_median_revenue_growth_yoy_pct
         description: >
-          Median revenue_growth_yoy_pct among eligible peers. Null when sector_peer_count < 8.
+          Median revenue_growth_yoy_pct among eligible peers. Null when fewer than 8 of the
+          sector's eligible peers have a non-null revenue_growth_yoy_pct -- guaranteed for every
+          peer in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_min_revenue_growth_yoy_pct
         description: >
-          Minimum revenue_growth_yoy_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum revenue_growth_yoy_pct among eligible peers (card range mark). Null when fewer
+          than 8 of the sector's eligible peers have a non-null revenue_growth_yoy_pct --
+          guaranteed for every peer in an operating-type sector (this metric gates operating
+          eligibility), but not required in a financial-type sector, where the per-metric count
+          can fall short of sector_peer_count.
       - name: sector_max_revenue_growth_yoy_pct
         description: >
-          Maximum revenue_growth_yoy_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum revenue_growth_yoy_pct among eligible peers (card range mark). Null when fewer
+          than 8 of the sector's eligible peers have a non-null revenue_growth_yoy_pct --
+          guaranteed for every peer in an operating-type sector (this metric gates operating
+          eligibility), but not required in a financial-type sector, where the per-metric count
+          can fall short of sector_peer_count.
       - name: sector_q1_revenue_growth_yoy_pct
         description: >
           25th percentile (continuous interpolation) of revenue_growth_yoy_pct among eligible
-          peers -- feeds the card range mark's outlier-aware display clamp (Gemini feedback point
-          5). Null when sector_peer_count < 8.
+          peers -- feeds the card range mark's outlier-aware display clamp (Gemini feedback
+          point 5). Null when fewer than 8 of the sector's eligible peers have a non-null
+          revenue_growth_yoy_pct -- guaranteed for every peer in an operating-type sector (this
+          metric gates operating eligibility), but not required in a financial-type sector,
+          where the per-metric count can fall short of sector_peer_count.
       - name: sector_q3_revenue_growth_yoy_pct
         description: >
           75th percentile (continuous interpolation) of revenue_growth_yoy_pct among eligible
-          peers -- feeds the card range mark's outlier-aware display clamp. Null when
-          sector_peer_count < 8.
+          peers -- feeds the card range mark's outlier-aware display clamp. Null when fewer
+          than 8 of the sector's eligible peers have a non-null revenue_growth_yoy_pct --
+          guaranteed for every peer in an operating-type sector (this metric gates operating
+          eligibility), but not required in a financial-type sector, where the per-metric
+          count can fall short of sector_peer_count.
       - name: sector_median_net_debt_to_ebitda
         description: >
-          Median net_debt_to_ebitda among eligible peers. Null when sector_peer_count < 8.
+          Median net_debt_to_ebitda among eligible peers. Null when fewer than 8 of the sector's
+          eligible peers have a non-null net_debt_to_ebitda -- guaranteed for every peer in an
+          operating-type sector (this metric gates operating eligibility), but not required in a
+          financial-type sector, where the per-metric count can fall short of sector_peer_count.
       - name: sector_min_net_debt_to_ebitda
         description: >
-          Minimum net_debt_to_ebitda among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum net_debt_to_ebitda among eligible peers (card range mark). Null when fewer
+          than 8 of the sector's eligible peers have a non-null net_debt_to_ebitda -- guaranteed
+          for every peer in an operating-type sector (this metric gates operating eligibility),
+          but not required in a financial-type sector, where the per-metric count can fall short
+          of sector_peer_count.
       - name: sector_max_net_debt_to_ebitda
         description: >
-          Maximum net_debt_to_ebitda among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum net_debt_to_ebitda among eligible peers (card range mark). Null when fewer
+          than 8 of the sector's eligible peers have a non-null net_debt_to_ebitda -- guaranteed
+          for every peer in an operating-type sector (this metric gates operating eligibility),
+          but not required in a financial-type sector, where the per-metric count can fall short
+          of sector_peer_count.
       - name: sector_q1_net_debt_to_ebitda
         description: >
-          25th percentile (continuous interpolation) of net_debt_to_ebitda among eligible peers --
-          feeds the card range mark's outlier-aware display clamp (Gemini feedback point 5). Null
-          when sector_peer_count < 8.
+          25th percentile (continuous interpolation) of net_debt_to_ebitda among eligible peers
+          -- feeds the card range mark's outlier-aware display clamp (Gemini feedback point 5).
+          Null when fewer than 8 of the sector's eligible peers have a non-null
+          net_debt_to_ebitda -- guaranteed for every peer in an operating-type sector (this
+          metric gates operating eligibility), but not required in a financial-type sector,
+          where the per-metric count can fall short of sector_peer_count.
       - name: sector_q3_net_debt_to_ebitda
         description: >
-          75th percentile (continuous interpolation) of net_debt_to_ebitda among eligible peers --
-          feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          75th percentile (continuous interpolation) of net_debt_to_ebitda among eligible peers
+          -- feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of
+          the sector's eligible peers have a non-null net_debt_to_ebitda -- guaranteed for every
+          peer in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_median_fcf_margin_pct
         description: >
-          Median fcf_margin_pct among eligible peers. Null when sector_peer_count < 8.
+          Median fcf_margin_pct among eligible peers. Null when fewer than 8 of the sector's
+          eligible peers have a non-null fcf_margin_pct -- guaranteed for every peer in an
+          operating-type sector (this metric gates operating eligibility), but not required in a
+          financial-type sector, where the per-metric count can fall short of sector_peer_count.
       - name: sector_min_fcf_margin_pct
         description: >
-          Minimum fcf_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum fcf_margin_pct among eligible peers (card range mark). Null when fewer than 8
+          of the sector's eligible peers have a non-null fcf_margin_pct -- guaranteed for every
+          peer in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_max_fcf_margin_pct
         description: >
-          Maximum fcf_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum fcf_margin_pct among eligible peers (card range mark). Null when fewer than 8
+          of the sector's eligible peers have a non-null fcf_margin_pct -- guaranteed for every
+          peer in an operating-type sector (this metric gates operating eligibility), but not
+          required in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_q1_fcf_margin_pct
         description: >
           25th percentile (continuous interpolation) of fcf_margin_pct among eligible peers --
-          feeds the card range mark's outlier-aware display clamp (Gemini feedback point 5). Null
-          when sector_peer_count < 8.
+          feeds the card range mark's outlier-aware display clamp (Gemini feedback point 5).
+          Null when fewer than 8 of the sector's eligible peers have a non-null fcf_margin_pct
+          -- guaranteed for every peer in an operating-type sector (this metric gates
+          operating eligibility), but not required in a financial-type sector, where the
+          per-metric count can fall short of sector_peer_count.
       - name: sector_q3_fcf_margin_pct
         description: >
           75th percentile (continuous interpolation) of fcf_margin_pct among eligible peers --
-          feeds the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of the
+          sector's eligible peers have a non-null fcf_margin_pct -- guaranteed for every peer in
+          an operating-type sector (this metric gates operating eligibility), but not required
+          in a financial-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_median_debt_to_equity
         description: >
           Median debt_to_equity among eligible peers with positive stockholders' equity (a peer
           with negative equity has a sign-flipped ratio and is excluded, not just clamped -- see
-          model SQL comment). Null when sector_peer_count < 8.
+          model SQL comment). Null when fewer than 8 of the sector's eligible peers have a
+          non-null debt_to_equity after the positive-equity filter above -- that per-metric
+          count can fall short of sector_peer_count because debt_to_equity isn't required by
+          either company_type's eligibility gate, and because the filter itself excludes any
+          negative-equity peer.
       - name: sector_min_debt_to_equity
         description: >
           Minimum debt_to_equity among eligible peers with positive stockholders' equity (card
-          range mark). Null when sector_peer_count < 8.
+          range mark). Null when fewer than 8 of the sector's eligible peers have a non-null
+          debt_to_equity after the positive-equity filter above -- that per-metric count can
+          fall short of sector_peer_count because debt_to_equity isn't required by either
+          company_type's eligibility gate, and because the filter itself excludes any
+          negative-equity peer.
       - name: sector_max_debt_to_equity
         description: >
           Maximum debt_to_equity among eligible peers with positive stockholders' equity (card
-          range mark). Null when sector_peer_count < 8.
+          range mark). Null when fewer than 8 of the sector's eligible peers have a non-null
+          debt_to_equity after the positive-equity filter above -- that per-metric count can
+          fall short of sector_peer_count because debt_to_equity isn't required by either
+          company_type's eligibility gate, and because the filter itself excludes any
+          negative-equity peer.
       - name: sector_q1_debt_to_equity
         description: >
           25th percentile (continuous interpolation) of debt_to_equity among eligible peers with
           positive stockholders' equity -- feeds the card range mark's outlier-aware display
-          clamp. Null when sector_peer_count < 8.
+          clamp. Null when fewer than 8 of the sector's eligible peers have a non-null
+          debt_to_equity after the positive-equity filter above -- that per-metric count can
+          fall short of sector_peer_count because debt_to_equity isn't required by either
+          company_type's eligibility gate, and because the filter itself excludes any
+          negative-equity peer.
       - name: sector_q3_debt_to_equity
         description: >
           75th percentile (continuous interpolation) of debt_to_equity among eligible peers with
           positive stockholders' equity -- feeds the card range mark's outlier-aware display
-          clamp. Null when sector_peer_count < 8.
+          clamp. Null when fewer than 8 of the sector's eligible peers have a non-null
+          debt_to_equity after the positive-equity filter above -- that per-metric count can
+          fall short of sector_peer_count because debt_to_equity isn't required by either
+          company_type's eligibility gate, and because the filter itself excludes any
+          negative-equity peer.
       - name: sector_median_current_ratio_stmt
         description: >
-          Median current_ratio_stmt among eligible peers. Null when sector_peer_count < 8.
+          Median current_ratio_stmt among eligible peers. Null when fewer than 8 of the sector's
+          eligible peers have a non-null current_ratio_stmt -- that per-metric count can fall
+          short of sector_peer_count because current_ratio_stmt isn't required by either
+          company_type's eligibility gate.
       - name: sector_min_current_ratio_stmt
         description: >
-          Minimum current_ratio_stmt among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum current_ratio_stmt among eligible peers (card range mark). Null when fewer
+          than 8 of the sector's eligible peers have a non-null current_ratio_stmt -- that
+          per-metric count can fall short of sector_peer_count because current_ratio_stmt isn't
+          required by either company_type's eligibility gate.
       - name: sector_max_current_ratio_stmt
         description: >
-          Maximum current_ratio_stmt among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum current_ratio_stmt among eligible peers (card range mark). Null when fewer
+          than 8 of the sector's eligible peers have a non-null current_ratio_stmt -- that
+          per-metric count can fall short of sector_peer_count because current_ratio_stmt isn't
+          required by either company_type's eligibility gate.
       - name: sector_q1_current_ratio_stmt
         description: >
-          25th percentile (continuous interpolation) of current_ratio_stmt among eligible peers -- feeds
-          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          25th percentile (continuous interpolation) of current_ratio_stmt among eligible peers
+          -- feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of
+          the sector's eligible peers have a non-null current_ratio_stmt -- that per-metric
+          count can fall short of sector_peer_count because current_ratio_stmt isn't required by
+          either company_type's eligibility gate.
       - name: sector_q3_current_ratio_stmt
         description: >
-          75th percentile (continuous interpolation) of current_ratio_stmt among eligible peers -- feeds
-          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          75th percentile (continuous interpolation) of current_ratio_stmt among eligible peers
+          -- feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of
+          the sector's eligible peers have a non-null current_ratio_stmt -- that per-metric
+          count can fall short of sector_peer_count because current_ratio_stmt isn't required by
+          either company_type's eligibility gate.
       - name: sector_median_statement_roe_pct
         description: >
-          Median statement_roe_pct among eligible peers with positive stockholders' equity (a peer
-          with negative equity has a sign-flipped ratio and is excluded, not just clamped -- see
-          model SQL comment). Null when sector_peer_count < 8.
+          Median statement_roe_pct among eligible peers with positive stockholders' equity (a
+          peer with negative equity has a sign-flipped ratio and is excluded, not just clamped
+          -- see model SQL comment). Null when fewer than 8 of the sector's eligible peers have
+          a non-null statement_roe_pct after the positive-equity filter above -- guaranteed for
+          every equity-filtered peer in a financial-type sector (this metric gates financial
+          eligibility), but not required in an operating-type sector, and the filter itself also
+          excludes any negative-equity peer regardless of type.
       - name: sector_min_statement_roe_pct
         description: >
-          Minimum statement_roe_pct among eligible peers with positive stockholders' equity (card
-          range mark). Null when sector_peer_count < 8.
+          Minimum statement_roe_pct among eligible peers with positive stockholders' equity
+          (card range mark). Null when fewer than 8 of the sector's eligible peers have a
+          non-null statement_roe_pct after the positive-equity filter above -- guaranteed for
+          every equity-filtered peer in a financial-type sector (this metric gates financial
+          eligibility), but not required in an operating-type sector, and the filter itself also
+          excludes any negative-equity peer regardless of type.
       - name: sector_max_statement_roe_pct
         description: >
-          Maximum statement_roe_pct among eligible peers with positive stockholders' equity (card
-          range mark). Null when sector_peer_count < 8.
+          Maximum statement_roe_pct among eligible peers with positive stockholders' equity
+          (card range mark). Null when fewer than 8 of the sector's eligible peers have a
+          non-null statement_roe_pct after the positive-equity filter above -- guaranteed for
+          every equity-filtered peer in a financial-type sector (this metric gates financial
+          eligibility), but not required in an operating-type sector, and the filter itself also
+          excludes any negative-equity peer regardless of type.
       - name: sector_q1_statement_roe_pct
         description: >
           25th percentile (continuous interpolation) of statement_roe_pct among eligible peers
-          with positive stockholders' equity -- feeds the card range mark's outlier-aware display
-          clamp. Null when sector_peer_count < 8.
+          with positive stockholders' equity -- feeds the card range mark's outlier-aware
+          display clamp. Null when fewer than 8 of the sector's eligible peers have a non-null
+          statement_roe_pct after the positive-equity filter above -- guaranteed for every
+          equity-filtered peer in a financial-type sector (this metric gates financial
+          eligibility), but not required in an operating-type sector, and the filter itself also
+          excludes any negative-equity peer regardless of type.
       - name: sector_q3_statement_roe_pct
         description: >
           75th percentile (continuous interpolation) of statement_roe_pct among eligible peers
-          with positive stockholders' equity -- feeds the card range mark's outlier-aware display
-          clamp. Null when sector_peer_count < 8.
+          with positive stockholders' equity -- feeds the card range mark's outlier-aware
+          display clamp. Null when fewer than 8 of the sector's eligible peers have a non-null
+          statement_roe_pct after the positive-equity filter above -- guaranteed for every
+          equity-filtered peer in a financial-type sector (this metric gates financial
+          eligibility), but not required in an operating-type sector, and the filter itself also
+          excludes any negative-equity peer regardless of type.
       - name: sector_median_net_margin_pct
         description: >
-          Median net_margin_pct among eligible peers. Null when sector_peer_count < 8.
+          Median net_margin_pct among eligible peers. Null when fewer than 8 of the sector's
+          eligible peers have a non-null net_margin_pct -- guaranteed for every peer in a
+          financial-type sector (this metric gates financial eligibility), but not required in
+          an operating-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_min_net_margin_pct
         description: >
-          Minimum net_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum net_margin_pct among eligible peers (card range mark). Null when fewer than 8
+          of the sector's eligible peers have a non-null net_margin_pct -- guaranteed for every
+          peer in a financial-type sector (this metric gates financial eligibility), but not
+          required in an operating-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_max_net_margin_pct
         description: >
-          Maximum net_margin_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum net_margin_pct among eligible peers (card range mark). Null when fewer than 8
+          of the sector's eligible peers have a non-null net_margin_pct -- guaranteed for every
+          peer in a financial-type sector (this metric gates financial eligibility), but not
+          required in an operating-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_q1_net_margin_pct
         description: >
-          25th percentile (continuous interpolation) of net_margin_pct among eligible peers -- feeds
-          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          25th percentile (continuous interpolation) of net_margin_pct among eligible peers --
+          feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of the
+          sector's eligible peers have a non-null net_margin_pct -- guaranteed for every peer in
+          a financial-type sector (this metric gates financial eligibility), but not required in
+          an operating-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_q3_net_margin_pct
         description: >
-          75th percentile (continuous interpolation) of net_margin_pct among eligible peers -- feeds
-          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          75th percentile (continuous interpolation) of net_margin_pct among eligible peers --
+          feeds the card range mark's outlier-aware display clamp. Null when fewer than 8 of the
+          sector's eligible peers have a non-null net_margin_pct -- guaranteed for every peer in
+          a financial-type sector (this metric gates financial eligibility), but not required in
+          an operating-type sector, where the per-metric count can fall short of
+          sector_peer_count.
       - name: sector_median_roa_pct
         description: >
-          Median roa_pct among eligible peers. Null when sector_peer_count < 8.
+          Median roa_pct among eligible peers. Null when fewer than 8 of the sector's eligible
+          peers have a non-null roa_pct -- that per-metric count can fall short of
+          sector_peer_count because roa_pct isn't required by either company_type's eligibility
+          gate.
       - name: sector_min_roa_pct
         description: >
-          Minimum roa_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Minimum roa_pct among eligible peers (card range mark). Null when fewer than 8 of the
+          sector's eligible peers have a non-null roa_pct -- that per-metric count can fall
+          short of sector_peer_count because roa_pct isn't required by either company_type's
+          eligibility gate.
       - name: sector_max_roa_pct
         description: >
-          Maximum roa_pct among eligible peers (card range mark). Null when sector_peer_count < 8.
+          Maximum roa_pct among eligible peers (card range mark). Null when fewer than 8 of the
+          sector's eligible peers have a non-null roa_pct -- that per-metric count can fall
+          short of sector_peer_count because roa_pct isn't required by either company_type's
+          eligibility gate.
       - name: sector_q1_roa_pct
         description: >
           25th percentile (continuous interpolation) of roa_pct among eligible peers -- feeds
-          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          the card range mark's outlier-aware display clamp. Null when fewer than 8 of the
+          sector's eligible peers have a non-null roa_pct -- that per-metric count can fall
+          short of sector_peer_count because roa_pct isn't required by either company_type's
+          eligibility gate.
       - name: sector_q3_roa_pct
         description: >
           75th percentile (continuous interpolation) of roa_pct among eligible peers -- feeds
-          the card range mark's outlier-aware display clamp. Null when sector_peer_count < 8.
+          the card range mark's outlier-aware display clamp. Null when fewer than 8 of the
+          sector's eligible peers have a non-null roa_pct -- that per-metric count can fall
+          short of sector_peer_count because roa_pct isn't required by either company_type's
+          eligibility gate.

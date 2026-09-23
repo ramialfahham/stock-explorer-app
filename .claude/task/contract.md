@@ -3,66 +3,60 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes GitLab issue #24. `int_stock__sector_benchmarks.sql` gates every
-  metric's `median`/`min`/`max`/`quantile_cont` on `sector_peer_count >= 8` -- the count of
-  card-eligible peers in the sector, not the count of those peers that actually have a
-  non-null value for the specific metric being aggregated. SQL aggregates silently skip
-  nulls, so a metric with almost no real coverage (never eligibility-gated:
-  `forward_pe`/`debt_to_equity`/`current_ratio_stmt`/`roa_pct`; gated for the other
-  company_type only: the other 6 metrics in a sector of the type that doesn't require
-  them; or excluded by the negative-equity filter on `debt_to_equity`/`statement_roe_pct`)
-  can still render, implying a robust 8+-peer benchmark while resting on far fewer real
-  values. Found while scoping issue #23 (deferred, doc-only, now superseded by this fix --
-  owner decision 2026-09-23: do the SQL fix first, land accurate docs against the
-  corrected behavior rather than against the flawed one).
+objective: Closes GitLab issue #23, re-scoped against the now-merged issue #24 fix (MR
+  !209). All ~50 `sector_median/min/max/q1/q3_*` columns in `int_stock__sector_benchmarks`
+  (and their passthroughs in `mart_stock_cards`) still say "Null when: sector_peer_count <
+  8" -- stale now that #24 changed the actual gate to each metric's own per-metric
+  non-null (post-filter) count (`n_<metric>` in `int_stock__sector_benchmarks.sql`'s
+  `sector_medians` CTE), not `sector_peer_count`.
 
-  Fix (owner-approved design, same conversation): compute each metric's own post-filter
-  non-null count (`count(metric)`, or `count(case when <existing filter> then metric
-  end)` for the two negative-equity-filtered metrics) alongside its existing aggregates in
-  `sector_medians`, and gate that metric's stats in `combined` on ITS OWN count meeting
-  `peer_threshold`, not on `sector_peer_count`. `sector_peer_count` itself is unchanged --
-  it stays a plain `count(*)` of the sector's peer group, still exposed as-is, no longer
-  used as a stand-in for per-metric coverage.
+  The fix makes the true rule UNIFORM across all 10 metrics: null when fewer than 8 of the
+  sector's eligible peers have a non-null value for that specific metric -- which can be
+  fewer than `sector_peer_count` for a documented, metric-specific reason:
+  - `forward_pe`, `debt_to_equity`, `current_ratio_stmt`, `roa_pct`: not required by
+    either company_type's eligibility gate.
+  - `ebit_margin_pct`/`revenue_growth_yoy_pct`/`net_debt_to_ebitda`/`fcf_margin_pct`: gate
+    operating eligibility only -- not required in a financial-type sector.
+  - `net_margin_pct`/`statement_roe_pct`: gate financial eligibility only -- not required
+    in an operating-type sector.
+  - `debt_to_equity`/`statement_roe_pct` additionally exclude peers with negative
+    stockholders' equity (model SQL comment, unchanged by #24).
+
+  Also: `mart_stock_cards.sector_peer_count`'s description names "sector unknown or no
+  benchmark row" but not the dominant, by-design cause -- the join excludes every
+  `pre_revenue` row. This part is independent of #24, was true before and after.
+
+  Fix: rewrite each affected column's "Null when" clause in both
+  `dbt_analytics/models/4_intermediate/_intermediate.yml`
+  (`int_stock__sector_benchmarks`) and `dbt_analytics/models/5_marts/_marts.yml`
+  (`mart_stock_cards` passthroughs, plus `sector_peer_count`) to name the real,
+  per-metric condition. Business-meaning wording, unit annotations, and existing
+  cross-references (card range mark, outlier-aware display clamp, Gemini feedback point 5,
+  "no card renders this" for forward_pe) are left untouched -- only the null-when clause
+  changes.
 
 scope_paths:
-  - dbt_analytics/models/4_intermediate/int_stock__sector_benchmarks.sql
-  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
+  - dbt_analytics/models/4_intermediate/_intermediate.yml
+  - dbt_analytics/models/5_marts/_marts.yml
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/active_work.md
 
-decisions_reserved: none for this branch -- the metric-definition change itself (gate
-  per-metric coverage instead of sector membership) was escalated and approved by the
-  owner in-thread before this contract was written. Not in scope, left open in issue #24
-  for a future decision: whether to expose each metric's coverage count as its own column,
-  and whether any metric should use a threshold other than 8.
+decisions_reserved: none -- documentation-accuracy fix against already-merged SQL (#24),
+  same method the owner already approved for the 32-column enforcement-gap task (!207). No
+  SQL, test, or threshold change.
 
 done_when:
-  - Every one of the 10 benchmarked metrics' `median`/`min`/`max`/`q1`/`q3` (`forward_pe`
-    has no q1/q3) is null unless that metric's OWN non-null (post-filter) peer count meets
-    `peer_threshold` -- not gated on `sector_peer_count`.
-  - `sector_peer_count` itself is unchanged: still `count(*)` over the eligible peer group,
-    still always non-null, not used in any of the 10 metrics' gating logic.
-  - The existing `sector_benchmarks_excludes_negative_equity_peer_from_debt_to_equity_and_roe`
-    unit test is corrected for the fixed gate: its original 8-peer/7-clean fixture now
-    correctly expects null (7 < 8 real values after the exclusion filter, previously hidden
-    by gating on the unfiltered `sector_peer_count` instead) -- split into two cases so the
-    exclusion-ordering assertion (min/median/Q1/Q3 correctly exclude the contaminant) still
-    has its own passing scenario with a 9th, positive-equity peer restoring per-metric
-    coverage to 8.
-  - New unit test proves the core defect is fixed: a sector with `sector_peer_count >= 8`
-    where a never-gated metric (e.g. `forward_pe`) has fewer than 8 real values renders
-    that metric's stats null while a fully-covered metric in the same sector still
-    computes.
-  - `dbt build --project-dir dbt_analytics --profiles-dir .` and `dbt test
-    --project-dir dbt_analytics --profiles-dir .` (unit tests + existing data_tests) pass
-    clean.
+  - Every `sector_median/min/max/q1/q3_*` column description in both YAML files states
+    its actual null condition (per-metric coverage count vs. sector_peer_count, why that
+    count can fall short by company_type gating, and/or the positive-equity filter, as
+    applicable) -- not a blanket restatement of "sector_peer_count < 8".
+  - `mart_stock_cards.sector_peer_count`'s description names the pre_revenue join
+    exclusion as the dominant cause, not just "sector unknown or no benchmark row".
+  - `scripts/check_dbt_documentation.py`'s `check_null_when_documented` still passes (no
+    checker behavior change -- this task is content only).
+  - `dbt parse`/`dbt docs generate --project-dir dbt_analytics --profiles-dir .` still
+    parses the YAML cleanly.
   - Review cycle run (`scope-auditor`, `analytics-engineer-reviewer` per
-    `.claude/review_routing.json`'s `*.sql`/`dbt_analytics/*.yml` + `always` rules),
-    `review.md` written, committed on branch `fix/sector-benchmark-per-metric-coverage-gate`,
-    MR opened. Not merged -- owner's action.
-
-not_in_scope: issue #23's doc-only fix (superseded here, will be re-scoped once this
-  lands, against the corrected gate). Exposing per-metric coverage counts downstream.
-  Changing `peer_threshold` itself. Any mart/frontend change -- this model's OUTPUT SHAPE
-  (column list) does not change, only which cells are null.
+    `.claude/review_routing.json`'s `dbt_analytics/*.yml` + `always` rules), `review.md`
+    written, committed on a new branch, MR opened. Not merged -- owner's action.
