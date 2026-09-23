@@ -1,6 +1,6 @@
 # Review
 
-diff_sha256: 9fcaf263c736f54cca8d711835e3c696ca935d33cc7f45c2f5da6d08dadb121e
+diff_sha256: 7c7e01392b50ec1ddba2a8a2b343e18701a3224a806dbf12f913d6a2f02f89d0
 
 Reviewers dispatched as general-purpose agents reading their own dbt-agent-kit role files
 (agent types not registered in this session), cold, read-only, against
@@ -10,24 +10,21 @@ Reviewers dispatched as general-purpose agents reading their own dbt-agent-kit r
 
 VERDICT: PASS
 risks_checked:
-- Every staged path is in scope_paths; only comment lines changed in the 7 SQL files.
-- Rewritten comments stay true to the code; no owner-reserved decision touched.
-- §1.2/§1.3: one sentence, at most two lines, no dates, no em-dash.
+- Every staged path is in scope_paths.
+- Only `#` comments and docstrings changed; no user-visible string or label touched
+  (`BLOCK_LABEL_*`, `FINANCIAL_CAPITAL_ADEQUACY_CAVEAT` unchanged).
+- Rewritten comments true against adjacent code; no owner-reserved decision touched.
 
-## analytics-engineer-reviewer
+## cto-reviewer
 
 VERDICT: PASS
 risks_checked:
-- No SQL/Jinja token changed; `check_dbt_sql_structure.py`, `check_no_em_dash.py`,
-  `check_no_narrative_dates.py` pass.
-- "Kept raw (not exported)" comments verified against `scripts/assessment_rules.py` and
-  `scripts/export_to_supabase.py`'s `EXPORT_COLUMNS`.
-- Dividend-yield, fill-floor and sector-benchmark comments verified against
-  `assert_dividend_yield_suspects.sql`, `docs/data_contract.md` "Fill floor", and the
-  `combined` CTE's per-metric gates.
-- Non-blocking note: a null `stmt_stockholders_equity` passing the negative-equity filter is
-  safe only because the ratios are already null when their denominator is. Not added: it
-  follows from the division itself.
-
-Independent check: `dbt compile` of all 45 selected nodes on this branch vs `main`; the 7
-touched files differ, none differs once comments are stripped.
+- AST with docstrings removed independently re-verified identical to `main` for all 11 files.
+- Hotspot comments checked against code: `lead_metric_for_row`, `metric_gloss`,
+  `benchmark_range`, `_descriptions_missing`, `_search_query_widget`,
+  `_sync_eligible_counts`, `_health_block_html`, `attach_assessments`, `DECK_COLUMNS`,
+  `browser_storage.py` module docstring. No false claims.
+- `pytest tests/frontend` 319 passed; no test reads `__doc__`; em-dash and narrative-date
+  checks pass.
+- Removed text was history, stale (the `_cards_for_order` "Not-now panel" claim), or
+  rationale derivable from `scripts/assessment_rules.py`; no load-bearing invariant lost.

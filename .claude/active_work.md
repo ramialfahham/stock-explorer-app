@@ -15,11 +15,12 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Comment trim to engineering_standards.md section 1.2: slice 1 (SQL) OPEN, MR !214**
-(`refactor/sql-comment-trim`), both reviewers PASS, awaiting CI and owner merge. **Next:**
-slice 2, same rule applied to `frontend/*.py` as its own branch and MR (routes to
-cto-reviewer). Owner's portfolio order after that: revenue-growth fallback check (open
-item 1), incremental dbt models, README product-first, `.mailmap` -- each needs its own go.
+**Comment trim to engineering_standards.md section 1.2.** Slice 1 (SQL) MERGED (!214).
+Slice 2 (`frontend/*.py` comments + docstrings, not `styles.py`) IN PROGRESS on
+`refactor/frontend-comment-trim`; proof of no behaviour change is an AST diff vs `main`
+with docstrings removed. Owner's portfolio order after that: revenue-growth fallback check
+(open item 1), incremental dbt models, README product-first, `.mailmap` -- each needs its
+own go.
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
 default overlays for portfolio recordings.
