@@ -84,16 +84,16 @@ def _mart(**overrides) -> dict:
 def test_fetch_deck_rows_paginates_past_1000() -> None:
     first = [_mart(ticker=f"T{i}") for i in range(PAGE_SIZE)]
     second = [_mart(ticker="EXTRA", snapshot_date="2026-06-02")]
-    client = _FakeClient({"mart_stock_cards": [first, second]})
+    client = _FakeClient({"current_cards": [first, second]})
     assert len(fetch_deck_rows(client)) == PAGE_SIZE + 1
 
 
 def test_fetch_deck_requests_only_the_slim_column_set() -> None:
     """The cold path's whole cost is this select list. `select=*` here is the regression that
     put ~9-18 MB in front of every first-time visitor."""
-    client = _FakeClient({"mart_stock_cards": [[_mart()]]})
+    client = _FakeClient({"current_cards": [[_mart()]]})
     fetch_deck(client)
-    selects = client.selects_for("mart_stock_cards")
+    selects = client.selects_for("current_cards")
     assert selects == [",".join(DECK_COLUMNS)]
     assert "*" not in selects
 
@@ -109,16 +109,30 @@ def test_deck_columns_exclude_the_heavy_card_face_fields() -> None:
 def test_fetch_deck_does_not_query_card_assessments() -> None:
     """health_verdict/ai_read are card-face only, so joining them into the deck would buy two
     round trips and ~900 KB of text nothing on screen reads yet."""
-    client = _FakeClient({"mart_stock_cards": [[_mart()]]})
+    client = _FakeClient({"current_cards": [[_mart()]]})
     fetch_deck(client)
-    assert client.tables_touched() == {"mart_stock_cards"}
+    assert client.tables_touched() == {"current_cards"}
 
 
 def test_fetch_deck_keeps_latest_snapshot_per_ticker() -> None:
     pages = [[_mart(snapshot_date="2026-06-09"), _mart(snapshot_date="2026-05-01")]]
-    cards = fetch_deck(_FakeClient({"mart_stock_cards": pages}))
+    cards = fetch_deck(_FakeClient({"current_cards": pages}))
     assert len(cards) == 1
     assert cards[0]["snapshot_date"] == "2026-06-09"
+
+
+def test_deck_reads_the_view_and_card_detail_reads_the_table() -> None:
+    """The view drops stale companies from the deck; the detail fetch needs every snapshot of one
+    ticker for the business_summary backfill, which the view's single row would lose."""
+    client = _FakeClient({
+        "current_cards": [[_mart()]],
+        "mart_stock_cards": [[_mart()]],
+        "card_assessments": [[]],
+    })
+    fetch_deck(client)
+    assert client.tables_touched() == {"current_cards"}
+    fetch_card_detail(client, "us_sp500", "ADI")
+    assert "mart_stock_cards" in client.tables_touched()
 
 
 def test_fetch_card_detail_returns_full_row_with_assessment() -> None:

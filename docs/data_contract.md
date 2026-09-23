@@ -335,8 +335,8 @@ its rows sit at pairs the payload does NOT cover, those survive and the ticker r
 the newest of them: the reader sees a staler card whose `As of` date is correct but whose move BACKWARDS is
 unannounced, rather than nothing. It leaves
 the deck when the covered pairs take ALL of its remaining rows, which a multi-date payload can
-do without any single pair having been its last. Both outcomes touch the unmade decision about
-whether the deck should evict.
+do without any single pair having been its last. The deck's own age rule below applies on top
+of both.
 
 The reachable path is narrower than it first looks, and the condition matters. A ticker is
 only evicted if its last exported `(market, date)` pair is one that some STILL-eligible ticker
@@ -348,8 +348,15 @@ ineligible (so it drops out of the mart) while another ticker of the same market
 refresh and still sits at the first one's old date. Or an eligibility-rule or seed change that
 flips a ticker ineligible with no re-ingest at all.
 
-Whether the deck SHOULD evict this way is an open question, and is not settled by this
-mechanism having made it possible.
+**The deck evicts by age, not through the export.** The app's deck reads the
+`public.current_cards` view (`supabase/migrations/020_current_cards_view.sql`), not the table:
+each company's newest row, minus any company whose newest snapshot is 28 or more days behind its
+own market's newest snapshot. On the 1st/15th schedule one missed run is at most 17 days behind
+and two are at least 28, so a card leaves the deck after two missed runs and returns when it
+refreshes. The rule is relative to the market, so a market whose whole pipeline stopped keeps
+its cards; `dbt source freshness` below is what catches that. The table keeps every snapshot,
+and the single-card fetch still reads it, for the `business_summary` backfill. A saved company
+that leaves the deck drops out of Saved the same way and comes back with it.
 
 It inserts only the columns the payload carries, so a column the export does not send keeps
 its DEFAULT, and it raises if the payload names a column the table does not have rather than

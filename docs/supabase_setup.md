@@ -73,6 +73,7 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `017_sector_benchmark_financial_operating.sql` | Sector benchmark columns for the financial and operating card metrics |
 | `018_atomic_card_export.sql` | `replace_cards_snapshot()`: one transaction per snapshot, so a half-failed export cannot mix two |
 | `019_drop_numeric_precision_caps.sql` | Every `numeric(p,s)` column on the mart becomes plain `numeric`; `numeric(10,4)` would overflow on one Yahoo outlier and abort the export |
+| `020_current_cards_view.sql` | `current_cards` view: the deck's newest row per company, leaving out any 28+ days behind its market. A later migration altering the mart must recreate it |
 
 The table was previously missing 012 and 013, with a note excusing the gap; 016 and 017 then
 landed and were absent too, so the note went stale rather than the table getting fixed. It is
@@ -221,7 +222,8 @@ manual run made immediately after applying a migration.
 | Table | Purpose |
 |-------|---------|
 | `markets` | Registry mirror (seeded from migrations) |
-| `mart_stock_cards` | Export target for dbt marts → Streamlit card UI |
+| `mart_stock_cards` | Export target for dbt marts, every snapshot kept |
+| `current_cards` (view) | What the Discover deck reads: newest row per company, stale ones left out |
 | `user_interactions` | Save events per authenticated user |
 | `schema_migrations` | Tracks applied migration files |
 
@@ -250,7 +252,7 @@ Use the **anon** key — not the service role key.
 
 ## 6. Auth (Streamlit) — deferred
 
-v1 Streamlit does **not** require login. The app reads `mart_stock_cards` with the anon key (public read RLS). The saved list is stored in a **browser cookie** on the device.
+v1 Streamlit does **not** require login. The app reads `current_cards` and `mart_stock_cards` with the anon key (public read RLS; the view is `security_invoker`, so the table's policy applies). The saved list is stored in a **browser cookie** on the device.
 
 The `user_interactions` table and auth-backed RLS remain in the schema for a future release when accounts are added. No Supabase Auth provider setup is required to deploy v1.
 

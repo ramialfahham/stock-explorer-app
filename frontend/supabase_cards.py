@@ -1,4 +1,4 @@
-"""Load mart_stock_cards and card_assessments from Supabase with PostgREST pagination."""
+"""Load cards (current_cards view, mart_stock_cards) and card_assessments from Supabase."""
 
 from __future__ import annotations
 
@@ -74,11 +74,11 @@ def _paginate(build_query: Callable[[int], _TableQuery]) -> list[dict[str, Any]]
 
 
 def fetch_deck_rows(client: _SupabaseClient) -> list[dict[str, Any]]:
-    """Every eligible mart row, narrowed to DECK_COLUMNS."""
+    """Every eligible current card, narrowed to DECK_COLUMNS; stale companies are already out."""
     select = ",".join(DECK_COLUMNS)
     return _paginate(
         lambda offset: (
-            client.table("mart_stock_cards")
+            client.table("current_cards")
             .select(select)
             .eq("is_card_eligible", True)
             .order("snapshot_date", desc=True)
