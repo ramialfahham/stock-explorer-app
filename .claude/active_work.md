@@ -15,17 +15,12 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**README screenshot/demo refresh: MR !212 open, awaiting owner review/merge** (branch
-`docs/readme-screenshot-refresh`). Owner supplied 4 new screenshots into
-`docs/media/` (Discover list, search, opened-card detail split across 2 images),
-replacing the old `discover-card.png`. Also recorded a demo GIF
-(`docs/media/discover-demo.gif`) via Claude in Chrome's `gif_creator` against the live
-Render deploy -- re-recorded once at owner's request without the tool's default
-click-indicator/action-label/progress-bar overlays (looked busy/debug-like). Owner
-confirmed layout: GIF on top, 4 stills below. Also fixed a pre-existing copy defect:
-README called a static PNG "the recording below" -- accurate now. First GIF export
-(883KB) exceeded the repo's 500KB `check-added-large-files` limit -- re-recorded leaner,
-downscaled with Pillow to ~236KB.
+**README screenshot/demo refresh: CLOSED, MERGED (!212).** Replaced the single stale
+screenshot with 4 new ones plus a recorded demo GIF (`docs/media/discover-demo.gif`,
+via Claude in Chrome's `gif_creator` against the live Render deploy). **Lesson: the
+recorder's default click-indicator/action-label/progress-bar overlays look busy/debug-
+like for a portfolio README -- disable them.** Also fixed a stale copy defect (README
+called a static PNG "the recording below").
 
 **Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
 aggregates were gated on `sector_peer_count >= 8` (peer group size), not on how many
