@@ -15,13 +15,12 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Sector-benchmark null-when docs (issue #23), branch `docs/sector-benchmark-null-when-
-docs`, review passed, not yet committed/pushed/MR'd.** Re-scoped against #24 (below,
-MERGED via !209): rewrote all ~50 `sector_median/min/max/q1/q3_*` descriptions in
-`_intermediate.yml`/`_marts.yml` to name each metric's actual null condition against the
-corrected gate, replacing the stale blanket "Null when sector_peer_count < 8"; also fixed
-`mart_stock_cards.sector_peer_count`'s description (pre_revenue join exclusion is the
-dominant cause). Doc-only. **Next: commit, push, open MR.**
+**Sector-benchmark null-when docs (issue #23): MR !210 open, awaiting owner
+review/merge** (branch `docs/sector-benchmark-null-when-docs`, review passed). Re-scoped
+against #24 (below, MERGED via !209): rewrote all ~50 `sector_median/min/max/q1/q3_*`
+descriptions in `_intermediate.yml`/`_marts.yml` to name each metric's actual null
+condition against the corrected gate; also fixed `mart_stock_cards.sector_peer_count`'s
+description (pre_revenue join exclusion is the dominant cause). Doc-only.
 
 **Sector-benchmark per-metric coverage gate (issue #24): MERGED via MR !209.** Found while
 scoping #23 above: `int_stock__sector_benchmarks.sql` gated every metric's median/min/max/quantile_cont
