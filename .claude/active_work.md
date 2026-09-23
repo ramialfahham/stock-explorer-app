@@ -15,11 +15,15 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Comment trim to engineering_standards.md section 1.2: slice 1 (SQL) OPEN, MR !214**
-(`refactor/sql-comment-trim`), both reviewers PASS, awaiting CI and owner merge. **Next:**
-slice 2, same rule applied to `frontend/*.py` as its own branch and MR (routes to
-cto-reviewer). Owner's portfolio order after that: revenue-growth fallback check (open
-item 1), incremental dbt models, README product-first, `.mailmap` -- each needs its own go.
+**Comment trim to engineering_standards.md section 1.2.** Slice 1 (SQL) MERGED (!214).
+Slice 2 (`frontend/*.py`) OPEN, MR !215, reviewers PASS. Its `.claude/task/contract.md` and
+`review.md` now conflict with main (!216 rewrote both): take either side, they are per-task.
+
+**Stale-card eviction: MERGED (!216), verified live.** Migration 020 applied by CI; the
+`current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
+
+**Owner's portfolio order, each needs its own go:** incremental dbt models, README
+product-first, `.mailmap`. Revenue-growth fallback DECLINED (MVP).
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
 default overlays for portfolio recordings.
@@ -239,12 +243,10 @@ Numbered defects and gaps:
    reason is past global-file edits breaking sibling projects (operational notes). Detail in
    MR !116/!118's own contract.md/review.md.
 
-1. **Stale cards: decided, MR open (`feat/evict-stale-cards`).** Re-checked 2026-09-23: 10
-   tickers stale (BXB/RMS/SPK still no `info.revenueGrowth`; BBOX empty `info`; four uk trusts
-   lost `info.sector`; ASK and SATS "quote not found"). Owner: evict by age, no revenue-growth
-   fallback (MVP). Migration 020's `current_cards` view, which the deck reads, drops a company
-   28+ days behind its market's newest snapshot (two missed runs) from the deck and Saved until
-   it refreshes. Rule: `docs/data_contract.md` Freshness. Next run should drop BXB/RMS/SPK.
+1. **Stale cards: CLOSED (!216).** Evicted by age via the `current_cards` view, rule in
+   `docs/data_contract.md` Freshness. Watch on the next run: SATS and ASK ("quote not found"
+   on Yahoo) should cross 28 days and leave; the four uk trusts that lost `info.sector` may
+   recover by themselves.
 2. **CLOSED 2026-09-15.** Growth metric card copy contradicted the verdict's own
    zero-tolerance growth gate; reworded to state genuine, verdict-consistent caveats
    instead of telling the reader to discount the signal. Detail in that MR's contract.md.
