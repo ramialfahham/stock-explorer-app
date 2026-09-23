@@ -15,21 +15,22 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**README screenshot/demo refresh, branch `docs/readme-screenshot-refresh`, review
-passed, not yet committed/pushed/MR'd.** Owner supplied 4 new screenshots into
+**README screenshot/demo refresh: MR !212 open, awaiting owner review/merge** (branch
+`docs/readme-screenshot-refresh`). Owner supplied 4 new screenshots into
 `docs/media/` (Discover list, search, opened-card detail split across 2 images),
 replacing the old `discover-card.png`. Also recorded a demo GIF
 (`docs/media/discover-demo.gif`) via Claude in Chrome's `gif_creator` against the live
 Render deploy -- re-recorded once at owner's request without the tool's default
 click-indicator/action-label/progress-bar overlays (looked busy/debug-like). Owner
 confirmed layout: GIF on top, 4 stills below. Also fixed a pre-existing copy defect:
-README called a static PNG "the recording below" -- accurate now. Doc/asset-only, no
-Streamlit change. **Next: commit, push, open MR.**
+README called a static PNG "the recording below" -- accurate now. First GIF export
+(883KB) exceeded the repo's 500KB `check-added-large-files` limit -- re-recorded leaner,
+downscaled with Pillow to ~236KB.
 
 **Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
-aggregates were gated on `sector_peer_count >= 8` (peer GROUP size), not on how many
-peers actually had a non-null value for the specific metric -- fixed with a per-metric
-`n_<metric>` count each metric now gates on instead.
+aggregates were gated on `sector_peer_count >= 8` (peer group size), not on how many
+peers had a non-null value for the specific metric -- fixed with a per-metric
+`n_<metric>` count each metric gates on instead.
 
 **Issue #23 CLOSED, MERGED (!210).** Follow-on doc fix: rewrote all ~50
 `sector_median/min/max/q1/q3_*` descriptions in `_intermediate.yml`/`_marts.yml` to match
@@ -54,11 +55,11 @@ name; staging bypasses `source()` for `raw_parquet_union()` (freshness still wor
 (`int_stock__sector_benchmarks.sql`'s repetitive CASE blocks, same file the ~50-column
 docs gap below tracks) is now covered by issue #23.
 
-**Issue #22 CLOSED.** `verdict_meaning_violation` synonym fix (!202) verified: zero
-read-gen failures, backlog cleared.
+**Issue #22 CLOSED.** `verdict_meaning_violation` synonym fix (!202): zero read-gen
+failures, backlog cleared.
 
-**Git push auth flakiness:** failed once, retry hung (TaskStop'd), third clean; `glab`'s
-token unaffected. If recurring: ask the owner, don't touch the credential store.
+**Git push auth flakiness:** failed once, retry hung, third clean; `glab`'s token
+unaffected. If recurring: ask the owner, don't touch the credential store.
 
 **Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu -> text-labeled
 `About` popover; Not-now removed end-to-end; per-row `Remove` added to Saved. **Lesson:
@@ -84,7 +85,7 @@ GitHub mirror, local `gitlab` remote, every in-repo reference, and the push-mirr
 all fixed/verified. **Local folder `D:\Projects\stock-swipe-app` still NOT renamed** --
 owner will do it after closing a session (renaming a live session's cwd breaks its shell).
 
-**README scope note: MERGED (!193).** Owner's exact wording, verbatim.
+**README scope note: MERGED (!193).** Owner's wording, verbatim.
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
 parenthetical, even accurate, is still unauthorized owner-reserved copy.
 
