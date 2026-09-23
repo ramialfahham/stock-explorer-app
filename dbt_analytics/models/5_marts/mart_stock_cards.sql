@@ -92,10 +92,7 @@ final as (
     left join benchmarks as b
         on m.market_code = b.market_code
         and m.sector = b.sector
-        -- pre_revenue is excluded from the sector peer set (int_stock__sector_benchmarks), so it must
-        -- not inherit that sector's peer_count/medians here -- otherwise a pre-revenue card would show a
-        -- "(N companies)" headline for a peer group it is not counted in. None of pre_revenue's rendered
-        -- metrics are benchmarkable, so leaving the benchmark columns null loses no comparison signal.
+        -- Pre-revenue cards are not in the sector peer set, so they get no peer count or benchmarks.
         and m.company_type != 'pre_revenue'
     where m.is_card_eligible
 )

@@ -121,11 +121,7 @@ metrics as (
                 then 'annual_latest'
         end as ebit_margin_basis,
         s.info_revenue_growth * 100.0 as revenue_growth_yoy_pct,
-        -- Passed through raw, alongside the ratio that uses it, so scripts/assessment_rules.py
-        -- can tell a genuine net-cash position (net_debt negative, ebitda positive) apart from
-        -- a sign flip caused by negative earnings (ebitda <= 0) -- the ratio's own sign can't
-        -- distinguish these, since either net_debt or ebitda going negative flips it the same
-        -- way. Data-only -- not in the metric catalogue or the Supabase export.
+        -- Kept raw (not exported) so assessment_rules.py can tell net cash from negative EBITDA.
         s.info_ebitda,
         case
             when coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash) is not null
@@ -134,12 +130,8 @@ metrics as (
                 then coalesce(s.info_net_debt, s.info_total_debt - s.info_total_cash)
                     / s.info_ebitda
         end as net_debt_to_ebitda,
-        -- Passed through raw, alongside the ratio that uses it, so scripts/assessment_rules.py
-        -- can check current_ratio_stmt's joint-liquidity-evaluation relief on a real dollar
-        -- basis (does free cash flow actually cover the working-capital shortfall) rather than
-        -- fcf_margin_pct's revenue-scaled proxy, which doesn't track the SIZE of a liquidity
-        -- gap that isn't proportional to revenue (e.g. a near-term debt-maturity wall). Data-only
-        -- -- not in the metric catalogue or the Supabase export.
+        -- Kept raw (not exported) so assessment_rules.py can test whether free cash flow covers a
+        -- working-capital gap in money, which a revenue-scaled margin cannot show.
         s.stmt_free_cash_flow,
         case
             when s.stmt_free_cash_flow is not null
@@ -159,12 +151,7 @@ metrics as (
                 and s.info_market_cap != 0
                 then s.info_free_cashflow / s.info_market_cap * 100.0
         end as fcf_yield_pct,
-        -- Passed through raw, alongside the ratio that uses it, for the same reason as
-        -- info_ebitda above: total debt is never negative in this data, but it CAN be exactly
-        -- zero, and 0 divided by a negative equity is 0, not negative -- so a debt-free company
-        -- with negative equity would silently evade a check on the ratio's own sign.
-        -- scripts/assessment_rules.py checks this column's sign directly instead. Data-only --
-        -- not in the metric catalogue or the Supabase export.
+        -- Kept raw (not exported) because zero debt over negative equity yields 0, hiding the sign.
         s.stmt_stockholders_equity,
         case
             when s.stmt_total_debt is not null
@@ -215,10 +202,8 @@ metrics as (
                 and s.stmt_stockholders_equity != 0
                 then s.stmt_net_income_common / s.stmt_stockholders_equity * 100.0
         end as statement_roe_pct,
-        -- Yahoo returns dividendYield as a percent for most rows and as a fraction for a few
-        -- (issue #10). On the data the rule was set on, no genuine yield sat below 0.05% and no
-        -- fraction row belonged to a 5%+ payer, so a value under 0.05 is treated as a fraction
-        -- and scaled to percent; assert_dividend_yield_suspects counts those rows each run.
+        -- Yahoo sends a few dividendYield values as fractions (issue #10); values under 0.05 are
+        -- rescaled to percent and counted each run by assert_dividend_yield_suspects.
         case
             when s.info_dividend_yield < 0.05 then round(s.info_dividend_yield * 100.0, 4)
             else s.info_dividend_yield
@@ -252,12 +237,8 @@ metrics as (
                 and s.info_market_cap != 0
                 then (s.stmt_cash_and_equivalents - s.stmt_total_debt) / s.info_market_cap
         end as net_cash_to_market_cap,
-        -- Net cash as a money amount: the same numerator as net_cash_to_market_cap above,
-        -- without the market-cap denominator. It replaces that ratio on the pre-revenue
-        -- card because the ratio moves with the share price, and this pipeline refreshes
-        -- twice a month -- a price-derived figure goes stale in a way the statement-derived
-        -- ones do not. net_cash_to_market_cap itself is KEPT in the warehouse (it is simply
-        -- no longer catalogued, so no card renders it).
+        -- The pre-revenue card shows this instead of net_cash_to_market_cap, since a
+        -- price-based ratio goes stale between twice-monthly refreshes.
         case
             when s.stmt_cash_and_equivalents is not null
                 and s.stmt_total_debt is not null
@@ -269,15 +250,8 @@ metrics as (
             when s.stmt_total_revenue is not null
                 and s.stmt_total_revenue <= 0
                 then 'pre_revenue'
-            -- Revenue technically positive but negligible relative to how the market values the
-            -- company (< 0.1% of market cap) -- a development-stage company the strict <= 0 test
-            -- misses by a hair. Real example: Deep Yellow (ASX: DYL), a uranium developer with
-            -- $15,949 revenue against a $1.7B market cap (~0.001%) -- computing fcf_margin_pct/
-            -- ebit_margin_pct on that denominator produced a -129,810%/-90,334% outlier that swamped
-            -- its whole sector's range mark. Ratio, not an absolute currency floor: this app spans 6
-            -- currencies (AUD/USD/GBP/EUR/JPY/CHF) with no FX normalization anywhere in the pipeline, so
-            -- a flat dollar threshold would be unfair across markets. Requires market cap present and
-            -- positive; a missing market cap leaves the company operating (a data gap, not a signal).
+            -- Token revenue (under 0.1% of market cap) makes margins explode, so it counts as
+            -- pre-revenue; a ratio, not a currency floor, because amounts are not FX-converted.
             when s.stmt_total_revenue is not null
                 and s.stmt_total_revenue > 0
                 and s.info_market_cap is not null
@@ -293,17 +267,8 @@ metrics as (
 ),
 
 eligibility as (
-    -- Per-type required sets (Sector/Lifecycle Router): financials qualify on a two-metric
-    -- pair. The operating solvency/cash metrics are computed for them ungated above and are
-    -- dropped here BY CLASSIFICATION, not because they cannot be fetched: leverage and
-    -- cash-conversion ratios do not mean for a balance-sheet business what they mean for an
-    -- operating one. pre_revenue qualifies on net_cash alone (its survival card); operating
-    -- keeps a four-metric AND.
-    -- forward_pe was dropped from BOTH the financial and operating sets: a card
-    -- must not be gated on a metric it does not display, and forward_pe is no longer
-    -- catalogued (owner's call -- it carries the share price, which this twice-monthly
-    -- pipeline cannot keep current). This ADMITS companies Yahoo has no forward P/E for, so
-    -- expect the eligible-card count to rise; that is the intended effect, not a regression.
+    -- Financials are not gated on leverage or cash-conversion ratios, which mean something
+    -- else for a balance-sheet business; a card is never gated on a metric it does not show.
     select
         *,
         case company_type
