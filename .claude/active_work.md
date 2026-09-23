@@ -15,12 +15,14 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**README screenshot/demo refresh: CLOSED, MERGED (!212).** Replaced the single stale
-screenshot with 4 new ones plus a recorded demo GIF (`docs/media/discover-demo.gif`,
-via Claude in Chrome's `gif_creator` against the live Render deploy). **Lesson: the
-recorder's default click-indicator/action-label/progress-bar overlays look busy/debug-
-like for a portfolio README -- disable them.** Also fixed a stale copy defect (README
-called a static PNG "the recording below").
+**Comment trim to engineering_standards.md section 1.2: slice 1 (SQL) OPEN, MR !214**
+(`refactor/sql-comment-trim`), both reviewers PASS, awaiting CI and owner merge. **Next:**
+slice 2, same rule applied to `frontend/*.py` as its own branch and MR (routes to
+cto-reviewer). Owner's portfolio order after that: revenue-growth fallback check (open
+item 1), incremental dbt models, README product-first, `.mailmap` -- each needs its own go.
+
+**README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
+default overlays for portfolio recordings.
 
 **Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
 aggregates were gated on `sector_peer_count >= 8` (peer group size), not on how many
