@@ -7,8 +7,7 @@
 > **Agent process moved.** The general working agreement (how any AI agent operates here:
 > the Explore → Plan → Confirm → Implement → Verify protocol, task contracts, review cycle,
 > branch rules, decision rights, escalation) now lives in
-> [`.claude/working-agreement.md`](../.claude/working-agreement.md) — adopted from the
-> [`dbt-agent-kit`](https://github.com/ramialfahham/dbt-agent-kit) plugin. Read that first.
+> [`.claude/working-agreement.md`](../.claude/working-agreement.md). Read that first.
 >
 > This file keeps only the **project-specific UX PR gate** below, which is not part of the
 > generic agreement.

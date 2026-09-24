@@ -44,9 +44,10 @@ Before committing, run the review cycle (the commit gate enforces it):
 1. Stage the paths the change touches, explicitly. Never `git add -A`: it sweeps whatever
    is untracked into a reviewed commit.
 2. Run the reviewers the routing requires (`.claude/review_routing.json`) against the
-   staged diff — cold, read-only, adversarial.
-3. Write `.claude/task/review.md` with each reviewer's verdict and the staged-diff hash.
-4. `git commit` — blocked until the review matches the staged change, every required
+   branch's cumulative diff (committed since `main` plus staged) -- cold, read-only, adversarial.
+3. Write `.claude/task/review.md` with each reviewer's verdict and the diff hash
+   (`python .claude/hooks/commit_review_gate.py --diff-hash`).
+4. `git commit` (Bash tool) -- blocked until the review matches that cumulative diff, every required
    reviewer passed, and any escalation has a recorded answer.
 
 On a re-review round, re-dispatch a reviewer only if their own routing-matched files
@@ -85,16 +86,15 @@ pushed to `origin` once before this rule existed, why the remote was removed, no
 warned about.
 
 Push to the `gitlab` remote with a FULL refspec (`git push gitlab <branch>:<branch>`)
-and use `glab`, never `gh`. `git push gitlab <branch>` alone is not safe on this machine: the
-global `~/.gitconfig` sets `push.default = upstream` and a branch's upstream can resolve to
-`main`. Verify the push output's `-> <branch>` line names the feature branch.
+and use `glab`, never `gh`. Verify the push output's `-> <branch>` line names the feature
+branch.
 
 Open an MR, wait for CI and the user's approval. **Never merge one** -- merging is the user's
 action, every time, regardless of MR number. Before branching, check `glab mr list`: if the
 work is a hard dependency of an open MR and a separate branch buys nothing, commit to that
 branch instead.
 
-Partly **hook-enforced**: a commit or push while on `main`/`master`, `git commit --amend` and
+Partly **hook-enforced** (Bash tool only): a commit or push while on `main`/`master`, `git commit --amend` and
 `--no-verify` are hard-blocked, and so is `gh pr merge`. **The merge guard matches `gh pr merge`
 and nothing else** (`branch_discipline.py`'s `_GH_PR_MERGE` regex), so `glab mr merge` -- the
 command this repo would actually reach for -- is NOT blocked by anything. Nothing stops you

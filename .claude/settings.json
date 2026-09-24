@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Edit(./.env)",
+      "Read(./.streamlit/secrets.toml)",
+      "Edit(./.streamlit/secrets.toml)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -7,13 +15,19 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "python \"$HOME/.claude/hooks/commit_review_gate.py\"",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/branch_discipline.py\"",
+            "statusMessage": "Branch discipline check..."
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/commit_review_gate.py\"",
             "statusMessage": "Review gate: checking the change was reviewed..."
           },
           {
             "type": "command",
             "shell": "bash",
-            "command": "python \"$HOME/.claude/hooks/pre_push_gate.py\"",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/pre_push_gate.py\"",
             "statusMessage": "Pre-push checklist..."
           }
         ]
@@ -25,7 +39,7 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "python \"$HOME/.claude/hooks/handover_in.py\"",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/handover_in.py\"",
             "statusMessage": "Loading active-work handover..."
           }
         ]

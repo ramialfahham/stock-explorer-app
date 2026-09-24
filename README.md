@@ -118,7 +118,7 @@ The reasoning and trade-offs behind the core — deeper context lives in
 ```
 stock-explorer-app/
 ├── CLAUDE.md                  # Entry doc for Claude Code — points to guardrails + docs
-├── .claude/                   # dbt-agent-kit guardrails: working-agreement.md, review_routing.json, active_work.md, task/
+├── .claude/                   # Agent guardrails: hooks/, agents/, settings.json, working-agreement.md, review_routing.json, active_work.md, task/
 ├── docs/
 │   ├── working_agreement.md     # UX PR gate + redirect (agent process now in .claude/)
 │   ├── layering.md              # dbt layer rules
@@ -202,7 +202,7 @@ stock-explorer-app/
 
 ## Standards (non-negotiable)
 
-Agent process / guardrails: [`CLAUDE.md`](CLAUDE.md) → [`.claude/working-agreement.md`](.claude/working-agreement.md) (from the [`dbt-agent-kit`](https://github.com/ramialfahham/dbt-agent-kit) plugin).
+Agent process / guardrails: [`CLAUDE.md`](CLAUDE.md) -> [`.claude/working-agreement.md`](.claude/working-agreement.md); hooks and reviewer roles live in `.claude/`.
 
 Engineering standards:
 

@@ -76,14 +76,12 @@ visual iteration keeps getting rejected as "random," ask what FUNCTIONAL categor
 elements fall into first, don't keep tweaking hex values.**
 
 **GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
-merged (!171-!179).** Plan file `C:\Users\Rami\.claude\plans\vivid-booping-lake.md`
-(outside this repo). **Lesson: citing past incidents as precedent is not the owner
+merged (!171-!179).** **Lesson: citing past incidents as precedent is not the owner
 deciding fresh (working-agreement.md SS7).**
 
 **Repo renamed stock-swipe-app -> stock-explorer-app: MERGED (!194).** GitLab project,
 GitHub mirror, local `gitlab` remote, every in-repo reference, and the push-mirror's PAT
-all fixed/verified. **Local folder `D:\Projects\stock-swipe-app` still NOT renamed** --
-owner will do it after closing a session (renaming a live session's cwd breaks its shell).
+all fixed/verified.
 
 **README scope note: MERGED (!193).** Owner's wording, verbatim.
 **Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
@@ -327,40 +325,29 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   it) -- every gate that run had only ever seen the empty rename. After `git mv` + a
   multi-path `git add`, re-check `git status --short`: every line must start with a
   non-space status letter.
-- **Review mechanics**: the blocking review gate is `commit_review_gate.py` (global,
-  `~/.claude/hooks/`, not tracked in this repo). `diff_sha256` =
-  `sha256(git diff --staged --no-renames --no-abbrev -- . ":(exclude).claude/task/review.md")`
-  -- `review.md`'s own bytes are excluded from what gets hashed (fixed 2026-09-05; a merge
-  commit forces `review.md`'s conflict resolution into the same atomic commit as the
-  substantive change, and no hash it holds can describe a diff that includes its own bytes --
-  full account in `docs/portfolio-readme-accuracy-fixes`'s MR !97 history). Get the live hash
-  via `commit_review_gate.py --staged-hash` -- use it, do not hand-roll the hash; a session
-  spent nine review rounds labelling them with `git hash-object` output, which the gate's
-  `[0-9a-fA-F]{64}` pattern can never match. The verdict parser needs the literal token
-  `VERDICT:` at the START of its own line -- `Round 2 VERDICT: PASS` parses as no verdict at
-  all, silently. In a multi-round `review.md`, write earlier rounds as prose and give ONLY the
-  final round a bare `VERDICT: PASS`/`FAIL`/`ESCALATE` line. **The `##` section header itself
-  must be the literal required-reviewer name** (`## cto-reviewer`, `## scope-auditor` --
-  exactly as `review_routing.json` spells it), not a round label -- the gate maps headers to
-  reviewer names by exact string match, so a differently-named header reads as "no verdict"
-  even with a correct `VERDICT:` line inside it (hit 2026-09-16, issue #7's dedupe fix).
-  Reviewer agents are NOT registered as
-  subagent_types in this frontend -- dispatch them as `general-purpose` agents with the role
-  `.md` inlined (roles live in the `dbt-agent-kit` plugin's `agents/` dir, plus
-  `.claude/agents/equity-analyst-reviewer.md`, the one role this repo keeps in its own tree).
-  `review.md` + this file are STILL conventionally committed separately from the reviewed
-  change (keeps `git log` readable, one commit per concern), but this is no longer load-bearing
-  now that `review.md` is hash-excluded -- committing it alongside the change it describes
-  works fine too, and happens by accident sometimes (e.g. when `review.md` is staged to update
-  its hash and never unstaged before committing). Not worth guarding against.
-- **`review_routing.json` routes by staged PATH, not by what the change does** -- and two
+- **Review mechanics**: the blocking review gate is `.claude/hooks/commit_review_gate.py`
+  (in this repo, wired by `.claude/settings.json`). `diff_sha256` covers the branch's
+  CUMULATIVE diff: everything committed since the merge-base with `main` plus what is staged,
+  with `.claude/task/` excluded (so `review.md` never hashes its own bytes). Get the live hash
+  via `python .claude/hooks/commit_review_gate.py --diff-hash` -- use it, do not hand-roll the
+  hash; the gate's `[0-9a-fA-F]{64}` pattern never matches `git hash-object` output. The
+  verdict parser needs the literal token `VERDICT:` at the START of its own line, and the LAST
+  one in a section wins. **The `##` section header itself must be the literal
+  required-reviewer name** (`## platform-reviewer`, `## scope-auditor` -- exactly as
+  `review_routing.json` spells it), not a round label; a differently-named header reads as
+  "no verdict". The roles in `.claude/agents/` register as subagent types, but with only
+  Read/Grep/Glob; when a review needs `glab` or pytest, dispatch a `general-purpose` agent
+  with the role `.md` inlined. `review.md` can be committed separately for free (`.claude/task/` is hash-excluded);
+  this file is NOT excluded, so a separate `active_work.md` commit on a branch with real
+  changes needs a refreshed `diff_sha256` first.
+- **`review_routing.json` routes by the branch's cumulative PATH list, not by what the change does** -- and two
   patterns can both match one file (e.g. `*.sql` -> analytics-engineer-reviewer AND
   `supabase/*` -> data-engineer-reviewer both match a Supabase migration file), requiring
   both reviewers. The commit gate catches a missed one; re-check routing carefully for any
   file touching more than one obvious category. **A file added to scope mid-task can pull in
   a reviewer never dispatched until the commit gate itself blocks on it** (repo-cleanup
   Phase 3: a `*.sql` file added late needed `analytics-engineer-reviewer`, missed until the
-  gate caught it) -- re-check the routing against the FULL current staged path list, not just
+  gate caught it) -- re-check the routing against the branch's FULL cumulative path list, not just
   the reviewers you started with, whenever scope grows mid-task.
 - **A read-only Supabase production query needs explicit owner approval each time** -- the
   auto-mode classifier blocks it by default ("Production Reads"), even a plain
@@ -394,19 +381,15 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   real gap between "looks right on disk" and "what's actually being committed." Run
   `git status --short` before each round, confirm every touched file is a single `M`
   (issue #16, round 2/3).
-- **`handover_in.py`'s injection cap exists in three places that can silently diverge**: the
-  live, wired copy at `~/.claude/hooks/handover_in.py` (32000 bytes), and two dormant plugin
-  source copies (`~/.claude/plugins/cache/dbt-agent-kit/.../hooks/handover_in.py` and the
-  `marketplaces` sibling), both still at the old 16000 value. A future plugin
-  update/reinstall from either dormant source would silently revert the cap. Not fixed at
-  the plugin-source level (out of this repo's scope); if touching this again, update all
-  three or accept the cap will drift back.
-- **Global/machine-shared file edits (`~/.claude/hooks/*`, the dbt-agent-kit plugin's own
-  files) have broken a sibling project before** -- a global hook change once broke
-  `football-data-pipeline`'s review gate. This is why MR !116's (a) and (b) sub-items were
-  declined outright (2026-09-15, item 0 above) rather than attempted: the owner's own
-  experience is that this category of edit costs more than it's worth. Don't propose one
-  without asking first, and expect "no" as the default answer.
+- **The guardrails are owned by this repo (issue #26):** hooks in `.claude/hooks/`, reviewer
+  roles in `.claude/agents/`, copied once from `claude-project-kit` with no runtime link to it
+  or to `dbt-agent-kit`. Change them here, reviewed like code; don't propose re-linking a kit
+  or installing hooks globally. A test fails if the `active_work.md`
+  budget grows past `handover_in.py`'s cap (32000).
+- **Global/machine-shared file edits (`~/.claude/hooks/*`) have broken a sibling project
+  before** -- a global hook change once broke `football-data-pipeline`'s review gate. This is
+  why MR !116's (a) and (b) sub-items were declined outright (2026-09-15, item 0 above). Don't
+  propose one without asking first, and expect "no" as the default answer.
 - **This handover has fallen behind actual `main` state before** (entries sitting "MR open"
   long after merging). If something here seems inconsistent with `git log main`, trust
   `git log main` and fix this file, don't assume the file is right.
