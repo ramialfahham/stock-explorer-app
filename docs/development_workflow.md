@@ -18,7 +18,7 @@ How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`]
 
 Never commit directly to `main`.
 
-**One-time setup:** `pip install -r requirements-dev.txt && pre-commit install` -- installs the pre-commit hooks (`no-commit-to-branch` rejects commits on `main`, a staged gitleaks secret scan, and the context byte budget). See [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
+**One-time setup:** README "Getting started" (`python scripts/bootstrap.py`, proven by `--verify`). It installs the pre-commit hooks from [`.pre-commit-config.yaml`](../.pre-commit-config.yaml), including `no-commit-to-branch` and a staged gitleaks scan.
 
 **GitLab (recommended):** branch protection on `main` — require MR, disallow direct push. Read
 it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/protected_branches`
@@ -33,11 +33,10 @@ See [`.gitlab-ci.yml`](../.gitlab-ci.yml). The tier names are used across `docs/
 
 ### Tier A -- every pipeline except the schedule (`validate:full` job)
 
-MR, push to `main` and web dispatch. One job, no path rules: a docs-only MR runs the same
-steps as a model change. In order:
+MR, push to `main` and web dispatch. No path rules: a docs-only MR runs the same steps as a
+model change. In order:
 
-1. `scripts/check_context_budget.py`, `check_layer_contract.py`, `check_registry_var_sync.py`,
-   `check_dbt_sql_structure.py`
+1. `scripts/check_company_names_vs_yfinance.py`
 2. `scripts/seed_ci_raw_fixtures.py` (synthetic raw parquet for every active market)
 3. `dbt deps`, `dbt source freshness`, `dbt parse`, then `scripts/check_dbt_tests.py`
 4. `sqlfluff lint dbt_analytics/models dbt_analytics/tests` (needs `profiles.yml`; CI copies
@@ -50,8 +49,12 @@ steps as a model change. In order:
 10. `pytest tests/ -q`
 11. `scripts/audit_mart_vs_yfinance.py --offline --sample-size 5` (mart-side facts only, no fetch)
 
-`validate:branch-guard` (MR from `main` is refused) and `validate:secret-scan` (gitleaks) run
-beside it. There is no path-triggered tier: the list above is the whole MR gate.
+Beside it: `validate:pre-commit` runs the hooks in `.pre-commit-config.yaml` on all files except
+gitleaks and `no-commit-to-branch` (the file checks from pre-commit-hooks, plus context budget,
+narrative dates, em-dash, docs index, layer contract, dbt SQL structure, registry var sync), `validate:branch-guard` refuses an MR from `main`, and
+`validate:secret-scan` runs gitleaks on the full history. `setup:clean-clone` is the one
+path-triggered validate job: on MRs that change a setup file it runs `python scripts/bootstrap.py` twice
+and `--verify` in a clean image.
 
 ### Tier C — production (`data-pipeline` job)
 
@@ -102,13 +105,7 @@ market on the next scheduled run with CI green throughout. France hit exactly th
 
 ## Local setup
 
-```bash
-pip install -r requirements.txt
-cp profiles.yml.example profiles.yml   # DuckDB path
-cp .env.example .env                   # Supabase keys for export check
-dbt deps --project-dir dbt_analytics --profiles-dir .
-python scripts/check_supabase_connection.py
-```
+README "Getting started" is the only copy.
 
 ---
 
@@ -123,9 +120,9 @@ python scripts/check_supabase_connection.py
 | New market | Every step of the activation checklist done, including the `public.markets` migration. "Vars synced, seed exists, CI green" is NOT sufficient: that describes a market whose next production export fails on a foreign key |
 | Docs | `north_star` / `data_contract` updated if behavior or schema changed |
 
-Before pushing, run at least `sqlfluff lint dbt_analytics/models dbt_analytics/tests`,
-`pytest tests/ -q` and `scripts/check_context_budget.py`, not `pytest` alone: a lint violation
-reaching CI is a wasted round trip. The rest of Tier A when the change touches dbt or export.
+Before pushing, run at least `python scripts/bootstrap.py --verify` (pytest, the pre-commit
+hooks, sqlfluff, `dbt build` on fixtures), not `pytest` alone: a lint violation reaching CI is a
+wasted round trip. The rest of Tier A when the change touches dbt or export.
 
 ---
 

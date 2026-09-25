@@ -10,7 +10,7 @@ Diff source:
     `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` is set (merge-request pipelines) -- covers every
     commit on the branch, not just the last one; (2) `CI_COMMIT_BEFORE_SHA`, when set and not
     the all-zero sentinel GitLab uses for a branch's first push (push pipelines to `main`,
-    which `validate:full` also runs on -- this check must not go quiet there just because it
+    which `validate:pre-commit` also runs on -- this check must not go quiet there just because it
     is not an MR). If neither base is available (a `web`-triggered manual run, or a shallow
     clone missing the needed history), the check FAILS CLOSED with a clear message rather
     than passing silently -- a CI job that cannot determine what changed must not report

@@ -768,7 +768,7 @@ def main() -> None:
     if not get_supabase_url() or not get_supabase_anon_key():
         st.error(
             "Missing SUPABASE_URL or SUPABASE_ANON_KEY. "
-            "Add them under Streamlit app Settings → Secrets (see .streamlit/secrets.toml.example)."
+            "Set them in .env (see README \"Getting started\")."
         )
         return
 

@@ -37,6 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 EXCLUDE_DIR_PARTS = {
     ".venv", "venv", ".git", "dbt_packages", "target", "node_modules", "__pycache__",
+    ".cache",
 }
 
 DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")

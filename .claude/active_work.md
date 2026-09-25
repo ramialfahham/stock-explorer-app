@@ -326,8 +326,8 @@ ceiling, no fallbacks): `docs/data_contract.md` "Card metrics". A catalogue row 
 advice: `docs/north_star.md`. The snapshot gate in `attach_assessments` and why it is not
 simplified: its docstring in `frontend/explore_filters.py`. Performance, `DECK_COLUMNS` and
 why re-measuring the data layer proves nothing: `docs/operations_guide.md` "Performance".
-Run `validate:full`'s steps before pushing: `docs/development_workflow.md` "Definition of
-done". Reserved and unbuilt from MR !111: a `DISTINCT ON` view to push deck deduplication
+Run `python scripts/bootstrap.py --verify` before pushing: `docs/development_workflow.md`
+"Definition of done". Reserved and unbuilt from MR !111: a `DISTINCT ON` view to push deck deduplication
 into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the constant.
 
 ## Context / operational notes

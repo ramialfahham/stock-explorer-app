@@ -21,7 +21,7 @@ connection and the two secrets need a human.
    command (`streamlit run streamlit_app.py --server.port $PORT --server.address 0.0.0.0 --server.fileWatcherType none`), free
    plan, auto-deploy on every push to `main`.
 4. **Secrets** — Render prompts for the two `sync: false` env vars declared in `render.yaml`,
-   same values as [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example):
+   the same two keys as in [`.env.example`](../.env.example):
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (anon / publishable key only — never the service role key)
 5. Confirm branch `main`, click **Apply/Create**. First deploy runs automatically. Open the
@@ -32,15 +32,8 @@ Free-tier instances spin down after ~15 minutes idle; the next visit takes 30-60
 
 ## Local dev
 
-From repo root:
-
-```bash
-pip install -r frontend/requirements.txt
-cp .streamlit/secrets.toml.example .streamlit/secrets.toml   # fill values
-streamlit run streamlit_app.py
-```
-
-Or use `.env` with `SUPABASE_URL` and `SUPABASE_ANON_KEY` (see `.env.example`).
+Set up per README "Getting started", put `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `.env`, then
+from the repo root run `streamlit run streamlit_app.py` with the `.venv` Python.
 
 ## UX notes
 
