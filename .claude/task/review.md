@@ -1,43 +1,39 @@
 # Review
 
-diff_sha256: a301d2b686112c9063483463dc06129137bbfa5f6ef096551a2b427e4f09cb0a
-rounds: 6
+diff_sha256: 01a64a80390ffd7d934032a186ceaabd8b41cc2eae1b1d205d339718ba4e2e03
+rounds: 2
 
-Hash refreshed for a follow-up commit that changes only `.claude/active_work.md` (the
-handover's "In flight" entry for this MR and part 2); no reviewed file changed.
+Issue #28 (clone and continue, part 2). Reviewers dispatched as general-purpose agents reading
+their own role files from `.claude/agents/` (the registered types have only Read/Grep/Glob, and
+the review needed `glab` and pytest), cold, read-only, against `.claude/task/review_input.patch`.
+Round 1 findings and the owner's approved scope widening are in `contract.md`'s amendments.
 
-Issue #26 (the repo owns its Claude guardrails). Reviewers dispatched as general-purpose agents
-reading their own role files from `.claude/agents/` (the registered types have only
-Read/Grep/Glob, and the review needed `glab` and pytest), cold, read-only, against
-`.claude/task/review_input.patch`. Round-by-round findings are in `contract.md`'s amendments.
-
-CPO ANSWER: the owner approved each round past the cap in-thread ("go" for rounds 4, 5 and 6)
-and answered round 4's escalation: handle Git Bash `/c/...`, `~` and relative `cd` targets now
-with tests; `$VAR` targets, `git -C` and gating the PowerShell tool go to follow-up issue #27.
-
-Coordinator evidence: `pytest tests` 910 passed; `check_no_em_dash`, `check_no_narrative_dates`,
-`check_context_budget`, `check_docs_indexed` pass. Each restored fix and each worktree
-resolution step has a test that fails when the step is reverted. Round 6's one wording fix
-(`test_commit_review_gate.py` `_routing_only_repo` docstring) applied after the verdict.
+Coordinator evidence: `python scripts/bootstrap.py` twice in this checkout (second run changed
+nothing), then `--verify` with everything staged: pytest 929 passed, every pre-commit hook passed
+(`no-commit-to-branch` skipped by design), sqlfluff clean, `dbt build` PASS=150 in a temp folder;
+afterwards `storage/raw` empty, no temp folder left, no `~/.dbt`. Round 2 wording fixes
+(`contract.md` done_when, `supabase_setup.md` step 3, a `.gitlab-ci.yml` comment,
+`development_workflow.md` "path-triggered validate job") applied after the verdicts.
 
 ## platform-reviewer
 
-Rounds 1-3 FAIL, round 4 ESCALATE (answered above), round 5 FAIL; all findings fixed. Round 6:
-no behaviour findings; ten scratch-copy mutations of the worktree resolution and the cap each
-fail a named test; hooks match `claude-project-kit@5c364d3` except the stated adaptations.
+Round 1 FAIL (in-project pre-commit cache scanned by no-narrative-dates; `.gitlab-ci.yml` missing
+from `.setup_paths`; out-of-scope `check-yaml --unsafe` removal), all fixed. Round 2: no behaviour
+findings; a mutation copy without the `.cache` exclusion flags the fixture; SKIPped hooks are not
+installed in `validate:pre-commit`; the CI clone keeps `origin` for `check_no_em_dash.py`.
 
 VERDICT: PASS
 risks_checked:
-- Every worktree-resolution step and the 32000 cap has a test that fails on revert.
-- Fail-open holds; settings.json only narrows permissions; no credential in the diff.
+- New CI jobs in python:3.11: hook imports, PyYAML pin, SKIP behaviour, origin kept under CI.
+- Tests fail on revert (.cache exclusion, storage/raw isolation, CI remote); setup fails closed.
 
 ## scope-auditor
 
-Rounds 1-5 PASS. Round 6: all 22 files inside `scope_paths`; decisions_reserved honoured
-(four hooks plus imports, platform-reviewer rename limited to live routing, deny rules, matcher
-stays `Bash`, `$VAR` and `git -C` left to the follow-up).
+Round 1 PASS (one wording fix). Round 2: all 26 files inside `scope_paths`, including the
+owner-approved widening; `frontend/app.py` copy matches the approved text verbatim; no dangling
+reference to the deleted `.streamlit/secrets.toml.example`.
 
 VERDICT: PASS
 risks_checked:
-- Diff stays inside scope_paths, checked file by file.
-- No owner-level decision taken silently; historical `cto-reviewer` mentions left as records.
+- `.setup_paths` retriggers on its own file; decisions_reserved honoured (pinned gitleaks, rename).
+- Deleting the secrets example and rewiring the error left no dangling reference.

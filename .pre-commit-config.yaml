@@ -1,11 +1,8 @@
-# Local commit hooks. One-time setup: `pip install -r requirements-dev.txt` then `pre-commit install`.
-# Adapted from dbt-agent-kit's template for this repo:
-#   - paths point at dbt_analytics/ (not the generic models/);
-#   - sqlfluff is pinned to 3.5.0 to match requirements.txt and runs only on the `manual`
-#     stage (it needs `dbt deps` + a profile + DBT_RAW_PATH; CI is the real sqlfluff gate);
-#   - no-commit-to-branch replaces scripts/install_git_hooks.py;
-#   - gitleaks runs from a system-installed binary (CI re-checks via .github/workflows/secret-scan.yml);
-#   - ruff is intentionally omitted for now (separate PR with a deliberate formatting pass).
+# Commit hooks; installed by `python scripts/bootstrap.py`, run on every file by its --verify
+# and by CI's validate:pre-commit. The local hooks are the offline checks validate:full used to
+# run; they run in pre-commit's own Python environment (language: python), never the python on PATH.
+# no-commit-to-branch guards commits, not files: --verify skips it. gitleaks scans what is
+# staged; CI's validate:secret-scan scans the full history with the same pinned version.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -16,7 +13,7 @@ repos:
       - id: check-yaml
         args: [--unsafe]   # allow GitHub Actions ${{ }} syntax
       - id: check-json
-        # .devcontainer/devcontainer.json is JSONC (allows // comments) — strict check-json can't parse it.
+        # .devcontainer/devcontainer.json is JSONC (allows // comments), which strict check-json can't parse.
         exclude: ^(dbt_analytics/target/|\.devcontainer/)
       - id: end-of-file-fixer
         exclude: \.(svg|png|jpe?g)$
@@ -31,38 +28,49 @@ repos:
       - id: context-budget
         name: context budget (docs/context_budget.yml)
         entry: python scripts/check_context_budget.py
-        language: system
+        language: python
+        additional_dependencies: [PyYAML==6.0.3]
         pass_filenames: false
         always_run: true
       - id: no-narrative-dates
         name: no dates/MR-refs/owner-decision wording in comments or DURABLE docs
         entry: python scripts/check_no_narrative_dates.py
-        language: system
+        language: python
         pass_filenames: false
         always_run: true
       - id: no-em-dash
         name: no em-dash/en-dash on an added or edited line
         entry: python scripts/check_no_em_dash.py
-        language: system
+        language: python
         pass_filenames: false
         always_run: true
       - id: docs-indexed
         name: every docs/*.md and docs/ui/*.md file is linked from CLAUDE.md
         entry: python scripts/check_docs_indexed.py
-        language: system
+        language: python
         pass_filenames: false
         always_run: true
-      - id: gitleaks
-        name: gitleaks (staged secret scan)
-        entry: gitleaks git --pre-commit --staged --redact --config .gitleaks.toml
-        language: system
+      - id: layer-contract
+        name: dbt layer contract (docs/layering.md)
+        entry: python scripts/check_layer_contract.py
+        language: python
         pass_filenames: false
+        always_run: true
+      - id: dbt-sql-structure
+        name: dbt SQL structure (engineering_standards.md section 1.1)
+        entry: python scripts/check_dbt_sql_structure.py
+        language: python
+        pass_filenames: false
+        always_run: true
+      - id: registry-var-sync
+        name: market registry and dbt vars in sync
+        entry: python scripts/check_registry_var_sync.py
+        language: python
+        additional_dependencies: [PyYAML==6.0.3]
+        pass_filenames: false
+        always_run: true
 
-  - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 3.5.0
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
     hooks:
-      - id: sqlfluff-lint
-        files: ^dbt_analytics/(models|tests)/.*\.sql$
-        args: [--config, .sqlfluff]
-        additional_dependencies: ['sqlfluff-templater-dbt==3.5.0']
-        stages: [manual]
+      - id: gitleaks

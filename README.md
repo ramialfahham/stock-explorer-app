@@ -28,6 +28,73 @@ and in one product feature.
   <img src="docs/media/discover-card-4.PNG" width="220" alt="An opened card: profitability, growth, and solvency metrics shown against the sector range">
 </p>
 
+## Getting started
+
+### Prerequisites
+
+| Tool | Version | Why |
+|---|---|---|
+| Python | 3.11 (pinned in `.python-version`) | Everything; setup refuses any other version |
+| Git | 2.28 or newer; on Windows, Git for Windows (includes Git Bash) | Clone; Claude Code runs this repo's hooks in bash |
+| uv | any | Optional: only the dbt MCP server in `.mcp.json` uses `uvx` |
+
+On Windows, clone into a short folder (at most 80 characters, e.g. `C:\src\stock-explorer-app`)
+or turn on long paths (`LongPathsEnabled`); the install writes paths 165 characters deep.
+
+### Set up (no credentials)
+
+```bash
+git clone https://gitlab.com/rami.al-fahham/stock-explorer-app.git
+cd stock-explorer-app
+python scripts/bootstrap.py
+```
+
+Creates `.venv` and installs `requirements-dev.txt`, copies `.env` and `profiles.yml` from their
+`.example` files if missing, names the GitLab remote `gitlab`, installs the pre-commit hooks and
+runs `dbt deps`. A second run changes nothing: the file and remote steps skip, the installs
+repeat idempotently, and no existing file is overwritten.
+
+### Prove it works
+
+```bash
+python scripts/bootstrap.py --verify
+```
+
+Runs the tests, the pre-commit hooks on all files, sqlfluff, and a full `dbt build` on synthetic
+fixtures in a temporary folder. Needs no credentials and never touches `storage/raw`.
+
+### With credentials
+
+Paste values into `.env` in the repo root (setup created it; it is gitignored). Nothing else
+holds credentials locally.
+
+| Variable | Where to find it | Needed for |
+|---|---|---|
+| `SUPABASE_URL` | Supabase: Project Settings, API | The app, export, migrations |
+| `SUPABASE_ANON_KEY` | Supabase: Project Settings, API (anon / publishable key) | The app (read-only) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase: Project Settings, API | `export_to_supabase.py` (writes production) |
+| `SUPABASE_DB_PASSWORD` | Supabase: Project Settings, Database | `apply_supabase_migrations.py` |
+| `ANTHROPIC_API_KEY` | Anthropic Console | Optional: `generate_assessments.py` prose reads |
+
+With the first two set, check the connection, then run the app (use the `.venv` Python):
+
+```bash
+python scripts/check_supabase_connection.py
+streamlit run streamlit_app.py
+```
+
+The service-role key and database password write production; the full checklist is
+[`docs/supabase_setup.md`](docs/supabase_setup.md). To run the pipeline locally:
+
+```bash
+python scripts/run_ingestion.py --max-tickers 5   # writes storage/raw/
+dbt build --project-dir dbt_analytics --profiles-dir .
+python scripts/check_pipeline_completeness.py
+python scripts/export_to_supabase.py
+```
+
+Markets, constituents and migrations: [`docs/operations_guide.md`](docs/operations_guide.md).
+
 ## Architecture
 
 The durable core is a batch data pipeline; the UI is a deliberately thin, swappable
@@ -139,66 +206,6 @@ stock-explorer-app/
 ├── profiles.yml.example       # Copy to profiles.yml for local dbt
 └── .env.example               # Copy to .env for Supabase credentials
 ```
-
-## Local setup
-
-1. **Clone and create a virtual environment**
-
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate        # Windows
-   pip install -r requirements.txt
-   ```
-
-2. **Configure dbt**
-
-   ```bash
-   copy profiles.yml.example profiles.yml
-   dbt debug --project-dir dbt_analytics --profiles-dir .
-   ```
-
-3. **Configure Supabase**
-
-   Follow [`docs/supabase_setup.md`](docs/supabase_setup.md): create a project, fill `.env`, then:
-
-   ```bash
-   copy .env.example .env
-   python scripts/apply_supabase_migrations.py
-   python scripts/check_supabase_connection.py
-   ```
-
-4. **Markets** — see `docs/market_registry.yml`. After edits, run `python scripts/sync_dbt_vars.py`.
-
-5. **Refresh constituents** (optional — updates seed CSVs from Wikipedia):
-
-   ```bash
-   python scripts/refresh_constituents.py
-   ```
-
-6. **Run ingestion** (writes parquet to `storage/raw/`):
-
-   ```bash
-   python scripts/run_ingestion.py --max-tickers 5   # small local test
-   python scripts/run_ingestion.py                   # all active markets
-   ```
-
-7. **Transform and export** (after ingestion):
-
-   ```bash
-   set DBT_RAW_PATH=storage/raw
-   dbt build --project-dir dbt_analytics --profiles-dir .
-   python scripts/check_pipeline_completeness.py
-   python scripts/export_to_supabase.py
-   ```
-
-8. **Streamlit app**
-
-   ```bash
-   streamlit run streamlit_app.py
-   ```
-
-   Reads Supabase via the anon key; the saved list persists in a browser cookie.
-   No login required.
 
 ## Standards (non-negotiable)
 

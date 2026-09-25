@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+DEFAULT_RAW_DIR = REPO_ROOT / "storage" / "raw"
 SNAPSHOT = date.today()
 TICKERS = [f"CI{i:02d}" for i in range(1, 6)]
 BANK_TICKER = "CIFIN"
@@ -158,8 +160,8 @@ def _load_active_markets() -> list[str]:
     )
 
 
-def _write_market_fixtures(market_code: str) -> None:
-    out = REPO_ROOT / "storage" / "raw" / market_code
+def _write_market_fixtures(market_code: str, raw_dir: Path) -> None:
+    out = raw_dir / market_code
     out.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat()
 
@@ -254,10 +256,16 @@ def _write_market_fixtures(market_code: str) -> None:
     fundamentals.to_parquet(out / "yf_fundamentals.parquet", index=False)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--out-dir", type=Path, default=DEFAULT_RAW_DIR,
+        help="raw parquet root (default: storage/raw, which real ingestion also writes)",
+    )
+    args = parser.parse_args(argv)
     markets = _load_active_markets()
     for market_code in markets:
-        _write_market_fixtures(market_code)
+        _write_market_fixtures(market_code, args.out_dir)
         print(f"seed_ci_raw_fixtures: wrote fixtures for {market_code}")
     return 0
 

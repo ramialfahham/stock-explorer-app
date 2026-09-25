@@ -27,18 +27,13 @@ This is the only step that requires the Supabase UI.
 
 1. In Supabase: **Project Settings → API** — copy **Project URL**, **anon** key, **service_role** key.
 2. In **Project Settings → Database** — copy the **database password** (the one you set at create time).
-3. Locally:
-
-   ```bash
-   copy .env.example .env
-   ```
+3. Locally: `python scripts/bootstrap.py` already created `.env` (README "Getting started").
 
 4. Fill in `.env` (see [`.env.example`](../.env.example) for all keys).
 5. Apply migrations (creates tables, RLS, seeds `markets`):
 
    ```bash
-   pip install -r requirements.txt
-   python scripts/apply_supabase_migrations.py
+   python scripts/apply_supabase_migrations.py   # with the .venv Python from README "Getting started"
    ```
 
 6. Verify:
@@ -244,7 +239,7 @@ Full checklist: [`streamlit_deploy.md`](streamlit_deploy.md).
 1. Connect GitLab in Render and select this repo — the service config (build/start command,
    Python version) comes from the committed [`render.yaml`](../render.yaml) Blueprint.
 2. When Render prompts for the two `sync: false` env vars, set `SUPABASE_URL` and
-   `SUPABASE_ANON_KEY` (see `.streamlit/secrets.toml.example`).
+   `SUPABASE_ANON_KEY` (see `.env.example`).
 
 Use the **anon** key — not the service role key.
 

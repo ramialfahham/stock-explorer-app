@@ -10,6 +10,7 @@ __pycache__/
 # Secrets and local config (never commit)
 .env
 profiles.yml
+.streamlit/secrets.toml
 .claude/settings.local.json
 
 # DuckDB and raw data
@@ -38,5 +39,4 @@ Thumbs.db
 storage/audit/
 
 # Local agent working artifacts, not part of the repo's committed state.
-.claude/launch.json
 .claude/task/review_input.patch

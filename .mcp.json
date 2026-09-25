@@ -6,7 +6,7 @@
       "env": {
         "DBT_PROJECT_DIR": "dbt_analytics",
         "DBT_PROFILES_DIR": ".",
-        "DBT_PATH": ".venv/Scripts/dbt.exe",
+        "DBT_PATH": "${DBT_PATH:-.venv/Scripts/dbt.exe}",
         "DBT_MCP_ENABLE_TOOLS": "get_lineage_dev,get_node_details_dev,list,parse"
       }
     }

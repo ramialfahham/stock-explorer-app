@@ -46,6 +46,16 @@ def test_creates_the_dbt_directory_if_missing(tmp_path: Path) -> None:
     assert profile_path.parent == home / ".dbt"
 
 
+def test_profiles_dir_writes_there_and_not_under_home(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    target = tmp_path / "verify"
+
+    profile_path = write_profile("x.db", home=home, profiles_dir=target)
+
+    assert profile_path == target / "profiles.yml"
+    assert not (home / ".dbt").exists()
+
+
 def test_rerunning_overwrites_rather_than_appends(tmp_path: Path) -> None:
     write_profile("/tmp/first.db", home=tmp_path)
     profile_path = write_profile("/tmp/second.db", home=tmp_path)

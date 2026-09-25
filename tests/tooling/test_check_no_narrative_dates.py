@@ -25,6 +25,12 @@ def test_a_dated_python_comment_fails(tmp_path: Path) -> None:
     assert "a.py" in violations[0] and "date-stamp" in violations[0]
 
 
+def test_a_tool_cache_is_not_scanned(tmp_path: Path) -> None:
+    # CI keeps pre-commit's hook environments (third-party pip code) in .cache/ in the repo.
+    _write(tmp_path / ".cache" / "pre-commit" / "env" / "pip.py", "x = 1  # fixed 2026-09-05\n")
+    assert find_violations(tmp_path) == []
+
+
 def test_a_dated_python_docstring_fails(tmp_path: Path) -> None:
     _write(tmp_path / "a.py", '''def f():\n    """Fixed on 2026-09-05."""\n    pass\n''')
     violations = find_violations(tmp_path)

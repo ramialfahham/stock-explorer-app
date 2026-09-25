@@ -3,68 +3,66 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #26 -- the repo owns its Claude Code guardrails (hooks, reviewer roles), so a
-  fresh clone runs the review gate, pre-push gate, branch discipline and handover with nothing
-  installed under the home folder.
+objective: Closes #28 -- after `git clone`, one setup command and one proof command that
+  passes without credentials; the README says what credentials go where; CI proves the setup
+  on a clean machine.
 
 scope_paths:
-  - .claude/hooks/_command_utils.py
-  - .claude/hooks/branch_discipline.py
-  - .claude/hooks/commit_review_gate.py
-  - .claude/hooks/pre_push_gate.py
-  - .claude/hooks/handover_in.py
-  - .claude/agents/platform-reviewer.md
-  - .claude/agents/scope-auditor.md
-  - .claude/agents/analytics-engineer-reviewer.md
-  - .claude/agents/data-engineer-reviewer.md
-  - .claude/settings.json
-  - .claude/review_routing.json
-  - .claude/working-agreement.md
-  - .claude/active_work.md
-  - tests/tooling/claude_hooks/
-  - CLAUDE.md
+  - scripts/bootstrap.py
+  - scripts/seed_ci_raw_fixtures.py
+  - scripts/write_ci_dbt_profile.py
+  - tests/tooling/test_bootstrap.py
+  - tests/tooling/test_write_ci_dbt_profile.py
+  - tests/tooling/test_seed_ci_raw_fixtures.py
+  - tests/tooling/test_ci_reachability.py
+  - .pre-commit-config.yaml
+  - .gitlab-ci.yml
+  - .devcontainer/devcontainer.json
+  - .env.example
+  - .gitignore
+  - .streamlit/secrets.toml.example
+  - .claude/launch.json
+  - frontend/app.py
+  - scripts/check_no_narrative_dates.py
+  - tests/tooling/test_check_no_narrative_dates.py
+  - scripts/check_no_em_dash.py
+  - requirements-dev.txt
+  - .mcp.json
   - README.md
-  - docs/working_agreement.md
+  - docs/development_workflow.md
+  - docs/streamlit_deploy.md
+  - docs/supabase_setup.md
+  - docs/engineering_standards.md
+  - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: settled by the owner in-thread before implementation -- decision rule is the
-  tool/community convention unless a written repo-specific reason says otherwise; the repo owns
-  its guardrails (no runtime dependency on dbt-agent-kit or claude-project-kit); copy only the
-  four wired hooks plus their imports; platform-reviewer replaces cto-reviewer; credential-file
-  deny rules; hook matcher stays `Bash` (PowerShell is out of scope).
+decisions_reserved: settled by the owner before implementation (issue #28 "Decisions taken"):
+  tool/community convention unless a written repo-specific reason says otherwise; upstream
+  gitleaks pre-commit hook at a pinned version, CI image pinned to the same tag; remote renamed
+  `origin` -> `gitlab` by setup; no interactive credentials mode; default tool caches. Anything
+  else that adds a mechanism, dependency or CI cost goes back to the owner.
 
 done_when:
-  - `.claude/settings.json` references only `${CLAUDE_PROJECT_DIR}/.claude/hooks/*.py`, and every
-    referenced script exists (enforced by a test).
-  - handover cap 32000 bytes and the worktree handling (leading `cd`, then the event's `cwd`,
-    each resolved to its git toplevel; a `cd` target may be Git Bash `/c/...`, `~/...` or
-    relative) are each covered by a test. `$VAR` targets and `git -C` are a follow-up issue.
-  - `review_routing.json` names only reviewers with a role file in `.claude/agents/`.
-  - In a new Claude Code session on this branch: a Bash tool call runs; the handover is injected;
-    `git commit` without a matching `review.md` is blocked.
+  - A fresh clone into a short folder: `python scripts/bootstrap.py` twice (the second run changes
+    nothing), then `python scripts/bootstrap.py --verify` passes; output shown in the MR.
+  - `tests/tooling/test_bootstrap.py` covers idempotency, never-overwrite, the remote-rename
+    condition, no URL or key in output, and that the proof never points at `storage/raw`.
+  - CI green on the MR, including `validate:pre-commit` and `setup:clean-clone`;
+    `test_ci_reachability.py` passes.
   - `pytest tests/`, `check_no_em_dash.py`, `check_no_narrative_dates.py`,
-    `check_context_budget.py`, `check_docs_indexed.py` pass; review cycle run; MR opened with
-    the kit commit SHA in the commit message. Not merged.
+    `check_context_budget.py`, `check_docs_indexed.py` pass; review cycle run; MR opened. Not
+    merged. The proof folder is deleted afterwards.
 
 amendments:
-  - scope_paths gained `docs/working_agreement.md` (it also called the kit a plugin).
-  - Round 1: scope-auditor PASS; platform-reviewer FAIL on one behaviour finding (no test for
-    the leading-`cd` root in commit_review_gate.py) plus six wording fixes (stale references to
-    kit-only files and plugin paths, wrong test run paths, branch_discipline's fail-open
-    sentence). Round 2 reviews the fixes.
-  - Round 2: scope-auditor PASS; platform-reviewer FAIL on one behaviour finding present since
-    round 1 (the worktree fix lacked the old copies' event-`cwd` layer; done_when had narrowed
-    to "leading `cd`") plus four wording fixes (`_staged_diff` comment, test_hooks_import
-    docstring, a test name, "(Bash tool only)" in the working agreement). Round 3 reviews them.
-  - Round 3: scope-auditor PASS; platform-reviewer FAIL on two behaviour findings (leading-`cd`
-    tests sent no event `cwd`, so the cd-over-cwd order was untested; the CLAUDE_PROJECT_DIR
-    fallback was not resolved to the toplevel, so `--diff-hash` from a subdirectory printed an
-    empty-diff hash) plus two wording fixes. Owner answered "go" to a round 4 past the cap.
-  - Round 4: scope-auditor PASS; platform-reviewer ESCALATE (a Git Bash `/c/...`, `~` or
-    `$VAR` cd target, or `git -C`, is judged against the wrong checkout) plus three wording
-    fixes. Owner answered: handle `/c/...`, `~` and relative targets now with tests; `$VAR`
-    and `git -C` go to a follow-up issue; run round 5 past the cap.
-  - Round 5: scope-auditor PASS; platform-reviewer FAIL on one behaviour finding new in round 5
-    (no test that command_root joins a relative `cd` target to the event `cwd`) plus three
-    wording fixes (two test docstrings, the handover cap comment).
+  - Owner chose option A: delete `.streamlit/secrets.toml.example` and change the missing-key
+    error in `frontend/app.py` to "Set them in .env (see README "Getting started")."; scope
+    gained `frontend/app.py`. UX PR gate: copy-only change, no layout.
+  - A CI clone keeps `origin` (scripts/check_no_em_dash.py fetches the MR base from it); only
+    developer clones are renamed to `gitlab`.
+  - Round 1: scope-auditor PASS (one wording fix); platform-reviewer FAIL on three behaviour
+    findings: the in-project pre-commit cache made no-narrative-dates scan pip's own files;
+    `.gitlab-ci.yml` missing from `.setup_paths`; removing `check-yaml --unsafe` was out of
+    scope (reverted). Owner approved widening scope to `check_no_narrative_dates.py` (exclude
+    `.cache`) and its test, `check_no_em_dash.py` and `requirements-dev.txt` (stale comments),
+    and the `.gitlab-ci.yml` trigger.

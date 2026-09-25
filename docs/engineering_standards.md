@@ -299,7 +299,8 @@ Generic dbt examples do not override this section.
 
 ## 8. CI Minimum Gate
 
-Every MR must pass the `validate:full` job in [`.gitlab-ci.yml`](../.gitlab-ci.yml). That job
-is the authoritative list of its own steps; where a doc summarises it, the job wins.
+Every MR must pass the `validate:*` jobs in [`.gitlab-ci.yml`](../.gitlab-ci.yml), and
+`setup:clean-clone` when it runs. The jobs are the authoritative list of their own steps; where a
+doc summarises them, the jobs win.
 
 Before release to prod: `dbt build` (full run)

@@ -129,7 +129,8 @@ validate:branch-guard:
 # leaving the committed .gitleaks.toml and the pre-commit hook asserting something else.
 validate:secret-scan:
   image:
-    name: zricethezav/gitleaks:latest
+    # Same version as the gitleaks hook in .pre-commit-config.yaml; bump both together.
+    name: zricethezav/gitleaks:v8.30.1
     entrypoint: [""]
   stage: validate
   needs: []
@@ -149,14 +150,9 @@ validate:full:
   stage: validate
   script:
     - mkdir -p /tmp/stock-explorer-raw
-    - python scripts/check_context_budget.py
-    - python scripts/check_no_narrative_dates.py
-    - python scripts/check_no_em_dash.py
-    - python scripts/check_docs_indexed.py
-    - python scripts/check_layer_contract.py
-    - python scripts/check_registry_var_sync.py
+    # The other offline checks run in validate:pre-commit, from .pre-commit-config.yaml. This one
+    # imports the repo's own ingestion package, so it stays here with the full install.
     - python scripts/check_company_names_vs_yfinance.py
-    - python scripts/check_dbt_sql_structure.py
     # dbt reads DBT_PROFILES_DIR / --profiles-dir; sqlfluff's dbt templater reads
     # profiles_dir from the COMMITTED .sqlfluff, which pins it to the repo root. Two tools,
     # two profiles, and the second one only fails after the first has already passed — so
@@ -195,6 +191,60 @@ validate:full:
   rules:
     - *not_on_schedule
     - when: on_success
+
+# The same hooks a developer's commit runs, on every file. Credential-free.
+# gitleaks is skipped here only because validate:secret-scan already scans the full history;
+# no-commit-to-branch guards commits, not files.
+validate:pre-commit:
+  image: python:3.11
+  stage: validate
+  needs: []
+  variables:
+    PRE_COMMIT_HOME: "$CI_PROJECT_DIR/.cache/pre-commit"
+    SKIP: "gitleaks,no-commit-to-branch"
+  cache:
+    key:
+      files:
+        - .pre-commit-config.yaml
+    paths:
+      - .cache/pre-commit
+  script:
+    - pip install "$(grep -E '^pre-commit==' requirements-dev.txt)"
+    - pre-commit run --all-files --show-diff-on-failure
+  rules:
+    - *not_on_schedule
+    - when: on_success
+
+# Proves "git clone, one setup command, one proof command" on a clean machine: setup twice (the
+# second run must succeed on an already set-up clone), then the proof. Only on MRs that
+# change what setup depends on, since a full install costs several CI minutes.
+.setup_paths: &setup_paths
+  - .gitlab-ci.yml
+  - scripts/bootstrap.py
+  - scripts/seed_ci_raw_fixtures.py
+  - scripts/write_ci_dbt_profile.py
+  - requirements.txt
+  - requirements-dev.txt
+  - frontend/requirements.txt
+  - .pre-commit-config.yaml
+  - .python-version
+  - .env.example
+  - profiles.yml.example
+  - dbt_analytics/packages.yml
+
+setup:clean-clone:
+  image: python:3.11
+  stage: validate
+  needs: []
+  script:
+    - python scripts/bootstrap.py
+    - python scripts/bootstrap.py
+    - python scripts/bootstrap.py --verify
+  rules:
+    - *not_on_schedule
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: *setup_paths
+    - when: never
 
 # ---------------------------------------------------------------------------
 # production — the jobs that write Supabase
