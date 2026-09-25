@@ -1,7 +1,10 @@
 # Review
 
-diff_sha256: 2c83b330877753ba0e87d7c097a2d6cdb1ac05ad510424482b448b966222b4fd
+diff_sha256: a301d2b686112c9063483463dc06129137bbfa5f6ef096551a2b427e4f09cb0a
 rounds: 6
+
+Hash refreshed for a follow-up commit that changes only `.claude/active_work.md` (the
+handover's "In flight" entry for this MR and part 2); no reviewed file changed.
 
 Issue #26 (the repo owns its Claude guardrails). Reviewers dispatched as general-purpose agents
 reading their own role files from `.claude/agents/` (the registered types have only
