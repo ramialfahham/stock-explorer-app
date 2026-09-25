@@ -15,26 +15,10 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Clone and continue, part 1 of 2 (issue #26): MR !220 OPEN, CI green, awaiting owner
-merge.** The repo owns its guardrails (hooks, reviewer roles); new-session proof passed (Bash
-runs, handover injected, unreviewed commit blocked). Follow-up issue #27 (`git -C`, `$VAR`
-cd targets, gating the PowerShell tool). **Next: part 2 (MR B)**, plan approved by the owner:
-- `scripts/bootstrap.py` (stdlib only): checks Python 3.11, git, `core.hooksPath` unset,
-  Windows path limit (measured); creates `.venv`, `pip install -r requirements-dev.txt`;
-  copies `*.example` only if missing; renames `origin` -> `gitlab` like football-data-pipeline;
-  `pre-commit install --install-hooks`, `dbt deps`; `[ok]`/`[skip]` per step.
-- `--verify`: pytest, `pre-commit run --all-files` (SKIP=no-commit-to-branch), sqlfluff,
-  CI profile + fixtures into a temp dir, `dbt build --profiles-dir <tmp>`. No credentials mode.
-- pre-commit: local hooks `language: python` (+PyYAML), add `check_layer_contract`,
-  `check_dbt_sql_structure`, `check_registry_var_sync`; upstream gitleaks hook pinned, CI image
-  pinned to the same tag; drop the manual sqlfluff hook; fix the header and the
-  `devcontainer.json` final newline.
-- `seed_ci_raw_fixtures.py --out-dir`, `write_ci_dbt_profile.py --profiles-dir`; empty
-  `.env.example` values; gitignore `.streamlit/secrets.toml`, delete its `.example`; commit
-  `.claude/launch.json`; `.mcp.json` DBT_PATH `${DBT_PATH:-.venv/Scripts/dbt.exe}`.
-- CI `validate:pre-commit` (SKIP=gitleaks, cache in project) and `setup:clean-clone`
-  (schedule guard first); README "Getting started" replaces "Local setup".
-Proof clone at `C:\01_Projects\stock-explorer-app-proof`: delete after part 2's proof.
+**Clone and continue: MERGED** (!220 guardrails owned by the repo, !221 one setup command +
+one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is README
+"Getting started". Open: owner's credentialed check (`.env` + `check_supabase_connection.py`);
+follow-up issue #27 (`git -C`, `$VAR` cd targets, gating the PowerShell tool).
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
