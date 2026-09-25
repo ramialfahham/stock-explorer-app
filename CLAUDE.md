@@ -76,9 +76,10 @@ numbers" panel).
 
 ## Guardrails
 
-This repo uses the [`dbt-agent-kit`](https://github.com/ramialfahham/dbt-agent-kit)
-plugin: session handover, plan-back gate, pre-push checks, blinded reviewers, and a
-blocking review gate. Task contracts live in `.claude/task/`, review routing in
+The guardrails live in this repo, nothing installed globally: hooks in `.claude/hooks/`
+(session handover, branch discipline, pre-push check, blocking review gate) wired by
+`.claude/settings.json`, reviewer roles in `.claude/agents/`. Task contracts live in
+`.claude/task/`, review routing in
 [`.claude/review_routing.json`](.claude/review_routing.json). The session handover is
 [`.claude/active_work.md`](.claude/active_work.md) — keep it current so a fresh chat
 continues from the documented state.
