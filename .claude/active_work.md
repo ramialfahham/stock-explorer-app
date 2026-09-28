@@ -17,8 +17,8 @@ one or two lines and let the archive keep the detail._
 
 **Clone and continue: MERGED** (!220 guardrails owned by the repo, !221 one setup command +
 one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is README
-"Getting started". Open: owner's credentialed check (`.env` + `check_supabase_connection.py`);
-follow-up issue #27 (`git -C`, `$VAR` cd targets, gating the PowerShell tool).
+"Getting started"; credentialed check passed on this machine (`check_supabase_connection.py`).
+Open: follow-up issue #27 (`git -C`, `$VAR` cd targets, gating the PowerShell tool).
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
