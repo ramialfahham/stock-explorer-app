@@ -18,7 +18,8 @@ one or two lines and let the archive keep the detail._
 **Clone and continue: MERGED** (!220 guardrails owned by the repo, !221 one setup command +
 one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is README
 "Getting started"; credentialed check passed on this machine (`check_supabase_connection.py`).
-Open: follow-up issue #27 (`git -C`, `$VAR` cd targets, gating the PowerShell tool).
+Issue #27 in flight on `fix/gate-git-c-and-powershell`: the review gate as a git
+pre-commit hook (`review-gate`), `powershell_git_guard.py`, GitLab `main` push set to "No one".
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
@@ -331,7 +332,8 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   multi-path `git add`, re-check `git status --short`: every line must start with a
   non-space status letter.
 - **Review mechanics**: the blocking review gate is `.claude/hooks/commit_review_gate.py`
-  (in this repo, wired by `.claude/settings.json`). `diff_sha256` covers the branch's
+  (a git pre-commit hook, `review-gate` in `.pre-commit-config.yaml`, gating Claude Code's
+  commits in whatever checkout git commits). `diff_sha256` covers the branch's
   CUMULATIVE diff: everything committed since the merge-base with `main` plus what is staged,
   with `.claude/task/` excluded (so `review.md` never hashes its own bytes). Get the live hash
   via `python .claude/hooks/commit_review_gate.py --diff-hash` -- use it, do not hand-roll the
@@ -342,7 +344,8 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   `review_routing.json` spells it), not a round label; a differently-named header reads as
   "no verdict". The roles in `.claude/agents/` register as subagent types, but with only
   Read/Grep/Glob; when a review needs `glab` or pytest, dispatch a `general-purpose` agent
-  with the role `.md` inlined. `review.md` can be committed separately for free (`.claude/task/` is hash-excluded);
+  with the role `.md` inlined. Stage `review.md` before committing: pre-commit hides unstaged
+  changes while hooks run. `review.md` can be committed separately for free (`.claude/task/` is hash-excluded);
   this file is NOT excluded, so a separate `active_work.md` commit on a branch with real
   changes needs a refreshed `diff_sha256` first.
 - **`review_routing.json` routes by the branch's cumulative PATH list, not by what the change does** -- and two

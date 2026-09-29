@@ -1,14 +1,11 @@
-"""Tests for the review gate as a whole: commit detection, verdict parsing, the
-cumulative diff hash, the round cap, the deny output shape, the checkout a commit
-is judged in, and routing/role-file integrity. Runnable with
-`pytest` or directly: `python tests/tooling/claude_hooks/test_commit_review_gate.py`.
+"""Tests for the review gate: verdict parsing, the cumulative diff hash, the round cap,
+routing/role-file integrity, and the git `pre-commit` hook mode, exercised through a real
+git hook. Runnable with `pytest` or directly: `python tests/tooling/claude_hooks/test_commit_review_gate.py`.
 """
 
-import contextlib
 import hashlib
-import io
-import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,7 +20,6 @@ from commit_review_gate import (  # noqa: E402
     _base_ref,
     _diff_to_hash,
     _gate,
-    _is_commit,
     _load_routing,
     _required_reviewers,
     _rounds,
@@ -33,62 +29,7 @@ from commit_review_gate import (  # noqa: E402
 )
 
 
-@contextlib.contextmanager
-def _run_main_in(repo: str, command: str, cwd: str | None = None):
-    """Simulate a real hook invocation of commit_review_gate.main(): stdin
-    carries the PreToolUse event, CLAUDE_PROJECT_DIR points at `repo`. Yields
-    the captured stdout so callers can assert on the actual JSON emitted --
-    this is the only way to catch a bug where TWO JSON objects get printed
-    for one invocation, which per-function tests on `_gate` alone can't see."""
-    event = {"tool_input": {"command": command}}
-    if cwd:
-        event["cwd"] = cwd
-    event = json.dumps(event)
-    old_argv, old_stdin = sys.argv, sys.stdin
-    old_env = os.environ.get("CLAUDE_PROJECT_DIR")
-    sys.argv = ["commit_review_gate.py"]
-    sys.stdin = io.StringIO(event)
-    os.environ["CLAUDE_PROJECT_DIR"] = repo
-    buf = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(buf):
-            crg.main()
-        yield buf.getvalue()
-    finally:
-        sys.argv, sys.stdin = old_argv, old_stdin
-        if old_env is None:
-            os.environ.pop("CLAUDE_PROJECT_DIR", None)
-        else:
-            os.environ["CLAUDE_PROJECT_DIR"] = old_env
-
 _GIT = shutil.which("git")
-
-
-def test_real_commit_is_detected():
-    assert _is_commit("git commit")
-    assert _is_commit("git commit -m 'x'")
-    # global options before the subcommand must still be seen as a commit
-    assert _is_commit("git -c user.email=x@y.z commit -m 'x'")
-    assert _is_commit("git -C /repo commit")
-    assert _is_commit("git --no-pager commit")
-
-
-def test_readonly_commands_are_not_commits():
-    # the bug: "commit" appears as an ARGUMENT, not the subcommand
-    assert not _is_commit("git log --grep commit")
-    assert not _is_commit("git log --format=%H --grep commit")
-    assert not _is_commit("git show HEAD:commit")
-    assert not _is_commit("git commit-tree -p HEAD")  # a different subcommand
-    assert not _is_commit("echo git commit")           # not a git invocation
-
-
-def test_dry_run_is_exempt():
-    assert not _is_commit("git commit --dry-run")
-
-
-def test_commit_in_a_compound_command():
-    assert _is_commit("git add -A && git commit -m 'x'")
-    assert not _is_commit("git add -A && git log --grep commit")
 
 
 def test_verdict_reads_the_operative_block():
@@ -235,73 +176,6 @@ def test_round_cap_allows_with_cpo_answer():
         assert _gate(repo) is None
 
 
-def _single_json_line(output: str) -> dict:
-    lines = [ln for ln in output.splitlines() if ln.strip()]
-    assert len(lines) == 1, f"expected exactly one JSON line, got {len(lines)}: {lines!r}"
-    return json.loads(lines[0])
-
-
-def test_no_base_ref_and_a_real_deny_emits_only_the_deny():
-    # the regression this pins: emitting the "no base ref" note must never
-    # happen ALONGSIDE a deny -- two JSON objects from one hook invocation is
-    # untested-elsewhere shape that could make the harness drop the deny
-    if not _GIT:
-        print("skip (no git on PATH)")
-        return
-    with tempfile.TemporaryDirectory() as repo:
-        _git(repo, "init", "-q")
-        _git(repo, "config", "user.email", "t@t.t")
-        _git(repo, "config", "user.name", "t")
-        _routing_only_repo(repo)  # no review.md written -> _gate() denies
-        with _run_main_in(repo, "git commit -m x") as output:
-            payload = _single_json_line(output)
-        reason = payload["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "REVIEW GATE:" in reason
-        assert "REVIEW GATE NOTE" not in reason, (
-            "the no-base-ref note must not be folded into or accompany a deny")
-        # The deny must print a runnable --diff-hash command with the hook's
-        # absolute path, so it works from any cwd, including a worktree.
-        import re
-        m = re.search(r'python "([^"]+)" --diff-hash', reason)
-        assert m, reason
-        assert os.path.isfile(m.group(1)), m.group(1)
-        printed = subprocess.run(
-            [sys.executable, m.group(1), "--diff-hash"], capture_output=True, text=True,
-            cwd=repo, env=dict(os.environ, CLAUDE_PROJECT_DIR=repo), timeout=30)
-        assert re.fullmatch(r"[0-9a-f]{64}", printed.stdout.strip()), printed.stdout
-        # The OTHER deny -- review present but for a different diff -- must
-        # print the same command; the docs promise it for every denial.
-        with open(os.path.join(repo, ".claude", "task", "review.md"), "w", encoding="utf-8") as f:
-            f.write("# Review\n\ndiff_sha256: " + "0" * 64 + "\n\nVERDICT: PASS\n")
-        with _run_main_in(repo, "git commit -m x") as output:
-            payload = _single_json_line(output)
-        reason = payload["hookSpecificOutput"]["permissionDecisionReason"]
-        assert "doesn't match" in reason, reason
-        m2 = re.search(r'python "([^"]+)" --diff-hash', reason)
-        assert m2 and os.path.isfile(m2.group(1)), reason
-
-
-def test_no_base_ref_and_a_clean_allow_emits_the_note_alone():
-    if not _GIT:
-        print("skip (no git on PATH)")
-        return
-    with tempfile.TemporaryDirectory() as repo:
-        _git(repo, "init", "-q")
-        _git(repo, "config", "user.email", "t@t.t")
-        _git(repo, "config", "user.name", "t")
-        _routing_only_repo(repo)
-        live = hashlib.sha256(_diff_to_hash(repo)).hexdigest()
-        review = f"diff_sha256: {live}\n## scope-auditor\nVERDICT: PASS\nrisks_checked:\n- a\n- b\n"
-        with open(os.path.join(repo, ".claude", "task", "review.md"), "w", encoding="utf-8") as f:
-            f.write(review)
-        with _run_main_in(repo, "git commit -m x") as output:
-            # no commit has been made in this repo yet, so no main/master ref
-            # can exist -- _base_ref is deterministically None here, not an
-            # environment-dependent maybe
-            payload = _single_json_line(output)
-        assert "REVIEW GATE NOTE" in payload["hookSpecificOutput"]["additionalContext"]
-
-
 def test_round_cap_does_not_trip_under_the_cap():
     if not _GIT:
         print("skip (no git on PATH)")
@@ -349,31 +223,74 @@ def test_staged_diff_excludes_the_task_dir():
         assert hashlib.sha256(_staged_diff(repo)).hexdigest() != hash_before
 
 
-def test_leading_cd_commit_is_gated_in_the_checkout_it_runs_in():
-    # `cd <worktree> && git commit` must be judged against the worktree's index,
-    # not CLAUDE_PROJECT_DIR's: judged there, an empty index would let an
-    # unreviewed worktree commit through.
+def _repo_with_gate_hook(repo: str) -> None:
+    """A repo whose real git pre-commit hook runs this gate, like pre-commit does."""
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@t.t")
+    _git(repo, "config", "user.name", "t")
+    _routing_only_repo(repo)
+    hook = os.path.join(repo, ".git", "hooks", "pre-commit")
+    with open(hook, "w", encoding="utf-8", newline="\n") as f:
+        f.write('#!/bin/sh\nexec "{}" "{}" --git-hook\n'.format(
+            sys.executable.replace("\\", "/"), os.path.abspath(crg.__file__).replace("\\", "/")))
+    os.chmod(hook, 0o755)
+
+
+def _commit_from_elsewhere(repo: str, cwd: str, claude: bool):
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+    if claude:
+        env["CLAUDECODE"] = "1"
+    return subprocess.run([_GIT, "-C", repo, "commit", "-q", "-m", "x"], cwd=cwd, env=env,
+                          capture_output=True, text=True, timeout=60)
+
+
+def test_git_hook_refuses_an_unreviewed_commit_from_claude_code_wherever_it_is_run():
     if not _GIT:
         print("skip (no git on PATH)")
         return
-    with tempfile.TemporaryDirectory() as project, tempfile.TemporaryDirectory() as worktree:
-        for repo in (project, worktree):
-            _git(repo, "init", "-q")
-            _git(repo, "config", "user.email", "t@t.t")
-            _git(repo, "config", "user.name", "t")
-        os.makedirs(os.path.join(project, ".claude"))
-        with open(os.path.join(project, ".claude", "review_routing.json"), "w", encoding="utf-8") as f:
-            f.write('{"always": [], "paths": {}}')
-        _routing_only_repo(worktree)
-        with _run_main_in(project, "git commit -m x") as output:
-            assert "permissionDecision" not in output
-        with _run_main_in(project, f'cd "{worktree}" && git commit -m x', cwd=project) as output:
-            payload = _single_json_line(output)
-        assert "REVIEW GATE:" in payload["hookSpecificOutput"]["permissionDecisionReason"]
-        # a cd in an EARLIER Bash call persists as the event's cwd
-        with _run_main_in(project, "git commit -m x", cwd=worktree) as output:
-            payload = _single_json_line(output)
-        assert "REVIEW GATE:" in payload["hookSpecificOutput"]["permissionDecisionReason"]
+    with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as elsewhere:
+        _repo_with_gate_hook(repo)
+        refused = _commit_from_elsewhere(repo, elsewhere, claude=True)
+        assert refused.returncode != 0 and "REVIEW GATE:" in refused.stderr, refused.stderr
+        m = re.search(r'python "([^"]+)" --diff-hash', refused.stderr)
+        assert m and os.path.isfile(m.group(1)), refused.stderr
+        live = hashlib.sha256(_diff_to_hash(repo)).hexdigest()
+        with open(os.path.join(repo, ".claude", "task", "review.md"), "w", encoding="utf-8") as f:
+            f.write(f"diff_sha256: {live}\n")
+        allowed = _commit_from_elsewhere(repo, elsewhere, claude=True)
+        assert allowed.returncode == 0, allowed.stderr
+
+
+def test_git_hook_ignores_commits_not_from_claude_code():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as elsewhere:
+        _repo_with_gate_hook(repo)
+        result = _commit_from_elsewhere(repo, elsewhere, claude=False)
+        assert result.returncode == 0, result.stderr
+
+
+def test_git_hook_fails_open_when_its_helper_cannot_be_imported():
+    with tempfile.TemporaryDirectory() as hooks:
+        shutil.copy(crg.__file__, hooks)
+        with open(os.path.join(hooks, "_command_utils.py"), "w", encoding="utf-8") as f:
+            f.write("raise RuntimeError('broken helper')\n")
+        env = dict(os.environ, CLAUDECODE="1")
+        result = subprocess.run([sys.executable, os.path.join(hooks, "commit_review_gate.py"), "--git-hook"],
+                                env=env, capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, result.stderr
+
+
+def test_git_hook_is_inactive_in_a_checkout_without_review_routing():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as elsewhere:
+        _repo_with_gate_hook(repo)
+        os.remove(os.path.join(repo, ".claude", "review_routing.json"))
+        result = _commit_from_elsewhere(repo, elsewhere, claude=True)
+        assert result.returncode == 0, result.stderr
 
 
 def test_diff_hash_is_the_same_from_a_subdirectory():

@@ -21,14 +21,19 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/commit_review_gate.py\"",
-            "statusMessage": "Review gate: checking the change was reviewed..."
-          },
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/pre_push_gate.py\"",
+            "statusMessage": "Pre-push checklist..."
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
           {
             "type": "command",
             "shell": "bash",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/pre_push_gate.py\"",
-            "statusMessage": "Pre-push checklist..."
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/powershell_git_guard.py\"",
+            "statusMessage": "PowerShell git-hook bypass check..."
           }
         ]
       }

@@ -1,5 +1,5 @@
-"""Tests for branch_discipline's command detection -- the hard guard that blocks
-commits/pushes on main, `gh pr merge`, and history-rewriting commit flags.
+"""Tests for branch_discipline's command detection -- the Claude-side guard that blocks
+git-hook bypasses, `gh pr merge`, `--amend`, and commit forms that skip explicit staging.
 
 Runnable with `pytest` or directly: `python tests/tooling/claude_hooks/test_branch_discipline.py`.
 """
@@ -21,8 +21,6 @@ import branch_discipline as bd  # noqa: E402
 
 def test_forbidden_commit_flags_detected():
     assert bd._COMMIT_FORBIDDEN.search("git commit --amend")
-    assert bd._COMMIT_FORBIDDEN.search("git commit --no-verify")
-    assert bd._COMMIT_FORBIDDEN.search("git commit -n")
 
 
 def test_benign_commit_flags_not_flagged():
@@ -30,18 +28,10 @@ def test_benign_commit_flags_not_flagged():
     assert not bd._COMMIT_FORBIDDEN.search("git commit -m msg")     # -m is fine
 
 
-def test_quoted_dash_n_in_message_is_not_a_forbidden_flag():
-    # a '-n' inside the commit message must not trip the --no-verify/-n guard
+def test_quoted_dash_n_in_message_is_not_read_as_amend():
+    # a '-n' inside the commit message must not read as a forbidden flag
     stripped = strip_quoted_and_heredoc("git commit -m 'fixes -n handling'")
     assert not bd._COMMIT_FORBIDDEN.search(stripped)
-
-
-def test_pushes_protected():
-    assert bd._pushes_protected("git push", "main")                    # current branch protected
-    assert bd._pushes_protected("git push origin main", "feature")     # explicit destination
-    assert bd._pushes_protected("git push origin HEAD:main", "feature")  # refspec destination
-    assert not bd._pushes_protected("git push origin feature", "feature")
-    assert not bd._pushes_protected("git push", "feature")
 
 
 def test_gh_pr_merge_detected():
@@ -191,21 +181,47 @@ def _run_main(command: str, project_dir: str, cwd: str | None = None) -> str:
     return buf.getvalue()
 
 
-def test_leading_cd_into_a_checkout_on_main_is_judged_by_that_checkout():
-    # `cd <worktree> && git commit` runs in the worktree, while CLAUDE_PROJECT_DIR
-    # still names the main checkout -- the branch check must follow the `cd`.
-    with tempfile.TemporaryDirectory() as on_main, tempfile.TemporaryDirectory() as project:
-        subprocess.run(["git", "init", "-q", "-b", "main", on_main], check=True)
-        subprocess.run(["git", "init", "-q", "-b", "feature", project], check=True)
-        os.makedirs(os.path.join(project, ".claude"))
-        with open(os.path.join(project, ".claude", "review_routing.json"), "w", encoding="utf-8") as f:
-            f.write("{}")
-        assert _run_main("git commit -m x", project) == ""
-        denied = _run_main(f'cd "{on_main}" && git commit -m x', project, cwd=project)
-        assert "BRANCH BLOCKED" in denied, denied
-        # a cd in an EARLIER Bash call persists as the event's cwd
-        denied = _run_main("git commit -m x", project, cwd=on_main)
-        assert "BRANCH BLOCKED" in denied, denied
+def _opted_in(project):
+    os.makedirs(os.path.join(project, ".claude"))
+    with open(os.path.join(project, ".claude", "review_routing.json"), "w", encoding="utf-8") as f:
+        f.write("{}")
+
+
+def test_hook_bypasses_are_refused():
+    with tempfile.TemporaryDirectory() as project:
+        _opted_in(project)
+        for command in ("git commit --no-verify -m x", "git commit -n -m x", "git commit -nm x",
+                        "SKIP=review-gate git commit -m x", "git commit --no-verif -m x",
+                        'git -c "core.hooksPath=/dev/null" commit -m x',
+                        "CLAUDECODE=0 git commit -m x"):
+            denied = _run_main(command, project, cwd=project)
+            assert "HOOK BYPASS BLOCKED" in denied, (command, denied)
+
+
+def test_quoted_option_values_do_not_block_a_valid_commit():
+    with tempfile.TemporaryDirectory() as project:
+        _opted_in(project)
+        for command in ('git commit --message="fix x"', 'git commit --author="A B <a@b>" -m x',
+                        'git commit -m "x" 2>&1', 'git commit -m "x" > log.txt',
+                        'git commit -m"fix x"', "git commit -m'fix'", 'git commit -F"msg.txt"',
+                        'git commit -F msg.txt 2>/dev/null',
+                        'git -c user.name="A B" commit -m "x"',
+                        'git commit -m "mention --no-verify in the message"',
+                        "git commit -m @'\nDon't touch CLAUDECODE here.\n'@"):
+            assert _run_main(command, project, cwd=project) == "", command
+
+
+def test_quoted_values_do_not_hide_a_forbidden_commit():
+    with tempfile.TemporaryDirectory() as project:
+        _opted_in(project)
+        for command, reason in (
+            ('git -c user.name="A B" commit --amend -m x', "COMMIT FLAG BLOCKED"),
+            ("git -c core.editor='true' commit --amend", "COMMIT FLAG BLOCKED"),
+            ('git -c user.name="A B" commit -m x file.py', "COMMIT FORM BLOCKED"),
+            ('git commit -m "msg" file.py', "COMMIT FORM BLOCKED"),
+        ):
+            denied = _run_main(command, project, cwd=project)
+            assert reason in denied, (command, denied)
 
 
 if __name__ == "__main__":

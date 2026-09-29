@@ -77,8 +77,10 @@ numbers" panel).
 ## Guardrails
 
 The guardrails live in this repo, nothing installed globally: hooks in `.claude/hooks/`
-(session handover, branch discipline, pre-push check, blocking review gate) wired by
-`.claude/settings.json`, reviewer roles in `.claude/agents/`. Task contracts live in
+(session handover, branch discipline, pre-push check, PowerShell bypass guard) wired by
+`.claude/settings.json`, the
+blocking review gate run by git as a pre-commit hook (`.pre-commit-config.yaml`), reviewer
+roles in `.claude/agents/`. Task contracts live in
 `.claude/task/`, review routing in
 [`.claude/review_routing.json`](.claude/review_routing.json). The session handover is
 [`.claude/active_work.md`](.claude/active_work.md) — keep it current so a fresh chat

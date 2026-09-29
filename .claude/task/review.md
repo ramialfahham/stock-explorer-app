@@ -1,39 +1,40 @@
 # Review
 
-diff_sha256: 01a64a80390ffd7d934032a186ceaabd8b41cc2eae1b1d205d339718ba4e2e03
-rounds: 2
+diff_sha256: 4b2d1a92514ff922e805ad30146ee2b3d9a58d1c4d5e85bc477d5afe804af28e
+rounds: 8
 
-Issue #28 (clone and continue, part 2). Reviewers dispatched as general-purpose agents reading
-their own role files from `.claude/agents/` (the registered types have only Read/Grep/Glob, and
-the review needed `glab` and pytest), cold, read-only, against `.claude/task/review_input.patch`.
-Round 1 findings and the owner's approved scope widening are in `contract.md`'s amendments.
+Issue #27. Reviewers dispatched as general-purpose agents reading their role files from
+`.claude/agents/`, cold, read-only, against `.claude/task/review_input.patch`. Round-by-round
+findings and every owner answer are in `contract.md`'s amendments.
 
-Coordinator evidence: `python scripts/bootstrap.py` twice in this checkout (second run changed
-nothing), then `--verify` with everything staged: pytest 929 passed, every pre-commit hook passed
-(`no-commit-to-branch` skipped by design), sqlfluff clean, `dbt build` PASS=150 in a temp folder;
-afterwards `storage/raw` empty, no temp folder left, no `~/.dbt`. Round 2 wording fixes
-(`contract.md` done_when, `supabase_setup.md` step 3, a `.gitlab-ci.yml` comment,
-`development_workflow.md` "path-triggered validate job") applied after the verdicts.
+CPO ANSWER: the owner approved each round past the cap (rounds 4, 5 and 6), chose option B
+(review gate as a git pre-commit hook), answered D1-D3 (GitLab refuses pushes to `main`, set
+by the owner to "No one"; best-effort bypass scan; scope), set the round-6 rule (new bypass
+spellings go to follow-up #29), and ended the open-ended rounds with a fixed-checklist check
+("the review process sucks"; the process fix is its own issue).
+
+Coordinator evidence: `pytest tests/tooling` 415 passed; `--verify` 929 passed, all hooks,
+dbt build PASS=150; live, an unreviewed commit from both the Bash and the PowerShell tool was
+refused by the real git `review-gate` hook.
 
 ## platform-reviewer
 
-Round 1 FAIL (in-project pre-commit cache scanned by no-narrative-dates; `.gitlab-ci.yml` missing
-from `.setup_paths`; out-of-scope `check-yaml --unsafe` removal), all fixed. Round 2: no behaviour
-findings; a mutation copy without the `.cache` exclusion flags the fixture; SKIPped hooks are not
-installed in `validate:pre-commit`; the CI clone keeps `origin` for `check_no_em_dash.py`.
+Rounds 1-6 FAIL, all findings fixed or filed to #29. Fixed-checklist check: items 1, 2, 3, 5, 6
+PASS; item 4 failed on a PowerShell here-string sent to the Bash hook, fixed (here-string
+bodies stripped before quote stripping, with a test). Confirmation of that fix: both items PASS
+(the 8 normal commands pass through both hooks; `--no-verify` still refused; 415 tests).
 
 VERDICT: PASS
 risks_checked:
-- New CI jobs in python:3.11: hook imports, PyYAML pin, SKIP behaviour, origin kept under CI.
-- Tests fail on revert (.cache exclusion, storage/raw isolation, CI remote); setup fails closed.
+- Normal commits and pushes pass through the Bash and PowerShell hooks; bypasses still refused.
+- The here-string fix did not weaken the bypass refusal; full tooling suite green.
 
 ## scope-auditor
 
-Round 1 PASS (one wording fix). Round 2: all 26 files inside `scope_paths`, including the
-owner-approved widening; `frontend/app.py` copy matches the approved text verbatim; no dangling
-reference to the deleted `.streamlit/secrets.toml.example`.
+Fixed-checklist check 5/5 PASS (scope, contract record, #29, docstrings, GitLab `main` push
+"No one"). Confirmation of the here-string fix: both items PASS.
 
 VERDICT: PASS
 risks_checked:
-- `.setup_paths` retriggers on its own file; decisions_reserved honoured (pinned gitleaks, rename).
-- Deleting the secrets example and rewiring the error left no dangling reference.
+- All 17 staged files inside scope_paths; every change recorded in the contract.
+- Docstrings match the code, including the new here-string stripping.

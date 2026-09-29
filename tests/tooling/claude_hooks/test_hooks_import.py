@@ -20,6 +20,7 @@ _HOOK_MODULES = [
     "branch_discipline",
     "commit_review_gate",
     "handover_in",
+    "powershell_git_guard",
     "pre_push_gate",
 ]
 
@@ -33,7 +34,7 @@ def test_every_hook_module_imports():
 # A PreToolUse deny survives every permission mode because Claude Code evaluates
 # hooks first. That only holds while each gate's decision is purely a function of
 # repo/diff state, so a gate that starts branching on permission_mode fails here.
-_MODE_INDEPENDENT_HOOKS = ["commit_review_gate", "branch_discipline"]
+_MODE_INDEPENDENT_HOOKS = ["commit_review_gate", "branch_discipline", "powershell_git_guard"]
 
 
 def test_gate_hooks_never_branch_on_permission_mode():
@@ -68,6 +69,16 @@ def test_every_hook_in_settings_is_a_repo_script_that_exists():
         m = _HOOK_SCRIPT_RE.search(command)
         assert m, f"hook does not run a repo script via CLAUDE_PROJECT_DIR: {command}"
         assert os.path.isfile(os.path.join(repo_root, m.group(1))), m.group(1)
+
+
+def test_the_powershell_guard_is_wired_on_the_powershell_tool():
+    commands = [
+        hook.get("command", "")
+        for group in json.load(open(_SETTINGS, encoding="utf-8")).get("hooks", {}).get("PreToolUse", [])
+        if group.get("matcher") == "PowerShell"
+        for hook in group.get("hooks", [])
+    ]
+    assert any("powershell_git_guard.py" in c for c in commands), commands
 
 
 if __name__ == "__main__":

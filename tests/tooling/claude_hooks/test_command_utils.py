@@ -1,6 +1,6 @@
-"""Tests for _command_utils, shared by both hard guards (commit_review_gate,
-branch_discipline): git-subcommand detection, `cd` target resolution
-(native_path, leading_cd_dir) and the checkout a command acts on (command_root).
+"""Tests for _command_utils, shared by the Claude-side hooks and the git hooks:
+git-subcommand detection, quote stripping, the git-hook bypass scan, and the checkout
+toplevel a git hook runs in.
 
 Runnable with `pytest` or directly: `python tests/tooling/claude_hooks/test_command_utils.py`.
 """
@@ -15,71 +15,102 @@ sys.path.insert(0, _HOOKS)
 
 from _command_utils import (  # noqa: E402
     _degroup,
-    command_root,
     git_subcommand,
+    git_toplevel,
+    hook_bypass,
     is_commit_subcommand,
-    leading_cd_dir,
-    native_path,
     simple_commands,
+    strip_quoted_and_heredoc,
 )
 
 
-def _same(a, b):
-    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+def test_hook_bypass_finds_the_usual_spellings():
+    cases = [
+        ("git commit --no-verify -m x", "`--no-verify`"),
+        ("git commit --no-verif -m x", "`--no-verify`"),
+        ("git commit --no-veri -m x", "`--no-verify`"),
+        ("git commit -m x --no-verify; echo done", "`--no-verify`"),
+        ("git add a; if ($?) { git commit -m x --no-verify}", "`--no-verify`"),
+        ("(cd wt && git commit --no-verify -m x)", "`--no-verify`"),
+        ("& git.exe commit --no-verify -m x", "`--no-verify`"),
+        ("git commit -n -m x", "`-n`"),
+        ("git commit -nm x", "`-n`"),
+        ("git commit -anm x", "`-n`"),
+        ("git commit -qn -m x", "`-n`"),
+        ("git -c core.hooksPath=/dev/null commit -m x", "`core.hooksPath`"),
+        ('git -c "core.hooksPath=/dev/null" commit -m x', "`core.hooksPath`"),
+        ("git config core.hooksPath /tmp/none", "`core.hooksPath`"),
+        ("git config set core.hooksPath /tmp/none", "`core.hooksPath`"),
+        ("SKIP=review-gate git commit -m x", "`SKIP`"),
+        ("export SKIP=gitleaks; git commit -m x", "`SKIP`"),
+        ('$env:SKIP="review-gate"; git commit -m x', "`SKIP`"),
+        ("Set-Item Env:SKIP review-gate; git commit -m x", "`SKIP`"),
+        ("CLAUDECODE=0 git commit -m x", "`CLAUDECODE`"),
+        ("env -u CLAUDECODE git commit -m x", "`CLAUDECODE`"),
+        ("$env:CLAUDECODE=''; git commit -m x", "`CLAUDECODE`"),
+        ("Remove-Item Env:CLAUDECODE; git commit -m x", "`CLAUDECODE`"),
+        ("Remove-Item -Path Env:\\CLAUDECODE; git commit -m x", "`CLAUDECODE`"),
+        ("Set-Item -Path Env:\\SKIP -Value review-gate; git commit -m x", "`SKIP`"),
+        ("unset SKIP; git commit -m x", "`SKIP`"),
+        ("[Environment]::SetEnvironmentVariable('CLAUDECODE', $null); git commit -m x", "`CLAUDECODE`"),
+        ('[Environment]::SetEnvironmentVariable("SKIP","review-gate"); git commit -m x', "`SKIP`"),
+        ('Remove-Item "Env:\\CLAUDECODE"; git commit -m x', "`CLAUDECODE`"),
+        ("Set-Item -Path 'Env:SKIP' -Value review-gate; git commit -m x", "`SKIP`"),
+    ]
+    for command, expected in cases:
+        assert hook_bypass(command) == expected, command
 
 
-def test_git_bash_drive_paths_become_windows_paths():
-    assert native_path("/c/Users/x/wt", windows=True) == "c:/Users/x/wt"
-    assert native_path("/D", windows=True) == "D:/"
-    assert native_path("/c/Users/x/wt", windows=False) == "/c/Users/x/wt"
-    assert native_path("/usr/local", windows=True) == "/usr/local"
+def test_hook_bypass_ignores_mentions_and_non_committing_commands():
+    for command in (
+        'git commit -m "never use --no-verify, SKIP= or CLAUDECODE here"',
+        "git commit -F - <<'EOF'\nDon't use --no-verify or SKIP=x.\nEOF",
+        "git log --grep commit -n 5",
+        "git push -n gitlab b:b",
+        "git push --no-verify gitlab b:b",
+        "git push gitlab claudecode-env:claudecode-env",
+        "git commit -m x && echo skip",
+        "git commit -mfinal",
+        "git commit -uno -m x",
+        "git config --get core.hooksPath",
+        "git config --unset core.hooksPath",
+        "git config core.hooksPath",
+        "git config get core.hooksPath",
+        "git config unset core.hooksPath",
+        "cd /c/work/claudecode && git commit -m x",
+        'git commit -m "CLAUDECODE"',
+        "git commit -m \"docs: explain 'Env:SKIP' handling\"",
+        "git commit -m \"call SetEnvironmentVariable('CLAUDECODE', x) in docs\"",
+        "git commit -m 'use \"Env:SKIP\" carefully'",
+        "git commit -m 'Env:SKIP'",
+        "git commit -m x && git push gitlab feature-claudecode:feature-claudecode",
+        "git commit -m @'\nGate as a git hook; the owner's commits pass.\nActs only when CLAUDECODE=1,"
+        " never with --no-verify.\n'@",
+        "SKIP=gitleaks pre-commit run --all-files",
+        "git config user.name x",
+        "git commit -m x",
+        "git push gitlab feature:feature",
+        "",
+    ):
+        assert hook_bypass(command) is None, command
 
 
-def test_leading_cd_follows_a_git_bash_spelled_path():
-    with tempfile.TemporaryDirectory() as d:
-        real = os.path.realpath(d)
-        if os.name != "nt" or real[1] != ":":
-            return
-        bash = "/" + real[0].lower() + "/" + real[3:].replace("\\", "/")
-        assert _same(leading_cd_dir(f"cd {bash} && git commit -m x"), real)
+def test_stripping_keeps_a_placeholder_so_options_keep_their_slot():
+    stripped = strip_quoted_and_heredoc('git commit -m "msg" file.py').split()
+    assert stripped[-1] == "file.py"
+    glued = strip_quoted_and_heredoc('git -c user.name="A B" commit --amend').split()
+    assert git_subcommand(glued) == "commit" and "--amend" in glued
 
 
-def test_leading_cd_expands_home_and_joins_relative_paths():
-    with tempfile.TemporaryDirectory() as home:
-        os.makedirs(os.path.join(home, "wt", "sub"))
-        saved = {k: os.environ.get(k) for k in ("HOME", "USERPROFILE")}
-        os.environ["HOME"] = os.environ["USERPROFILE"] = home
-        try:
-            assert _same(leading_cd_dir("cd ~/wt && git commit -m x"), os.path.join(home, "wt"))
-        finally:
-            for k, v in saved.items():
-                if v is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = v
-        base = os.path.join(home, "wt")
-        assert _same(leading_cd_dir("cd sub && git commit -m x", base), os.path.join(base, "sub"))
-
-
-def test_command_root_resolves_a_relative_cd_from_the_event_cwd():
-    # the relative target is joined to the event's cwd, not the hook process's cwd
-    with tempfile.TemporaryDirectory() as parent:
-        subprocess.run(["git", "init", "-q", parent], check=True)
-        nested = os.path.join(parent, "wt")
-        subprocess.run(["git", "init", "-q", nested], check=True)
-        root = command_root("cd wt && git commit -m x", {"cwd": parent})
-        assert _same(root, nested)
-
-
-def test_command_root_resolves_a_subdirectory_cwd_to_the_toplevel():
-    # a subdirectory root would narrow the gate's `git diff -- .` to that subtree
-    with tempfile.TemporaryDirectory() as repo:
+def test_git_toplevel_from_a_subdirectory_and_outside_a_checkout():
+    with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as other:
         subprocess.run(["git", "init", "-q", repo], check=True)
         sub = os.path.join(repo, "a", "b")
         os.makedirs(sub)
         top = os.path.normcase(os.path.realpath(repo))
-        assert os.path.normcase(os.path.realpath(command_root("ls", {"cwd": sub}))) == top
-        assert os.path.normcase(os.path.realpath(command_root(f'cd "{sub}" && ls'))) == top
+        assert os.path.normcase(os.path.realpath(git_toplevel(sub))) == top
+        outside = git_toplevel(other)
+        assert outside is None or os.path.normcase(os.path.realpath(outside)) != top
 
 
 def test_plain_subcommand():

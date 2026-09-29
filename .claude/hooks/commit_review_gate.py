@@ -1,7 +1,11 @@
 #!/usr/bin/env python
-"""PreToolUse(Bash) -- block a commit until the change has been reviewed.
+"""The blinded review gate: a git `pre-commit` hook that blocks Claude Code's commits
+until the change has been reviewed.
 
-The blinded review gate. When you run `git commit`, this:
+pre-commit runs it (hook id `review-gate`) inside the checkout git is committing, so the
+checkout is always the right one, however the command was written (`cd`, `git -C`, a
+worktree, PowerShell). It applies only when CLAUDECODE=1; the owner's own commits pass.
+On a commit, it:
   1. hashes the CUMULATIVE diff -- everything already committed on this branch
      since it split from the base branch (main/master, local or remote),
      PLUS what's currently staged -- not just the staged diff alone. A
@@ -23,9 +27,8 @@ The blinded review gate. When you run `git commit`, this:
 A commit is exempt when the branch's whole cumulative diff touches only
 bookkeeping files (.claude/task/**, active_work.md). Fails OPEN on any error -- a gate bug must never block your workflow.
 
-Wired in .claude/settings.json as:
-  python "${CLAUDE_PROJECT_DIR}/.claude/hooks/commit_review_gate.py"
-Run with a trailing --diff-hash to print the diff hash for review.md
+Wired in .pre-commit-config.yaml as `python .claude/hooks/commit_review_gate.py --git-hook`.
+Run with --diff-hash, from anywhere in the checkout, to print the diff hash for review.md
 (--staged-hash also accepted, for anything already using that name).
 """
 
@@ -40,16 +43,6 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _command_utils import (  # noqa: E402
-    bash_command,
-    command_root,
-    emit_context,
-    emit_deny,
-    is_commit_subcommand,
-    project_opted_in,
-    read_event,
-    simple_commands,
-)
 
 ROUTING_REL = os.path.join(".claude", "review_routing.json")
 REVIEW_REL = os.path.join(".claude", "task", "review.md")
@@ -185,14 +178,6 @@ def _verdict(body: str) -> str | None:
     return matches[-1] if matches else None
 
 
-def _is_commit(cmd: str) -> bool:
-    # is_commit_subcommand (shared with branch_discipline) matches
-    # `commit` only as the git SUBCOMMAND, not as a word anywhere in the line --
-    # otherwise read-only commands like `git log --grep commit` trip the gate --
-    # and excludes --dry-run, which commits nothing.
-    return any(is_commit_subcommand(part.split()) for part in simple_commands(cmd))
-
-
 def _cumulative_paths(root: str) -> list[str]:
     """Same cumulative scope as _diff_to_hash, as a path list -- so which
     reviewers are required (and whether this is bookkeeping-only) reflects
@@ -226,8 +211,8 @@ def _gate(root: str) -> str | None:
         return None  # bookkeeping-only for the WHOLE branch: exempt
     review_path = os.path.join(root, REVIEW_REL)
     if not os.path.isfile(review_path):
-        # The hash command names THIS file by absolute path, so it works from
-        # any cwd, including a worktree.
+        # The hash command names THIS file by absolute path; run it from inside the
+        # checkout being committed (it hashes that checkout).
         return ("REVIEW GATE: no review found. Stage the change, run the required "
                 "reviewers, and write .claude/task/review.md with the diff hash from: "
                 f"python \"{os.path.abspath(__file__)}\" --diff-hash -- then commit.")
@@ -237,7 +222,8 @@ def _gate(root: str) -> str | None:
     if not m or m.group(1).lower() != live:
         return ("REVIEW GATE: the reviewed diff doesn't match the branch's current "
                 "cumulative diff (everything committed since the base branch, plus "
-                "what's staged now) -- re-run the reviewers and update review.md. "
+                "what's staged now) -- re-run the reviewers, update review.md and stage it "
+                "(pre-commit hides unstaged changes while hooks run). "
                 f"Current hash: {live} (from: python \"{os.path.abspath(__file__)}\" --diff-hash)")
     if _rounds(text) > _ROUNDS_CAP and "CPO ANSWER:" not in text:
         return (f"REVIEW GATE: review.md reports round {_rounds(text)}, past the "
@@ -268,45 +254,35 @@ def _gate(root: str) -> str | None:
     return None
 
 
-def main() -> int:
+def git_hook(root: str | None) -> int:
+    """The `pre-commit` hook: 1 (commit refused, reason on stderr) or 0."""
+    if not root:
+        return 0
+    reason = _gate(root)
+    if reason:
+        print(reason, file=sys.stderr)
+        return 1
+    return 0
+
+
+def main(argv: list[str]) -> int:
     # --diff-hash is the current name (it's the cumulative diff, not just
     # staged); --staged-hash kept as an alias so nothing that already calls
-    # it breaks.
-    if "--diff-hash" in sys.argv or "--staged-hash" in sys.argv:
-        print(hashlib.sha256(_diff_to_hash(command_root(""))).hexdigest())
+    # it breaks. The helper import is here, not at module level, so a broken
+    # helper is caught by the fail-open below instead of blocking a commit.
+    from _command_utils import from_claude_code, git_toplevel
+
+    if "--diff-hash" in argv or "--staged-hash" in argv:
+        print(hashlib.sha256(_diff_to_hash(git_toplevel() or os.getcwd())).hexdigest())
         return 0
-    event = read_event()
-    if not project_opted_in(event):
-        return 0
-    cmd = bash_command(event)
-    if not cmd or not _is_commit(cmd):
-        return 0
-    root = command_root(cmd, event)
-    try:
-        reason = _gate(root)
-    except Exception:
-        return 0  # fail open
-    if reason:
-        emit_deny(reason)
-        return 0
-    # Only reachable when ALLOWING -- never combine with emit_deny above.
-    # Every other emit_context call in this repo is the sole output of its
-    # invocation; printing a context note AND a deny would put two JSON
-    # objects on one hook's stdout, an untested shape that could make the
-    # harness treat the whole output as malformed and silently drop the deny.
-    try:
-        if _base_ref(root) is None:
-            emit_context(
-                "PreToolUse",
-                "REVIEW GATE NOTE: no base branch (main/master, local or remote) "
-                "could be resolved, so the review hash covered only the currently "
-                "staged diff, not the whole branch. If this branch has multiple "
-                "commits, the review may not have covered all of them."
-            )
-    except Exception:
-        pass  # the note is a courtesy; never let it turn into a false block
+    if "--git-hook" in argv:
+        return git_hook(git_toplevel()) if from_claude_code() else 0
+    print("usage: commit_review_gate.py --git-hook | --diff-hash", file=sys.stderr)
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Exception:
+        sys.exit(0)  # fail open: a gate bug must never block a commit, the owner's included
