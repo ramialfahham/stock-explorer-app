@@ -45,9 +45,9 @@ Before committing, run the review cycle (the commit gate enforces it):
    is untracked into a reviewed commit.
 2. Run the reviewers the routing requires (`.claude/review_routing.json`) against the
    branch's cumulative diff (committed since `main` plus staged) -- cold, read-only, adversarial.
-3. Write `.claude/task/review.md` with each reviewer's verdict and the diff hash
+3. Write and stage `.claude/task/review.md` with each reviewer's verdict and the diff hash
    (`python .claude/hooks/commit_review_gate.py --diff-hash`).
-4. `git commit` (Bash tool) -- blocked until the review matches that cumulative diff, every required
+4. `git commit` -- the `review-gate` git hook blocks it until the review matches that cumulative diff, every required
    reviewer passed, and any escalation has a recorded answer.
 
 On a re-review round, re-dispatch a reviewer only if their own routing-matched files
@@ -94,8 +94,8 @@ action, every time, regardless of MR number. Before branching, check `glab mr li
 work is a hard dependency of an open MR and a separate branch buys nothing, commit to that
 branch instead.
 
-Partly **hook-enforced** (Bash tool only): a commit or push while on `main`/`master`, `git commit --amend` and
-`--no-verify` are hard-blocked, and so is `gh pr merge`. **The merge guard matches `gh pr merge`
+Partly **enforced**: a git hook refuses a commit on `main`/`master`, GitLab refuses a push to
+`main`; Claude-side hooks refuse hook bypasses, and (Bash tool) `--amend` and `gh pr merge`. **The merge guard matches `gh pr merge`
 and nothing else** (`branch_discipline.py`'s `_GH_PR_MERGE` regex), so `glab mr merge` -- the
 command this repo would actually reach for -- is NOT blocked by anything. Nothing stops you
 there except this rule. Do not merge.

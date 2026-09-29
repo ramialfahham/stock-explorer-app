@@ -3,6 +3,8 @@
 # run; they run in pre-commit's own Python environment (language: python), never the python on PATH.
 # no-commit-to-branch guards commits, not files: --verify skips it. gitleaks scans what is
 # staged; CI's validate:secret-scan scans the full history with the same pinned version.
+# review-gate is Claude Code's commit policy: it acts whenever hooks run under CLAUDECODE=1
+# (a commit, in the checkout git is committing, or a manual `pre-commit run`; --verify skips it).
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -67,6 +69,12 @@ repos:
         entry: python scripts/check_registry_var_sync.py
         language: python
         additional_dependencies: [PyYAML==6.0.3]
+        pass_filenames: false
+        always_run: true
+      - id: review-gate
+        name: review gate (Claude Code commits only)
+        entry: python .claude/hooks/commit_review_gate.py --git-hook
+        language: python
         pass_filenames: false
         always_run: true
 

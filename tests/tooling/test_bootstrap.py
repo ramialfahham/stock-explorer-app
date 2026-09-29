@@ -131,11 +131,25 @@ def test_verify_never_points_the_dbt_build_at_storage_raw(monkeypatch: pytest.Mo
         assert Path.home() / ".dbt" != path
 
 
-def test_verify_skips_only_the_branch_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_verify_skips_only_the_commit_guards(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[list[str], dict[str, str] | None]] = []
     monkeypatch.setattr(bootstrap, "run", lambda cmd, cwd=bootstrap.ROOT, env=None: calls.append((cmd, env)))
 
     bootstrap.verify(Path("python"))
 
     env = next(env for cmd, env in calls if "pre_commit" in cmd)
-    assert env["SKIP"] == "no-commit-to-branch"
+    assert env["SKIP"] == "no-commit-to-branch,review-gate"
+
+
+def test_pre_commit_runs_the_review_gate_at_commit_time_only() -> None:
+    """`pre-commit install` is what puts the review gate into a clone. Dropping the hook
+    leaves every other test green while Claude Code's commits stop being checked; a pre-push
+    install would also run the file-fixing hooks on the owner's pushes."""
+    import yaml
+
+    config = yaml.safe_load((bootstrap.ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8"))
+    assert "pre-push" not in config.get("default_install_hook_types", ["pre-commit"])
+    hooks = {hook["id"]: hook for repo in config["repos"] for hook in repo["hooks"]}
+    assert hooks["review-gate"]["entry"].endswith("commit_review_gate.py --git-hook")
+    assert hooks["review-gate"].get("stages", ["pre-commit"]) == ["pre-commit"]
+    assert not any("pre-push" in hook.get("stages", []) for hook in hooks.values())

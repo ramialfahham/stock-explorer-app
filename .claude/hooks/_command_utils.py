@@ -1,6 +1,7 @@
-"""Shared helpers for self-gating Bash hooks.
+"""Shared helpers for this repo's hooks: the self-gating Claude-side hooks on the Bash
+and PowerShell tools, and the review gate's git-hook mode.
 
-Self-gating means: the hook matcher is just "Bash" (fires on every Bash call),
+Self-gating means: the hook matcher is just the tool name (fires on every call),
 and the *script* decides whether the command actually matches. This avoids the
 fragile `if: Bash(pattern*)` matcher, which in practice fires on unrelated
 read-only commands (e.g. `git log --grep=merge`, `cat`) -- a cry-wolf failure
@@ -39,63 +40,137 @@ def project_root(event: dict | None = None) -> str:
             or os.getcwd())
 
 
-_LEADING_CD = re.compile(r'^cd\s+(?:"([^"]+)"|\'([^\']+)\'|(\S+))\s*(?:&&|;)')
-
-
-_GIT_BASH_DRIVE = re.compile(r"^/([a-zA-Z])(?:/(.*))?$")
-
-
-def native_path(path: str, base: str | None = None, windows: bool = os.name == "nt") -> str:
-    """A `cd` target as this Python process can open it: `~` expanded, a Git Bash
-    drive path (`/c/x`) turned into `c:/x` on Windows, and a relative path joined
-    to `base` (the directory the shell was in). `$VAR` is left alone: the hook's
-    environment is not the shell's, so expanding it would be a guess."""
-    path = os.path.expanduser(path)
-    m = _GIT_BASH_DRIVE.match(path) if windows else None
-    if m:
-        path = f"{m.group(1)}:/{m.group(2) or ''}"
-    if base and not os.path.isabs(path):
-        path = os.path.join(base, path)
-    return path
-
-
-def leading_cd_dir(command: str, base: str | None = None) -> str | None:
-    """The directory of a literal leading `cd <dir> &&` / `cd <dir>;`, if it exists.
-    The rest of such a command (e.g. `cd <worktree> && git commit`) runs there, while
-    CLAUDE_PROJECT_DIR still names the main checkout. Only a leading `cd` counts."""
-    m = _LEADING_CD.match((command or "").strip())
-    if not m:
-        return None
-    raw = m.group(1) or m.group(2) or m.group(3)
-    path = native_path(raw, base) if raw else None
-    return path if path and os.path.isdir(path) else None
-
-
-def _toplevel(path: str | None) -> str | None:
-    if not path or not os.path.isdir(path):
-        return None
+def git_toplevel(path: str | None = None) -> str | None:
+    """The toplevel of the git checkout containing `path` (default: the process cwd),
+    or None outside one. A git hook runs in the checkout git is acting on, so this is
+    the checkout a commit or push really touches, however the command was written."""
     try:
         return subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
-            cwd=path, capture_output=True, text=True, timeout=10,
+            cwd=path or os.getcwd(), capture_output=True, text=True, timeout=10,
         ).stdout.strip() or None
     except Exception:
         return None
 
 
-def command_root(command: str, event: dict | None = None) -> str:
-    """The git checkout a command acts on, as its toplevel: a leading `cd` target,
-    else the event's `cwd` (the Bash tool keeps its directory between calls, so a
-    `cd <worktree>` in an earlier call still applies), else CLAUDE_PROJECT_DIR,
-    else the process cwd. Every candidate is resolved to its toplevel, so a
-    subdirectory never narrows the gate's `git diff -- .` to that subtree."""
-    cwd = event.get("cwd") if isinstance(event, dict) else None
-    fallback = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    for candidate in (leading_cd_dir(command, cwd), cwd, fallback):
-        top = _toplevel(candidate)
-        if top:
-            return top
-    return fallback
+def from_claude_code() -> bool:
+    """True when this process descends from Claude Code: its Bash and PowerShell tools
+    set CLAUDECODE=1. The review gate's git hook gates only the agent's commits, not the owner's."""
+    return os.environ.get("CLAUDECODE") == "1"
+
+
+# A bash heredoc body (`<<'EOF' ... EOF`) or a PowerShell here-string (`@'...'@`,
+# `@"..."@`): message text, never a command, and free to contain apostrophes.
+_HEREDOC_BODY = re.compile(r"<<-?\s*(['\"]?)(\w+)\1.*?\n\s*\2\b", re.DOTALL)
+_HERE_STRING = re.compile(r"@(['\"])\r?\n.*?\r?\n\1@", re.DOTALL)
+# The value after git's `-c`, quoted or not: `-c "core.hooksPath=x"` must stay readable.
+_GIT_C_VALUE = re.compile(r"(\s-c\s+)(['\"])([^'\"]*)\2")
+_EDGE_PUNCTUATION = "(){};&"
+# Short commit flags whose value may be attached (`-mfix`, `-uno`): letters after one of
+# these are its value, not more flags.
+_COMMIT_FLAGS_TAKING_VALUE = set("mFcCtSu")
+_SHORT_FLAG_WORD = re.compile(r"-[a-zA-Z]+")
+# git config actions that read or remove a key rather than set it.
+_CONFIG_READ_OR_UNSET = {"--get", "--get-all", "--get-regexp", "--list", "-l", "--unset",
+                         "--unset-all", "--show-origin", "get", "unset"}
+
+
+def _sets_hooks_path(words: list[str]) -> bool:
+    """True when a `git config` command sets core.hooksPath: the key is followed by a value
+    and no read or unset action is given (`git config core.hooksPath` alone only reads)."""
+    lowered = [w.lower() for w in words]
+    if "core.hookspath" not in lowered or _CONFIG_READ_OR_UNSET.intersection(lowered):
+        return False
+    return lowered.index("core.hookspath") < len(lowered) - 1
+
+
+# pre-commit's SKIP or Claude Code's CLAUDECODE: an assignment (`X=`, `$env:X =`, also a
+# PowerShell variable of that name), any PowerShell env-drive reference (`Env:X`, `Env:\X`,
+# `$env:X`), `-u X` or `unset X`; never the bare word (a folder named `claudecode`, "skip").
+_ENV_SWITCH = re.compile(
+    r"(?<![\w-])((?:SKIP|CLAUDECODE)\s*=|Env:\\?(?:SKIP|CLAUDECODE)(?![\w-])"
+    r"|(?:-u|unset)\s+(?:SKIP|CLAUDECODE)(?![\w-]))", re.IGNORECASE)
+# The same names quoted as the argument of a PowerShell set/remove call:
+# `SetEnvironmentVariable('CLAUDECODE', ...)`, `Remove-Item "Env:\CLAUDECODE"`,
+# `Set-Item -Path 'Env:SKIP'`. Only a quoted string that IS the name counts, right after
+# such a call, so a commit message that mentions one never does.
+_ENV_NAME = re.compile(r"(?:Env:\\?)?(SKIP|CLAUDECODE)", re.IGNORECASE)
+_ENV_SETTER_BEFORE = re.compile(
+    r"(?:SetEnvironmentVariable\(\s*|(?:Remove-Item|Set-Item|Clear-Item|New-Item)\s+(?:-\w+\s+)*)$",
+    re.IGNORECASE)
+
+
+def _quoted_env_switch(text: str) -> str | None:
+    """SKIP or CLAUDECODE when a top-level quoted string is exactly that name (optionally
+    `Env:`-prefixed) and directly follows a call that sets or removes it; else None."""
+    for m in _QUOTED.finditer(text):
+        name = _ENV_NAME.fullmatch(m.group(0)[1:-1])
+        if name and _ENV_SETTER_BEFORE.search(text[: m.start()]):
+            return name.group(1)
+    return None
+
+
+def _short_flags_skip_hooks(word: str) -> bool:
+    """True for a short-flag bundle on `git commit` that contains `-n` (`-n`, `-nm`, `-qn`),
+    reading letters after a value-taking flag as its value (`-mfinal`, `-uno` are not)."""
+    if not _SHORT_FLAG_WORD.fullmatch(word):
+        return False
+    for letter in word[1:]:
+        if letter in _COMMIT_FLAGS_TAKING_VALUE:
+            return False
+        if letter == "n":
+            return True
+    return False
+
+
+def _git_words(part: str) -> list[str]:
+    """The words of one simple command from its first `git` on (so `if ($?) { git commit`
+    and `& git.exe push` are read as git), with edge punctuation (`}` `)` `;`) removed and an
+    unquoted `git.exe` path read as `git`; [] when the part runs no git."""
+    words = [w.strip(_EDGE_PUNCTUATION) for w in part.split()]
+    for i, word in enumerate(words):
+        if word.replace("\\", "/").rsplit("/", 1)[-1].lower() in ("git", "git.exe"):
+            return ["git", *[w for w in words[i + 1:] if w]]
+    return []
+
+
+def hook_bypass(command: str) -> str | None:
+    """The usual spellings of skipping git's commit hooks, or None: on a command that
+    commits, any `--no-v...` word (wider than git's own prefix rule on purpose), a
+    short-flag bundle with `n` (`-n`, `-nm`), `core.hooksPath`, pre-commit's `SKIP` or
+    CLAUDECODE (the review gate's switch) being set or unset; and setting
+    `git config core.hooksPath` on its own. Pushes run no git hook here (GitLab protects `main`), so they are not scanned.
+    Heredoc and here-string bodies and quoted text are ignored, except a `-c` value and a
+    quoted env name passed to a PowerShell set/remove call, so a message that mentions a
+    flag or a name is not a bypass. It catches accidents, not a command
+    written to evade it; the MR review and GitLab's branch protection are the backstop."""
+    text = _HEREDOC_BODY.sub(" ", command or "")
+    text = _HERE_STRING.sub('""', text)
+    quoted_switch = _quoted_env_switch(text)
+    text = _GIT_C_VALUE.sub(lambda m: m.group(1) + m.group(3), text)
+    text = _QUOTED.sub('""', text)
+    commits = False
+    for part in simple_commands(text):
+        words = _git_words(part)
+        sub = git_subcommand(words)
+        if sub == "config" and _sets_hooks_path(words):
+            return "`core.hooksPath`"
+        if not is_commit_subcommand(words):
+            continue
+        commits = True
+        for word in words:
+            if word.startswith("--no-v"):
+                return "`--no-verify`"
+            if _short_flags_skip_hooks(word):
+                return "`-n`"
+        if "core.hookspath" in part.lower():
+            return "`core.hooksPath`"
+    if commits:
+        m = _ENV_SWITCH.search(text)
+        name = m.group(1) if m else quoted_switch
+        if name:
+            return "`CLAUDECODE`" if "CLAUDECODE" in name.upper() else "`SKIP`"
+    return None
 
 
 def project_opted_in(event: dict | None = None) -> bool:
@@ -201,14 +276,18 @@ _QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
 
 
 def strip_quoted_and_heredoc(command: str) -> str:
-    """Command text with quoted substrings removed and everything from the first
-    heredoc marker truncated. Lets callers scan for shell OPERATORS (redirects,
-    flags) without false-positives on quoted SQL ("x > 0.5"), commit-message
-    bodies, or heredoc content."""
+    """Command text with each quoted substring and PowerShell here-string replaced by an
+    empty `""` and everything from the first heredoc marker truncated. Lets callers scan
+    for shell OPERATORS (redirects, flags) without false-positives on quoted SQL
+    ("x > 0.5"), commit-message bodies, or heredoc content."""
     try:
-        cut = _HEREDOC_MARK.search(command or "")
-        head = command[: cut.start()] if cut else (command or "")
-        return _QUOTED.sub(" ", head)
+        text = _HERE_STRING.sub('""', command or "")
+        cut = _HEREDOC_MARK.search(text)
+        head = text[: cut.start()] if cut else text
+        # `""` in place, not a space: a quoted value keeps its slot (`-m "msg" file.py`
+        # keeps `file.py` visible as a pathspec) and stays glued to its word
+        # (`user.name="A B"` stays one word).
+        return _QUOTED.sub('""', head)
     except Exception:
         return command or ""
 
