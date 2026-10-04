@@ -29,9 +29,11 @@ before restating it, if a cheap check exists -- don't just repeat the file (issu
 ## 2. The task contract + review cycle
 
 Before a non-trivial change, write `.claude/task/contract.md`: objective, `scope_paths` (the
-files this task may touch), `decisions_reserved` (owner-only questions -- §6), `done_when`.
-Commit it with the branch so it is visible in the MR. The scope-auditor reviewer flags any
-edit outside `scope_paths` at review time.
+files this task may touch), `decisions_reserved` (owner-only questions -- §6), `done_when`,
+`regression_checklist` (what every round after round 1 re-checks, fixed before round 1), and
+`known_limits` for any heuristic component (e.g. a best-effort text scan). Commit it with the
+branch so it is visible in the MR. The scope-auditor reviewer flags any edit outside
+`scope_paths` at review time.
 
 Open work lives in GitLab Issues and Milestones, not prose docs. When a task has a GitLab
 issue, `objective` links it (`Closes #N` / `Refs #N`) instead of restating the requirement
@@ -43,8 +45,13 @@ Before committing, run the review cycle (the commit gate enforces it):
 
 1. Stage the paths the change touches, explicitly. Never `git add -A`: it sweeps whatever
    is untracked into a reviewed commit.
-2. Run the reviewers the routing requires (`.claude/review_routing.json`) against the
-   branch's cumulative diff (committed since `main` plus staged) -- cold, read-only, adversarial.
+2. Run the reviewers the routing requires (`.claude/review_routing.json`) -- cold,
+   read-only, adversarial. Round 1 reviews the branch's cumulative diff (committed since
+   `main` plus staged). From round 2 on, a reviewer reviews only the delta since its own last
+   verdict (`git diff --cached <its reviewed_tree> -- . ':!.claude/task/review*'`) plus the
+   contract's `regression_checklist`.
+   A round's diff is frozen: record `git write-tree` before dispatch and change no file until
+   every verdict is in; each verdict names that tree as `reviewed_tree:`.
 3. Write and stage `.claude/task/review.md` with each reviewer's verdict and the diff hash
    (`python .claude/hooks/commit_review_gate.py --diff-hash`).
 4. `git commit` -- the `review-gate` git hook blocks it until the review matches that cumulative diff, every required
@@ -53,6 +60,17 @@ Before committing, run the review cycle (the commit gate enforces it):
 On a re-review round, re-dispatch a reviewer only if their own routing-matched files
 changed since their own last verdict, OR their last verdict was FAIL -- not the full
 required set every round (issue #5).
+
+A reviewer FAILs only for a concrete false block (a guard refuses legitimate work), a broken
+guarantee (a `done_when` item or documented behaviour that does not hold, including changed
+behaviour no test would catch reverting), or a design problem. Anything else is not a FAIL:
+it goes under `follow_ups:` (filed as issues) or `wording_fixes:` (applied before commit); a
+new case of a declared known limit is a follow-up. `equity-analyst-reviewer` keeps its own
+FAIL rules and output format until issue #31.
+
+After round 3 (the cap, enforced by the gate) there is no further round. The owner
+picks one of two exits: commit what is proven and file the rest (a `CPO ANSWER:` naming the
+follow-up issue, which also lets remaining FAILs through), or stop.
 
 Trace before you change a shared data model: know what depends on it downstream first.
 

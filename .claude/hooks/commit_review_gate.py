@@ -19,9 +19,12 @@ On a commit, it:
          covers exactly what the branch will contain after this commit),
        - every required reviewer has a verdict and none is FAIL,
        - every ESCALATE has a recorded "CPO ANSWER:",
-       - if review.md's optional `rounds:` counter exceeds a cap, a recorded
-         "CPO ANSWER:" is present somewhere -- forces escalation to the owner
-         instead of an unbounded reviewer back-and-forth. `rounds:` is
+       - once review.md's optional `rounds:` counter reaches the cap with a FAIL
+         still standing, there is no further round: the only exits are "commit
+         what is proven and file the rest" (a "CPO ANSWER:" followed in its
+         paragraph by the follow-up issue `#N`, which also lets remaining FAIL
+         verdicts through) or stop.
+         A count above the cap is refused without that answer. `rounds:` is
          SELF-REPORTED (whoever re-reviews increments it) -- the hook enforces
          the cap once recorded, it doesn't independently derive the count.
 A commit is exempt when the branch's whole cumulative diff touches only
@@ -57,6 +60,7 @@ _BASE_REF_CANDIDATES = (
 )
 _ROUNDS_RE = re.compile(r"^rounds:\s*(\d+)", re.MULTILINE)
 _ROUNDS_CAP = 3
+_ISSUE_REF_RE = re.compile(r"#\d+")
 
 
 def _rev_parse_ok(root: str, ref: str) -> bool:
@@ -199,6 +203,21 @@ def _rounds(text: str) -> int:
     return int(m.group(1)) if m else 1
 
 
+def _files_the_rest(text: str) -> bool:
+    """True if a 'CPO ANSWER:' is followed, in its paragraph, by an issue ref (`#N`)."""
+    return any("CPO ANSWER:" in para
+               and _ISSUE_REF_RE.search(para[para.index("CPO ANSWER:"):])
+               for para in re.split(r"\n\s*\n", text))
+
+
+def _cap_message(rounds: int) -> str:
+    return (f"REVIEW GATE: review.md reports round {rounds}; the cap is "
+            f"{_ROUNDS_CAP}. No further round. Two exits, the owner's choice: "
+            "commit what is proven and file the rest (record a 'CPO ANSWER:' "
+            "followed in the same paragraph by the follow-up issue, #N, in "
+            "review.md; remaining FAIL verdicts then no longer block), or stop.")
+
+
 def _gate(root: str) -> str | None:
     staged = _staged_paths(root)
     if not staged:
@@ -225,11 +244,10 @@ def _gate(root: str) -> str | None:
                 "what's staged now) -- re-run the reviewers, update review.md and stage it "
                 "(pre-commit hides unstaged changes while hooks run). "
                 f"Current hash: {live} (from: python \"{os.path.abspath(__file__)}\" --diff-hash)")
-    if _rounds(text) > _ROUNDS_CAP and "CPO ANSWER:" not in text:
-        return (f"REVIEW GATE: review.md reports round {_rounds(text)}, past the "
-                f"cap of {_ROUNDS_CAP}. Get the owner's decision on why this keeps "
-                "failing review, record it as a 'CPO ANSWER:' anywhere in "
-                "review.md, then commit.")
+    rounds = _rounds(text)
+    filed = _files_the_rest(text)
+    if rounds > _ROUNDS_CAP and not filed:
+        return _cap_message(rounds)
     # Read each verdict from its reviewer SECTION, not the raw text -- a
     # 'VERDICT: FAIL' in prose or a quoted example must not block a review where
     # every real verdict passed, and a 'CPO ANSWER:' for one escalation must not
@@ -243,7 +261,9 @@ def _gate(root: str) -> str | None:
                     "the changed files (see review_routing.json). Run it and record "
                     "its section in review.md.")
     failed = sorted(n for n, v in verdicts.items() if v == "FAIL")
-    if failed:
+    if failed and rounds >= _ROUNDS_CAP and not filed:
+        return _cap_message(rounds)
+    if failed and rounds < _ROUNDS_CAP:
         return (f"REVIEW GATE: reviewer '{failed[0]}' verdict is FAIL. Fix the "
                 "findings and re-review.")
     for name in sorted(verdicts):

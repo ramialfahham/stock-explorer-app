@@ -3,78 +3,55 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #27 -- a commit by Claude Code is judged in the checkout git really acts
-  on, however the command is spelled (`cd`, `git -C`, `$VAR`, worktree, PowerShell), by
-  running the review gate as a git pre-commit hook; pushes to `main` are refused server-side.
+objective: Closes #30 -- the review cycle converges: delta review after round 1 against a
+  fixed regression checklist, declared known limits, graded FAIL, a frozen diff per round,
+  and a fixed exit past the round cap.
 
 scope_paths:
-  - .claude/hooks/_command_utils.py
-  - .claude/hooks/branch_discipline.py
-  - .claude/hooks/commit_review_gate.py
-  - .claude/hooks/powershell_git_guard.py
-  - .claude/settings.json
-  - .pre-commit-config.yaml
-  - scripts/bootstrap.py
-  - tests/tooling/claude_hooks/
-  - tests/tooling/test_bootstrap.py
   - .claude/working-agreement.md
-  - CLAUDE.md
+  - docs/context_budget.yml
+  - .claude/agents/platform-reviewer.md
+  - .claude/agents/scope-auditor.md
+  - .claude/agents/analytics-engineer-reviewer.md
+  - .claude/agents/data-engineer-reviewer.md
+  - .claude/hooks/commit_review_gate.py
+  - tests/tooling/claude_hooks/test_commit_review_gate.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
+  - .claude/task/review_input.patch
 
-decisions_reserved: settled by the owner in-thread before implementation --
-  Approach (option B): the review gate runs as a git pre-commit hook (`review-gate`, via
-  pre-commit), only when `CLAUDECODE=1`; the owner's commits are unaffected. This replaces the
-  text-parsing of `cd`/`git -C`/`$VAR` targets, so issue items 1 and 2 are met by git itself.
-  D1: pushes to `main` are refused by GitLab (owner sets `main` to "Allowed to push: No one");
-  no pre-push hook. D2: Claude-side hooks catch the usual spellings of a hook bypass
-  (`--no-verify` and its prefixes, a commit short-flag bundle with `n`, `core.hooksPath`,
-  `SKIP`, any `CLAUDECODE` change), not a command written to evade them; the MR review and
-  GitLab protection are the backstop. PowerShell (option C narrowed by B): the PowerShell guard
-  refuses only bypasses; git hooks gate PowerShell commits. Option A: quoted values keep their
-  slot, so `git commit -m "msg" file.py` is refused by the pathspec rule. D3: scope includes
-  `scripts/bootstrap.py` (`--verify` skips the gate, which guards commits, not files) and
-  `CLAUDE.md`; shell redirections (`2>&1`) are not pathspecs, as on `main`.
+decisions_reserved:
+  FAIL criteria (owner: option A): a reviewer returns FAIL only for a concrete false block
+  (a guard refuses legitimate work), a broken guarantee (a `done_when` item or documented
+  behaviour that does not hold, including changed behaviour with no test that would catch
+  its revert), or a design problem. Everything else is a follow-up or a wording fix.
+  Round cap (owner): stays 3. Past the cap (owner: option A): a `CPO ANSWER:` naming the
+  follow-up issue (`#N`) lets the commit through, remaining FAIL verdicts included; any other
+  state past the cap is refused.
+  Scope (owner): `analytics-engineer-reviewer.md` and `data-engineer-reviewer.md` included;
+  `equity-analyst-reviewer.md` left out, filed as #31, exempted in working agreement §2.
+
+known_limits:
+  - `_files_the_rest` is a text match: any `#N` after `CPO ANSWER:` in the same paragraph
+    counts as filing the rest, whatever the answer says.
+
+regression_checklist:
+  - The gate still blocks a commit whose review.md hash does not match, a missing required
+    verdict, a FAIL, and an unanswered ESCALATE (existing tests stay green).
+  - Every reviewer file's output block still parses with `_verdict` / `_sections`.
+  - No rule in working agreement §2 contradicts a reviewer file.
 
 done_when:
-  - A real git commit through the `review-gate` hook via `git -C` from another folder is
-    refused without a matching review.md and passes with one; commits without `CLAUDECODE=1`
-    pass; a helper import error does not block a commit (tests).
-  - `hook_bypass` refuses the listed bypasses in Bash and PowerShell spellings and passes
-    `git log -n 5` and heredoc/quoted message text that mentions them (tests).
-  - Working agreement §2/§3 and CLAUDE.md describe where each check runs, within budget.
-  - GitLab `main` is "Allowed to push: No one" before commit (owner action, read back).
-  - `python scripts/bootstrap.py --verify` passes; review cycle run; MR opened. Not merged.
+  - Working agreement §2 and the in-scope reviewer files state: delta review after round 1
+    plus this checklist; `known_limits:`; option-A FAIL grounds with `follow_ups:`; frozen
+    diff per round with the verdict naming its hash; the two exits past the cap.
+  - The gate's past-cap behaviour matches the owner's decision, with tests.
+  - `pytest tests/tooling` and `scripts/check_no_em_dash.py` pass; review cycle run under
+    the new rules; MR opened. Not merged.
 
 amendments:
-  - Rounds 1-2 reviewed the replaced text-parsing approach; round 3 reviewed B's first cut
-    (both FAIL: bypass spellings, the pre-push hook's escapes and side effects, the stash
-    hiding an unstaged review.md, git-hook modes failing closed, an invisible note, wording).
-    Owner answered D1-D3 and approved round 4 past the cap.
-  - Round 4: scope-auditor PASS (wording fixes); platform-reviewer FAIL on three false results
-    inside D2/option A: PowerShell `Env:\NAME` not caught; a here-string message with an
-    apostrophe read as a bypass; `-m"x"`-style attached values refused (a regression from the
-    option-A placeholder). Fixed with tests. Following D1 (no pre-push hook), pushes are no
-    longer scanned for bypasses: they skip nothing. Wording fixes from both reviewers applied.
-  - Round 5: scope-auditor PASS (wording fixes, applied); platform-reviewer FAIL on four
-    narrow cases inside D2: quoted PowerShell env names (`SetEnvironmentVariable('CLAUDECODE'`,
-    `"Env:\SKIP"`) missed; `-mfinal`/`-uno` read as `-n`; `git config --get|--unset
-    core.hooksPath` refused; a `claudecode` folder in a path refused. Fixed with tests
-    (SKIP/CLAUDECODE now count on an assignment, an env-drive reference, `-u` or `unset`).
-  - Owner (option B for round 6): round 6 verifies the round-5 fixes and looks for
-    regressions; a new, previously unseen bypass spelling is filed as a follow-up issue
-    instead of failing the round (D2); a false block of a normal commit or a design problem
-    still fails it.
-  - Round 6: both FAIL on one false block from round 5's fix (a quoted message mentioning
-    `'Env:SKIP'` refused); fixed by counting a quoted name only right after a PowerShell
-    set/remove call. platform-reviewer also: read-only `git config core.hooksPath`, `get`,
-    `unset` refused (fixed: only a set counts), and a comment wording fix (applied). New
-    bypass spellings filed as follow-up issue #29, per the owner's round-6 rule.
-  - Owner: the review process itself is defective (a process issue follows separately).
-    This MR finishes with one fixed-checklist verification round: each listed item is PASS or
-    FAIL, nothing outside the list is in scope, no file changes while it runs; anything new
-    goes to #29.
-  - Fixed-checklist check: scope-auditor PASS (5/5); platform-reviewer 5/6, item 4 failed on a
-    PowerShell here-string sent to the Bash hook. Fixed (quote stripping now removes
-    here-string bodies, with a test); confirmation of that one fix only.
+  - Round 1: scope-auditor PASS; platform-reviewer FAIL [broken-guarantee]: the filed-answer
+    exit opened only at `rounds: 4`, not after round 3. Fixed (opens at the cap, with tests),
+    plus its wording fixes and two follow-ups (issue ref must follow `CPO ANSWER:`; the delta
+    command excludes `.claude/task/review*`).

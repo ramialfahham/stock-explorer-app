@@ -18,8 +18,16 @@ one or two lines and let the archive keep the detail._
 **Clone and continue: MERGED** (!220 guardrails owned by the repo, !221 one setup command +
 one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is README
 "Getting started"; credentialed check passed on this machine (`check_supabase_connection.py`).
-Issue #27 in flight on `fix/gate-git-c-and-powershell`: the review gate as a git
-pre-commit hook (`review-gate`), `powershell_git_guard.py`, GitLab `main` push set to "No one".
+**Review gate as a git pre-commit hook: MERGED (!224, issue #27).** `review-gate` hook,
+`powershell_git_guard.py`, GitLab `main` push set to "No one". Follow-up: issue #29
+(further bypass spellings, low priority).
+
+**Issue #30 in flight on `fix/review-converge`:** review rounds converge (delta review after
+round 1, `known_limits:`, graded FAIL, frozen diff per round, fixed exit past the round cap).
+Owner chose FAIL criteria option A (false block, broken guarantee, design problem) and a
+round cap of 3; from round 3, a `CPO ANSWER:` followed in its paragraph by the follow-up
+issue `#N` lets remaining FAILs through (gate change). Four reviewer files in scope;
+`equity-analyst-reviewer.md` left out, follow-up issue #31.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
