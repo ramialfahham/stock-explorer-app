@@ -1,40 +1,34 @@
 # Review
 
-diff_sha256: 4b2d1a92514ff922e805ad30146ee2b3d9a58d1c4d5e85bc477d5afe804af28e
-rounds: 8
+diff_sha256: 612b3c683d611ece9dc1e9aba00ef03dc13df97492594b88254de9ef718520c6
+rounds: 2
 
-Issue #27. Reviewers dispatched as general-purpose agents reading their role files from
-`.claude/agents/`, cold, read-only, against `.claude/task/review_input.patch`. Round-by-round
-findings and every owner answer are in `contract.md`'s amendments.
+Issue #30. Run under the rules this branch introduces: round 1 on the cumulative diff, round 2
+on the delta (`git diff --cached 8377ef1 -- . ':!.claude/task/review*'`) plus the contract's
+`regression_checklist`. Round-1 findings are in `contract.md`'s amendments. After round 2,
+platform-reviewer's wording fix (gate docstring) and its handover follow-up were applied.
 
-CPO ANSWER: the owner approved each round past the cap (rounds 4, 5 and 6), chose option B
-(review gate as a git pre-commit hook), answered D1-D3 (GitLab refuses pushes to `main`, set
-by the owner to "No one"; best-effort bypass scan; scope), set the round-6 rule (new bypass
-spellings go to follow-up #29), and ended the open-ended rounds with a fixed-checklist check
-("the review process sucks"; the process fix is its own issue).
-
-Coordinator evidence: `pytest tests/tooling` 415 passed; `--verify` 929 passed, all hooks,
-dbt build PASS=150; live, an unreviewed commit from both the Bash and the PowerShell tool was
-refused by the real git `review-gate` hook.
+Coordinator evidence: `pytest tests/tooling` 422 passed; context budget and em-dash checks pass.
 
 ## platform-reviewer
 
-Rounds 1-6 FAIL, all findings fixed or filed to #29. Fixed-checklist check: items 1, 2, 3, 5, 6
-PASS; item 4 failed on a PowerShell here-string sent to the Bash hook, fixed (here-string
-bodies stripped before quote stripping, with a test). Confirmation of that fix: both items PASS
-(the 8 normal commands pass through both hooks; `--no-verify` still refused; 415 tests).
+Round 1 (tree 8377ef1) FAIL [broken-guarantee]: the filed-answer exit opened only at
+`rounds: 4`. Fixed with tests. Round 2 (tree 86b534b) PASS.
 
 VERDICT: PASS
+reviewed_tree: 86b534b633ea7dd9c64f145418d4b81965771ae7
 risks_checked:
-- Normal commits and pushes pass through the Bash and PowerShell hooks; bypasses still refused.
-- The here-string fix did not weaken the bypass refusal; full tooling suite green.
+- Cap boundary: rounds 2 + FAIL + filed answer refused; rounds 3 + FAIL + filed answer passes;
+  rounds 3 + FAIL without one gets the two-exits message; rounds 4+ without one refused. Each
+  new test fails on revert.
+- Fail-open: `para.index` sits behind the `in` short-circuit; no new exception path.
 
 ## scope-auditor
 
-Fixed-checklist check 5/5 PASS (scope, contract record, #29, docstrings, GitLab `main` push
-"No one"). Confirmation of the here-string fix: both items PASS.
+Round 1 (tree 8377ef1) PASS. Round 2 (tree 86b534b) PASS.
 
 VERDICT: PASS
+reviewed_tree: 86b534b633ea7dd9c64f145418d4b81965771ae7
 risks_checked:
-- All 17 staged files inside scope_paths; every change recorded in the contract.
-- Docstrings match the code, including the new here-string stripping.
+- The exit now opens at the cap (rounds >= 3), matching the owner's decision; covered by tests.
+- An issue ref before `CPO ANSWER:` no longer counts as filed; covered by a test.

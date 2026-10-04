@@ -158,22 +158,88 @@ def test_round_cap_blocks_without_cpo_answer():
         assert reason and "round" in reason.lower()
 
 
-def test_round_cap_allows_with_cpo_answer():
-    if not _GIT:
-        print("skip (no git on PATH)")
-        return
+def _gate_on_review(header: str, verdicts: str) -> str | None:
+    """_gate on a routing-only repo whose review.md is the live hash, then
+    `header`, then the reviewer `verdicts` sections."""
     with tempfile.TemporaryDirectory() as repo:
         _git(repo, "init", "-q")
         _git(repo, "config", "user.email", "t@t.t")
         _git(repo, "config", "user.name", "t")
         _routing_only_repo(repo)
         live = hashlib.sha256(_diff_to_hash(repo)).hexdigest()
-        review = (f"diff_sha256: {live}\nrounds: 5\n"
-                  "CPO ANSWER: proceed, the repeated failures are a test artefact\n"
-                  "## scope-auditor\nVERDICT: PASS\nrisks_checked:\n- a\n- b\n")
         with open(os.path.join(repo, ".claude", "task", "review.md"), "w", encoding="utf-8") as f:
-            f.write(review)
-        assert _gate(repo) is None
+            f.write(f"diff_sha256: {live}\n{header}\n{verdicts}")
+        return _gate(repo)
+
+
+_PASS = "## scope-auditor\nVERDICT: PASS\nrisks_checked:\n- a\n- b\n"
+_FAIL = "## platform-reviewer\nVERDICT: FAIL\nfindings:\n- [design] x\n"
+
+
+def test_round_cap_blocks_an_answer_that_files_nothing():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    reason = _gate_on_review("rounds: 5\nCPO ANSWER: run another round\n", _PASS)
+    assert reason and "file the rest" in reason
+
+
+def test_round_cap_allows_an_answer_naming_the_follow_up_issue():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    assert _gate_on_review("rounds: 5\nCPO ANSWER: commit what is proven,\n"
+                           "the rest is filed as #31\n", _PASS) is None
+
+
+def test_round_cap_issue_ref_outside_the_answer_does_not_count():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    reason = _gate_on_review("rounds: 4\nRefs #30\n\nCPO ANSWER: run another round\n", _PASS)
+    assert reason and "file the rest" in reason
+
+
+def test_past_the_cap_a_filed_answer_lets_fail_verdicts_through():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    assert _gate_on_review("rounds: 4\nCPO ANSWER: commit what is proven, rest in #31\n",
+                           _PASS + _FAIL) is None
+
+
+def test_under_the_cap_a_filed_answer_does_not_override_fail():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    reason = _gate_on_review("rounds: 2\nCPO ANSWER: commit what is proven, rest in #31\n",
+                             _PASS + _FAIL)
+    assert reason and "FAIL" in reason
+
+
+def test_at_the_cap_a_filed_answer_lets_fail_verdicts_through():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    assert _gate_on_review("rounds: 3\nCPO ANSWER: commit what is proven, rest in #31\n",
+                           _PASS + _FAIL) is None
+
+
+def test_at_the_cap_a_fail_without_a_filed_answer_names_the_exits():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    reason = _gate_on_review("rounds: 3\n", _PASS + _FAIL)
+    assert reason and "file the rest" in reason
+
+
+def test_an_issue_ref_before_the_answer_does_not_count():
+    if not _GIT:
+        print("skip (no git on PATH)")
+        return
+    reason = _gate_on_review("rounds: 4\nQ: extend #29?\nCPO ANSWER: yes, one more round\n",
+                             _PASS)
+    assert reason and "file the rest" in reason
 
 
 def test_round_cap_does_not_trip_under_the_cap():
