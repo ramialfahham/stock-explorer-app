@@ -26,19 +26,25 @@ one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is R
 FAIL, frozen diff per round, fixed exit at the round cap (3). Follow-up: issue #31
 (equity-analyst reviewer's FAIL grounds).
 
-**Issue #25 (raw-data archive) in flight on `feat/raw-archive`.** Owner: go; upload with the
-existing service-role key (no S3 key, no new CI variable); an archive failure lets the cards
-refresh and fails the `data-pipeline` job at its end. Open, owner's: retention if the 1 GB
-quota is ever approached. Then the rest of the portfolio order: README product-first,
-`.mailmap`.
+**Raw-data archive: MERGED (!226, !227, issue #25).** Each `data-pipeline` run uploads
+`storage/raw/` to private Supabase Storage bucket `raw-archive` at
+`raw/<date>/<CI_JOB_ID>/<market>/` before dbt; an upload failure lets the cards refresh and
+fails the job at its end. First real archive: the next scheduled run (1st/15th) -- check the
+bucket after it. Follow-ups: #32 (test, docs), #33 (owner decisions: completion marker,
+local-run folder). Open, owner's: retention if the 1 GB quota is ever approached.
+
+**README product-first in flight on `docs/readme-product-first`** (owner approved five
+changes: setup moved below the product funnel, raw archive in the diagram and design
+decisions, a "For contributors" group, the stale `ci-validate` line). Next in the portfolio
+order: `.mailmap`.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
 **Stale-card eviction: MERGED (!216), verified live.** Migration 020 applied by CI; the
 `current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
 
-**Owner's portfolio order, each needs its own go:** raw-data archive (issue #25, in
-flight), README product-first, `.mailmap`. DECLINED: revenue-growth fallback (MVP); incremental
+**Owner's portfolio order, each needs its own go:** raw-data archive (merged),
+README product-first (in flight), `.mailmap`. DECLINED: revenue-growth fallback (MVP); incremental
 dbt models (ephemeral DuckDB, nothing to increment from). Hard constraint: zero cost.
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
