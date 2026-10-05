@@ -1,9 +1,10 @@
 """Archive this run's raw ingestion parquet to private Supabase Storage (service role).
 
 Uploads every `storage/raw/<market>/*.parquet` to bucket `raw-archive` at
-`raw/<run date, UTC>/<market>/<file>`. Append-only: an object already archived under that
-date (a same-day rerun) is kept and skipped, never overwritten. The bucket is created,
-private, when missing.
+`raw/<run date, UTC>/<run id>/<market>/<file>`. The run id is the GitLab job id
+(CI_JOB_ID), new on every attempt including a retry, so no two runs share a folder; it is
+`local` outside CI. Append-only: an object already archived under that folder is kept and
+skipped, never overwritten. The bucket is created, private, when missing.
 
 Exit codes: 0 when everything was archived or skipped, and also when SUPABASE_URL or
 SUPABASE_SERVICE_ROLE_KEY is unset (nothing to archive to). 1 on any failure, including an
@@ -26,10 +27,11 @@ DEFAULT_RAW_DIR = REPO_ROOT / "storage" / "raw"
 BUCKET = "raw-archive"
 
 
-def planned_objects(raw_dir: Path, run_date: str) -> list[tuple[Path, str]]:
+def planned_objects(raw_dir: Path, run_date: str, run_id: str) -> list[tuple[Path, str]]:
     """(local file, object path) for every market's raw parquet, sorted by object path."""
     return sorted(
-        ((p, f"raw/{run_date}/{p.parent.name}/{p.name}") for p in raw_dir.glob("*/*.parquet")),
+        ((p, f"raw/{run_date}/{run_id}/{p.parent.name}/{p.name}")
+         for p in raw_dir.glob("*/*.parquet")),
         key=lambda pair: pair[1],
     )
 
@@ -39,9 +41,9 @@ def _ensure_bucket(client) -> None:
         client.storage.create_bucket(BUCKET, options={"public": False})
 
 
-def archive(client, raw_dir: Path, run_date: str) -> tuple[int, int]:
-    """Upload what is not yet archived for `run_date`. Returns (uploaded, skipped)."""
-    objects = planned_objects(raw_dir, run_date)
+def archive(client, raw_dir: Path, run_date: str, run_id: str) -> tuple[int, int]:
+    """Upload what is not yet archived for this run. Returns (uploaded, skipped)."""
+    objects = planned_objects(raw_dir, run_date, run_id)
     if not objects:
         raise RuntimeError(f"no raw parquet under {raw_dir}")
     _ensure_bucket(client)
@@ -67,6 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--raw-dir", type=Path, default=DEFAULT_RAW_DIR)
     parser.add_argument("--run-date", default=datetime.now(timezone.utc).date().isoformat(),
                         help="archive folder date, YYYY-MM-DD (default: today, UTC)")
+    parser.add_argument("--run-id", default=os.getenv("CI_JOB_ID") or "local",
+                        help="archive folder under the date (default: CI_JOB_ID, else local)")
     args = parser.parse_args(argv)
 
     load_dotenv()
@@ -79,11 +83,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from supabase import create_client
 
-        uploaded, skipped = archive(create_client(url, key), args.raw_dir, args.run_date)
+        uploaded, skipped = archive(create_client(url, key), args.raw_dir, args.run_date,
+                                    args.run_id)
     except Exception as exc:
         print(f"Raw archive FAILED: {exc}", file=sys.stderr)
         return 1
-    print(f"Raw archive {args.run_date}: {uploaded} uploaded, {skipped} already archived.")
+    print(f"Raw archive {args.run_date}/{args.run_id}: {uploaded} uploaded, "
+          f"{skipped} already archived.")
     return 0
 
 

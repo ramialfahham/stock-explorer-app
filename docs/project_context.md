@@ -78,10 +78,10 @@ dbt <command> --project-dir dbt_analytics --profiles-dir .
   [`data_contract.md`](data_contract.md) § yfinance raw field mapping. No ratios in Python.
 - Run ingestion: `python scripts/run_ingestion.py` (optional `--max-tickers` for local dev).
 - Raw archive: each `data-pipeline` run copies `storage/raw/` to the private Supabase Storage
-  bucket `raw-archive` at `raw/<run date, UTC>/<market_code>/<file>.parquet`, after ingestion
-  and before dbt (`scripts/archive_raw_to_supabase.py`, service role key). Append-only: a
-  same-day rerun keeps the files already archived. CI starts every run with an empty
-  `storage/raw/`, so this is the only copy of past raw inputs.
+  bucket `raw-archive` at `raw/<run date, UTC>/<GitLab job id>/<market_code>/<file>.parquet`,
+  after ingestion and before dbt (`scripts/archive_raw_to_supabase.py`, service role key).
+  Every run, a retry included, gets its own folder; nothing is overwritten. CI starts every
+  run with an empty `storage/raw/`, so this is the only copy of past raw inputs.
 - Credentials via `.env` + python-dotenv only.
 
 ---
