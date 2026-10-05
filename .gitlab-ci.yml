@@ -287,9 +287,12 @@ data-pipeline:
   stage: production
   resource_group: supabase-prod
   timeout: 2h # was `timeout-minutes: 120`
+  # The raw archive must not cost a card refresh: a failed upload leaves a marker, the run
+  # continues, and the last step fails the job on that marker.
   script:
     - python scripts/apply_supabase_migrations.py
     - python scripts/run_ingestion.py
+    - python scripts/archive_raw_to_supabase.py || touch storage/.raw_archive_failed
     - python scripts/write_ci_dbt_profile.py --path storage/stock_data.db
     - dbt deps --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - dbt source freshness --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
@@ -299,6 +302,7 @@ data-pipeline:
     - python scripts/check_export_health.py --duckdb-path storage/stock_data.db
     - python scripts/export_to_supabase.py --duckdb-path storage/stock_data.db
     - python scripts/generate_assessments.py --duckdb-path storage/stock_data.db
+    - test ! -f storage/.raw_archive_failed || { echo "Raw archive upload failed (cards were refreshed); see the archive step above." >&2; exit 1; }
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"

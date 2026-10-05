@@ -3,55 +3,49 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #30 -- the review cycle converges: delta review after round 1 against a
-  fixed regression checklist, declared known limits, graded FAIL, a frozen diff per round,
-  and a fixed exit past the round cap.
+objective: Closes #25 -- each production run archives its raw ingestion parquet to a private
+  Supabase Storage bucket, before dbt, append-only per run date.
 
 scope_paths:
-  - .claude/working-agreement.md
-  - docs/context_budget.yml
-  - .claude/agents/platform-reviewer.md
-  - .claude/agents/scope-auditor.md
-  - .claude/agents/analytics-engineer-reviewer.md
-  - .claude/agents/data-engineer-reviewer.md
-  - .claude/hooks/commit_review_gate.py
-  - tests/tooling/claude_hooks/test_commit_review_gate.py
+  - scripts/archive_raw_to_supabase.py
+  - tests/tooling/test_archive_raw_to_supabase.py
+  - .gitlab-ci.yml
+  - docs/project_context.md
+  - docs/operations_guide.md
+  - docs/layering.md
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved:
-  FAIL criteria (owner: option A): a reviewer returns FAIL only for a concrete false block
-  (a guard refuses legitimate work), a broken guarantee (a `done_when` item or documented
-  behaviour that does not hold, including changed behaviour with no test that would catch
-  its revert), or a design problem. Everything else is a follow-up or a wording fix.
-  Round cap (owner): stays 3. Past the cap (owner: option A): a `CPO ANSWER:` naming the
-  follow-up issue (`#N`) lets the commit through, remaining FAIL verdicts included; any other
-  state past the cap is refused.
-  Scope (owner): `analytics-engineer-reviewer.md` and `data-engineer-reviewer.md` included;
-  `equity-analyst-reviewer.md` left out, filed as #31, exempted in working agreement §2.
+decisions_reserved: settled by the owner in-thread before implementation --
+  Go on the archive (a new mechanism). Credential (option A): the existing
+  `SUPABASE_SERVICE_ROLE_KEY` through the already-pinned `supabase` client; no S3 access key,
+  no new CI variable, no new dependency (replaces the issue's S3-key owner action). Failure
+  (option C): an archive failure does not stop the run; the cards still refresh and the
+  `data-pipeline` job fails at its end. The bucket is created by the script when missing,
+  not by a migration, so a bucket problem cannot block the migration step that runs first.
+  Open, owner's: retention, if the 1 GB quota is ever approached.
 
-known_limits:
-  - `_files_the_rest` is a text match: any `#N` after `CPO ANSWER:` in the same paragraph
-    counts as filing the rest, whatever the answer says.
+known_limits: none.
 
 regression_checklist:
-  - The gate still blocks a commit whose review.md hash does not match, a missing required
-    verdict, a FAIL, and an unanswered ESCALATE (existing tests stay green).
-  - Every reviewer file's output block still parses with `_verdict` / `_sections`.
-  - No rule in working agreement §2 contradicts a reviewer file.
+  - `data-pipeline` still runs migrations, ingestion, dbt, the checks, export and
+    assessments in that order; only the archive step and the final marker check are new.
+  - With no key set the archive script exits 0 and uploads nothing.
+  - An object already archived for the run date is never overwritten.
 
 done_when:
-  - Working agreement §2 and the in-scope reviewer files state: delta review after round 1
-    plus this checklist; `known_limits:`; option-A FAIL grounds with `follow_ups:`; frozen
-    diff per round with the verdict naming its hash; the two exits past the cap.
-  - The gate's past-cap behaviour matches the owner's decision, with tests.
-  - `pytest tests/tooling` and `scripts/check_no_em_dash.py` pass; review cycle run under
-    the new rules; MR opened. Not merged.
+  - `scripts/archive_raw_to_supabase.py` uploads `storage/raw/<market>/*.parquet` to
+    `raw-archive:raw/<UTC run date>/<market>/<file>`, skips objects already there, creates
+    the private bucket when missing, exits 0 without a key and 1 on any failure (tests, fake
+    client, no network).
+  - `.gitlab-ci.yml`: the archive step runs after `run_ingestion.py` and before dbt; on
+    failure it leaves a marker and the run continues; the job's last step fails on the
+    marker (test on the CI config).
+  - `docs/project_context.md` / `docs/operations_guide.md` say where the archive is and how
+    to read it; `docs/layering.md` records full rebuild, marts as `table`, no incremental.
+  - `pytest tests/tooling` and `python scripts/bootstrap.py --verify` pass; review cycle run;
+    MR opened. Not merged.
 
 amendments:
-  - Round 1: scope-auditor PASS; platform-reviewer FAIL [broken-guarantee]: the filed-answer
-    exit opened only at `rounds: 4`, not after round 3. Fixed (opens at the cap, with tests),
-    plus its wording fixes and two follow-ups (issue ref must follow `CPO ANSWER:`; the delta
-    command excludes `.claude/task/review*`).

@@ -14,6 +14,7 @@ How production data moves and how to respond when it breaks. Product rules live 
 GitLab CI (schedule)
   → refresh constituents (optional / on change)
   → run_ingestion.py (yfinance → parquet)
+  → archive_raw_to_supabase.py (parquet → Storage bucket raw-archive)
   → dbt build (DuckDB)
   → check_pipeline_completeness.py
   → check_eligibility_baseline.py
@@ -40,7 +41,7 @@ Nothing in this path runs on a developer laptop in production.
    `apply_supabase_migrations` fails with **HTTP 403** when the Management API fallback is used.
 2. CI/CD → Pipelines → **Run pipeline** on `main` (this is a `web`-source dispatch; the
    `data-pipeline` job appears with a manual play button — click it to actually start it).
-3. Expect: migrate → ingest → `dbt build` → completeness → eligibility baseline → export health → export.
+3. Expect: migrate → ingest → raw archive → `dbt build` → completeness → eligibility baseline → export health → export.
 
 If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` locally and set
 `SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` as GitLab CI/CD variables ([`supabase_setup.md`](supabase_setup.md)).
@@ -109,6 +110,20 @@ Add `--target dev` to any of the three Supabase writers to write to a `dev` sche
 project instead of `public` — no separate project, no new secret. See
 [`supabase_setup.md`](supabase_setup.md#3b-testing-against-a-dev-schema) for the one-time
 setup step and the `dev-schema-check` CI button.
+
+### Read the raw archive
+
+Supabase dashboard → Storage → `raw-archive` → `raw/<run date>/<market_code>/`, or in Python
+with the service role key:
+
+```python
+from supabase import create_client
+files = create_client(url, service_role_key).storage.from_("raw-archive")
+files.list("raw/2026-10-15/us_sp500")
+data = files.download("raw/2026-10-15/us_sp500/yf_fundamentals.parquet")  # bytes
+```
+
+The free tier holds 1 GB (a run is a few MB); there is no retention rule yet.
 
 ### Refresh constituents
 
@@ -188,6 +203,13 @@ python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.d
 2. If yfinance outage: retry the pipeline; Supabase retains last export.
 3. If single market degraded: set `ingest_active: false` temporarily, sync dbt vars, re-run.
 4. Do not export partial empty tables over good data.
+
+### Pipeline failed on the raw archive
+
+The job fails at its last step with "Raw archive upload failed"; the cards WERE refreshed.
+The cause is on the `Raw archive FAILED:` line after ingestion. Re-run `data-pipeline` the
+same UTC day to archive that day's inputs (files already archived are kept); a later run
+cannot recover them.
 
 ### Registry / dbt var drift
 

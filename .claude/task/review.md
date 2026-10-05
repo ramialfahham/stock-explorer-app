@@ -1,34 +1,34 @@
 # Review
 
-diff_sha256: 612b3c683d611ece9dc1e9aba00ef03dc13df97492594b88254de9ef718520c6
-rounds: 2
+diff_sha256: 655aa6ef684c6c9d870d648b59e45b3a4e566b38af499851090241bae508929f
+rounds: 1
 
-Issue #30. Run under the rules this branch introduces: round 1 on the cumulative diff, round 2
-on the delta (`git diff --cached 8377ef1 -- . ':!.claude/task/review*'`) plus the contract's
-`regression_checklist`. Round-1 findings are in `contract.md`'s amendments. After round 2,
-platform-reviewer's wording fix (gate docstring) and its handover follow-up were applied.
+Issue #25. Round 1 on the cumulative diff (tree 01c724c), both reviewers PASS.
 
-Coordinator evidence: `pytest tests/tooling` 422 passed; context budget and em-dash checks pass.
+Coordinator evidence: the `bootstrap.py --verify` steps -- `pytest tests` 947 passed; pre-commit
+on all files passed except `check-json`, which a Windows application-control policy on this
+machine blocks from starting (WinError 4551; no JSON file touched; CI runs it on Linux);
+sqlfluff clean; fixture `dbt build` PASS=150.
+
+Follow-ups (platform-reviewer): tighten the marker-step test to the exact `test ! -f` form;
+a per-date folder can mix two same-day runs (owner question on layout); the
+`SUPABASE_SERVICE_ROLE_KEY` usage tables in README.md / docs/supabase_setup.md and the job
+step list in docs/development_workflow.md do not mention the archive.
 
 ## platform-reviewer
 
-Round 1 (tree 8377ef1) FAIL [broken-guarantee]: the filed-answer exit opened only at
-`rounds: 4`. Fixed with tests. Round 2 (tree 86b534b) PASS.
-
 VERDICT: PASS
-reviewed_tree: 86b534b633ea7dd9c64f145418d4b81965771ae7
+reviewed_tree: 01c724c2dd1a30f6f668b112b5f29bfdaed93558
 risks_checked:
-- Cap boundary: rounds 2 + FAIL + filed answer refused; rounds 3 + FAIL + filed answer passes;
-  rounds 3 + FAIL without one gets the two-exits message; rounds 4+ without one refused. Each
-  new test fails on revert.
-- Fail-open: `para.index` sits behind the `in` short-circuit; no new exception path.
+- Overwrite and re-run safety against storage3 2.30.0: skip logic plus `x-upsert: false`
+  (a 409 raises, exit 1); same-day rerun skips; a half-finished run resumes.
+- Option C in CI: `|| touch` does not abort under `set -e`; the marker check is the last step;
+  the CI-config tests fail if the step moves, loses `||`, or the check is removed.
 
 ## scope-auditor
 
-Round 1 (tree 8377ef1) PASS. Round 2 (tree 86b534b) PASS.
-
 VERDICT: PASS
-reviewed_tree: 86b534b633ea7dd9c64f145418d4b81965771ae7
+reviewed_tree: 01c724c2dd1a30f6f668b112b5f29bfdaed93558
 risks_checked:
-- The exit now opens at the cap (rounds >= 3), matching the owner's decision; covered by tests.
-- An issue ref before `CPO ANSWER:` no longer counts as filed; covered by a test.
+- Failure isolation: export runs before the final marker check, so the cards refresh first.
+- Append-only: existing objects are skipped before upload, covered by a test.
