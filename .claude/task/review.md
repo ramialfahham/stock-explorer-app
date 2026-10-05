@@ -1,21 +1,20 @@
 # Review
 
-diff_sha256: 8ff5783c659a2e69a7866dac4d8de834d4b7da55dc4a5d0409f0b979cc277af5
+diff_sha256: e6c81c2eae942a8bcec0094adf9c606b89d551fa669af3f2047d354499f17550
 rounds: 1
 
-README product-first. Round 1 on the cumulative diff (tree 813ee53). Routing requires
-scope-auditor only (README.md matches no routed path).
+`.mailmap`. Round 1 on the cumulative diff (tree d48664f). Routing requires scope-auditor only
+(`.mailmap` matches no routed path).
 
-Coordinator evidence: a line-multiset diff of README.md against main shows the only lines
-that are not verbatim moves are the five approved changes (the diagram node, the new design
-decision, the "For contributors" heading and the three demoted headings, the `validate`
-line). Em-dash and context budget checks pass.
+Coordinator evidence: with the file in place, `git shortlog -sne --all` shows one author,
+979 commits (618 + 235 + 104 + 22); `git check-mailmap` maps all four identities to
+`Rami Al-Fahham <rami.fahham@googlemail.com>`. Em-dash and context budget checks pass.
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: 813ee53ca58554b88bbbeabd3d53645f090442d1
+reviewed_tree: d48664fc8f53a0eecd70f8f0cda2b66d67fd5637
 risks_checked:
-- The archive node's placement and "before the transform" match `.gitlab-ci.yml` (archive
-  after ingestion, before dbt).
-- Moved "Getting started" text is byte-identical to the original.
+- Completeness: two email-matched lines cover every non-canonical address, including both
+  names used with the GitHub noreply address; shortlog confirms one author.
+- Format: canonical identity left, commit-time email right; file ends with a newline.
