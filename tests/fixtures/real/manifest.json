@@ -1,0 +1,378 @@
+{
+ "markets": {
+  "au_asx200": {
+   "tickers": [
+    "BHP",
+    "CBA",
+    "CSL",
+    "FMG",
+    "XYZ"
+   ],
+   "info_symbols": {
+    "BHP": "BHP.AX",
+    "CBA": "CBA.AX",
+    "CSL": "CSL.AX",
+    "FMG": "FMG.AX",
+    "XYZ": "XYZ.AX"
+   },
+   "download_batch": [
+    "BHP.AX",
+    "CBA.AX",
+    "CSL.AX",
+    "FMG.AX",
+    "XYZ.AX"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "ca_tsx60": {
+   "tickers": [
+    "CTC-A.TO",
+    "ENB",
+    "NA",
+    "RY",
+    "SHOP"
+   ],
+   "info_symbols": {
+    "CTC-A.TO": "CTC-A.TO",
+    "ENB": "ENB.TO",
+    "NA": "NA.TO",
+    "RY": "RY.TO",
+    "SHOP": "SHOP.TO"
+   },
+   "download_batch": [
+    "CTC-A.TO",
+    "ENB.TO",
+    "NA.TO",
+    "RY.TO",
+    "SHOP.TO"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "ch_smi": {
+   "tickers": [
+    "NOVN",
+    "NESN",
+    "UBSG",
+    "CFR",
+    "ZURN"
+   ],
+   "info_symbols": {
+    "NOVN": "NOVN.SW",
+    "NESN": "NESN.SW",
+    "UBSG": "UBSG.SW",
+    "CFR": "CFR.SW",
+    "ZURN": "ZURN.SW"
+   },
+   "download_batch": [
+    "NOVN.SW",
+    "NESN.SW",
+    "UBSG.SW",
+    "CFR.SW",
+    "ZURN.SW"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "de_dax": {
+   "tickers": [
+    "AIR.PA",
+    "ALV",
+    "DBK",
+    "SAP",
+    "SIE"
+   ],
+   "info_symbols": {
+    "AIR.PA": "AIR.PA",
+    "ALV": "ALV.DE",
+    "DBK": "DBK.DE",
+    "SAP": "SAP.DE",
+    "SIE": "SIE.DE"
+   },
+   "download_batch": [
+    "AIR.PA",
+    "ALV.DE",
+    "DBK.DE",
+    "SAP.DE",
+    "SIE.DE"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "dk_omxc25": {
+   "tickers": [
+    "MAERSK-A",
+    "MAERSK-B",
+    "DANSKE",
+    "NDA-DK.CO",
+    "NOVO-B"
+   ],
+   "info_symbols": {
+    "MAERSK-A": "MAERSK-A.CO",
+    "MAERSK-B": "MAERSK-B.CO",
+    "DANSKE": "DANSKE.CO",
+    "NDA-DK.CO": "NDA-DK.CO",
+    "NOVO-B": "NOVO-B.CO"
+   },
+   "download_batch": [
+    "MAERSK-A.CO",
+    "MAERSK-B.CO",
+    "DANSKE.CO",
+    "NDA-DK.CO",
+    "NOVO-B.CO"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "es_ibex35": {
+   "tickers": [
+    "IBE.MC",
+    "ITX.MC",
+    "MTS.MC",
+    "ROVI.MC",
+    "SAN.MC"
+   ],
+   "info_symbols": {
+    "IBE.MC": "IBE.MC",
+    "ITX.MC": "ITX.MC",
+    "MTS.MC": "MTS.MC",
+    "ROVI.MC": "ROVI.MC",
+    "SAN.MC": "SAN.MC"
+   },
+   "download_batch": [
+    "IBE.MC",
+    "ITX.MC",
+    "MTS.MC",
+    "ROVI.MC",
+    "SAN.MC"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "fi_omxh25": {
+   "tickers": [
+    "KALMAR.HE",
+    "KESKOB.HE",
+    "KOJAMO.HE",
+    "NOKIA.HE",
+    "NDA-FI.HE"
+   ],
+   "info_symbols": {
+    "KALMAR.HE": "KALMAR.HE",
+    "KESKOB.HE": "KESKOB.HE",
+    "KOJAMO.HE": "KOJAMO.HE",
+    "NOKIA.HE": "NOKIA.HE",
+    "NDA-FI.HE": "NDA-FI.HE"
+   },
+   "download_batch": [
+    "KALMAR.HE",
+    "KESKOB.HE",
+    "KOJAMO.HE",
+    "NOKIA.HE",
+    "NDA-FI.HE"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "fr_cac40": {
+   "tickers": [
+    "AI.PA",
+    "MT.AS",
+    "BNP.PA",
+    "MC.PA",
+    "TTE.PA"
+   ],
+   "info_symbols": {
+    "AI.PA": "AI.PA",
+    "MT.AS": "MT.AS",
+    "BNP.PA": "BNP.PA",
+    "MC.PA": "MC.PA",
+    "TTE.PA": "TTE.PA"
+   },
+   "download_batch": [
+    "AI.PA",
+    "MT.AS",
+    "BNP.PA",
+    "MC.PA",
+    "TTE.PA"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "it_ftsemib": {
+   "tickers": [
+    "ENEL.MI",
+    "RACE.MI",
+    "G.MI",
+    "ISP.MI",
+    "STLAM.MI"
+   ],
+   "info_symbols": {
+    "ENEL.MI": "ENEL.MI",
+    "RACE.MI": "RACE.MI",
+    "G.MI": "G.MI",
+    "ISP.MI": "ISP.MI",
+    "STLAM.MI": "STLAM.MI"
+   },
+   "download_batch": [
+    "ENEL.MI",
+    "RACE.MI",
+    "G.MI",
+    "ISP.MI",
+    "STLAM.MI"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "jp_nikkei225": {
+   "tickers": [
+    "7203",
+    "6758",
+    "9984",
+    "8306",
+    "4502"
+   ],
+   "info_symbols": {
+    "7203": "7203.T",
+    "6758": "6758.T",
+    "9984": "9984.T",
+    "8306": "8306.T",
+    "4502": "4502.T"
+   },
+   "download_batch": [
+    "7203.T",
+    "6758.T",
+    "9984.T",
+    "8306.T",
+    "4502.T"
+   ],
+   "recorded_at": "2026-10-05"
+  },
+  "nl_aex": {
+   "tickers": [
+    "ADYEN.AS",
+    "ASML.AS",
+    "INGA.AS",
+    "PHIA.AS",
+    "SHELL.AS"
+   ],
+   "info_symbols": {
+    "ADYEN.AS": "ADYEN.AS",
+    "ASML.AS": "ASML.AS",
+    "INGA.AS": "INGA.AS",
+    "PHIA.AS": "PHIA.AS",
+    "SHELL.AS": "SHELL.AS"
+   },
+   "download_batch": [
+    "ADYEN.AS",
+    "ASML.AS",
+    "INGA.AS",
+    "PHIA.AS",
+    "SHELL.AS"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "no_obx": {
+   "tickers": [
+    "DNB",
+    "EQNR",
+    "GOGL",
+    "MOWI",
+    "TEL"
+   ],
+   "info_symbols": {
+    "DNB": "DNB.OL",
+    "EQNR": "EQNR.OL",
+    "GOGL": "GOGL.OL",
+    "MOWI": "MOWI.OL",
+    "TEL": "TEL.OL"
+   },
+   "download_batch": [
+    "DNB.OL",
+    "EQNR.OL",
+    "GOGL.OL",
+    "MOWI.OL",
+    "TEL.OL"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "se_omxs30": {
+   "tickers": [
+    "ABB.ST",
+    "AZN.ST",
+    "ERIC-B.ST",
+    "SEB-A.ST",
+    "VOLV-B.ST"
+   ],
+   "info_symbols": {
+    "ABB.ST": "ABB.ST",
+    "AZN.ST": "AZN.ST",
+    "ERIC-B.ST": "ERIC-B.ST",
+    "SEB-A.ST": "SEB-A.ST",
+    "VOLV-B.ST": "VOLV-B.ST"
+   },
+   "download_batch": [
+    "ABB.ST",
+    "AZN.ST",
+    "ERIC-B.ST",
+    "SEB-A.ST",
+    "VOLV-B.ST"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "uk_ftse100": {
+   "tickers": [
+    "AZN",
+    "BT.A",
+    "HSBA",
+    "SHEL",
+    "ULVR"
+   ],
+   "info_symbols": {
+    "AZN": "AZN.L",
+    "BT.A": "BT.A",
+    "HSBA": "HSBA.L",
+    "SHEL": "SHEL.L",
+    "ULVR": "ULVR.L"
+   },
+   "download_batch": [
+    "AZN.L",
+    "BT.A",
+    "HSBA.L",
+    "SHEL.L",
+    "ULVR.L"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  },
+  "us_sp500": {
+   "tickers": [
+    "AAPL",
+    "BRK.B",
+    "KO",
+    "JPM",
+    "MRNA"
+   ],
+   "info_symbols": {
+    "AAPL": "AAPL",
+    "BRK.B": "BRK.B",
+    "KO": "KO",
+    "JPM": "JPM",
+    "MRNA": "MRNA"
+   },
+   "download_batch": [
+    "AAPL",
+    "BRK-B",
+    "KO",
+    "JPM",
+    "MRNA"
+   ],
+   "wikipedia": true,
+   "recorded_at": "2026-10-05"
+  }
+ }
+}

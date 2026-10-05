@@ -130,6 +130,23 @@ data = files.download("raw/2026-10-15/<job id>/us_sp500/yf_fundamentals.parquet"
 
 The free tier holds 1 GB (a run is a few MB); there is no retention rule yet.
 
+### Re-record the real-shaped fixtures
+
+`validate:full` replays recorded yfinance and Wikipedia payloads (`tests/fixtures/real/`, about
+5 tickers per market, listed in `scripts/record_ingestion_fixtures.py`) and compares the mart
+with `golden_mart.csv`. A new market needs an entry there first. To refresh the recordings, run
+all of the below; to accept an intended output change, skip the first (network) line:
+
+```bash
+python scripts/record_ingestion_fixtures.py            # network; --market <code> for one
+python scripts/replay_ingestion_fixtures.py --out-dir /tmp/real-raw
+python scripts/write_ci_dbt_profile.py --path /tmp/real.db --profiles-dir /tmp/real-profiles
+DBT_RAW_PATH=/tmp/real-raw dbt build --project-dir dbt_analytics --profiles-dir /tmp/real-profiles
+python scripts/check_real_fixture_mart.py --duckdb-path /tmp/real.db --write
+```
+
+Review the golden file's diff: every changed line is a card output that moved.
+
 ### Refresh constituents
 
 ```bash

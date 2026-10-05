@@ -37,12 +37,18 @@ local-run folder). Open, owner's: retention if the 1 GB quota is ever approached
 
 **`.mailmap`: MERGED (!229).** Portfolio order complete.
 
-**Six markets in flight on `feat/six-markets`:** fi_omxh25, se_omxs30, dk_omxc25, no_obx,
-ca_tsx60, it_ftsemib (205 constituents). **OPEN until the first production run after merge
-(checklist steps 5-6, full-run half):** confirm each market's eligible count from the run
+**Six markets: MERGED (!230), migration 021 applied (15 `markets` rows, checked live).**
+fi_omxh25, se_omxs30, dk_omxc25, no_obx, ca_tsx60, it_ftsemib. **OPEN until the first
+production run (Oct 15; checklist steps 5-6, full-run half):** confirm each market's eligible count from the run
 (sample estimate: about 22 / 27 / 20 / 24 / 51 / 30; Denmark sits at the 20-card warn
 line), and that Kojamo (KOJAMO.HE, no Yahoo data) and Golden Ocean (GOGL.OL, merged into
 CMB.Tech, stale on Wikipedia) dropped out by eligibility as expected.
+
+**Real-shaped fixtures in flight on `feat/real-shaped-fixtures`:** recorded yfinance/Wikipedia
+payloads (5 tickers per market) replayed offline in `validate:full` through the real ingestion
+code and dbt, compared with a golden mart. Found two production defects, filed: #38 (Berkshire,
+Brown-Forman, BT Group have no cards: dotted class shares get no fundamentals) and #39 (DAX
+page now gives suffixed tickers; a refresh would re-key every DAX card -- owner decision).
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
@@ -225,7 +231,7 @@ fill floor (!126), the AI read's labels and rendering (!129). The learn panel's 
 
 Nine markets active and run in production: US S&P 500, UK FTSE 100, Japan Nikkei 225,
 Australia ASX 200, Germany DAX, France CAC 40, Netherlands AEX, Switzerland SMI, Spain
-IBEX 35. Six more onboarded on `feat/six-markets` (see In flight), not yet run. **Read `docs/data_contract.md`'s market activation checklist
+IBEX 35. Six more merged (!230), first production run Oct 15 (see In flight). **Read `docs/data_contract.md`'s market activation checklist
 before onboarding any of them** (the `onboard-market` skill routes there); it carries the
 procedure and two traps no other doc holds (Wikipedia rejecting pandas' default user agent;
 `table_index` being positional and silently wrong rather than erroring).
