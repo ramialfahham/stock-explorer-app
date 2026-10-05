@@ -113,14 +113,16 @@ setup step and the `dev-schema-check` CI button.
 
 ### Read the raw archive
 
-Supabase dashboard → Storage → `raw-archive` → `raw/<run date>/<market_code>/`, or in Python
-with the service role key:
+Supabase dashboard → Storage → `raw-archive` → `raw/<run date>/<job id>/<market_code>/`, or
+in Python with the service role key. The job id is the `data-pipeline` job that ran; with
+several runs on one date, the highest id is the latest run, and it fed the cards only if
+that job got past the export step.
 
 ```python
 from supabase import create_client
 files = create_client(url, service_role_key).storage.from_("raw-archive")
-files.list("raw/2026-10-15/us_sp500")
-data = files.download("raw/2026-10-15/us_sp500/yf_fundamentals.parquet")  # bytes
+files.list("raw/2026-10-15")  # one folder per job id
+data = files.download("raw/2026-10-15/<job id>/us_sp500/yf_fundamentals.parquet")  # bytes
 ```
 
 The free tier holds 1 GB (a run is a few MB); there is no retention rule yet.
@@ -207,9 +209,8 @@ python scripts/check_pipeline_completeness.py --duckdb-path storage/stock_data.d
 ### Pipeline failed on the raw archive
 
 The job fails at its last step with "Raw archive upload failed"; the cards WERE refreshed.
-The cause is on the `Raw archive FAILED:` line after ingestion. Re-run `data-pipeline` the
-same UTC day to archive that day's inputs (files already archived are kept); a later run
-cannot recover them.
+The cause is on the `Raw archive FAILED:` line after ingestion. Retrying the job ingests and
+archives again into its own job-id folder; the failed run's inputs cannot be recovered.
 
 ### Registry / dbt var drift
 
