@@ -33,10 +33,10 @@ fails the job at its end. First real archive: the next scheduled run (1st/15th) 
 bucket after it. Follow-ups: #32 (test, docs), #33 (owner decisions: completion marker,
 local-run folder). Open, owner's: retention if the 1 GB quota is ever approached.
 
-**README product-first in flight on `docs/readme-product-first`** (owner approved five
-changes: setup moved below the product funnel, raw archive in the diagram and design
-decisions, a "For contributors" group, the stale `ci-validate` line). Next in the portfolio
-order: `.mailmap`.
+**README product-first: MERGED (!228).** Product funnel first, setup after it.
+
+**`.mailmap` in flight on `chore/mailmap`.** Owner: canonical identity
+`Rami Al-Fahham <rami.fahham@googlemail.com>`. Last item of the portfolio order.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
@@ -44,7 +44,7 @@ order: `.mailmap`.
 `current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
 
 **Owner's portfolio order, each needs its own go:** raw-data archive (merged),
-README product-first (in flight), `.mailmap`. DECLINED: revenue-growth fallback (MVP); incremental
+README product-first (merged), `.mailmap` (in flight). DECLINED: revenue-growth fallback (MVP); incremental
 dbt models (ephemeral DuckDB, nothing to increment from). Hard constraint: zero cost.
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
