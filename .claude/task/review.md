@@ -1,41 +1,40 @@
 # Review
 
-diff_sha256: 70bf0552fc08705f753fe0e2a816598705c1ed4acdd50229130e54f16b208d74
-rounds: 2
+diff_sha256: eaecb2a7fcc4b301ec3b098ae59f97275711113e856146bd2c07fd4b7c011678
+rounds: 3
 
 Six markets (fi_omxh25, se_omxs30, dk_omxc25, no_obx, ca_tsx60, it_ftsemib). Round 1 on the
 cumulative diff (tree 6408cf9): data-engineer and scope-auditor PASS, analytics-engineer and
-platform FAIL [broken-guarantee] (unpinned overrides; a missing-cell test that could not fail).
-Round 2 on the delta (tree d8c57b4) plus the contract's `regression_checklist`: all four PASS.
-Detail in `contract.md`'s amendments.
+platform FAIL [broken-guarantee], fixed. Round 2 on the delta (tree d8c57b4): all four PASS,
+committed. Round 3 on the delta for the owner's Nordea and legal-ending decisions (tree
+6ffc46e): analytics-engineer, platform and scope-auditor PASS; data-engineer not re-dispatched
+(no file in its territory changed since its round-2 PASS). Detail in `contract.md`'s amendments.
 
 Coordinator evidence: `pytest tests` 1012 passed; fixture `dbt build` PASS=150;
-`check_eligibility_baseline.py` against the CI baseline exit 0; `check_registry_var_sync.py`
-OK (15 markets); `check_company_names_vs_yfinance.py` no mismatches; pre-commit on all files
-passes (check-json skipped locally: a Windows application-control policy blocks it; CI runs
-it). Follow-ups filed: #34, #35, #36.
+`check_company_names_vs_yfinance.py` no mismatches; earlier rounds also ran the CI eligibility
+baseline and registry sync checks (both OK). Follow-ups filed: #34, #35, #36, #37.
 
 ## analytics-engineer-reviewer
 
-Round 1 FAIL (tree 6408cf9). Round 2:
+Round 1 FAIL, round 2 PASS. Round 3:
 
 VERDICT: PASS
-reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
+reviewed_tree: 6ffc46eed6de54ae7bc311c1c7464c7b378e0d3b
 risks_checked:
-- The 7 ticker overrides are pinned by exact pairs, and the Toronto-suffix test over the real
-  ca_tsx60 seed fails on a missing override.
-- The se/fi/dk headline overrides are pinned by exact ticker sets; no data row changed.
+- The 7 new headline rows are keyed on the tickers dbt joins on (NDA-DK.CO after
+  ticker_overrides); no duplicate keys, no grain or ticker-mapping change.
+- The pin test covers the 7 rows by exact set; the target test now checks post-override
+  tickers.
 
 ## platform-reviewer
 
-Round 1 FAIL (tree 6408cf9). Round 2:
+Round 1 FAIL, round 2 PASS. Round 3:
 
 VERDICT: PASS
-reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
+reviewed_tree: 6ffc46eed6de54ae7bc311c1c7464c7b378e0d3b
 risks_checked:
-- `test_clean_ticker_turns_a_missing_cell_into_an_empty_string` fails if `fillna("")` is
-  reverted; the write test asserts the exact written tickers.
-- `_CURRENCY_WORDS` additions are whole-word matches, test-side only; no CI or cost change.
+- Reverting the target test to the raw seed fails on NDA-DK.CO.
+- The delta is append-only to the overrides seed; the nine existing markets are untouched.
 
 ## data-engineer-reviewer
 
@@ -50,10 +49,11 @@ risks_checked:
 
 ## scope-auditor
 
-Round 1 PASS (tree 6408cf9). Round 2:
+Round 1 and 2 PASS. Round 3:
 
 VERDICT: PASS
-reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
+reviewed_tree: 6ffc46eed6de54ae7bc311c1c7464c7b378e0d3b
 risks_checked:
-- Exact-set and exact-pair pins catch a dropped or extra override row.
-- Missing-cell handling is tested at `_clean_ticker` and at the writer.
+- The 7 rows implement exactly the owner's Nordea and Nordic legal-ending decisions, keyed
+  on real tickers.
+- The target-test change is needed for the Nordea Copenhagen row and matches dbt's join.

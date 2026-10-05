@@ -851,7 +851,8 @@ def _override_rows() -> list[dict]:
 
 
 def test_company_name_overrides_target_real_constituents() -> None:
-    """Every override row must correct a ticker that actually exists in the seed it targets.
+    """Every override row must correct a ticker that actually exists in the seed it targets,
+    in the form dbt joins on: after `ticker_overrides`, as `load_constituents` returns it.
 
     This is a plain-file check, not a dbt one, on purpose: CI's `dbt build` runs against a
     synthetic fixture database that seeds every market with the same handful of made-up
@@ -868,7 +869,7 @@ def test_company_name_overrides_target_real_constituents() -> None:
         if not _seed_path(market_code).exists():
             offenders.append(f"{market_code}/{row['ticker']}: no such market seed")
             continue
-        real_tickers = {r["ticker"] for r in _seed_rows(market_code)}
+        real_tickers = set(load_constituents(market_code)["ticker"])
         if row["ticker"] not in real_tickers:
             offenders.append(
                 f"{market_code}/{row['ticker']}: not in the current seed (renumbered or removed?)"
@@ -926,18 +927,20 @@ def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
 
 
 def test_company_name_overrides_cover_the_nordic_headline_decision() -> None:
-    """Pins the owner's decision that Nordic headlines drop the share-class letter (Maersk
-    excepted, both its classes being OMXC25 members), plus Kalmar's mid-name Wikipedia marker,
-    Tieto's rename and the Carlsberg/Rockwool plain names."""
+    """Pins the owner's decisions on Nordic headlines: the share-class letter is dropped (Maersk
+    excepted, both its classes being OMXC25 members), the legal-form ending is dropped (ABB,
+    the Norwegian ASA/Limited names), and Nordea reads "Nordea" on all three cards. Plus
+    Kalmar's mid-name Wikipedia marker, Tieto's rename and the Carlsberg/Rockwool plain names."""
     expected = {
         "se_omxs30": {
             "ADDT-B.ST", "ASSA-B.ST", "ATCO-A.ST", "EPI-A.ST", "ERIC-B.ST", "ESSITY-B.ST",
             "HEXA-B.ST", "HM-B.ST", "INDU-C.ST", "INVE-B.ST", "LIFCO-B.ST", "NIBE-B.ST",
             "SAAB-B.ST", "SCA-B.ST", "SEB-A.ST", "SHB-A.ST", "SKA-B.ST", "SKF-B.ST",
-            "SWED-A.ST", "TEL2-B.ST", "VOLV-B.ST",
+            "SWED-A.ST", "TEL2-B.ST", "VOLV-B.ST", "NDA-SE.ST", "ABB.ST",
         },
         "fi_omxh25": {"KESKOB.HE", "SAMPO.HE", "STERV.HE", "KALMAR.HE", "TIETO.HE"},
-        "dk_omxc25": {"CARL-B", "ROCK-B"},
+        "dk_omxc25": {"CARL-B", "ROCK-B", "NDA-DK.CO"},
+        "no_obx": {"HAFNI", "HAUTO", "TGS", "VAR"},
     }
     for market_code, tickers in expected.items():
         covered = {r["ticker"] for r in _override_rows() if r["market_code"] == market_code}

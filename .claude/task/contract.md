@@ -47,6 +47,9 @@ decisions_reserved: settled by the owner before implementation --
   SEK, DKK, NOK bare ISO codes (the rule recorded beside `_CURRENCY_SYMBOLS`). Headlines
   (in-thread, option A): Nordic headlines drop the share-class letter, except A.P.
   Moller-Maersk, whose A and B classes are both OMXC25 members.
+  After round 2 (in-thread): `--max-reads` stays unset for the first run; all three Nordea
+  cards read "Nordea"; Nordic headlines also drop the legal-form ending (ABB, the Norwegian
+  ASA/Limited names), while Canada keeps "Inc."/"Limited" like the US and Australia.
   Taken by the builder within those decisions, flagged to the owner in the MR: market codes
   follow the existing `<country>_<index>` pattern; display names are the indices' common
   names; Carlsberg and Rockwool show their plain company names (seed gave "Carlsberg Group"
@@ -78,3 +81,6 @@ amendments:
     the se/fi/dk headline overrides, a `_clean_ticker` missing-cell test that fails on the old
     line. Wording fixes applied (incl. `_seeds.yml`, added to scope for it); `_CURRENCY_WORDS`
     gains krona/kronor/krone/kroner (platform follow-up, in scope). Other follow-ups filed.
+  - Round 2 (delta): all four PASS. Then the owner's Nordea and legal-ending decisions: 7
+    headline rows, the pin test extended, and the name-override target test now checks the
+    ticker after ticker_overrides (the key dbt joins on; the Nordea Copenhagen row needs it).
