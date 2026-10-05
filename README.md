@@ -28,6 +28,96 @@ and in one product feature.
   <img src="docs/media/discover-card-4.PNG" width="220" alt="An opened card: profitability, growth, and solvency metrics shown against the sector range">
 </p>
 
+## Architecture
+
+The durable core is a batch data pipeline; the UI is a deliberately thin, swappable
+layer that reads a clean data contract out of Supabase.
+
+```mermaid
+flowchart TD
+    subgraph core["Data pipeline -- runs automatically on a schedule"]
+        direction TB
+        A["Yahoo Finance<br/>company financial data"] --> B["Fetch & save<br/>the raw numbers"]
+        B --> R[("Supabase Storage<br/>keeps every run's raw inputs")]
+        B --> C["dbt<br/>cleans the data & calculates the metrics"]
+        C --> D["Completeness check<br/>a company only shows up once its data is complete"]
+        D --> E[("Supabase database<br/>stores the finished cards")]
+        D --> H["Claude AI<br/>writes each card's plain-language summary"]
+        H --> E
+    end
+    E -->|"the app reads the finished cards"| F
+    subgraph ui["The app -- what you actually see"]
+        direction TB
+        F["Streamlit<br/>browse, filter, save companies"]
+    end
+    G["GitLab CI<br/>runs the pipeline on a schedule"] -.triggers.-> core
+```
+
+Nothing runs on a developer machine in production — the pipeline is scheduled in CI and
+the app reads only the exported marts.
+
+## Highlights
+
+- **Fundamentals as beginner snapshots** — one company at a time, plain-language gloss on
+  each metric, with optional depth via progressive disclosure.
+- **AI-written health reads** -- Claude Haiku turns each card's own numbers into a 2-3
+  sentence plain-language read, citation-checked against the card's real figures before it
+  ships; a deterministic fallback line covers the gap when a read is pending or the model
+  call fails, never a blank card.
+- **Per-company-type eligibility contract**: a company enters the pool only when all
+  its headline fundamentals for its type are present; no fallbacks or substitute
+  proxies, because incomplete data erodes trust.
+- **Registry-driven markets** — the active market set lives in
+  [`docs/market_registry.yml`](docs/market_registry.yml), not hard-coded.
+- **Filter, then browse**: a paginated list of every match, each row showing one metric
+  that's a core, verdict-deciding axis for that company type's own verdict rule
+  ([`card_copy.py`](frontend/card_copy.py)'s `lead_metric_for_row`), not an arbitrary pick.
+- **Automated scheduled refresh** — ingestion → dbt → export runs on schedule in GitLab
+  CI (1st and 15th of each month), gated by dbt tests, a layer contract, and secret scanning.
+
+## Design decisions
+
+The reasoning and trade-offs behind the core — deeper context lives in
+[`docs/`](docs/) and is linked, not restated.
+
+- **Data source — yfinance, batch, not real-time.** Free and broad, with no API key, at
+  the cost of being unofficial and occasionally gappy. The pipeline refreshes every two
+  weeks and the app never shows a live quote; the eligibility gate absorbs missing fields rather
+  than papering over them. See [`docs/project_context.md`](docs/project_context.md).
+- **Transform on ephemeral DuckDB.** dbt builds against a throwaway DuckDB in CI — no
+  warehouse to run or pay for, fast local iteration — then exports the finished marts to
+  Supabase, which holds the only durable state. Layer rules:
+  [`docs/layering.md`](docs/layering.md).
+- **Raw inputs are archived, not just the results.** yfinance's company data is
+  point-in-time and older statement periods roll off, so every run's raw files go to private
+  Supabase Storage before the transform. Metric formulas change often, and the archive keeps
+  past snapshots auditable.
+- **Eligibility as a first-class contract.** Rather than filling gaps with proxies, a
+  company is simply absent until complete. Fewer, trustworthy cards over more, shaky ones.
+  See [`docs/data_contract.md`](docs/data_contract.md).
+- **A thin, swappable frontend.** Streamlit was chosen for fast prototype iteration, and
+  the UI is intentionally decoupled — it consumes the Supabase card marts through a stable
+  data contract, so it can be replaced (a different framework, another language) without
+  touching the engine. The frontend is treated as the least permanent part of the system.
+- **The AI read is a soft dependency, not a blocker.** `ANTHROPIC_API_KEY` is optional --
+  without it the deterministic health verdict still ships, just without the prose read.
+  Every generated read is checked against the card's own numbers before it's accepted; a
+  `--max-reads` flag exists to cap new-call volume per run, since the read step is the
+  pipeline's single biggest runtime cost otherwise.
+- **No accounts in v1.** The saved list persists in a browser cookie. Zero signup
+  friction and no personal data to hold, traded against no cross-device sync — deferred,
+  not designed out (the `user_interactions` table is reserved for it).
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Ingestion | Python + yfinance |
+| Transform | dbt-core + dbt-duckdb (ephemeral DuckDB) |
+| AI read | Claude Haiku (Anthropic API) -- per-card verdict + plain-language prose |
+| Warehouse | Supabase (Postgres) |
+| Frontend | Streamlit on Render (prototype -- swappable) |
+
 ## Getting started
 
 ### Prerequisites
@@ -95,92 +185,9 @@ python scripts/export_to_supabase.py
 
 Markets, constituents and migrations: [`docs/operations_guide.md`](docs/operations_guide.md).
 
-## Architecture
+## For contributors
 
-The durable core is a batch data pipeline; the UI is a deliberately thin, swappable
-layer that reads a clean data contract out of Supabase.
-
-```mermaid
-flowchart TD
-    subgraph core["Data pipeline -- runs automatically on a schedule"]
-        direction TB
-        A["Yahoo Finance<br/>company financial data"] --> B["Fetch & save<br/>the raw numbers"]
-        B --> C["dbt<br/>cleans the data & calculates the metrics"]
-        C --> D["Completeness check<br/>a company only shows up once its data is complete"]
-        D --> E[("Supabase database<br/>stores the finished cards")]
-        D --> H["Claude AI<br/>writes each card's plain-language summary"]
-        H --> E
-    end
-    E -->|"the app reads the finished cards"| F
-    subgraph ui["The app -- what you actually see"]
-        direction TB
-        F["Streamlit<br/>browse, filter, save companies"]
-    end
-    G["GitLab CI<br/>runs the pipeline on a schedule"] -.triggers.-> core
-```
-
-Nothing runs on a developer machine in production — the pipeline is scheduled in CI and
-the app reads only the exported marts.
-
-## Highlights
-
-- **Fundamentals as beginner snapshots** — one company at a time, plain-language gloss on
-  each metric, with optional depth via progressive disclosure.
-- **AI-written health reads** -- Claude Haiku turns each card's own numbers into a 2-3
-  sentence plain-language read, citation-checked against the card's real figures before it
-  ships; a deterministic fallback line covers the gap when a read is pending or the model
-  call fails, never a blank card.
-- **Per-company-type eligibility contract**: a company enters the pool only when all
-  its headline fundamentals for its type are present; no fallbacks or substitute
-  proxies, because incomplete data erodes trust.
-- **Registry-driven markets** — the active market set lives in
-  [`docs/market_registry.yml`](docs/market_registry.yml), not hard-coded.
-- **Filter, then browse**: a paginated list of every match, each row showing one metric
-  that's a core, verdict-deciding axis for that company type's own verdict rule
-  ([`card_copy.py`](frontend/card_copy.py)'s `lead_metric_for_row`), not an arbitrary pick.
-- **Automated scheduled refresh** — ingestion → dbt → export runs on schedule in GitLab
-  CI (1st and 15th of each month), gated by dbt tests, a layer contract, and secret scanning.
-
-## Design decisions
-
-The reasoning and trade-offs behind the core — deeper context lives in
-[`docs/`](docs/) and is linked, not restated.
-
-- **Data source — yfinance, batch, not real-time.** Free and broad, with no API key, at
-  the cost of being unofficial and occasionally gappy. The pipeline refreshes every two
-  weeks and the app never shows a live quote; the eligibility gate absorbs missing fields rather
-  than papering over them. See [`docs/project_context.md`](docs/project_context.md).
-- **Transform on ephemeral DuckDB.** dbt builds against a throwaway DuckDB in CI — no
-  warehouse to run or pay for, fast local iteration — then exports the finished marts to
-  Supabase, which holds the only durable state. Layer rules:
-  [`docs/layering.md`](docs/layering.md).
-- **Eligibility as a first-class contract.** Rather than filling gaps with proxies, a
-  company is simply absent until complete. Fewer, trustworthy cards over more, shaky ones.
-  See [`docs/data_contract.md`](docs/data_contract.md).
-- **A thin, swappable frontend.** Streamlit was chosen for fast prototype iteration, and
-  the UI is intentionally decoupled — it consumes the Supabase card marts through a stable
-  data contract, so it can be replaced (a different framework, another language) without
-  touching the engine. The frontend is treated as the least permanent part of the system.
-- **The AI read is a soft dependency, not a blocker.** `ANTHROPIC_API_KEY` is optional --
-  without it the deterministic health verdict still ships, just without the prose read.
-  Every generated read is checked against the card's own numbers before it's accepted; a
-  `--max-reads` flag exists to cap new-call volume per run, since the read step is the
-  pipeline's single biggest runtime cost otherwise.
-- **No accounts in v1.** The saved list persists in a browser cookie. Zero signup
-  friction and no personal data to hold, traded against no cross-device sync — deferred,
-  not designed out (the `user_interactions` table is reserved for it).
-
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Ingestion | Python + yfinance |
-| Transform | dbt-core + dbt-duckdb (ephemeral DuckDB) |
-| AI read | Claude Haiku (Anthropic API) -- per-card verdict + plain-language prose |
-| Warehouse | Supabase (Postgres) |
-| Frontend | Streamlit on Render (prototype -- swappable) |
-
-## Project layout
+### Project layout
 
 ```
 stock-explorer-app/
@@ -207,7 +214,7 @@ stock-explorer-app/
 └── .env.example               # Copy to .env for Supabase credentials
 ```
 
-## Standards (non-negotiable)
+### Standards (non-negotiable)
 
 Agent process / guardrails: [`CLAUDE.md`](CLAUDE.md) -> [`.claude/working-agreement.md`](.claude/working-agreement.md); hooks and reviewer roles live in `.claude/`.
 
@@ -221,10 +228,10 @@ Stock-specific extensions:
 
 - [`docs/project_context.md`](docs/project_context.md) — markets, DuckDB, ingestion, Supabase export
 
-## Project conventions
+### Project conventions
 
 - No business logic in ingestion — raw fields only
 - All credentials via `.env` + python-dotenv
 - dbt layers: `1_staging/` → `2_base/` → `3_core/` → `4_intermediate/` → `5_marts/`
 - Never commit `.env` or `profiles.yml`
-- Every PR must pass `ci-validate`
+- Every merge request must pass the `validate` stage in GitLab CI
