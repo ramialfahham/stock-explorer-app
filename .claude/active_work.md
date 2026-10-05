@@ -22,20 +22,23 @@ one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is R
 `powershell_git_guard.py`, GitLab `main` push set to "No one". Follow-up: issue #29
 (further bypass spellings, low priority).
 
-**Issue #30 in flight on `fix/review-converge`:** review rounds converge (delta review after
-round 1, `known_limits:`, graded FAIL, frozen diff per round, fixed exit past the round cap).
-Owner chose FAIL criteria option A (false block, broken guarantee, design problem) and a
-round cap of 3; from round 3, a `CPO ANSWER:` followed in its paragraph by the follow-up
-issue `#N` lets remaining FAILs through (gate change). Four reviewer files in scope;
-`equity-analyst-reviewer.md` left out, follow-up issue #31.
+**Review rounds converge: MERGED (!225, issue #30).** Delta review after round 1, graded
+FAIL, frozen diff per round, fixed exit at the round cap (3). Follow-up: issue #31
+(equity-analyst reviewer's FAIL grounds).
+
+**Issue #25 (raw-data archive) in flight on `feat/raw-archive`.** Owner: go; upload with the
+existing service-role key (no S3 key, no new CI variable); an archive failure lets the cards
+refresh and fails the `data-pipeline` job at its end. Open, owner's: retention if the 1 GB
+quota is ever approached. Then the rest of the portfolio order: README product-first,
+`.mailmap`.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
 **Stale-card eviction: MERGED (!216), verified live.** Migration 020 applied by CI; the
 `current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
 
-**Owner's portfolio order, each needs its own go:** raw-data archive (issue #25, awaiting
-go), README product-first, `.mailmap`. DECLINED: revenue-growth fallback (MVP); incremental
+**Owner's portfolio order, each needs its own go:** raw-data archive (issue #25, in
+flight), README product-first, `.mailmap`. DECLINED: revenue-growth fallback (MVP); incremental
 dbt models (ephemeral DuckDB, nothing to increment from). Hard constraint: zero cost.
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s

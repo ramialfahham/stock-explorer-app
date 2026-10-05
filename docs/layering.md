@@ -16,7 +16,11 @@ Use it together with `engineering_standards.md`.
 | `2_base`         | `models/2_base/`       | view   | Cross-source union and dedup |
 | `3_core`         | `models/3_core/`       | table  | Canonical dims and facts |
 | `4_intermediate` | `models/4_intermediate/` | table | Complex logic for marts |
-| `5_marts`        | `models/5_marts/`      | table or view | Consumption layer |
+| `5_marts`        | `models/5_marts/`      | table  | Consumption layer |
+
+Every run rebuilds every model from the raw parquet on an ephemeral DuckDB, so no model is
+incremental: there is no earlier state to increment from. Past raw inputs live in the raw
+archive ([`project_context.md`](project_context.md) § Ingestion contract).
 
 ---
 
