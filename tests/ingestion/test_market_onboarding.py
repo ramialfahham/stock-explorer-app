@@ -26,7 +26,7 @@ import pytest
 import yaml
 
 from ingestion.constituents.seeds import load_constituents
-from ingestion.registry import get_market
+from ingestion.registry import get_market, load_markets
 from ingestion.yfinance.symbols import to_yfinance_ticker
 
 REPO = Path(__file__).resolve().parents[2]
@@ -1027,6 +1027,37 @@ def test_every_ca_tsx60_symbol_carries_the_toronto_suffix() -> None:
     symbols = [to_yfinance_ticker(t, market.exchange_suffix)
                for t in load_constituents("ca_tsx60")["ticker"]]
     assert [s for s in symbols if not s.endswith(".TO")] == []
+
+
+@pytest.mark.parametrize("market_code", _active_codes())
+def test_no_symbol_carries_a_dot_that_is_not_an_exchange_suffix(market_code: str) -> None:
+    """A dotted class share (BRK.B, BT.A) passes `to_yfinance_ticker` unchanged and Yahoo
+    returns no fundamentals for it (for BT.A no prices either), so the company silently never
+    gets a card (issue #38). A resolved symbol with a dot must end in some registry exchange
+    suffix (MT.AS in the CAC 40 is Amsterdam's); anything else needs a ticker_overrides.csv row."""
+    suffixes = {m.exchange_suffix for m in load_markets(active_only=True) if m.exchange_suffix}
+    market = get_market(market_code)
+    stray = [
+        symbol
+        for symbol in (to_yfinance_ticker(t, market.exchange_suffix)
+                       for t in load_constituents(market_code)["ticker"])
+        if "." in symbol and not any(symbol.endswith(s) for s in suffixes)
+    ]
+    assert stray == []
+
+
+def test_ticker_overrides_cover_the_us_and_uk_class_shares() -> None:
+    expected = {
+        ("us_sp500", "BRK.B"): "BRK-B",
+        ("us_sp500", "BF.B"): "BF-B",
+        ("uk_ftse100", "BT.A"): "BT-A.L",
+    }
+    found = {
+        (r["market_code"], r["ticker"]): r["corrected_ticker"]
+        for r in _ticker_override_rows()
+        if r["market_code"] in {"us_sp500", "uk_ftse100"}
+    }
+    assert expected.items() <= found.items()
 
 
 def test_load_constituents_applies_the_au_asx200_ticker_override() -> None:
