@@ -138,7 +138,7 @@ with `golden_mart.csv`. A new market needs an entry there first. To refresh the 
 all of the below; to accept an intended output change, skip the first (network) line:
 
 ```bash
-python scripts/record_ingestion_fixtures.py            # network; --market <code> for one
+python scripts/record_ingestion_fixtures.py  # network; --market us_sp500 / --ticker us_sp500:BRK-B
 python scripts/replay_ingestion_fixtures.py --out-dir /tmp/real-raw
 python scripts/write_ci_dbt_profile.py --path /tmp/real.db --profiles-dir /tmp/real-profiles
 DBT_RAW_PATH=/tmp/real-raw dbt build --project-dir dbt_analytics --profiles-dir /tmp/real-profiles

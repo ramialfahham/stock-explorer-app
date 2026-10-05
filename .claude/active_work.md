@@ -44,11 +44,15 @@ production run (Oct 15; checklist steps 5-6, full-run half):** confirm each mark
 line), and that Kojamo (KOJAMO.HE, no Yahoo data) and Golden Ocean (GOGL.OL, merged into
 CMB.Tech, stale on Wikipedia) dropped out by eligibility as expected.
 
-**Real-shaped fixtures in flight on `feat/real-shaped-fixtures`:** recorded yfinance/Wikipedia
-payloads (5 tickers per market) replayed offline in `validate:full` through the real ingestion
-code and dbt, compared with a golden mart. Found two production defects, filed: #38 (Berkshire,
-Brown-Forman, BT Group have no cards: dotted class shares get no fundamentals) and #39 (DAX
-page now gives suffixed tickers; a refresh would re-key every DAX card -- owner decision).
+**Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads (5 tickers
+per market) through ingestion and dbt and compares the mart with a golden file (matched on
+CI's Linux runner). Open: #39 (DAX page now gives suffixed tickers; owner decision on the
+form), #40 (follow-ups; owner: sector-benchmark sample size, em-dash rule on fixture data).
+
+**Issue #38 in flight on `fix/class-share-tickers`:** BRK.B, BF.B, BT.A get ticker overrides
+to Yahoo's form (owner: option B, overrides not code); a guard test fails CI on any future
+dot that is not an exchange suffix. Berkshire and BT Group are proven in the fixtures; Brown-
+Forman only resolves -- confirm all three cards after the first run after merge.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 

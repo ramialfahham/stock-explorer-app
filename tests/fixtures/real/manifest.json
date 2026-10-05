@@ -327,21 +327,21 @@
   "uk_ftse100": {
    "tickers": [
     "AZN",
-    "BT.A",
+    "BT-A.L",
     "HSBA",
     "SHEL",
     "ULVR"
    ],
    "info_symbols": {
     "AZN": "AZN.L",
-    "BT.A": "BT.A",
+    "BT-A.L": "BT-A.L",
     "HSBA": "HSBA.L",
     "SHEL": "SHEL.L",
     "ULVR": "ULVR.L"
    },
    "download_batch": [
     "AZN.L",
-    "BT.A",
+    "BT-A.L",
     "HSBA.L",
     "SHEL.L",
     "ULVR.L"
@@ -352,14 +352,14 @@
   "us_sp500": {
    "tickers": [
     "AAPL",
-    "BRK.B",
+    "BRK-B",
     "KO",
     "JPM",
     "MRNA"
    ],
    "info_symbols": {
     "AAPL": "AAPL",
-    "BRK.B": "BRK.B",
+    "BRK-B": "BRK-B",
     "KO": "KO",
     "JPM": "JPM",
     "MRNA": "MRNA"
