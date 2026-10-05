@@ -57,7 +57,9 @@ def _fetch_wikipedia_table(url: str, table_index: int) -> pd.DataFrame:
         timeout=30,
     )
     response.raise_for_status()
-    tables = pd.read_html(StringIO(response.text), flavor="lxml")
+    # keep_default_na=False: pandas otherwise reads the ticker "NA" (National Bank of Canada)
+    # as a missing value, and the constituent vanishes.
+    tables = pd.read_html(StringIO(response.text), flavor="lxml", keep_default_na=False)
     if table_index >= len(tables):
         raise IndexError(f"table_index {table_index} out of range (found {len(tables)} tables)")
     return tables[table_index]

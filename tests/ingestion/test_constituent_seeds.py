@@ -167,3 +167,67 @@ def test_load_ticker_overrides_raises_a_clear_error_for_the_wrong_columns(
     monkeypatch.setattr(seeds, "TICKER_OVERRIDES_PATH", path)
     with pytest.raises(ValueError, match="missing columns"):
         seeds._load_ticker_overrides()
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("OSE: EQNR", "EQNR"),
+        ("MAERSK B", "MAERSK-B"),
+        ("  NOVO B  ", "NOVO-B"),
+        ("NA", "NA"),
+        ("CTC.A", "CTC.A"),
+        ("ERIC-B.ST", "ERIC-B.ST"),
+        ("7203", "7203"),
+    ],
+)
+def test_clean_ticker(raw: str, expected: str) -> None:
+    assert seeds._clean_ticker(pd.Series([raw])).tolist() == [expected]
+
+
+def test_clean_ticker_turns_a_missing_cell_into_an_empty_string() -> None:
+    missing = pd.Series([float("nan"), None], dtype=object)
+    assert seeds._clean_ticker(missing).tolist() == ["", ""]
+
+
+def test_write_constituents_drops_a_missing_ticker(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(seeds, "seed_path", lambda code: tmp_path / code / "constituents.csv")
+    seeds.write_constituents(
+        "ca_tsx60",
+        pd.Series(["AEM", float("nan"), "NA"], dtype=object),
+        pd.Series(["Agnico Eagle", None, "National Bank of Canada"], dtype=object),
+        source="wikipedia",
+    )
+    written = pd.read_csv(tmp_path / "ca_tsx60" / "constituents.csv", na_filter=False)
+    assert written["ticker"].tolist() == ["AEM", "NA"]
+
+
+def test_load_constituents_keeps_the_ticker_na(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "constituents.csv"
+    path.write_text(
+        "market_code,ticker,company_name,refreshed_at,source\n"
+        "ca_tsx60,NA,National Bank of Canada,2026-10-05T00:00:00+00:00,wikipedia\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    monkeypatch.setattr(seeds, "TICKER_OVERRIDES_PATH", tmp_path / "does_not_exist.csv")
+    assert seeds.load_constituents("ca_tsx60")["ticker"].tolist() == ["NA"]
+
+
+def test_fetch_wikipedia_table_keeps_the_ticker_na(monkeypatch) -> None:
+    from ingestion.constituents import refresh
+
+    html = (
+        "<table><tr><th>Symbol</th><th>Company</th></tr>"
+        "<tr><td>NA</td><td>National Bank of Canada</td></tr></table>"
+    )
+
+    class _Response:
+        text = html
+
+        def raise_for_status(self) -> None:
+            pass
+
+    monkeypatch.setattr(refresh.requests, "get", lambda *a, **k: _Response())
+    table = refresh._fetch_wikipedia_table("https://example.org", 0)
+    assert table["Symbol"].tolist() == ["NA"]

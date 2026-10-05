@@ -1,0 +1,26 @@
+market_code,ticker,company_name,refreshed_at,source
+dk_omxc25,MAERSK-A,A.P. Møller-Mærsk (class A),2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,MAERSK-B,A.P. Møller-Mærsk (class B),2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,ALSYDB,AL Sydbank,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,AMBU-B,Ambu,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,CARL-B,Carlsberg Group,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,COLO-B,Coloplast,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,DANSKE,Danske Bank,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,DEMANT,Demant,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,DSV,DSV,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,FLS,FLSmidth & Co.,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,GMAB,Genmab,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,GN,GN Store Nord,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,ISS,ISS,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,JYSK,Jyske Bank,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,NKT,NKT,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,NDA,Nordea Bank Abp,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,NOVO-B,Novo Nordisk,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,NSIS-B,Novonesis,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,PNDORA,Pandora,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,ROCK-B,Rockwool International,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,RBREW,Royal Unibrew,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,TRYG,Tryg,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,VWS,Vestas Wind Systems,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,ZEAL,Zealand Pharma,2026-10-05T16:42:58.713774+00:00,wikipedia
+dk_omxc25,ORSTED,Ørsted,2026-10-05T16:42:58.713774+00:00,wikipedia

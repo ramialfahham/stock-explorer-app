@@ -26,6 +26,7 @@ import pytest
 import yaml
 
 from ingestion.constituents.seeds import load_constituents
+from ingestion.registry import get_market
 from ingestion.yfinance.symbols import to_yfinance_ticker
 
 REPO = Path(__file__).resolve().parents[2]
@@ -192,6 +193,32 @@ KNOWN_CROSS_MARKET_COMPANIES: dict[str, tuple[frozenset[str], str]] = {
         "bare ticker IAG (resolving to IAG.L) and es_ibex35 carries IAG.MC, so the resolved "
         "symbols differ and the symbol-keyed guard is blind to the pair. Added by the ES "
         "onboarding.",
+    ),
+    "astrazeneca": (
+        frozenset({"uk_ftse100", "se_omxs30"}),
+        "Listed in London (AZN.L) and Stockholm (AZN.ST), a member of both indices. Added by the "
+        "Nordic onboarding.",
+    ),
+    "abbltd": (
+        frozenset({"ch_smi", "se_omxs30"}),
+        "Listed in Zurich (ABBN.SW) and Stockholm (ABB.ST), a member of both indices. Added by the "
+        "Nordic onboarding.",
+    ),
+    "nordeabankabp": (
+        frozenset({"se_omxs30", "dk_omxc25"}),
+        "Listed in Helsinki, Stockholm and Copenhagen, a member of all three indices: three cards. "
+        "fi_omxh25 names it just \"Nordea\", so this name-keyed guard sees only two of them. Added "
+        "by the Nordic onboarding.",
+    ),
+    "stellantis": (
+        frozenset({"fr_cac40", "it_ftsemib"}),
+        "Listed in Paris (STLAP.PA) and Milan (STLAM.MI), a member of both indices. Added by the "
+        "Italy onboarding.",
+    ),
+    "stmicroelectronics": (
+        frozenset({"fr_cac40", "it_ftsemib"}),
+        "Listed in Paris (STMPA.PA) and Milan (STMMI.MI), a member of both indices. Added by the "
+        "Italy onboarding.",
     ),
     "amcor": (
         frozenset({"us_sp500", "au_asx200"}),
@@ -824,7 +851,8 @@ def _override_rows() -> list[dict]:
 
 
 def test_company_name_overrides_target_real_constituents() -> None:
-    """Every override row must correct a ticker that actually exists in the seed it targets.
+    """Every override row must correct a ticker that actually exists in the seed it targets,
+    in the form dbt joins on: after `ticker_overrides`, as `load_constituents` returns it.
 
     This is a plain-file check, not a dbt one, on purpose: CI's `dbt build` runs against a
     synthetic fixture database that seeds every market with the same handful of made-up
@@ -841,7 +869,7 @@ def test_company_name_overrides_target_real_constituents() -> None:
         if not _seed_path(market_code).exists():
             offenders.append(f"{market_code}/{row['ticker']}: no such market seed")
             continue
-        real_tickers = {r["ticker"] for r in _seed_rows(market_code)}
+        real_tickers = set(load_constituents(market_code)["ticker"])
         if row["ticker"] not in real_tickers:
             offenders.append(
                 f"{market_code}/{row['ticker']}: not in the current seed (renumbered or removed?)"
@@ -898,6 +926,27 @@ def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
     )
 
 
+def test_company_name_overrides_cover_the_nordic_headline_decision() -> None:
+    """Pins the owner's decisions on Nordic headlines: the share-class letter is dropped (Maersk
+    excepted, both its classes being OMXC25 members), the legal-form ending is dropped (ABB,
+    the Norwegian ASA/Limited names), and Nordea reads "Nordea" on all three cards. Plus
+    Kalmar's mid-name Wikipedia marker, Tieto's rename and the Carlsberg/Rockwool plain names."""
+    expected = {
+        "se_omxs30": {
+            "ADDT-B.ST", "ASSA-B.ST", "ATCO-A.ST", "EPI-A.ST", "ERIC-B.ST", "ESSITY-B.ST",
+            "HEXA-B.ST", "HM-B.ST", "INDU-C.ST", "INVE-B.ST", "LIFCO-B.ST", "NIBE-B.ST",
+            "SAAB-B.ST", "SCA-B.ST", "SEB-A.ST", "SHB-A.ST", "SKA-B.ST", "SKF-B.ST",
+            "SWED-A.ST", "TEL2-B.ST", "VOLV-B.ST", "NDA-SE.ST", "ABB.ST",
+        },
+        "fi_omxh25": {"KESKOB.HE", "SAMPO.HE", "STERV.HE", "KALMAR.HE", "TIETO.HE"},
+        "dk_omxc25": {"CARL-B", "ROCK-B", "NDA-DK.CO"},
+        "no_obx": {"HAFNI", "HAUTO", "TGS", "VAR"},
+    }
+    for market_code, tickers in expected.items():
+        covered = {r["ticker"] for r in _override_rows() if r["market_code"] == market_code}
+        assert covered == tickers, f"{market_code}: expected {sorted(tickers)}, found {sorted(covered)}"
+
+
 TICKER_OVERRIDES = REPO / "dbt_analytics" / "seeds" / "ticker_overrides.csv"
 
 
@@ -948,6 +997,36 @@ def test_ticker_overrides_covers_the_known_au_asx200_defect() -> None:
     rows = [r for r in _ticker_override_rows() if r["market_code"] == "au_asx200"]
     assert [r["ticker"] for r in rows] == ["XYX"]
     assert rows[0]["corrected_ticker"] == "XYZ"
+
+
+def test_ticker_overrides_cover_the_nordic_and_canadian_yahoo_forms() -> None:
+    """Pins the seven corrections the six-market batch needs. Without them the six Canadian
+    class/unit shares are fetched with no exchange suffix and Nordea's Copenhagen line as
+    NDA.CO, all of which return nothing."""
+    expected = {
+        ("ca_tsx60", "CTC.A"): "CTC-A.TO",
+        ("ca_tsx60", "CCL.B"): "CCL-B.TO",
+        ("ca_tsx60", "GIB.A"): "GIB-A.TO",
+        ("ca_tsx60", "RCI.B"): "RCI-B.TO",
+        ("ca_tsx60", "TECK.B"): "TECK-B.TO",
+        ("ca_tsx60", "BIP.UN"): "BIP-UN.TO",
+        ("dk_omxc25", "NDA"): "NDA-DK.CO",
+    }
+    found = {
+        (r["market_code"], r["ticker"]): r["corrected_ticker"]
+        for r in _ticker_override_rows()
+        if r["market_code"] in {"ca_tsx60", "dk_omxc25"}
+    }
+    assert found == expected
+
+
+def test_every_ca_tsx60_symbol_carries_the_toronto_suffix() -> None:
+    """A dotted Canadian ticker passes `to_yfinance_ticker` unchanged, so a new class share on
+    a future refresh would be fetched with no suffix unless it gets an override row."""
+    market = get_market("ca_tsx60")
+    symbols = [to_yfinance_ticker(t, market.exchange_suffix)
+               for t in load_constituents("ca_tsx60")["ticker"]]
+    assert [s for s in symbols if not s.endswith(".TO")] == []
 
 
 def test_load_constituents_applies_the_au_asx200_ticker_override() -> None:

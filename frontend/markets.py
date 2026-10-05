@@ -21,6 +21,12 @@ MARKET_DISPLAY_NAMES: dict[str, str] = {
     "nl_aex": "AEX",
     "ch_smi": "SMI",
     "es_ibex35": "IBEX 35",
+    "fi_omxh25": "OMX Helsinki 25",
+    "se_omxs30": "OMX Stockholm 30",
+    "dk_omxc25": "OMX Copenhagen 25",
+    "no_obx": "OBX",
+    "ca_tsx60": "S&P/TSX 60",
+    "it_ftsemib": "FTSE MIB",
 }
 
 

@@ -921,16 +921,16 @@ def test_build_read_messages_unknown_type_falls_back_to_operating() -> None:
 # A deny-list, with the limits that implies. Currency is NOT declared per market anywhere:
 # docs/market_registry.yml has no currency field, and the value comes from yfinance
 # `info_currency` per ticker, so nothing in the repo can enumerate what may turn up. These
-# eight cover the currencies the nine active markets return today: USD, GBp, JPY, EUR, AUD and
-# CHF, the last arriving with Switzerland, which is what "franc" is here for. Six more markets
-# are queued, three of which bring currencies this list does not hold: SEK, DKK and NOK.
-# (CAD needs nothing: "dollar" already covers it, the same way "franc" covers CHF.)
+# cover the currencies the active markets return today: USD, GBp, JPY, EUR, AUD, CHF ("franc"),
+# CAD ("dollar" already covers it) and SEK, DKK and NOK, whose Swedish and Danish/Norwegian
+# forms are krona/kronor and krone/kroner.
 # EXTEND IT when a market is added, when a dormant one is activated by flipping ingest_active,
 # or when yfinance starts returning a currency these words miss. There is no mechanical trigger
 # for any of those, which is the weakness of a deny-list and the reason to prefer catching this
 # in review.
 _CURRENCY_WORDS = (
     "dollar", "cent", "pound", "pence", "penny", "euro", "yen", "franc",
+    "krona", "kronor", "krone", "kroner",
 )
 
 # Every catalogue column that `scripts/export_metric_definitions_json.py` copies into
@@ -1000,6 +1000,8 @@ def test_build_read_messages_normalises_gbp_pence_to_the_symbol_the_card_shows()
 def test_display_currency_falls_back_to_the_bare_code_never_a_fake_symbol() -> None:
     assert rules._display_currency("CHF") == "CHF"
     assert rules._display_currency("JPY") == "¥ (JPY)"
+    assert rules._display_currency("CAD") == "C$ (CAD)"
+    assert rules._display_currency("SEK") == "SEK"
     assert rules._display_currency(None) == ""
     assert rules._display_currency("  ") == ""
 
@@ -1134,8 +1136,7 @@ def test_currency_symbol_maps_are_mirrors() -> None:
     stops the read describing a unit the card never shows. Editing one alone is worse than
     editing neither: add a franc symbol to `card_copy` only and the face shows it while every
     stored read still says CHF, with no `input_hash` movement to regenerate them, so the two
-    disagree permanently. The handover's instructions for the queued CAD/SEK/DKK/NOK renderings
-    depend on this holding.
+    disagree permanently. The CAD/SEK/DKK/NOK renderings depend on this holding.
     """
     from card_copy import _CURRENCY_SYMBOLS as face
 

@@ -100,3 +100,33 @@ markets:
     exchange_suffix: .MC
     source: yfinance
     ingest_active: true
+  - market_code: fi_omxh25
+    index_name: ^OMXH25
+    exchange_suffix: .HE
+    source: yfinance
+    ingest_active: true
+  - market_code: se_omxs30
+    index_name: ^OMX
+    exchange_suffix: .ST
+    source: yfinance
+    ingest_active: true
+  - market_code: dk_omxc25
+    index_name: ^OMXC25
+    exchange_suffix: .CO
+    source: yfinance
+    ingest_active: true
+  - market_code: no_obx
+    index_name: OBX.OL
+    exchange_suffix: .OL
+    source: yfinance
+    ingest_active: true
+  - market_code: ca_tsx60
+    index_name: TX60.TS
+    exchange_suffix: .TO
+    source: yfinance
+    ingest_active: true
+  - market_code: it_ftsemib
+    index_name: FTSEMIB.MI
+    exchange_suffix: .MI
+    source: yfinance
+    ingest_active: true

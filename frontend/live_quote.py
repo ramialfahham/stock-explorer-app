@@ -13,6 +13,12 @@ _EXCHANGE_SUFFIX: dict[str, str] = {
     "nl_aex": ".AS",
     "ch_smi": ".SW",
     "es_ibex35": ".MC",
+    "fi_omxh25": ".HE",
+    "se_omxs30": ".ST",
+    "dk_omxc25": ".CO",
+    "no_obx": ".OL",
+    "ca_tsx60": ".TO",
+    "it_ftsemib": ".MI",
 }
 
 

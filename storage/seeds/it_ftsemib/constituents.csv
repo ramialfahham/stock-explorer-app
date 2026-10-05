@@ -1,0 +1,41 @@
+market_code,ticker,company_name,refreshed_at,source
+it_ftsemib,A2A.MI,A2A,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,AMP.MI,Amplifon,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,AVIO.MI,Avio,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,AZM.MI,Azimut,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,BMED.MI,Banca Mediolanum,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,BMPS.MI,Banca Monte dei Paschi di Siena,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,BAMI.MI,Banco BPM,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,BPE.MI,BPER Banca,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,BC.MI,Brunello Cucinelli,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,BZU.MI,Buzzi,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,CPR.MI,Campari,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,DIA.MI,Diasorin,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,ENEL.MI,Enel,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,ENI.MI,Eni,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,RACE.MI,Ferrari,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,FCT.MI,Fincantieri,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,FBK.MI,FinecoBank,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,G.MI,Generali,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,HER.MI,Hera,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,ISP.MI,Intesa Sanpaolo,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,INW.MI,INWIT,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,IG.MI,Italgas,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,IVG.MI,Iveco,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,LDO.MI,Leonardo,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,LTMC.MI,Lottomatica Group,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,MB.MI,Mediobanca,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,MONC.MI,Moncler,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,NEXI.MI,Nexi,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,PST.MI,Poste italiane,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,PRY.MI,Prysmian,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,REC.MI,Recordati,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,SPM.MI,Saipem,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,SRG.MI,Snam,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,STLAM.MI,Stellantis,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,STMMI.MI,STMicroelectronics,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,TIT.MI,Telecom Italia,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,TEN.MI,Tenaris,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,TRN.MI,Terna,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,UCG.MI,UniCredit,2026-10-05T16:43:02.234557+00:00,wikipedia
+it_ftsemib,UNI.MI,Unipol,2026-10-05T16:43:02.234557+00:00,wikipedia

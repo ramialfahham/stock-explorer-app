@@ -1,0 +1,26 @@
+market_code,ticker,company_name,refreshed_at,source
+no_obx,AKRBP,Aker BP,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,BWLPG,BW LPG,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,DNB,DNB Bank,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,EQNR,Equinor,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,FRO,Frontline,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,GJF,Gjensidige Forsikring,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,GOGL,Golden Ocean Group,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,HAFNI,Hafnia Limited,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,HAUTO,Höegh Autoliners ASA,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,KOG,Kongsberg Gruppen,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,MOWI,Mowi,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,MPCC,MPC Container Ships,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,NOD,Nordic Semiconductor,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,NHY,Norsk Hydro,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,NAS,Norwegian Air Shuttle,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,ORK,Orkla,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,SALM,SalMar,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,STB,Storebrand,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,SUBC,Subsea 7,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,TEL,Telenor,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,TGS,TGS ASA,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,TOM,Tomra Systems,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,VAR,Vår Energi ASA,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,WAWI,Wallenius Wilhelmsen,2026-10-05T16:43:00.027770+00:00,wikipedia
+no_obx,YAR,Yara International,2026-10-05T16:43:00.027770+00:00,wikipedia

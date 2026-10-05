@@ -1,0 +1,31 @@
+market_code,ticker,company_name,refreshed_at,source
+se_omxs30,ABB.ST,ABB Ltd,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,ADDT-B.ST,Addtech B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,ALFA.ST,Alfa Laval,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,ASSA-B.ST,Assa Abloy B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,AZN.ST,AstraZeneca,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,ATCO-A.ST,Atlas Copco A,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,BOL.ST,Boliden,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,EPI-A.ST,Epiroc A,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,EQT.ST,EQT,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,ERIC-B.ST,Ericsson B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,ESSITY-B.ST,Essity B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,EVO.ST,Evolution,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SHB-A.ST,Handelsbanken A,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,HM-B.ST,Hennes & Mauritz B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,HEXA-B.ST,Hexagon B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,INDU-C.ST,Industrivärden C,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,INVE-B.ST,Investor B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,LIFCO-B.ST,Lifco B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,NIBE-B.ST,Nibe Industrier B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,NDA-SE.ST,Nordea Bank Abp,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SAAB-B.ST,Saab B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SAND.ST,Sandvik,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SCA-B.ST,SCA B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SEB-A.ST,SEB A,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SKA-B.ST,Skanska B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SKF-B.ST,SKF B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,SWED-A.ST,Swedbank A,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,TEL2-B.ST,Tele2 B,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,TELIA.ST,Telia Company,2026-10-05T16:42:57.400911+00:00,wikipedia
+se_omxs30,VOLV-B.ST,Volvo B,2026-10-05T16:42:57.400911+00:00,wikipedia

@@ -69,6 +69,7 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `018_atomic_card_export.sql` | `replace_cards_snapshot()`: one transaction per snapshot, so a half-failed export cannot mix two |
 | `019_drop_numeric_precision_caps.sql` | Every `numeric(p,s)` column on the mart becomes plain `numeric`; `numeric(10,4)` would overflow on one Yahoo outlier and abort the export |
 | `020_current_cards_view.sql` | `current_cards` view: the deck's newest row per company, leaving out any 28+ days behind its market. A later migration altering the mart must recreate it |
+| `021_fi_se_dk_no_ca_it_markets.sql` | Finland, Sweden, Denmark, Norway, Canada and Italy rows in `public.markets`. Same requirement as 014 |
 
 The table was previously missing 012 and 013, with a note excusing the gap; 016 and 017 then
 landed and were absent too, so the note went stale rather than the table getting fixed. It is

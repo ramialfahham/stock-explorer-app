@@ -321,7 +321,7 @@ _VALUE_FORMATTERS = {
 
 # Mirrors scripts/assessment_rules.py's currency map so the AI read matches the card face; a
 # test pins them identical. CHF has no entry here and falls back to the bare ISO code by design.
-_CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$"}
+_CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "JPY": "¥", "EUR": "€", "AUD": "A$", "CAD": "C$"}
 
 
 def currency_symbol(currency: str | None) -> str:
