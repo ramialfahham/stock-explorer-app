@@ -1,0 +1,26 @@
+market_code,ticker,company_name,refreshed_at,source
+fi_omxh25,ELISA.HE,Elisa,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,FORTUM.HE,Fortum,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,HIAB.HE,Hiab,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,HUH1V.HE,Huhtamäki,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,KALMAR.HE,Kalmar [fi] B,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,KEMIRA.HE,Kemira,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,KESKOB.HE,Kesko B,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,KOJAMO.HE,Kojamo,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,KNEBV.HE,KONE,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,KCR.HE,Konecranes,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,MANTA.HE,Mandatum,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,METSO.HE,Metso,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,NESTE.HE,Neste,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,NOKIA.HE,Nokia,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,TYRES.HE,Nokian Tyres,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,NDA-FI.HE,Nordea,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,ORNBV.HE,Orion,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,OUT1V.HE,Outokumpu,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,QTCOM.HE,Qt Group,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,SAMPO.HE,Sampo A,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,STERV.HE,Stora Enso R,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,TIETO.HE,TietoEVRY,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,UPM.HE,UPM-Kymmene,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,VALMT.HE,Valmet,2026-10-05T16:42:56.383324+00:00,wikipedia
+fi_omxh25,WRT1V.HE,Wärtsilä,2026-10-05T16:42:56.383324+00:00,wikipedia

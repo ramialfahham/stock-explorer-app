@@ -20,7 +20,7 @@ seeds:
         data_tests:
           - not_null
       - name: ticker
-        description: "Provider symbol as stored in the seed, matching the row this corrects."
+        description: "Ticker as written to yf_constituents.parquet (after ticker_overrides), matching the row this corrects."
         data_tests:
           - not_null
       - name: company_name

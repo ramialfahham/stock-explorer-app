@@ -86,9 +86,12 @@ python scripts/check_registry_var_sync.py
 | `nl_aex` | ^AEX | Active |
 | `ch_smi` | ^SSMI | Active |
 | `es_ibex35` | ^IBEX | Active |
-
-**Planned (inactive until coverage audit):** Finland, Sweden (OMXS 30), Denmark, Norway (OBX),
-Canada (TSX 60) and Italy (FTSE MIB), all agreed but not yet in the registry.
+| `fi_omxh25` | ^OMXH25 | Active |
+| `se_omxs30` | ^OMX | Active |
+| `dk_omxc25` | ^OMXC25 | Active |
+| `no_obx` | OBX.OL | Active |
+| `ca_tsx60` | TX60.TS | Active |
+| `it_ftsemib` | FTSEMIB.MI | Active |
 
 ---
 

@@ -54,7 +54,8 @@ def load_constituents(market_code: str) -> pd.DataFrame:
             "Run scripts/refresh_constituents.py or scripts/import_constituents.py."
         )
 
-    frame = pd.read_csv(path, dtype={"ticker": str})
+    # na_filter=False keeps the ticker "NA" (National Bank of Canada) a ticker, not a gap.
+    frame = pd.read_csv(path, dtype={"ticker": str}, na_filter=False)
     missing = [col for col in SEED_COLUMNS if col not in frame.columns]
     if missing:
         raise ValueError(f"{path} missing columns: {missing}")
@@ -73,8 +74,8 @@ def load_constituents(market_code: str) -> pd.DataFrame:
 # LOWERCASE letters only, and that is the load-bearing decision. Wikipedia writes interlanguage
 # links as lowercase ISO 639-1 codes and footnotes as digits or lowercase letters, while an
 # UPPERCASE bracketed token of the same length is usually meaningful: `[A]` and `[B]` are Nordic
-# share classes, and `[SA]`, `[NV]`, `[AB]`, `[ASA]` are legal forms. Four of the six queued
-# markets are named on the share-class convention. Stripping those would merge two constituents
+# share classes, and `[SA]`, `[NV]`, `[AB]`, `[ASA]` are legal forms. The Nordic markets
+# are named on the share-class convention. Stripping those would merge two constituents
 # to one headline, and `write_constituents` de-duplicates on ticker rather than name, so both
 # rows would survive as two cards reading identically. An uppercase marker therefore survives
 # here ON PURPOSE and is caught instead by the wider seed guard in
@@ -120,6 +121,21 @@ def _clean_company_name(names: pd.Series) -> pd.Series:
     return cleaned.str.strip()
 
 
+_EXCHANGE_PREFIX = re.compile(r"^[A-Z]{2,6}:\s*")
+
+
+def _clean_ticker(tickers: pd.Series) -> pd.Series:
+    """Turn a source table's ticker into the local form `to_yfinance_ticker` expects.
+
+    A missing cell becomes "" so the writer drops it, never the string "nan". An exchange
+    prefix is stripped (the OBX table writes `OSE: EQNR`), and a space becomes a hyphen, which
+    is how Yahoo spells a share class (`MAERSK A` -> `MAERSK-A`, fetched as `MAERSK-A.CO`).
+    """
+    cleaned = tickers.fillna("").astype(str).str.strip()
+    cleaned = cleaned.str.replace(_EXCHANGE_PREFIX, "", regex=True)
+    return cleaned.str.replace(r"\s+", "-", regex=True)
+
+
 def write_constituents(
     market_code: str,
     tickers: pd.Series,
@@ -132,7 +148,7 @@ def write_constituents(
     frame = pd.DataFrame(
         {
             "market_code": market_code,
-            "ticker": tickers.astype(str).str.strip(),
+            "ticker": _clean_ticker(tickers),
             "company_name": _clean_company_name(company_names),
             "refreshed_at": refreshed.isoformat(),
             "source": source,

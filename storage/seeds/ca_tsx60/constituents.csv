@@ -1,0 +1,61 @@
+market_code,ticker,company_name,refreshed_at,source
+ca_tsx60,AEM,Agnico Eagle Mines Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,ATD,Alimentation Couche-Tard Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,BMO,Bank of Montreal,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,BNS,Bank of Nova Scotia,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,ABX,Barrick Mining Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,BCE,BCE Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,BAM,Brookfield Asset Management Ltd.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,BN,Brookfield Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,BIP.UN,Brookfield Infrastructure Partners L.P.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CAE,CAE Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CCO,Cameco Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CM,Canadian Imperial Bank of Commerce,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CNR,Canadian National Railway Company,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CNQ,Canadian Natural Resources Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CP,Canadian Pacific Kansas City Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CTC.A,Canadian Tire Corporation Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CCL.B,CCL Industries Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CLS,Celestica Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CVE,Cenovus Energy Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,GIB.A,CGI Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,CSU,Constellation Software Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,DOL,Dollarama Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,EMA,Emera Incorporated,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,ENB,Enbridge Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,FFH,Fairfax Financial Holdings Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,FM,First Quantum Minerals Ltd.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,FSV,FirstService Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,FTS,Fortis Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,FNV,Franco-Nevada Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,WN,George Weston Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,GIL,Gildan Activewear Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,H,Hydro One Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,IMO,Imperial Oil Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,IFC,Intact Financial Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,K,Kinross Gold Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,L,Loblaw Companies Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,MG,Magna International Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,MFC,Manulife Financial Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,MRU,Metro Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,NA,National Bank of Canada,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,NTR,Nutrien Ltd.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,OTEX,Open Text Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,PPL,Pembina Pipeline Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,POW,Power Corporation of Canada,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,QSR,Restaurant Brands International Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,RCI.B,Rogers Communications Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,RY,Royal Bank of Canada,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,SAP,Saputo Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,SHOP,Shopify Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,SLF,Sun Life Financial Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,SU,Suncor Energy Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,TRP,TC Energy Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,TECK.B,Teck Resources Limited,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,T,Telus Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,TRI,Thomson Reuters Corporation,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,TD,Toronto-Dominion Bank,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,TOU,Tourmaline Oil Corp.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,WCN,Waste Connections Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,WPM,Wheaton Precious Metals Corp.,2026-10-05T16:43:01.161616+00:00,wikipedia
+ca_tsx60,WSP,WSP Global Inc.,2026-10-05T16:43:01.161616+00:00,wikipedia

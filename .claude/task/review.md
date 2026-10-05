@@ -1,20 +1,59 @@
 # Review
 
-diff_sha256: e6c81c2eae942a8bcec0094adf9c606b89d551fa669af3f2047d354499f17550
-rounds: 1
+diff_sha256: 70bf0552fc08705f753fe0e2a816598705c1ed4acdd50229130e54f16b208d74
+rounds: 2
 
-`.mailmap`. Round 1 on the cumulative diff (tree d48664f). Routing requires scope-auditor only
-(`.mailmap` matches no routed path).
+Six markets (fi_omxh25, se_omxs30, dk_omxc25, no_obx, ca_tsx60, it_ftsemib). Round 1 on the
+cumulative diff (tree 6408cf9): data-engineer and scope-auditor PASS, analytics-engineer and
+platform FAIL [broken-guarantee] (unpinned overrides; a missing-cell test that could not fail).
+Round 2 on the delta (tree d8c57b4) plus the contract's `regression_checklist`: all four PASS.
+Detail in `contract.md`'s amendments.
 
-Coordinator evidence: with the file in place, `git shortlog -sne --all` shows one author,
-979 commits (618 + 235 + 104 + 22); `git check-mailmap` maps all four identities to
-`Rami Al-Fahham <rami.fahham@googlemail.com>`. Em-dash and context budget checks pass.
+Coordinator evidence: `pytest tests` 1012 passed; fixture `dbt build` PASS=150;
+`check_eligibility_baseline.py` against the CI baseline exit 0; `check_registry_var_sync.py`
+OK (15 markets); `check_company_names_vs_yfinance.py` no mismatches; pre-commit on all files
+passes (check-json skipped locally: a Windows application-control policy blocks it; CI runs
+it). Follow-ups filed: #34, #35, #36.
+
+## analytics-engineer-reviewer
+
+Round 1 FAIL (tree 6408cf9). Round 2:
+
+VERDICT: PASS
+reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
+risks_checked:
+- The 7 ticker overrides are pinned by exact pairs, and the Toronto-suffix test over the real
+  ca_tsx60 seed fails on a missing override.
+- The se/fi/dk headline overrides are pinned by exact ticker sets; no data row changed.
+
+## platform-reviewer
+
+Round 1 FAIL (tree 6408cf9). Round 2:
+
+VERDICT: PASS
+reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
+risks_checked:
+- `test_clean_ticker_turns_a_missing_cell_into_an_empty_string` fails if `fillna("")` is
+  reverted; the write test asserts the exact written tickers.
+- `_CURRENCY_WORDS` additions are whole-word matches, test-side only; no CI or cost change.
+
+## data-engineer-reviewer
+
+Round 1 PASS (tree 6408cf9). Round 2:
+
+VERDICT: PASS
+reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
+risks_checked:
+- The `_seeds.yml` claim (name overrides join on the post-override ticker) matches
+  `load_constituents` and `ingest_market`.
+- No write mode, history window, fan-out cap, raw schema or cadence changed in the delta.
 
 ## scope-auditor
 
+Round 1 PASS (tree 6408cf9). Round 2:
+
 VERDICT: PASS
-reviewed_tree: d48664fc8f53a0eecd70f8f0cda2b66d67fd5637
+reviewed_tree: d8c57b4351f5e741e81fe0143ecf3a3c4957e0d5
 risks_checked:
-- Completeness: two email-matched lines cover every non-canonical address, including both
-  names used with the GitHub noreply address; shortlog confirms one author.
-- Format: canonical identity left, commit-time email right; file ends with a newline.
+- Exact-set and exact-pair pins catch a dropped or extra override row.
+- Missing-cell handling is tested at `_clean_ticker` and at the writer.

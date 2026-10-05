@@ -1,2 +1,9 @@
 market_code,ticker,corrected_ticker,reason
 au_asx200,XYX,XYZ,"Wikipedia's S&P/ASX 200 table lists Block, Inc. under XYX; XYX.AX and SQ2.AX both 404 on Yahoo, XYZ.AX resolves to Block, Inc. in AUD. Wrong on the source page itself, not a scrape bug, so a future refresh would reintroduce it without this override."
+ca_tsx60,CTC.A,CTC-A.TO,"S&P/TSX 60 class or unit share, dotted in the source table; a dotted ticker passes to_yfinance_ticker unchanged, so without this row it is fetched as CTC.A with no exchange suffix. Yahoo spells it CTC-A.TO."
+ca_tsx60,CCL.B,CCL-B.TO,"S&P/TSX 60 class or unit share, dotted in the source table; a dotted ticker passes to_yfinance_ticker unchanged, so without this row it is fetched as CCL.B with no exchange suffix. Yahoo spells it CCL-B.TO."
+ca_tsx60,GIB.A,GIB-A.TO,"S&P/TSX 60 class or unit share, dotted in the source table; a dotted ticker passes to_yfinance_ticker unchanged, so without this row it is fetched as GIB.A with no exchange suffix. Yahoo spells it GIB-A.TO."
+ca_tsx60,RCI.B,RCI-B.TO,"S&P/TSX 60 class or unit share, dotted in the source table; a dotted ticker passes to_yfinance_ticker unchanged, so without this row it is fetched as RCI.B with no exchange suffix. Yahoo spells it RCI-B.TO."
+ca_tsx60,TECK.B,TECK-B.TO,"S&P/TSX 60 class or unit share, dotted in the source table; a dotted ticker passes to_yfinance_ticker unchanged, so without this row it is fetched as TECK.B with no exchange suffix. Yahoo spells it TECK-B.TO."
+ca_tsx60,BIP.UN,BIP-UN.TO,"S&P/TSX 60 class or unit share, dotted in the source table; a dotted ticker passes to_yfinance_ticker unchanged, so without this row it is fetched as BIP.UN with no exchange suffix. Yahoo spells it BIP-UN.TO."
+dk_omxc25,NDA,NDA-DK.CO,"OMX Copenhagen 25 lists Nordea as NDA; NDA.CO returns nothing on Yahoo, which spells the Copenhagen line NDA-DK.CO (Helsinki NDA-FI.HE and Stockholm NDA-SE.ST follow the same pattern)."

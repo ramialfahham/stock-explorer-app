@@ -35,8 +35,14 @@ local-run folder). Open, owner's: retention if the 1 GB quota is ever approached
 
 **README product-first: MERGED (!228).** Product funnel first, setup after it.
 
-**`.mailmap` in flight on `chore/mailmap`.** Owner: canonical identity
-`Rami Al-Fahham <rami.fahham@googlemail.com>`. Last item of the portfolio order.
+**`.mailmap`: MERGED (!229).** Portfolio order complete.
+
+**Six markets in flight on `feat/six-markets`:** fi_omxh25, se_omxs30, dk_omxc25, no_obx,
+ca_tsx60, it_ftsemib (205 constituents). **OPEN until the first production run after merge
+(checklist steps 5-6, full-run half):** confirm each market's eligible count from the run
+(sample estimate: about 22 / 27 / 20 / 24 / 51 / 30; Denmark sits at the 20-card warn
+line), and that Kojamo (KOJAMO.HE, no Yahoo data) and Golden Ocean (GOGL.OL, merged into
+CMB.Tech, stale on Wikipedia) dropped out by eligibility as expected.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
@@ -44,7 +50,7 @@ local-run folder). Open, owner's: retention if the 1 GB quota is ever approached
 `current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
 
 **Owner's portfolio order, each needs its own go:** raw-data archive (merged),
-README product-first (merged), `.mailmap` (in flight). DECLINED: revenue-growth fallback (MVP); incremental
+README product-first (merged), `.mailmap` (merged). DECLINED: revenue-growth fallback (MVP); incremental
 dbt models (ephemeral DuckDB, nothing to increment from). Hard constraint: zero cost.
 
 **README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
@@ -217,11 +223,9 @@ fill floor (!126), the AI read's labels and rendering (!129). The learn panel's 
 
 ## Market coverage
 
-Nine markets active (as of the last check, 2026-08-27): US S&P 500, UK FTSE 100, Japan
-Nikkei 225, Australia ASX 200, Germany DAX, France CAC 40, Netherlands AEX, Switzerland SMI,
-Spain IBEX 35. Six more agreed and queued, not yet onboarded: Finland, Sweden (OMXS 30),
-Denmark, Norway (OBX), Canada (TSX 60), Italy (FTSE MIB) -- batched together, each still
-getting its own coverage audit. **Read `docs/data_contract.md`'s market activation checklist
+Nine markets active and run in production: US S&P 500, UK FTSE 100, Japan Nikkei 225,
+Australia ASX 200, Germany DAX, France CAC 40, Netherlands AEX, Switzerland SMI, Spain
+IBEX 35. Six more onboarded on `feat/six-markets` (see In flight), not yet run. **Read `docs/data_contract.md`'s market activation checklist
 before onboarding any of them** (the `onboard-market` skill routes there); it carries the
 procedure and two traps no other doc holds (Wikipedia rejecting pandas' default user agent;
 `table_index` being positional and silently wrong rather than erroring).

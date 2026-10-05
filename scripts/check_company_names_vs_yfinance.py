@@ -167,6 +167,24 @@ KNOWN_STYLISTIC_DIVERGENCES: dict[tuple[str, str], str] = {
     "Computer, Inc.'",
     ("us_sp500", "WAB"): "'Wabtec' is an acronym/short form of 'Westinghouse Air Brake "
     "Technologies'",
+    ("dk_omxc25", "NSIS-B"): "Novozymes merged with Chr. Hansen and renamed to Novonesis in "
+    "2024; yfinance still carries the prior name",
+    ("fi_omxh25", "TYRES.HE"): "'Nokian Tyres' is the English trading name of 'Nokian "
+    "Renkaat Oyj'",
+    ("it_ftsemib", "CPR.MI"): "'Campari' is the trading name of 'Davide Campari-Milano N.V.'",
+    ("it_ftsemib", "G.MI"): "'Generali' is the trading name of 'Assicurazioni Generali S.p.A.'",
+    ("it_ftsemib", "INW.MI"): "'INWIT' is the acronym of 'Infrastrutture Wireless Italiane'",
+    ("se_omxs30", "ERIC-B.ST"): "'Ericsson' is the trading name of 'Telefonaktiebolaget LM "
+    "Ericsson'",
+    ("se_omxs30", "HM-B.ST"): "yfinance prefixes the 'H & M' brand to 'Hennes & Mauritz AB', "
+    "same company",
+    ("se_omxs30", "INDU-C.ST"): "'AB' is the Swedish legal form, written first; same company",
+    ("se_omxs30", "SCA-B.ST"): "'SCA' is the acronym of 'Svenska Cellulosa Aktiebolaget'",
+    ("se_omxs30", "SEB-A.ST"): "'SEB' is the acronym of 'Skandinaviska Enskilda Banken'",
+    ("se_omxs30", "SHB-A.ST"): "'Handelsbanken' is the trading name of 'Svenska "
+    "Handelsbanken AB'",
+    ("se_omxs30", "SKF-B.ST"): "'AB' is the Swedish legal form, written first; same company",
+    ("se_omxs30", "VOLV-B.ST"): "'AB' is the Swedish legal form, written first; same company",
 }
 
 
