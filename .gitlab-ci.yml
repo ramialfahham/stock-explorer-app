@@ -186,6 +186,14 @@ validate:full:
     # Pin matches requirements-dev.txt; keep both in sync if it's ever bumped.
     - pip install pytest==9.1.1 && python -m pytest tests/ -q
     - python scripts/audit_mart_vs_yfinance.py --duckdb-path /tmp/stock_data_ci.db --offline --sample-size 5
+    # Real-shaped fixtures: recorded yfinance payloads replayed offline through the real
+    # ingestion code, built by dbt in their own database, compared with the golden mart.
+    - python scripts/replay_ingestion_fixtures.py --out-dir /tmp/real-raw
+    - python scripts/write_ci_dbt_profile.py --path /tmp/real_ci.db --profiles-dir /tmp/real-profiles
+    - DBT_RAW_PATH=/tmp/real-raw dbt build --project-dir dbt_analytics --profiles-dir /tmp/real-profiles
+    - python scripts/check_export_health.py --duckdb-path /tmp/real_ci.db
+    - python scripts/generate_assessments.py --duckdb-path /tmp/real_ci.db --dry-run
+    - python scripts/check_real_fixture_mart.py --duckdb-path /tmp/real_ci.db
   # A GitHub workflow with no path filter becomes `when: on_success` behind the schedule
   # guard — NOT an empty `rules:`, which would let schedules through.
   rules:

@@ -48,6 +48,9 @@ model change. In order:
 9. `dbt docs generate`, then `scripts/check_dbt_documentation.py`
 10. `pytest tests/ -q`
 11. `scripts/audit_mart_vs_yfinance.py --offline --sample-size 5` (mart-side facts only, no fetch)
+12. Real-shaped fixtures: `scripts/replay_ingestion_fixtures.py` (recorded payloads through the
+    real ingestion code, offline), `dbt build` on them, export health, the read dry run, and
+    `scripts/check_real_fixture_mart.py` against `tests/fixtures/real/golden_mart.csv`
 
 Beside it: `validate:pre-commit` runs the hooks in `.pre-commit-config.yaml` on all files except
 gitleaks and `no-commit-to-branch` (the file checks from pre-commit-hooks, plus context budget,
