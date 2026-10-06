@@ -142,6 +142,7 @@ def write_constituents(
     *,
     source: str,
     refreshed_at: datetime | None = None,
+    min_overlap: float | None = None,
 ) -> int:
     refreshed = refreshed_at or datetime.now(timezone.utc)
     frame = pd.DataFrame(
@@ -164,6 +165,17 @@ def write_constituents(
         )
 
     path = seed_path(market_code)
+    if min_overlap is not None and path.exists():
+        # The ticker is every card's key, so a source page that changes its ticker form (or a
+        # table_index now pointing at another table) would otherwise re-key the market quietly.
+        committed = set(pd.read_csv(path, dtype=str, na_filter=False)["ticker"])
+        overlap = len(committed & set(frame["ticker"])) / len(committed) if committed else 1.0
+        if overlap < min_overlap:
+            raise ValueError(
+                f"{market_code}: only {overlap:.0%} of the committed seed's {len(committed)} "
+                f"tickers are in the new table (minimum {min_overlap:.0%}); seed not written. "
+                "Check the page's ticker form and table_index, then replace the seed by hand."
+            )
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
     return len(frame)

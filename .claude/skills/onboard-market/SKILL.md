@@ -22,10 +22,11 @@ read it is that improvising it has already failed once.
 `ingestion.constituents.refresh`, never `pandas.read_html` on a bare URL. The repo's fetcher
 sets a user agent for exactly this reason.
 
-**`table_index` is positional, and silently wrong rather than loud.** `refresh.py` raises only
-when the index is out of range; an index that is wrong but still in range returns a different
-table with no error. Find it by scanning for a table whose columns include Ticker or Symbol, and
-record the row count so a later mismatch is visible.
+**`table_index` is positional, and silently wrong on a first refresh.** `refresh.py` raises
+when the index is out of range, and a later refresh refuses a table sharing under 85% of the
+committed seed's tickers. The first refresh has no seed to compare with, so an index that is
+wrong but still in range writes a different table with no error. Find it by scanning for a table
+whose columns include Ticker or Symbol, and record the row count.
 
 ## Before starting, tell the owner what it costs
 

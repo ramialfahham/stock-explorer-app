@@ -898,7 +898,8 @@ until both halves are done. Record the open half in `.claude/active_work.md`, no
 contract, which the next task overwrites.
 
 1. Add row to `market_registry.yml` and `constituent_sources.yml`, with `ingest_active: true`
-2. Refresh or import constituent seed (`scripts/refresh_constituents.py --market <code>`)
+2. Refresh or import constituent seed (`scripts/refresh_constituents.py --market <code>`); if the
+   page's ticker form differs from the seed's (ADS.DE vs ADS), set `strip_suffix`
 3. Run `python scripts/sync_dbt_vars.py`, which reads `ingest_active` and writes
    `dbt_project.yml`
 4. Verify the seed's tickers resolve AND return a populated `sector`. Resolving alone is not

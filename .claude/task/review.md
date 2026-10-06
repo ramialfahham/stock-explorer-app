@@ -1,61 +1,65 @@
 # Review
 
-diff_sha256: 77eef1a94d96a5fefe2f4dbbcc23bf96a73902de3e7129443e8f23c59de905c7
-rounds: 3
+diff_sha256: 46d2be1a2e86cbc0b7397ca30714cec8046b3ac1205ed1bcc9316c14d3bed7e6
+rounds: 2
 
-Issue #41. Round 1 on the cumulative diff (tree 3729ced): platform-reviewer and scope-auditor
-PASS. Two platform-reviewer follow-ups applied: a test that a full recording clears
-`rerecorded_at`, and a midnight-safe date assertion. The third (non-atomic manifest write) is
-proposed to the owner as part of #43. Round 2 on the delta (tree 1c962a4): both PASS.
-Round 3 on the delta (tree 3177d4b): main merged in after MR !239 (#44) landed, resolving a
-conflict in the task files by keeping this branch's; the delta is exactly main's #44 change
-(changed lines compared mechanically), no #41 code edited. Both PASS.
+Issue #42. Round 1 on the cumulative diff (tree f01a0f5): data-engineer-reviewer,
+platform-reviewer, equity-analyst-reviewer and scope-auditor PASS. Follow-ups applied: the stale
+`table_index` claim in `.claude/active_work.md` corrected (the only other copy in the repo), and
+the larger-table case added to `known_limits`. Round 2 on the delta (tree b144143): scope-auditor
+PASS (no other reviewer's routed files changed).
 
-Coordinator evidence: `pytest tests` 1103 passed (1099 on the merged tree: 7 removed and 3
-added by #44). Reverting the script change fails the three
-manifest tests; widening the dot helper to any market's suffix fails the FOO.L/us_sp500,
-MT.AS/us_sp500 and AIR.PA/nl_aex cases; making the full recording merge instead of replace
-fails the new clear test. Files restored after each.
+equity-analyst-reviewer ran as a general-purpose agent following
+`.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model: the role file's
+frontmatter does not parse (an unquoted `: ` in `description`), so the harness does not
+register it as an agent type. Raised with the owner.
+
+Coordinator evidence: `pytest tests` 1105 passed; context budget passes. Removing
+`min_overlap=MIN_SEED_OVERLAP` from `refresh_market` fails the recorded-DAX-page test;
+disabling the comparison fails the re-key and 16-of-20 boundary tests. Files restored.
+
+## data-engineer-reviewer
+
+VERDICT: PASS
+reviewed_tree: f01a0f5bc2ca3095c96bfc81dc4b0b7903a73ad7
+risks_checked:
+- The overlap check runs before any write; a refusal leaves the seed byte-identical.
+- The refresh script reports a refused market as failed, exits 1 and continues with others.
+- Threshold inclusive; empty committed seed and duplicate tickers handled; import unchecked.
+follow_ups:
+- A 25-name index trips the check on 4 or more replacements (owner decision (i); watch the
+  first small-index rebalance).
+- A larger table containing the whole seed passes (now in `known_limits`).
 
 ## platform-reviewer
 
-Round 1 PASS (tree 3729ced). Round 2 PASS (tree 1c962a4). Round 3:
-
 VERDICT: PASS
-reviewed_tree: 3177d4b10f11715ee47def456500c56fc2b20e5c
+reviewed_tree: f01a0f5bc2ca3095c96bfc81dc4b0b7903a73ad7
 risks_checked:
-- The delta touches only the test file and is #44's change; no hunk touches #41 code.
-- `_is_stray_dotted_symbol`, its cases and the per-market dot guard survive the merge intact.
-- The removed US/UK class-share pin stays covered by the dot guard and the every-row
-  ticker-override test.
-
-Round 2 verdict:
-
-VERDICT: PASS
-reviewed_tree: 1c962a409be496fde1d81a5f092d97117dafd414
-risks_checked:
-- The new test pins that a full recording replaces the entry and clears `rerecorded_at`.
-- The date assertion covers every date the script can record across a midnight boundary.
-- Test-only delta; round-1 guarantees (dot guard, no file change on a failed network call)
-  untouched.
+- Fail-closed and re-run safe; the import path never reaches the check.
+- Each new test fails when its part of the change is reverted; one shared threshold constant.
+- Runbook, skill and checklist claims match the code; no new dependency, CI or cost change.
 follow_ups:
-- `main` writes `manifest.json` with a plain `write_text`; a crash mid-write could truncate
-  it (proposed as part of #43).
+- `.claude/active_work.md` still called `table_index` silently wrong (applied).
+- Larger-table case (now in `known_limits`).
+- "85%" appears as prose beside the `MIN_SEED_OVERLAP` constant in long-lived docs.
+
+## equity-analyst-reviewer
+
+VERDICT: PASS
+reviewed_tree: f01a0f5bc2ca3095c96bfc81dc4b0b7903a73ad7
+risks_checked:
+- The `docs/data_contract.md` hunk is checklist step 2 only; no metric, eligibility or
+  assessment content changed.
+- The `strip_suffix` instruction matches `refresh.py` and `constituent_sources.yml`.
+- No finance content or advice elsewhere in the diff.
 
 ## scope-auditor
 
-Round 1 PASS (tree 3729ced). Round 2 PASS (tree 1c962a4). Round 3:
+Round 1 PASS (tree f01a0f5). Round 2:
 
 VERDICT: PASS
-reviewed_tree: 3177d4b10f11715ee47def456500c56fc2b20e5c
+reviewed_tree: b144143bd0fcdaab19cc84c2d929f4d184cb5253
 risks_checked:
-- The merge's test removals are #44's, replaced by the every-row end-to-end test.
-- Every active market's resolved symbols still pass the dot guard.
-
-Round 2 verdict:
-
-VERDICT: PASS
-reviewed_tree: 1c962a409be496fde1d81a5f092d97117dafd414
-risks_checked:
-- The midnight-safe assertion holds for a run that spans midnight.
-- The full-recording test isolates the manifest logic from data fetching and pins the clear.
+- The corrected handover claim matches the `path.exists()` gate in `seeds.py`.
+- The new known limit accurately describes the one-way overlap measure.

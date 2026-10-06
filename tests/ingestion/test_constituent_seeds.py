@@ -298,3 +298,54 @@ def test_de_dax_keeps_its_committed_bare_ticker_form() -> None:
     from ingestion.constituents.refresh import load_refresh_configs
 
     assert load_refresh_configs()["de_dax"].strip_suffix == ".DE"
+
+
+def _committed_seed(path, tickers: list[str]) -> None:
+    rows = "".join(f"ca_tsx60,{t},Co {t},2026-10-01T00:00:00+00:00,wikipedia\n" for t in tickers)
+    header = "market_code,ticker,company_name,refreshed_at,source\n"
+    path.write_text(header + rows, encoding="utf-8")
+
+
+def _write(tickers: list[str], min_overlap: float | None) -> int:
+    return seeds.write_constituents(
+        "ca_tsx60",
+        pd.Series(tickers),
+        pd.Series([f"Co {t}" for t in tickers]),
+        source="wikipedia",
+        min_overlap=min_overlap,
+    )
+
+
+TWENTY = [f"T{i:02d}" for i in range(20)]
+
+
+def test_refresh_refuses_a_table_that_re_keys_the_committed_seed(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "constituents.csv"
+    _committed_seed(path, TWENTY)
+    before = path.read_bytes()
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    with pytest.raises(ValueError, match="only 0% of the committed seed's 20 tickers"):
+        _write([f"{t}.TO" for t in TWENTY], min_overlap=0.85)
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("kept,refused", [(20, False), (17, False), (16, True)])
+def test_refresh_overlap_threshold_is_inclusive(tmp_path, monkeypatch, kept, refused) -> None:
+    path = tmp_path / "constituents.csv"
+    _committed_seed(path, TWENTY)
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    new = TWENTY[:kept] + [f"NEW{i}" for i in range(20 - kept)]
+    if refused:
+        with pytest.raises(ValueError, match="seed not written"):
+            _write(new, min_overlap=0.85)
+    else:
+        assert _write(new, min_overlap=0.85) == 20
+
+
+def test_overlap_is_not_checked_without_a_minimum_or_a_committed_seed(
+    tmp_path, monkeypatch
+) -> None:
+    path = tmp_path / "constituents.csv"
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    assert _write(TWENTY, min_overlap=0.85) == 20
+    assert _write([f"{t}.TO" for t in TWENTY], min_overlap=None) == 20

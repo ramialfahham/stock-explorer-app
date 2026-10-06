@@ -12,6 +12,10 @@ import yaml
 from ingestion.constituents.seeds import write_constituents
 from ingestion.paths import CONSTITUENT_SOURCES_PATH
 
+# Index turnover between refreshes is a handful of names; below this share of the committed
+# seed's tickers, the table has changed form, not membership.
+MIN_SEED_OVERLAP = 0.85
+
 WIKIPEDIA_USER_AGENT = (
     "stock-explorer-app/1.0 (https://github.com/ramialfahham/stock-explorer-app)"
 )
@@ -93,4 +97,5 @@ def refresh_market(config: RefreshConfig) -> int:
         tickers,
         names,
         source="wikipedia",
+        min_overlap=MIN_SEED_OVERLAP,
     )

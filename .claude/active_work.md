@@ -239,7 +239,7 @@ Australia ASX 200, Germany DAX, France CAC 40, Netherlands AEX, Switzerland SMI,
 IBEX 35. Six more merged (!230), first production run Oct 15 (see In flight). **Read `docs/data_contract.md`'s market activation checklist
 before onboarding any of them** (the `onboard-market` skill routes there); it carries the
 procedure and two traps no other doc holds (Wikipedia rejecting pandas' default user agent;
-`table_index` being positional and silently wrong rather than erroring).
+`table_index` being positional, and silently wrong on a first refresh).
 
 Known, not necessarily still current (re-verify before relying on any of it): the 20-card
 warn threshold is absolute, not proportional to constituent count, so Switzerland (20
