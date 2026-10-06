@@ -46,13 +46,15 @@ CMB.Tech, stale on Wikipedia) dropped out by eligibility as expected.
 
 **Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads (5 tickers
 per market) through ingestion and dbt and compares the mart with a golden file (matched on
-CI's Linux runner). Open: #39 (DAX page now gives suffixed tickers; owner decision on the
-form), #40 (follow-ups; owner: sector-benchmark sample size, em-dash rule on fixture data).
+CI's Linux runner). Open: #40 (follow-ups; owner: sector-benchmark sample size, em-dash rule on fixture data).
 
-**Issue #38 in flight on `fix/class-share-tickers`:** BRK.B, BF.B, BT.A get ticker overrides
-to Yahoo's form (owner: option B, overrides not code); a guard test fails CI on any future
-dot that is not an exchange suffix. Berkshire and BT Group are proven in the fixtures; Brown-
-Forman only resolves -- confirm all three cards after the first run after merge.
+**Class-share tickers: MERGED (!232, issue #38).** BRK.B, BF.B, BT.A map to Yahoo's form via
+ticker_overrides; a guard test fails CI on a stray dot. Confirm all three cards after the
+first run after merge (Brown-Forman is not in the fixture sample). Follow-ups: #41.
+
+**Issue #39 in flight on `fix/dax-ticker-form`:** DAX tickers stay bare (owner: option A).
+New optional `strip_suffix` in `docs/constituent_sources.yml`, `.DE` for de_dax; the recorded
+DAX page now parses back into the committed seed (all 40 matched when checked).
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 

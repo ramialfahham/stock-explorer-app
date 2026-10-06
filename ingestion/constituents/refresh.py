@@ -26,6 +26,7 @@ class RefreshConfig:
     table_index: int | None = None
     ticker_column: str | None = None
     name_column: str | None = None
+    strip_suffix: str | None = None
     notes: str | None = None
 
 
@@ -44,6 +45,7 @@ def load_refresh_configs() -> dict[str, RefreshConfig]:
             table_index=row.get("table_index"),
             ticker_column=row.get("ticker_column"),
             name_column=row.get("name_column"),
+            strip_suffix=row.get("strip_suffix"),
             notes=row.get("notes"),
         )
 
@@ -80,6 +82,11 @@ def refresh_market(config: RefreshConfig) -> int:
 
     table = _fetch_wikipedia_table(config.url, config.table_index)
     tickers = table[config.ticker_column]
+    if config.strip_suffix:
+        # Keeps a market's committed ticker form when its source table changes notation;
+        # the ticker is the card's key, so a new form would re-key every card.
+        suffix = config.strip_suffix
+        tickers = tickers.map(lambda t: t.strip().removesuffix(suffix) if isinstance(t, str) else t)
     names = table[config.name_column]
     write_constituents(
         config.market_code,

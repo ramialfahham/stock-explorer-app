@@ -3,47 +3,40 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #38 -- the dotted class shares BRK.B, BF.B (us_sp500) and BT.A (uk_ftse100)
-  resolve to Yahoo's symbols, so the three companies get fundamentals and cards.
+objective: Closes #39 -- a DAX constituent refresh keeps the committed bare ticker form (ADS)
+  although the Wikipedia table now gives ADS.DE, so no DAX card is re-keyed.
 
 scope_paths:
-  - dbt_analytics/seeds/ticker_overrides.csv
-  - ingestion/constituents/yfinance_name_snapshot.csv
-  - tests/ingestion/test_market_onboarding.py
-  - tests/tooling/test_record_ingestion_fixtures.py
-  - scripts/record_ingestion_fixtures.py
-  - tests/fixtures/real/
-  - docs/operations_guide.md
+  - ingestion/constituents/refresh.py
+  - docs/constituent_sources.yml
+  - tests/ingestion/test_constituent_seeds.py
+  - tests/ingestion/test_real_fixtures.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
 decisions_reserved: settled by the owner in-thread before implementation --
-  Fix (option B): three `ticker_overrides.csv` rows (BRK.B -> BRK-B, BF.B -> BF-B,
-  BT.A -> BT-A.L), the mechanism already used for the Canadian class shares; no code change in
-  `ingestion/yfinance/symbols.py`. Cards show the Yahoo form. A guard test fails CI on any
-  future dotted ticker that is not an exchange suffix.
+  Ticker form (option A): DAX tickers stay bare. Mechanism (owner-approved as part of A): a
+  new optional `strip_suffix` field in `docs/constituent_sources.yml`, read into
+  `RefreshConfig` and applied by `refresh_market` before the seed is written; `.DE` for
+  de_dax only. No seed, Supabase or card-key change.
 
 known_limits: none.
 
 regression_checklist:
-  - No other market's tickers, overrides or name-snapshot rows change.
-  - The golden mart changes only by the new cards and what they move (sector peer counts).
-  - The synthetic CI fixtures and every `validate:full` step still pass.
+  - Every other market's refresh is unchanged (no `strip_suffix`, page form kept).
+  - A missing source cell is still dropped, never written as "nan".
+  - The recorded Wikipedia pages still parse into their committed seeds.
 
 done_when:
-  - The three overrides exist and are pinned; `test_no_symbol_carries_a_dot_that_is_not_an_
-    exchange_suffix` fails without them and passes with them.
-  - Only Berkshire and BT are re-recorded (`record_ingestion_fixtures.py --ticker`, which keeps
-    every other recording); the golden diff is the two new cards and JPM's sector peer count.
+  - `refresh_market` strips exactly the configured suffix (ADS.DE -> ADS; AIR.PA and SAP
+    unchanged); a market without `strip_suffix` keeps the page form (tests).
+  - The recorded DAX page parses into the committed seed (de_dax off KNOWN_PAGE_DRIFT).
   - `pytest tests` passes; review cycle run; MR opened. Not merged.
 
 amendments:
-  - Round 1: analytics-engineer, data-engineer and scope-auditor PASS; platform FAIL
-    [broken-guarantee]: the recorder's `--ticker` mode was untested. Fixed:
-    `tests/tooling/test_record_ingestion_fixtures.py` (only the named ticker replaced, other
-    JSON and price rows kept, stale JSON removed, nothing touched when the network fails,
-    single-symbol download frame, manifest update, ambiguous arguments rejected). The
-    re-record now finishes every network call before writing; `--ticker` with `--market` is an
-    error. Wording fixes applied; the US/UK pin asserts a subset. Follow-ups filed.
+  - Round 1: all three PASS. Two reviewers' follow-up applied: the suffix is stripped after
+    trimming whitespace, so a trailing space or non-breaking space cannot keep `.DE` and
+    re-key a card; tests add `"BAS.DE\u00a0"` (a trailing non-breaking space) and end-anchoring (`"X.DEF"` kept); the strip
+    test fails without the fix. Wording fix in the handover. Other follow-ups filed.

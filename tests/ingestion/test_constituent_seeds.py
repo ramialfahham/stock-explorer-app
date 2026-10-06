@@ -231,3 +231,45 @@ def test_fetch_wikipedia_table_keeps_the_ticker_na(monkeypatch) -> None:
     monkeypatch.setattr(refresh.requests, "get", lambda *a, **k: _Response())
     table = refresh._fetch_wikipedia_table("https://example.org", 0)
     assert table["Symbol"].tolist() == ["NA"]
+
+
+def _refresh_with_table(monkeypatch, tmp_path, table: pd.DataFrame, strip_suffix: str | None):
+    from ingestion.constituents import refresh
+
+    out = tmp_path / "constituents.csv"
+    monkeypatch.setattr(refresh, "_fetch_wikipedia_table", lambda url, index: table)
+    monkeypatch.setattr(seeds, "seed_path", lambda code: out)
+    config = refresh.RefreshConfig(
+        market_code="de_dax", provider="wikipedia", refresh_enabled=True, url="https://example.org",
+        table_index=0, ticker_column="Ticker", name_column="Company", strip_suffix=strip_suffix,
+    )
+    refresh.refresh_market(config)
+    return pd.read_csv(out, dtype=str, na_filter=False)["ticker"].tolist()
+
+
+DAX_PAGE = pd.DataFrame({
+    "Ticker": ["ADS.DE", "AIR.PA", "SAP", "BAS.DE ", "X.DEF", None],
+    "Company": ["Adidas", "Airbus", "SAP", "BASF", "Made up", None],
+}, dtype=object)
+
+
+def test_refresh_strips_only_the_configured_suffix(monkeypatch, tmp_path) -> None:
+    """Only a trailing .DE goes, also behind trailing whitespace (a stray non-breaking space
+    must not keep the suffix and re-key the card); .DE inside a ticker stays."""
+    assert _refresh_with_table(monkeypatch, tmp_path, DAX_PAGE, ".DE") == [
+        "ADS", "AIR.PA", "SAP", "BAS", "X.DEF",
+    ]
+
+
+def test_refresh_without_strip_suffix_keeps_the_page_form(monkeypatch, tmp_path) -> None:
+    assert _refresh_with_table(monkeypatch, tmp_path, DAX_PAGE, None) == [
+        "ADS.DE", "AIR.PA", "SAP", "BAS.DE", "X.DEF",
+    ]
+
+
+def test_de_dax_keeps_its_committed_bare_ticker_form() -> None:
+    """#39: the DAX page writes ADS.DE where the committed seed (and every DAX card key) has
+    ADS; without this the next DAX refresh re-keys every card."""
+    from ingestion.constituents.refresh import load_refresh_configs
+
+    assert load_refresh_configs()["de_dax"].strip_suffix == ".DE"
