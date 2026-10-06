@@ -3,32 +3,33 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #32 -- the raw archive's end-of-job marker test pins the exact
-  `test ! -f` form, and the credential and job-step docs list the raw archive.
+objective: Closes #35 -- the seed guard catches a Wikipedia marker mid-name
+  (`Kalmar [fi] B`), not only at the end.
 
 scope_paths:
-  - tests/tooling/test_archive_raw_to_supabase.py
-  - README.md
-  - docs/supabase_setup.md
-  - docs/development_workflow.md
+  - tests/ingestion/test_market_onboarding.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: none open. Owner approved in-thread: an exact-form assertion rather than
-  running the step through `bash -c`; also fix the same claim beyond the issue's checklist
-  (README `SUPABASE_URL` row; `generate_assessments.py` in the `data-pipeline` step lists).
+decisions_reserved: settled by the owner in-thread before implementation (option B) --
+  `_clean_company_name` is unchanged and keeps stripping trailing markers only; the seed
+  guard flags a mid-name marker; the guard checks the override-applied name (the name the
+  card renders), so a `company_name_overrides.csv` row clears a flagged seed name. No seed
+  or override data change.
 
 done_when:
-  - The marker test fails when the last `data-pipeline` step is inverted to `test -f`.
-  - README and `docs/supabase_setup.md` list every production writer that reads
-    `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`: export, raw archive, assessments.
-  - Both step lists in `docs/development_workflow.md` include the raw archive and the
-    assessments step, in job order.
+  - The bracket half of the seed guard matches a short bracket anywhere in the name.
+  - The guard checks the override-applied name per (market_code, resolved ticker).
+  - A test fails if the bracket half is re-anchored to the end of the name.
+  - The fi_omxh25 guard fails if the override lookup is removed (Kalmar's seed name).
+  - A unit test fails if the guard skips override names instead of checking them.
 
 known_limits:
-  - The marker test checks the step's text, not its shell behaviour.
+  - Any seed artifact with an override row now passes the guard, in all three halves; the
+    override is the accepted human decision.
 
 regression_checklist:
-  - The marker test still passes on the committed `.gitlab-ci.yml`.
-  - No doc line lists a script that does not read the variable it is listed under.
+  - Every active market's seed still passes the guard on the committed data.
+  - An override name carrying an artifact still fails the guard.
+  - The writer's own tests (`tests/ingestion/test_constituent_seeds.py`) are untouched.
