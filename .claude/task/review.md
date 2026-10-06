@@ -1,55 +1,44 @@
 # Review
 
-diff_sha256: 48b33ca93fc2b87dc47bbb1bb355804e3362acfaa5cb90b135b45823ae7120fd
+diff_sha256: 1a6102b96810e471aac74e99626fa20b0b1b5d6aa689bd2085291b33d25d4dde
 rounds: 2
 
-Issue #38. Round 1 on the cumulative diff (tree f22ff2d; the re-recorded raw files under
-`tests/fixtures/real/yfinance/` excluded from the patch, sampled on disk): analytics-engineer,
-data-engineer and scope-auditor PASS; platform FAIL [broken-guarantee] (the recorder's
-`--ticker` mode untested), fixed. Round 2 on the delta (tree af33b40): platform and
-scope-auditor PASS; analytics-engineer and data-engineer not re-dispatched (none of their
-routed files changed since their round-1 PASS). platform's round-2 wording fix (docstring)
-applied after round 2.
+Issue #39. Round 1 on the cumulative diff (tree 0cadde2): data-engineer, platform and
+scope-auditor PASS. Two reviewers' shared follow-up applied (strip whitespace before the
+suffix, with tests). Round 2 on the delta (tree 71a4d26): all three PASS. data-engineer's
+round-2 wording fix (the contract names the non-breaking space explicitly) applied after.
 
-Coordinator evidence: `pytest tests` 1074 passed; the guard test fails for exactly us_sp500 and
-uk_ftse100 with the three override rows removed; before regeneration the golden check showed
-exactly 3 differences (new rows us_sp500/BRK-B and uk_ftse100/BT-A.L; us_sp500/JPM
-sector_peer_count 1 -> 2); name check no mismatches. Follow-ups: #41.
-
-## platform-reviewer
-
-Round 1 FAIL (tree f22ff2d). Round 2:
-
-VERDICT: PASS
-reviewed_tree: af33b406f29b6d2c550a2b876f7cac59f69be9ff
-risks_checked:
-- Each `--ticker` behaviour has a test that fails on revert: named ticker replaced, others
-  kept, stale JSON removed, files byte-identical when the network fails, flat frame wrapped.
-- Bad argument combinations exit 2; no dependency, CI or cost change.
-
-## analytics-engineer-reviewer
-
-VERDICT: PASS
-reviewed_tree: f22ff2d9405607e4e9295df08514be24fad9625d
-risks_checked:
-- The golden diff is exactly the two new rows plus JPM's peer count; no benchmark moves (the
-  8-peer threshold is not reached).
-- No company_name_overrides row is keyed on the old dotted tickers; no production card key moves.
+Coordinator evidence: `pytest tests` 1077 passed; the recorded DAX page parses into the
+committed seed with all 40 tickers matched; the strip test fails with `.strip()` removed; all
+pre-commit hooks pass. Follow-ups: #42.
 
 ## data-engineer-reviewer
 
+Round 1 PASS (tree 0cadde2). Round 2:
+
 VERDICT: PASS
-reviewed_tree: f22ff2d9405607e4e9295df08514be24fad9625d
+reviewed_tree: 71a4d265ba9df7fe02a7cc291e7adbf6656bb87c
 risks_checked:
-- Raw files are rewritten whole per run, so no old dotted key can persist beside the new one.
-- The three name-snapshot rows are keyed on the post-override ticker and match the seed names.
+- `str.strip()` removes U+00A0, so `"BAS.DE "` becomes `BAS`; the order before the
+  suffix removal is correct and tested.
+- Markets without `strip_suffix` skip the step entirely; missing cells are still dropped.
+
+## platform-reviewer
+
+Round 1 PASS (tree 0cadde2). Round 2:
+
+VERDICT: PASS
+reviewed_tree: 71a4d265ba9df7fe02a7cc291e7adbf6656bb87c
+risks_checked:
+- The test input holds a literal U+00A0, so reverting `.strip()` fails the test.
+- `"X.DEF"` pins end-anchoring; no new mechanism, dependency or cost in the delta.
 
 ## scope-auditor
 
-Round 1 PASS (tree f22ff2d). Round 2:
+Round 1 PASS (tree 0cadde2). Round 2:
 
 VERDICT: PASS
-reviewed_tree: af33b406f29b6d2c550a2b876f7cac59f69be9ff
+reviewed_tree: 71a4d265ba9df7fe02a7cc291e7adbf6656bb87c
 risks_checked:
-- Network calls finish before any file write, pinned by a test.
-- Stale JSON cleanup is pinned by a test.
+- Whitespace is stripped before the suffix, so stray whitespace cannot re-key a DAX card.
+- Only a trailing suffix is removed; `.DE` inside a ticker is kept.

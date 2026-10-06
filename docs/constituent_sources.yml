@@ -39,6 +39,12 @@ markets:
     table_index: 4
     ticker_column: Ticker
     name_column: Company
+    strip_suffix: .DE
+    notes: >
+      The table gives suffixed tickers (ADS.DE); the committed seed and every DAX card key use
+      the bare form (ADS), so strip_suffix keeps that form on refresh. The ticker is the card's
+      key: a new form would duplicate DAX cards for up to 28 days, regenerate their reads and
+      orphan users' saved DAX companies. AIR.PA, Airbus's Paris line, is unaffected.
 
   fr_cac40:
     provider: wikipedia

@@ -24,9 +24,7 @@ ACTIVE = [m.market_code for m in load_markets(active_only=True)]
 
 # A recorded page whose parse no longer reproduces the committed seed, each with its issue.
 # The test below fails if an entry stops drifting, so a fixed one cannot linger here.
-KNOWN_PAGE_DRIFT = {
-    "de_dax": "#39: the page now gives suffixed tickers (ADS.DE) where the seed has ADS",
-}
+KNOWN_PAGE_DRIFT: dict[str, str] = {}
 MIN_OVERLAP = 0.85
 
 
