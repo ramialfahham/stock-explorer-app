@@ -3,31 +3,41 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #44 -- override tests check rules that hold for every row of
-  `company_name_overrides.csv` and `ticker_overrides.csv`, not per-market copies of rows.
+objective: Closes #41 -- the dot guard checks each market's own suffix, the US and UK
+  sources document their class shares, and `record_ingestion_fixtures.py --ticker` records
+  per-ticker dates and saves the manifest per market (including the two items in the issue's
+  comment).
 
 scope_paths:
   - tests/ingestion/test_market_onboarding.py
+  - docs/constituent_sources.yml
+  - scripts/record_ingestion_fixtures.py
+  - tests/tooling/test_record_ingestion_fixtures.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: settled by the owner in-thread (option A): delete the per-market pin
-  tests; the CSV and its `reason` column are the record of each decision. Accepted
-  trade-off: a correct-looking but unwanted value change is caught by MR review of the CSV
-  diff, not by a test.
+decisions_reserved: settled by the owner in-thread -- the cross-listing exemption reuses
+  KNOWN_DUAL_INDEX_SYMBOLS (no new list); item 3 is option (a), a `rerecorded_at` map per
+  market entry in `tests/fixtures/real/manifest.json`, written by `--ticker` and dropped by a
+  full recording. No backfill of past re-record dates.
 
 done_when:
-  - The six per-market pin tests and the au_asx200-only end-to-end test are gone.
-  - Every row of both override files must have a non-empty `reason`; a blank one fails.
-  - For every `ticker_overrides.csv` row, `load_constituents` returns the corrected ticker and
-    not the raw one; an override mechanism that stops applying fails.
-  - The existing every-row rules (real constituent target, no duplicate keys, override name
-    through the scrape-artifact guard) are kept.
+  - A dotted resolved symbol passes only if it ends in its own market's suffix or
+    KNOWN_DUAL_INDEX_SYMBOLS lists it for that market; `FOO.L` in us_sp500 fails.
+  - us_sp500 and uk_ftse100 in `docs/constituent_sources.yml` note their dotted class shares
+    and point at `ticker_overrides.csv`.
+  - `--ticker` writes `rerecorded_at` (ticker -> date), keeps earlier dates for tickers still
+    listed, drops unlisted ones, and leaves `recorded_at` unchanged.
+  - `--ticker` across several markets writes the manifest after each market; a later
+    market's failure leaves an earlier market's entry current.
+  - A test re-records two tickers in one market.
 
 known_limits:
-  - An unwanted but well-formed value change in either override CSV passes every test.
+  - Tickers re-recorded before this change carry no `rerecorded_at` entry.
 
 regression_checklist:
-  - Both override CSVs and `ingestion/` are unchanged.
-  - The every-row rules still run over all markets, including ones added later.
+  - Every active market's resolved symbols still pass the dot guard.
+  - A full recording still replaces the market's manifest entry (and so clears
+    `rerecorded_at`).
+  - A failed network call in `rerecord_tickers` still changes no file.

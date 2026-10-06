@@ -1004,18 +1004,45 @@ def test_every_ca_tsx60_symbol_carries_the_toronto_suffix() -> None:
     assert [s for s in symbols if not s.endswith(".TO")] == []
 
 
+def _is_stray_dotted_symbol(symbol: str, market_code: str, suffix: str | None) -> bool:
+    if "." not in symbol or (suffix and symbol.endswith(suffix)):
+        return False
+    return market_code not in KNOWN_DUAL_INDEX_SYMBOLS.get(symbol, (frozenset(), ""))[0]
+
+
+@pytest.mark.parametrize(
+    "symbol,market_code,suffix,stray",
+    [
+        ("FOO.L", "us_sp500", "", True),
+        ("BRK.B", "us_sp500", "", True),
+        ("BT.A", "uk_ftse100", ".L", True),
+        ("BT-A.L", "uk_ftse100", ".L", False),
+        ("SAP.DE", "de_dax", ".DE", False),
+        ("AIR.PA", "de_dax", ".DE", False),
+        ("MT.AS", "fr_cac40", ".PA", False),
+        ("MT.AS", "us_sp500", "", True),
+        ("AIR.PA", "nl_aex", ".AS", True),
+        ("AAPL", "us_sp500", "", False),
+    ],
+)
+def test_dot_guard_accepts_only_the_own_suffix_or_a_named_cross_listing(
+    symbol: str, market_code: str, suffix: str, stray: bool
+) -> None:
+    assert _is_stray_dotted_symbol(symbol, market_code, suffix) is stray
+
+
 @pytest.mark.parametrize("market_code", _active_codes())
 def test_no_symbol_carries_a_dot_that_is_not_an_exchange_suffix(market_code: str) -> None:
     """A dotted class share (BRK.B, BT.A) passes `to_yfinance_ticker` unchanged and Yahoo
     returns no fundamentals for it (for BT.A no prices either), so the company silently never
-    gets a card (issue #38). A resolved symbol with a dot must end in some registry exchange
-    suffix (MT.AS in the CAC 40 is Amsterdam's); anything else needs a ticker_overrides.csv row."""
-    suffixes = {m.exchange_suffix for m in load_markets(active_only=True) if m.exchange_suffix}
+    gets a card (issue #38). A resolved symbol with a dot must end in its own market's exchange
+    suffix, or be a cross-listing KNOWN_DUAL_INDEX_SYMBOLS names for that market (MT.AS in the
+    CAC 40 is Amsterdam's); anything else needs a ticker_overrides.csv row."""
     market = get_market(market_code)
     stray = [
         symbol
         for symbol in (to_yfinance_ticker(t, market.exchange_suffix)
                        for t in load_constituents(market_code)["ticker"])
-        if "." in symbol and not any(symbol.endswith(s) for s in suffixes)
+        if _is_stray_dotted_symbol(symbol, market_code, market.exchange_suffix)
     ]
     assert stray == []
