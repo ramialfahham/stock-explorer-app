@@ -892,7 +892,8 @@ def test_company_name_overrides_target_real_constituents() -> None:
     synthetic fixture database that seeds every market with the same handful of made-up
     tickers, so a dbt-side test comparing the override against `stg_yf__constituents` would
     report all real tickers as "dead" and fail in CI regardless of whether the override is
-    correct. Reading both CSVs directly from disk sidesteps that entirely.
+    correct. Reading the override CSV, and the seed through `load_constituents` (which also
+    applies `ticker_overrides.csv`), sidesteps that entirely.
 
     The failure this catches: a source table renumbers a ticker after the override was
     written, and the override silently corrects nothing while looking like it does.
@@ -929,35 +930,58 @@ def test_company_name_overrides_have_no_duplicate_keys() -> None:
 
 
 def test_company_name_overrides_covers_the_audited_nikkei_defects() -> None:
-    """Pins the eleven tickers the yfinance audit found wrong, so the override file can't
-    silently lose a row on a future edit without a test noticing.
+    """Pins the eleven tickers the yfinance audit found wrong and their corrected names, so the
+    override file can't silently lose or change a row on a future edit without a test noticing.
     """
-    audited_tickers = {
-        "3407", "6908", "6976", "8005", "8804",
-        "8830", "9005", "9008", "9009", "9101", "9412",
+    audited = {
+        "3407": "Asahi Kasei",
+        "6908": "Iriso Electronics",
+        "6976": "Taiyo Yuden",
+        "8005": "Scroll Corporation",
+        "8804": "Tokyo Tatemono",
+        "8830": "Sumitomo Realty & Development",
+        "9005": "Tokyu Corp",
+        "9008": "Keio Corp",
+        "9009": "Keisei Electric Railway",
+        "9101": "Nippon Yusen",
+        "9412": "SKY Perfect JSAT",
     }
     rows = [r for r in _override_rows() if r["market_code"] == "jp_nikkei225"]
-    covered = {r["ticker"] for r in rows}
-    assert covered == audited_tickers, (
-        f"expected exactly {sorted(audited_tickers)}, found {sorted(covered)}"
-    )
+    covered = {r["ticker"]: r["company_name"] for r in rows}
+    assert covered == audited, f"expected exactly {audited}, found {covered}"
 
 
 def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
-    """Pins the nineteen tickers approved for a trade-name override, so the override file
-    can't silently lose a row on a future edit without a test noticing.
+    """Pins the nineteen tickers approved for a trade-name override and their approved names,
+    so the override file can't silently lose or change a row on a future edit without a test
+    noticing.
 
     KNIN (Kuehne + Nagel) is deliberately absent: the seed already carries a trade name there.
     """
-    approved_tickers = {
-        "NOVN", "ROP", "NESN", "ABBN", "UBSG", "CFR", "ZURN", "HOLN", "SREN",
-        "LONN", "SCMN", "GIVN", "ALC", "SIKA", "AMRZ", "SLHN", "GEBN", "PGHN", "LOGN",
+    approved = {
+        "NOVN": "Novartis",
+        "ROP": "Roche",
+        "NESN": "Nestlé",
+        "ABBN": "ABB",
+        "UBSG": "UBS",
+        "CFR": "Richemont",
+        "ZURN": "Zurich Insurance Group",
+        "HOLN": "Holcim",
+        "SREN": "Swiss Re",
+        "LONN": "Lonza",
+        "SCMN": "Swisscom",
+        "GIVN": "Givaudan",
+        "ALC": "Alcon",
+        "SIKA": "Sika",
+        "AMRZ": "Amrize",
+        "SLHN": "Swiss Life",
+        "GEBN": "Geberit",
+        "PGHN": "Partners Group",
+        "LOGN": "Logitech",
     }
     rows = [r for r in _override_rows() if r["market_code"] == "ch_smi"]
-    covered = {r["ticker"] for r in rows}
-    assert covered == approved_tickers, (
-        f"expected exactly {sorted(approved_tickers)}, found {sorted(covered)}"
-    )
+    covered = {r["ticker"]: r["company_name"] for r in rows}
+    assert covered == approved, f"expected exactly {approved}, found {covered}"
 
 
 def test_company_name_overrides_cover_the_nordic_headline_decision() -> None:
@@ -967,18 +991,56 @@ def test_company_name_overrides_cover_the_nordic_headline_decision() -> None:
     Kalmar's mid-name Wikipedia marker, Tieto's rename and the Carlsberg/Rockwool plain names."""
     expected = {
         "se_omxs30": {
-            "ADDT-B.ST", "ASSA-B.ST", "ATCO-A.ST", "EPI-A.ST", "ERIC-B.ST", "ESSITY-B.ST",
-            "HEXA-B.ST", "HM-B.ST", "INDU-C.ST", "INVE-B.ST", "LIFCO-B.ST", "NIBE-B.ST",
-            "SAAB-B.ST", "SCA-B.ST", "SEB-A.ST", "SHB-A.ST", "SKA-B.ST", "SKF-B.ST",
-            "SWED-A.ST", "TEL2-B.ST", "VOLV-B.ST", "NDA-SE.ST", "ABB.ST",
+            "ADDT-B.ST": "Addtech",
+            "ASSA-B.ST": "Assa Abloy",
+            "ATCO-A.ST": "Atlas Copco",
+            "EPI-A.ST": "Epiroc",
+            "ERIC-B.ST": "Ericsson",
+            "ESSITY-B.ST": "Essity",
+            "HEXA-B.ST": "Hexagon",
+            "HM-B.ST": "Hennes & Mauritz",
+            "INDU-C.ST": "Industrivärden",
+            "INVE-B.ST": "Investor",
+            "LIFCO-B.ST": "Lifco",
+            "NIBE-B.ST": "Nibe Industrier",
+            "SAAB-B.ST": "Saab",
+            "SCA-B.ST": "SCA",
+            "SEB-A.ST": "SEB",
+            "SHB-A.ST": "Handelsbanken",
+            "SKA-B.ST": "Skanska",
+            "SKF-B.ST": "SKF",
+            "SWED-A.ST": "Swedbank",
+            "TEL2-B.ST": "Tele2",
+            "VOLV-B.ST": "Volvo",
+            "NDA-SE.ST": "Nordea",
+            "ABB.ST": "ABB",
         },
-        "fi_omxh25": {"KESKOB.HE", "SAMPO.HE", "STERV.HE", "KALMAR.HE", "TIETO.HE"},
-        "dk_omxc25": {"CARL-B", "ROCK-B", "NDA-DK.CO"},
-        "no_obx": {"HAFNI", "HAUTO", "TGS", "VAR"},
+        "fi_omxh25": {
+            "KESKOB.HE": "Kesko",
+            "SAMPO.HE": "Sampo",
+            "STERV.HE": "Stora Enso",
+            "KALMAR.HE": "Kalmar",
+            "TIETO.HE": "Tieto",
+        },
+        "dk_omxc25": {
+            "CARL-B": "Carlsberg",
+            "ROCK-B": "Rockwool",
+            "NDA-DK.CO": "Nordea",
+        },
+        "no_obx": {
+            "HAFNI": "Hafnia",
+            "HAUTO": "Höegh Autoliners",
+            "TGS": "TGS",
+            "VAR": "Vår Energi",
+        },
     }
-    for market_code, tickers in expected.items():
-        covered = {r["ticker"] for r in _override_rows() if r["market_code"] == market_code}
-        assert covered == tickers, f"{market_code}: expected {sorted(tickers)}, found {sorted(covered)}"
+    for market_code, names in expected.items():
+        covered = {
+            r["ticker"]: r["company_name"]
+            for r in _override_rows()
+            if r["market_code"] == market_code
+        }
+        assert covered == names, f"{market_code}: expected {names}, found {covered}"
 
 
 TICKER_OVERRIDES = REPO / "dbt_analytics" / "seeds" / "ticker_overrides.csv"

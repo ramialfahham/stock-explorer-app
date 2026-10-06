@@ -3,37 +3,28 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #36 -- constituent ingestion reads the ticker `NA` safely everywhere,
-  reports the rows it wrote, and refuses a kept row without a company name.
+objective: Closes #37 -- the headline override pins check each (ticker, company_name) pair,
+  and the override-target test's docstring describes how it reads the seed.
 
 scope_paths:
-  - ingestion/constituents/seeds.py
-  - ingestion/constituents/refresh.py
-  - scripts/import_constituents.py
-  - tests/ingestion/test_constituent_seeds.py
-  - tests/ingestion/test_real_fixtures.py
-  - tests/tooling/test_import_constituents.py
+  - tests/ingestion/test_market_onboarding.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: none open. Owner approved the plan in-thread: `write_constituents` returns
-  the written row count (not the path) and raises before writing when a kept row has no
-  company name; refresh and import both go through it. Issue item 5 (override test resolves
-  through `ticker_overrides`) is already on main (f01c6df); no change.
+decisions_reserved: none open. Owner approved in-thread: the pinned names are the current
+  values of `dbt_analytics/seeds/company_name_overrides.csv` (the approved headlines); no
+  override or output change.
 
 done_when:
-  - `scripts/import_constituents.py` and `_load_ticker_overrides` read with `na_filter=False`;
-    an `NA` ticker survives an import and an override keyed on `NA` matches.
-  - `refresh_market` returns the rows written: ca_tsx60's recorded page returns 60, not 61.
-  - A kept row with an empty, blank or null company name raises and writes no seed; the
-    import script exits 1 on it.
-  - Offline tests over the recorded OBX and TSX 60 pages pin the `OSE: ` prefix strip, the
-    dropped footer row and the kept `NA`.
+  - The Nikkei, SMI and Nordic pin tests compare ticker -> company_name maps, matching the
+    committed override CSV exactly.
+  - Changing one pinned name (e.g. "Nordea" to "Nordea Bank Abp") fails its pin.
+  - `test_company_name_overrides_target_real_constituents`'s docstring says it reads the seed
+    through `load_constituents`, which applies `ticker_overrides.csv`.
 
 known_limits: none.
 
 regression_checklist:
-  - Every recorded Wikipedia page still parses into its committed seed.
-  - A missing ticker is still dropped, never written as "nan".
-  - A row dropped for its ticker is never reported as an unnamed row.
+  - The pins still fail when a row is added or removed.
+  - `company_name_overrides.csv` is unchanged.
