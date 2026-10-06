@@ -154,6 +154,8 @@ python scripts/refresh_constituents.py
 python scripts/refresh_constituents.py --market de_dax
 ```
 
+A refresh keeping under 85% of the committed seed's tickers fails and writes nothing.
+
 ### Refresh the name-vs-yfinance audit snapshot
 
 Manual, occasional -- like `refresh_constituents.py` above, not a CI job (this repo has no

@@ -4,6 +4,7 @@ the real ingestion code. CI's `validate:full` takes the replay on through dbt to
 
 from __future__ import annotations
 
+import dataclasses
 import gzip
 import json
 import socket
@@ -25,7 +26,7 @@ ACTIVE = [m.market_code for m in load_markets(active_only=True)]
 # A recorded page whose parse no longer reproduces the committed seed, each with its issue.
 # The test below fails if an entry stops drifting, so a fixed one cannot linger here.
 KNOWN_PAGE_DRIFT: dict[str, str] = {}
-MIN_OVERLAP = 0.85
+MIN_OVERLAP = refresh.MIN_SEED_OVERLAP
 
 
 def test_every_active_market_is_recorded_with_its_listed_tickers() -> None:
@@ -125,3 +126,24 @@ def test_recorded_tsx60_page_counts_only_the_rows_written(tmp_path) -> None:
     parsed, count = _parse_recorded_page("ca_tsx60", tmp_path)
     assert count == len(parsed) == 60
     assert "NA" in set(parsed["ticker"])
+
+
+def test_dax_page_without_strip_suffix_is_refused_against_the_committed_seed(tmp_path) -> None:
+    """The DAX page writes ADS.DE where the seed keeps ADS. Without `strip_suffix` a refresh
+    would re-key all 40 cards; the overlap check refuses it and leaves the seed as it was."""
+    html = gzip.open(FIXTURE_DIR / "wikipedia" / "de_dax.html.gz", "rt", encoding="utf-8").read()
+
+    class _Response:
+        text = html
+
+        def raise_for_status(self) -> None:
+            pass
+
+    seed = tmp_path / "constituents.csv"
+    seed.write_bytes(seeds.seed_path("de_dax").read_bytes())
+    config = dataclasses.replace(refresh.load_refresh_configs()["de_dax"], strip_suffix=None)
+    with mock.patch.object(refresh.requests, "get", lambda *a, **k: _Response()), \
+            mock.patch.object(seeds, "seed_path", lambda c: seed):
+        with pytest.raises(ValueError, match="seed not written"):
+            refresh.refresh_market(config)
+    assert seed.read_bytes() == seeds.seed_path("de_dax").read_bytes()

@@ -3,41 +3,47 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #41 -- the dot guard checks each market's own suffix, the US and UK
-  sources document their class shares, and `record_ingestion_fixtures.py --ticker` records
-  per-ticker dates and saves the manifest per market (including the two items in the issue's
-  comment).
+objective: Closes #42 -- a constituent refresh fails, writing nothing, when the new table keeps
+  under 85% of the committed seed's tickers (every market, not only `strip_suffix` ones), and
+  onboarding documents `strip_suffix`.
 
 scope_paths:
-  - tests/ingestion/test_market_onboarding.py
-  - docs/constituent_sources.yml
-  - scripts/record_ingestion_fixtures.py
-  - tests/tooling/test_record_ingestion_fixtures.py
+  - ingestion/constituents/seeds.py
+  - ingestion/constituents/refresh.py
+  - tests/ingestion/test_constituent_seeds.py
+  - tests/ingestion/test_real_fixtures.py
+  - docs/data_contract.md
+  - docs/operations_guide.md
+  - .claude/skills/onboard-market/SKILL.md
+  - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: settled by the owner in-thread -- the cross-listing exemption reuses
-  KNOWN_DUAL_INDEX_SYMBOLS (no new list); item 3 is option (a), a `rerecorded_at` map per
-  market entry in `tests/fixtures/real/manifest.json`, written by `--ticker` and dropped by a
-  full recording. No backfill of past re-record dates.
+decisions_reserved: settled by the owner in-thread -- option B (one overlap rule for every
+  market, replacing the issue's strip_suffix-only check), with (i) no bypass flag: a real
+  reshuffle past the threshold means checking the page and replacing the seed by hand. The
+  threshold is 85%, shared with the recorded-page test (`MIN_SEED_OVERLAP`). The manual import
+  (`import_constituents.py`) is not checked: an import replaces a seed by intent.
 
 done_when:
-  - A dotted resolved symbol passes only if it ends in its own market's suffix or
-    KNOWN_DUAL_INDEX_SYMBOLS lists it for that market; `FOO.L` in us_sp500 fails.
-  - us_sp500 and uk_ftse100 in `docs/constituent_sources.yml` note their dotted class shares
-    and point at `ticker_overrides.csv`.
-  - `--ticker` writes `rerecorded_at` (ticker -> date), keeps earlier dates for tickers still
-    listed, drops unlisted ones, and leaves `recorded_at` unchanged.
-  - `--ticker` across several markets writes the manifest after each market; a later
-    market's failure leaves an earlier market's entry current.
-  - A test re-records two tickers in one market.
+  - `refresh_market` passes `MIN_SEED_OVERLAP` to `write_constituents`, which raises before
+    writing when a committed seed exists and the new tickers keep under that share of it.
+  - The threshold is inclusive (17 of 20 passes, 16 fails); no committed seed means no check.
+  - The recorded DAX page without `strip_suffix` is refused against the committed seed, and
+    the seed is left byte-identical.
+  - The activation checklist (step 2) mentions `strip_suffix`; the runbook states the overlap
+    failure; the onboard-market skill's `table_index` trap reflects that only a first refresh
+    is still silent.
 
 known_limits:
-  - Tickers re-recorded before this change carry no `rerecorded_at` entry.
+  - A first refresh (no committed seed) is not checked, so a wrong `table_index` at onboarding
+    still writes silently.
+  - Drift that never removes more than 15% of the seed in one refresh is not caught.
+  - A new table that contains the whole seed passes regardless of its size (a wrong
+    `table_index` landing on a larger table that includes every committed ticker).
 
 regression_checklist:
-  - Every active market's resolved symbols still pass the dot guard.
-  - A full recording still replaces the market's manifest entry (and so clears
-    `rerecorded_at`).
-  - A failed network call in `rerecord_tickers` still changes no file.
+  - Every recorded Wikipedia page still parses into its committed seed.
+  - The import path writes without an overlap check.
+  - A refused refresh leaves the committed seed unchanged.
