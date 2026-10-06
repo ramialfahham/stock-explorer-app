@@ -99,7 +99,7 @@ sensitive and should stay Protected regardless.
 | `SUPABASE_DB_PASSWORD` | Migrate, data pipeline | Database password |
 | `SUPABASE_DB_HOST` | Migrate, data pipeline | **Session pooler hostname only** (recommended for CI) |
 | `SUPABASE_DB_PORT` | Migrate, data pipeline | Usually `5432` (Session pooler) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline export | Bypasses RLS — still needs the table-level `GRANT`s in `011_grant_roles.sql` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline: export, raw archive, assessments | Bypasses RLS -- still needs the table-level `GRANT`s in `011_grant_roles.sql` |
 | `SUPABASE_ACCESS_TOKEN` | Migrate (optional) | Personal access token; Management API pooler lookup **fallback only** |
 | `ANTHROPIC_API_KEY` | Data pipeline | Assessment prose reads; soft dependency, skipped when unset |
 

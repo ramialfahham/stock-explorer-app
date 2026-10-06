@@ -172,5 +172,6 @@ def test_the_job_fails_at_its_end_when_the_archive_failed():
     script = _pipeline_script()
     archive = next(s for s in script if "archive_raw_to_supabase.py" in s)
     marker = archive.split("touch", 1)[1].strip()
-    assert marker in script[-1] and "exit 1" in script[-1]
+    assert script[-1].startswith(f"test ! -f {marker} ||")
+    assert "exit 1" in script[-1]
     assert "generate_assessments.py" in script[-2]

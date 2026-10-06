@@ -160,9 +160,9 @@ holds credentials locally.
 
 | Variable | Where to find it | Needed for |
 |---|---|---|
-| `SUPABASE_URL` | Supabase: Project Settings, API | The app, export, migrations |
+| `SUPABASE_URL` | Supabase: Project Settings, API | The app, export, raw archive, assessments, migrations |
 | `SUPABASE_ANON_KEY` | Supabase: Project Settings, API (anon / publishable key) | The app (read-only) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase: Project Settings, API | `export_to_supabase.py` (writes production) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase: Project Settings, API | `export_to_supabase.py`, `archive_raw_to_supabase.py`, `generate_assessments.py` (write production) |
 | `SUPABASE_DB_PASSWORD` | Supabase: Project Settings, Database | `apply_supabase_migrations.py` |
 | `ANTHROPIC_API_KEY` | Anthropic Console | Optional: `generate_assessments.py` prose reads |
 

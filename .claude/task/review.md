@@ -1,39 +1,35 @@
 # Review
 
-diff_sha256: 11dbe8b21403bb1fc1a1db463642b3d5381cf247e7185aa777405bdd0cad006e
-rounds: 2
+diff_sha256: 3df646016f753adb0ff8db4f19335f80fff15e2707aa0c9e49e47f66d1c00429
+rounds: 1
 
-Issue #34. Round 1 on the cumulative diff (tree 8ffab76): scope-auditor PASS, platform FAIL
-(the full-rewrite test did not pin the `if args.markets:` merge guard, since every fixture
-market was a no-argument target). Fix: a fixture row for a non-target market, kept by a
-`--market` run and pruned by a full run. Round 2 on the delta (tree 23b5b19): both PASS.
+Issue #32. Round 1 on the cumulative diff (tree 0c3e157): platform-reviewer and
+scope-auditor PASS.
 
-Coordinator evidence: `pytest tests` 1079 passed; the `--market` test fails with the script
-fix removed; the full-rewrite test fails with only the merge guard forced to `if True:`
-(`{'NEW', 'OLD'} == {'NEW'}`); em-dash check passes.
+Coordinator evidence: `pytest tests` 1079 passed; with the last `data-pipeline` step
+inverted to `test -f`, the new marker assertion fails and the old one passed;
+`.gitlab-ci.yml` restored with no diff; the archive step's wording in
+`docs/development_workflow.md` fits its 7200-byte context budget.
 
 ## platform-reviewer
 
-Round 1 FAIL (tree 8ffab76). Round 2:
-
 VERDICT: PASS
-reviewed_tree: 23b5b1943bb452f3f1b1a71f9a6d65249d848f10
+reviewed_tree: 0c3e157f5863369cb717ea8ae26a74ec6b706893
 risks_checked:
-- `xx_retired` is pruned on a full run and kept on a `--market` run, so the merge guard is
-  pinned from both sides.
-- The `snapshot` fixture points `NAME_SNAPSHOT_PATH` at `tmp_path` and stubs the fetch; the
-  committed CSV is never written.
-- Re-running the same `--market` refresh replaces, never appends.
+- The marker extracted from the archive step is `storage/.raw_archive_failed`; the last
+  step starts with `test ! -f` on it, and an inversion fails the test.
+- Export, raw archive and assessments each read `SUPABASE_URL` and
+  `SUPABASE_SERVICE_ROLE_KEY`; both step lists match the job order in `.gitlab-ci.yml`.
+- No CI file, hook, dependency or credential change; the edited `supabase_setup.md` line
+  uses `--`.
 follow_ups:
-- `write_snapshot` truncates the CSV in place; a crash mid-write leaves a partial file
-  (pre-existing, recoverable from git).
+- `docs/supabase_setup.md` `SUPABASE_URL` row lists export beside data pipeline
+  (redundant, not wrong); tidy if that row is touched again.
 
 ## scope-auditor
 
-Round 1 PASS (tree 8ffab76). Round 2:
-
 VERDICT: PASS
-reviewed_tree: 23b5b1943bb452f3f1b1a71f9a6d65249d848f10
+reviewed_tree: 0c3e157f5863369cb717ea8ae26a74ec6b706893
 risks_checked:
-- `--market ch_smi` leaves it_ftsemib, us_sp500 and xx_retired rows unchanged.
-- A full refresh prunes `xx_retired`; `merge_with_existing` is not called without `--market`.
+- The marker test pins the exact `test ! -f` form and the step order.
+- Every documented writer reads the variables it is listed under; no orphaned claims.
