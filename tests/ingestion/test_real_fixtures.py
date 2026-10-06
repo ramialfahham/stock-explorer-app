@@ -78,7 +78,7 @@ def test_replayed_prices_end_on_or_before_the_replay_date(tmp_path, today, last_
     assert str(max(prices["trading_date"])) == last_trading_day
 
 
-def _parse_recorded_page(code: str, tmp_path: Path) -> pd.DataFrame:
+def _parse_recorded_page(code: str, tmp_path: Path) -> tuple[pd.DataFrame, int]:
     html = gzip.open(FIXTURE_DIR / "wikipedia" / f"{code}.html.gz", "rt", encoding="utf-8").read()
 
     class _Response:
@@ -90,8 +90,8 @@ def _parse_recorded_page(code: str, tmp_path: Path) -> pd.DataFrame:
     out = tmp_path / f"{code}.csv"
     with mock.patch.object(refresh.requests, "get", lambda *a, **k: _Response()), \
             mock.patch.object(seeds, "seed_path", lambda c: out):
-        refresh.refresh_market(refresh.load_refresh_configs()[code])
-    return pd.read_csv(out, dtype=str, na_filter=False)
+        count = refresh.refresh_market(refresh.load_refresh_configs()[code])
+    return pd.read_csv(out, dtype=str, na_filter=False), count
 
 
 WIKIPEDIA_MARKETS = sorted(c for c in ACTIVE if MANIFEST["markets"][c].get("wikipedia"))
@@ -102,7 +102,7 @@ def test_recorded_wikipedia_page_reproduces_the_committed_seed(code: str, tmp_pa
     """The configured table_index and columns still parse the page into this market's seed:
     no blank or "nan" ticker, and most committed tickers present (index membership moves
     between a seed refresh and a recording, so this is an overlap, not equality)."""
-    parsed = _parse_recorded_page(code, tmp_path)
+    parsed, _ = _parse_recorded_page(code, tmp_path)
     committed = pd.read_csv(seeds.seed_path(code), dtype=str, na_filter=False)
     tickers = set(parsed["ticker"])
     assert not tickers & {"", "nan", "None"}
@@ -111,3 +111,17 @@ def test_recorded_wikipedia_page_reproduces_the_committed_seed(code: str, tmp_pa
         assert overlap < MIN_OVERLAP, f"{code} no longer drifts; remove it from KNOWN_PAGE_DRIFT"
     else:
         assert overlap >= MIN_OVERLAP, f"{code}: only {overlap:.0%} of the seed parsed from the page"
+
+
+def test_recorded_obx_page_loses_its_exchange_prefix(tmp_path) -> None:
+    parsed, count = _parse_recorded_page("no_obx", tmp_path)
+    assert "AKRBP" in set(parsed["ticker"])
+    assert not [t for t in parsed["ticker"] if t.startswith("OSE")]
+    assert count == len(parsed)
+
+
+def test_recorded_tsx60_page_counts_only_the_rows_written(tmp_path) -> None:
+    """The table ends in an empty footer row the writer drops; the count must not include it."""
+    parsed, count = _parse_recorded_page("ca_tsx60", tmp_path)
+    assert count == len(parsed) == 60
+    assert "NA" in set(parsed["ticker"])

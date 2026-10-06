@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pandas as pd
 
@@ -19,7 +18,7 @@ def _load_ticker_overrides() -> pd.DataFrame:
         return pd.DataFrame(columns=list(TICKER_OVERRIDE_COLUMNS))
 
     try:
-        frame = pd.read_csv(TICKER_OVERRIDES_PATH, dtype=str)
+        frame = pd.read_csv(TICKER_OVERRIDES_PATH, dtype=str, na_filter=False)
     except pd.errors.EmptyDataError:
         return pd.DataFrame(columns=list(TICKER_OVERRIDE_COLUMNS))
 
@@ -143,7 +142,7 @@ def write_constituents(
     *,
     source: str,
     refreshed_at: datetime | None = None,
-) -> Path:
+) -> int:
     refreshed = refreshed_at or datetime.now(timezone.utc)
     frame = pd.DataFrame(
         {
@@ -158,7 +157,13 @@ def write_constituents(
     frame = frame[frame["ticker"] != ""]
     frame = frame.drop_duplicates(subset=["ticker"], keep="first")
 
+    unnamed = frame[frame["company_name"].isna() | (frame["company_name"] == "")]["ticker"]
+    if not unnamed.empty:
+        raise ValueError(
+            f"{market_code}: no company name for {', '.join(unnamed)}; seed not written"
+        )
+
     path = seed_path(market_code)
     path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(path, index=False)
-    return path
+    return len(frame)
