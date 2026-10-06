@@ -1,35 +1,38 @@
 # Review
 
-diff_sha256: 3df646016f753adb0ff8db4f19335f80fff15e2707aa0c9e49e47f66d1c00429
-rounds: 1
+diff_sha256: 070810d96a3bd7ce5bbe0c43b329aca8e8b0c44b7b3d2beb49904d6c6c00ec88
+rounds: 2
 
-Issue #32. Round 1 on the cumulative diff (tree 0c3e157): platform-reviewer and
-scope-auditor PASS.
+Issue #35. Round 1 on the cumulative diff (tree 6d4add3): platform-reviewer and scope-auditor
+PASS. platform-reviewer's follow-ups applied: the per-name check extracted into
+`_scrape_artifact_offenders` with a unit test pinning that an override name carrying an
+artifact still fails; the whitespace-half comment moved above `_SUSPECT_SPACE`. Round 2 on the
+delta (tree a3328a7): both PASS.
 
-Coordinator evidence: `pytest tests` 1079 passed; with the last `data-pipeline` step
-inverted to `test -f`, the new marker assertion fails and the old one passed;
-`.gitlab-ci.yml` restored with no diff; the archive step's wording in
-`docs/development_workflow.md` fits its 7200-byte context budget.
+Coordinator evidence: `pytest tests` 1080 passed. Mutations, each reverted: re-anchoring
+`_SUSPECT_BRACKET` to the end fails the bracket-half test; checking the raw seed name fails
+the fi_omxh25 guard on `Kalmar [fi] B` and the new unit test; skipping override names fails
+the new unit test.
 
 ## platform-reviewer
 
+Round 1 PASS (tree 6d4add3). Round 2:
+
 VERDICT: PASS
-reviewed_tree: 0c3e157f5863369cb717ea8ae26a74ec6b706893
+reviewed_tree: a3328a7cd4c28b97391fc4d095742168d0449eff
 risks_checked:
-- The marker extracted from the archive step is `storage/.raw_archive_failed`; the last
-  step starts with `test ! -f` on it, and an inversion fails the test.
-- Export, raw archive and assessments each read `SUPABASE_URL` and
-  `SUPABASE_SERVICE_ROLE_KEY`; both step lists match the job order in `.gitlab-ci.yml`.
-- No CI file, hook, dependency or credential change; the edited `supabase_setup.md` line
-  uses `--`.
-follow_ups:
-- `docs/supabase_setup.md` `SUPABASE_URL` row lists export beside data pipeline
-  (redundant, not wrong); tidy if that row is touched again.
+- The new unit test fails if the override lookup is removed or if override names are
+  skipped.
+- The extracted helper is line-for-line the old inline loop; the per-market guard is
+  unchanged.
+- The moved comment sits above the regex it describes; no dependency, CI or cost change.
 
 ## scope-auditor
 
+Round 1 PASS (tree 6d4add3). Round 2:
+
 VERDICT: PASS
-reviewed_tree: 0c3e157f5863369cb717ea8ae26a74ec6b706893
+reviewed_tree: a3328a7cd4c28b97391fc4d095742168d0449eff
 risks_checked:
-- The marker test pins the exact `test ! -f` form and the step order.
-- Every documented writer reads the variables it is listed under; no orphaned claims.
+- The extraction introduces no behaviour change.
+- The override-name regression item is pinned by the new unit test.

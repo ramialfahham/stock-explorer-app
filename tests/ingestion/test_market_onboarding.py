@@ -59,13 +59,9 @@ KNOWN_DUAL_INDEX_SYMBOLS: dict[str, tuple[frozenset[str], str]] = {
 
 
 # Wider than the writer strips, in all THREE halves, on purpose: see the guard's docstring.
-# An earlier version listed the same eleven code points the writer strips, which made the
-# whitespace half able only to confirm the writer's own assumptions. `[^\S ]` is every
-# character Python treats as whitespace except the ordinary space, so it covers the Zs block
-# the writer does not touch (U+2000 to U+200A, U+205F, U+3000, U+1680) as well as tabs and
-# newlines; the second alternative adds the zero-width format characters, which are not
-# whitespace to `re`.
-_SUSPECT_TRAILING_BRACKET = re.compile(r"\[[^\]]{1,20}\]\s*$")
+# Not anchored to the end: the OMX Helsinki table gave `Kalmar [fi] B`, a marker mid-name that
+# the writer, which strips trailing markers only, leaves in place.
+_SUSPECT_BRACKET = re.compile(r"\[[^\]]{1,20}\]")
 # Non-bracket footnote markers. Wikipedia uses these alongside bracketed ones, and the
 # writer handles neither. Widening the GUARD costs nothing, because it only ever fails and
 # asks a human; widening the WRITER on a guess is the over-stripping failure it avoids.
@@ -79,6 +75,12 @@ _SUSPECT_TRAILING_BRACKET = re.compile(r"\[[^\]]{1,20}\]\s*$")
 _SUSPECT_TRAILING_MARKER = re.compile(
     r"[*\u2020\u2021\u00a7\u2016\u00b6\u00b9\u00b2\u00b3\u2070-\u209f\u203b\u2042\u204e]\s*$"
 )
+# An earlier version listed the same eleven code points the writer strips, which made the
+# whitespace half able only to confirm the writer's own assumptions. `[^\S ]` is every
+# character Python treats as whitespace except the ordinary space, so it covers the Zs block
+# the writer does not touch (U+2000 to U+200A, U+205F, U+3000, U+1680) as well as tabs and
+# newlines; the second alternative adds the zero-width format characters, which are not
+# whitespace to `re`.
 _SUSPECT_SPACE = re.compile(r"[^\S ]|[​-‍⁠﻿᠎]")
 
 
@@ -700,6 +702,23 @@ def test_supabase_markets_row_matches_the_registry(market_code: str) -> None:
     )
 
 
+def _scrape_artifact_offenders(
+    seed_names: list[tuple[str, str]], overrides: dict[str, str]
+) -> list[str]:
+    offenders = []
+    for ticker, seed_name in seed_names:
+        name = overrides.get(ticker, seed_name)
+        if (
+            _SUSPECT_BRACKET.search(name)
+            or _SUSPECT_TRAILING_MARKER.search(name)
+            or _SUSPECT_SPACE.search(name)
+        ):
+            offenders.append(f"{ticker}: {name!r}")
+        elif not name.strip() or name.strip().lower() == "nan":
+            offenders.append(f"{ticker}: empty or null name")
+    return offenders
+
+
 @pytest.mark.parametrize("market_code", _active_codes())
 def test_seed_company_names_carry_no_scrape_artifacts(market_code: str) -> None:
     """`company_name` is card copy, not an internal field.
@@ -714,28 +733,36 @@ def test_seed_company_names_carry_no_scrape_artifacts(market_code: str) -> None:
     three halves: brackets, non-bracket markers, and whitespace. A guard built from the
     writer's own regex can only confirm the writer's assumptions,
     so it would pass on exactly the artifact classes the writer overlooks. This one fails on any
-    short trailing bracket, including the uppercase tokens the writer leaves alone on purpose,
-    and on any whitespace character other than an ordinary space. It can therefore fire on a
-    legitimate name: a real `[Holding]` suffix, or a Nordic share class written `[B]`. That is the
-    intended direction. A false alarm is a human decision; a missed artifact is a wrong card
-    headline, and a silently over-stripped name is two cards that read the same.
+    short bracket anywhere in the name, including the uppercase tokens the writer leaves alone
+    on purpose, and on any whitespace character other than an ordinary space. It can therefore
+    fire on a legitimate name: a real `[Holding]` suffix, or a Nordic share class written `[B]`.
+    That is the intended direction. A false alarm is a human decision; a missed artifact is a
+    wrong card headline, and a silently over-stripped name is two cards that read the same.
+
+    It checks the name the card renders: a `company_name_overrides.csv` row replaces the seed
+    name, and that row is the human decision a false alarm asks for.
     """
     if not _seed_path(market_code).exists():
         pytest.skip("covered by test_active_market_has_a_constituent_seed")
-    offenders = []
-    for row in _seed_rows(market_code):
-        name = row["company_name"]
-        if (
-            _SUSPECT_TRAILING_BRACKET.search(name)
-            or _SUSPECT_TRAILING_MARKER.search(name)
-            or _SUSPECT_SPACE.search(name)
-        ):
-            offenders.append(f"{row['ticker']}: {name!r}")
-        elif not name.strip() or name.strip().lower() == "nan":
-            offenders.append(f"{row['ticker']}: empty or null name")
+    overrides = {
+        r["ticker"]: r["company_name"] for r in _override_rows() if r["market_code"] == market_code
+    }
+    frame = load_constituents(market_code)
+    offenders = _scrape_artifact_offenders(
+        list(zip(frame["ticker"], frame["company_name"])), overrides
+    )
     assert not offenders, (
         f"{market_code} seed carries scrape artifacts in company_name: {'; '.join(offenders)}"
     )
+
+
+def test_seed_guard_checks_the_override_name_in_place_of_the_seed_name() -> None:
+    seeds = [("KALMAR.HE", "Kalmar [fi] B"), ("NOKIA.HE", "Nokia")]
+    assert _scrape_artifact_offenders(seeds, {"KALMAR.HE": "Kalmar"}) == []
+    assert _scrape_artifact_offenders(seeds, {"NOKIA.HE": "Nokia [fi]"}) == [
+        "KALMAR.HE: 'Kalmar [fi] B'",
+        "NOKIA.HE: 'Nokia [fi]'",
+    ]
 
 
 def test_ci_baseline_covers_every_active_market() -> None:
@@ -838,8 +865,15 @@ def test_seed_guard_bracket_half_catches_more_than_the_writer_strips() -> None:
     for the writer being allowed to be conservative. Narrowing the guard's bound to `{1,3}` would
     otherwise pass every other test in the repo.
     """
-    for name in ("Acme [Holding]", "Novo Nordisk [B]", "Equinor [ASA]", "Acme [note 1]"):
-        assert _SUSPECT_TRAILING_BRACKET.search(name), f"guard no longer notices {name!r}"
+    for name in (
+        "Acme [Holding]",
+        "Novo Nordisk [B]",
+        "Equinor [ASA]",
+        "Acme [note 1]",
+        "Kalmar [fi] B",
+        "Aena [es] SME SA",
+    ):
+        assert _SUSPECT_BRACKET.search(name), f"guard no longer notices {name!r}"
 
 
 COMPANY_NAME_OVERRIDES = REPO / "dbt_analytics" / "seeds" / "company_name_overrides.csv"
