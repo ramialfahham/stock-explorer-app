@@ -192,7 +192,7 @@ def test_clean_ticker_turns_a_missing_cell_into_an_empty_string() -> None:
 
 def test_write_constituents_drops_a_missing_ticker(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(seeds, "seed_path", lambda code: tmp_path / code / "constituents.csv")
-    seeds.write_constituents(
+    count = seeds.write_constituents(
         "ca_tsx60",
         pd.Series(["AEM", float("nan"), "NA"], dtype=object),
         pd.Series(["Agnico Eagle", None, "National Bank of Canada"], dtype=object),
@@ -200,6 +200,31 @@ def test_write_constituents_drops_a_missing_ticker(tmp_path, monkeypatch) -> Non
     )
     written = pd.read_csv(tmp_path / "ca_tsx60" / "constituents.csv", na_filter=False)
     assert written["ticker"].tolist() == ["AEM", "NA"]
+    assert count == 2
+
+
+@pytest.mark.parametrize("name", ["", "   ", None, float("nan")])
+def test_write_constituents_refuses_a_kept_row_without_a_name(tmp_path, monkeypatch, name) -> None:
+    path = tmp_path / "constituents.csv"
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    with pytest.raises(ValueError, match="no company name for NA"):
+        seeds.write_constituents(
+            "ca_tsx60",
+            pd.Series(["AEM", "NA"], dtype=object),
+            pd.Series(["Agnico Eagle", name], dtype=object),
+            source="wikipedia",
+        )
+    assert not path.exists()
+
+
+def test_ticker_overrides_match_the_ticker_na(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "ticker_overrides.csv"
+    path.write_text(
+        "market_code,ticker,corrected_ticker,reason\nca_tsx60,NA,NA-X,test\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(seeds, "TICKER_OVERRIDES_PATH", path)
+    overrides = seeds._load_ticker_overrides()
+    assert _apply_ticker_overrides("ca_tsx60", pd.Series(["NA"]), overrides).tolist() == ["NA-X"]
 
 
 def test_load_constituents_keeps_the_ticker_na(tmp_path, monkeypatch) -> None:

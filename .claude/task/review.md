@@ -1,38 +1,48 @@
 # Review
 
-diff_sha256: 070810d96a3bd7ce5bbe0c43b329aca8e8b0c44b7b3d2beb49904d6c6c00ec88
-rounds: 2
+diff_sha256: 7fe95bb1c9c46d19080a2f72242d6cd605ef379c75502387e6ae5c35b44b1e37
+rounds: 1
 
-Issue #35. Round 1 on the cumulative diff (tree 6d4add3): platform-reviewer and scope-auditor
-PASS. platform-reviewer's follow-ups applied: the per-name check extracted into
-`_scrape_artifact_offenders` with a unit test pinning that an override name carrying an
-artifact still fails; the whitespace-half comment moved above `_SUSPECT_SPACE`. Round 2 on the
-delta (tree a3328a7): both PASS.
+Issue #36. Round 1 on the cumulative diff (tree 571eb06): data-engineer-reviewer,
+platform-reviewer and scope-auditor PASS.
 
-Coordinator evidence: `pytest tests` 1080 passed. Mutations, each reverted: re-anchoring
-`_SUSPECT_BRACKET` to the end fails the bracket-half test; checking the raw seed name fails
-the fi_omxh25 guard on `Kalmar [fi] B` and the new unit test; skipping override names fails
-the new unit test.
+Coordinator evidence: `pytest tests` 1089 passed. With the three source files reverted, 9 new
+or changed tests fail (writer count, four empty-name cases, NA ticker override, TSX 60 count,
+both import tests); the OBX prefix test passes either way, the strip predating this branch.
+
+## data-engineer-reviewer
+
+VERDICT: PASS
+reviewed_tree: 571eb06897797b6cbe1497b86b76300ad4eabd86
+risks_checked:
+- The unnamed-row check runs after the ticker drop and dedupe and before any write, so a
+  refused run leaves the previous seed untouched.
+- Both entry points fail loudly: the import exits 1, the refresh loop reports the market as
+  failed and exits 1 without blocking other markets.
+- No committed seed has an empty company name; every recorded page replays through the
+  new writer.
+follow_ups:
+- Dedupe keeps the first row per ticker, so an unnamed first duplicate raises even if a later
+  one is named (stricter, loud, not a failure).
 
 ## platform-reviewer
 
-Round 1 PASS (tree 6d4add3). Round 2:
-
 VERDICT: PASS
-reviewed_tree: a3328a7cd4c28b97391fc4d095742168d0449eff
+reviewed_tree: 571eb06897797b6cbe1497b86b76300ad4eabd86
 risks_checked:
-- The new unit test fails if the override lookup is removed or if override names are
-  skipped.
-- The extracted helper is line-for-line the old inline loop; the per-market guard is
-  unchanged.
-- The moved comment sits above the regex it describes; no dependency, CI or cost change.
+- The null-name check relies on pandas 3 keeping NA through `astype(str)`; `requirements.txt`
+  pins 3.0.3 and `test_clean_company_name_does_not_invent_a_name_for_a_null` fails on a
+  downgrade.
+- Each new test fails when its fix is reverted; no caller of the old Path return remains.
+- No dependency, hook, workflow, credential or cost change.
+follow_ups:
+- The import script prints the path from its own import-time `seed_path` binding (harmless
+  in tests, low priority).
 
 ## scope-auditor
 
-Round 1 PASS (tree 6d4add3). Round 2:
-
 VERDICT: PASS
-reviewed_tree: a3328a7cd4c28b97391fc4d095742168d0449eff
+reviewed_tree: 571eb06897797b6cbe1497b86b76300ad4eabd86
 risks_checked:
-- The extraction introduces no behaviour change.
-- The override-name regression item is pinned by the new unit test.
+- `NA` survives import, override lookup and the recorded TSX 60 page.
+- Empty, blank and null names are refused before the write; the import exits 1.

@@ -88,10 +88,9 @@ def refresh_market(config: RefreshConfig) -> int:
         suffix = config.strip_suffix
         tickers = tickers.map(lambda t: t.strip().removesuffix(suffix) if isinstance(t, str) else t)
     names = table[config.name_column]
-    write_constituents(
+    return write_constituents(
         config.market_code,
         tickers,
         names,
         source="wikipedia",
     )
-    return len(tickers)

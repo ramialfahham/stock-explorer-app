@@ -3,33 +3,37 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #35 -- the seed guard catches a Wikipedia marker mid-name
-  (`Kalmar [fi] B`), not only at the end.
+objective: Closes #36 -- constituent ingestion reads the ticker `NA` safely everywhere,
+  reports the rows it wrote, and refuses a kept row without a company name.
 
 scope_paths:
-  - tests/ingestion/test_market_onboarding.py
+  - ingestion/constituents/seeds.py
+  - ingestion/constituents/refresh.py
+  - scripts/import_constituents.py
+  - tests/ingestion/test_constituent_seeds.py
+  - tests/ingestion/test_real_fixtures.py
+  - tests/tooling/test_import_constituents.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: settled by the owner in-thread before implementation (option B) --
-  `_clean_company_name` is unchanged and keeps stripping trailing markers only; the seed
-  guard flags a mid-name marker; the guard checks the override-applied name (the name the
-  card renders), so a `company_name_overrides.csv` row clears a flagged seed name. No seed
-  or override data change.
+decisions_reserved: none open. Owner approved the plan in-thread: `write_constituents` returns
+  the written row count (not the path) and raises before writing when a kept row has no
+  company name; refresh and import both go through it. Issue item 5 (override test resolves
+  through `ticker_overrides`) is already on main (f01c6df); no change.
 
 done_when:
-  - The bracket half of the seed guard matches a short bracket anywhere in the name.
-  - The guard checks the override-applied name per (market_code, resolved ticker).
-  - A test fails if the bracket half is re-anchored to the end of the name.
-  - The fi_omxh25 guard fails if the override lookup is removed (Kalmar's seed name).
-  - A unit test fails if the guard skips override names instead of checking them.
+  - `scripts/import_constituents.py` and `_load_ticker_overrides` read with `na_filter=False`;
+    an `NA` ticker survives an import and an override keyed on `NA` matches.
+  - `refresh_market` returns the rows written: ca_tsx60's recorded page returns 60, not 61.
+  - A kept row with an empty, blank or null company name raises and writes no seed; the
+    import script exits 1 on it.
+  - Offline tests over the recorded OBX and TSX 60 pages pin the `OSE: ` prefix strip, the
+    dropped footer row and the kept `NA`.
 
-known_limits:
-  - Any seed artifact with an override row now passes the guard, in all three halves; the
-    override is the accepted human decision.
+known_limits: none.
 
 regression_checklist:
-  - Every active market's seed still passes the guard on the committed data.
-  - An override name carrying an artifact still fails the guard.
-  - The writer's own tests (`tests/ingestion/test_constituent_seeds.py`) are untouched.
+  - Every recorded Wikipedia page still parses into its committed seed.
+  - A missing ticker is still dropped, never written as "nan".
+  - A row dropped for its ticker is never reported as an unnamed row.
