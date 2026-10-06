@@ -78,6 +78,16 @@ def refresh_snapshot(
     return rows
 
 
+def merge_with_existing(
+    rows: list[dict[str, str]], refreshed_markets: set[str]
+) -> list[dict[str, str]]:
+    if not NAME_SNAPSHOT_PATH.exists():
+        return rows
+    with open(NAME_SNAPSHOT_PATH, encoding="utf-8", newline="") as f:
+        kept = [r for r in csv.DictReader(f) if r["market_code"] not in refreshed_markets]
+    return kept + rows
+
+
 def write_snapshot(rows: list[dict[str, str]]) -> Path:
     NAME_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     rows_sorted = sorted(rows, key=lambda r: (r["market_code"], r["ticker"]))
@@ -101,7 +111,10 @@ def main(argv: list[str] | None = None) -> int:
         "--market",
         action="append",
         dest="markets",
-        help="Limit to one or more market_code values (default: all provider:wikipedia active markets)",
+        help=(
+            "Limit to one or more market_code values; every other market's snapshot rows "
+            "are kept (default: all provider:wikipedia active markets, full rewrite)"
+        ),
     )
     parser.add_argument(
         "--delay-seconds",
@@ -127,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     rows = refresh_snapshot(targets, delay_seconds=args.delay_seconds)
+    if args.markets:
+        rows = merge_with_existing(rows, set(targets))
     path = write_snapshot(rows)
     print(f"Wrote {len(rows)} names to {path}")
     return 0

@@ -52,9 +52,8 @@ CI's Linux runner). Open: #40 (follow-ups; owner: sector-benchmark sample size, 
 ticker_overrides; a guard test fails CI on a stray dot. Confirm all three cards after the
 first run after merge (Brown-Forman is not in the fixture sample). Follow-ups: #41.
 
-**Issue #39 in flight on `fix/dax-ticker-form`:** DAX tickers stay bare (owner: option A).
-New optional `strip_suffix` in `docs/constituent_sources.yml`, `.DE` for de_dax; the recorded
-DAX page now parses back into the committed seed (all 40 matched when checked).
+**DAX ticker form: MERGED (!233, issue #39).** DAX tickers stay bare via `strip_suffix: .DE`
+in `docs/constituent_sources.yml`.
 
 **Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
 
