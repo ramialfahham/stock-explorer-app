@@ -929,120 +929,6 @@ def test_company_name_overrides_have_no_duplicate_keys() -> None:
     assert not dupes, "; ".join(dupes)
 
 
-def test_company_name_overrides_covers_the_audited_nikkei_defects() -> None:
-    """Pins the eleven tickers the yfinance audit found wrong and their corrected names, so the
-    override file can't silently lose or change a row on a future edit without a test noticing.
-    """
-    audited = {
-        "3407": "Asahi Kasei",
-        "6908": "Iriso Electronics",
-        "6976": "Taiyo Yuden",
-        "8005": "Scroll Corporation",
-        "8804": "Tokyo Tatemono",
-        "8830": "Sumitomo Realty & Development",
-        "9005": "Tokyu Corp",
-        "9008": "Keio Corp",
-        "9009": "Keisei Electric Railway",
-        "9101": "Nippon Yusen",
-        "9412": "SKY Perfect JSAT",
-    }
-    rows = [r for r in _override_rows() if r["market_code"] == "jp_nikkei225"]
-    covered = {r["ticker"]: r["company_name"] for r in rows}
-    assert covered == audited, f"expected exactly {audited}, found {covered}"
-
-
-def test_company_name_overrides_covers_the_approved_smi_trade_names() -> None:
-    """Pins the nineteen tickers approved for a trade-name override and their approved names,
-    so the override file can't silently lose or change a row on a future edit without a test
-    noticing.
-
-    KNIN (Kuehne + Nagel) is deliberately absent: the seed already carries a trade name there.
-    """
-    approved = {
-        "NOVN": "Novartis",
-        "ROP": "Roche",
-        "NESN": "Nestlé",
-        "ABBN": "ABB",
-        "UBSG": "UBS",
-        "CFR": "Richemont",
-        "ZURN": "Zurich Insurance Group",
-        "HOLN": "Holcim",
-        "SREN": "Swiss Re",
-        "LONN": "Lonza",
-        "SCMN": "Swisscom",
-        "GIVN": "Givaudan",
-        "ALC": "Alcon",
-        "SIKA": "Sika",
-        "AMRZ": "Amrize",
-        "SLHN": "Swiss Life",
-        "GEBN": "Geberit",
-        "PGHN": "Partners Group",
-        "LOGN": "Logitech",
-    }
-    rows = [r for r in _override_rows() if r["market_code"] == "ch_smi"]
-    covered = {r["ticker"]: r["company_name"] for r in rows}
-    assert covered == approved, f"expected exactly {approved}, found {covered}"
-
-
-def test_company_name_overrides_cover_the_nordic_headline_decision() -> None:
-    """Pins the owner's decisions on Nordic headlines: the share-class letter is dropped (Maersk
-    excepted, both its classes being OMXC25 members), the legal-form ending is dropped (ABB,
-    the Norwegian ASA/Limited names), and Nordea reads "Nordea" on all three cards. Plus
-    Kalmar's mid-name Wikipedia marker, Tieto's rename and the Carlsberg/Rockwool plain names."""
-    expected = {
-        "se_omxs30": {
-            "ADDT-B.ST": "Addtech",
-            "ASSA-B.ST": "Assa Abloy",
-            "ATCO-A.ST": "Atlas Copco",
-            "EPI-A.ST": "Epiroc",
-            "ERIC-B.ST": "Ericsson",
-            "ESSITY-B.ST": "Essity",
-            "HEXA-B.ST": "Hexagon",
-            "HM-B.ST": "Hennes & Mauritz",
-            "INDU-C.ST": "Industrivärden",
-            "INVE-B.ST": "Investor",
-            "LIFCO-B.ST": "Lifco",
-            "NIBE-B.ST": "Nibe Industrier",
-            "SAAB-B.ST": "Saab",
-            "SCA-B.ST": "SCA",
-            "SEB-A.ST": "SEB",
-            "SHB-A.ST": "Handelsbanken",
-            "SKA-B.ST": "Skanska",
-            "SKF-B.ST": "SKF",
-            "SWED-A.ST": "Swedbank",
-            "TEL2-B.ST": "Tele2",
-            "VOLV-B.ST": "Volvo",
-            "NDA-SE.ST": "Nordea",
-            "ABB.ST": "ABB",
-        },
-        "fi_omxh25": {
-            "KESKOB.HE": "Kesko",
-            "SAMPO.HE": "Sampo",
-            "STERV.HE": "Stora Enso",
-            "KALMAR.HE": "Kalmar",
-            "TIETO.HE": "Tieto",
-        },
-        "dk_omxc25": {
-            "CARL-B": "Carlsberg",
-            "ROCK-B": "Rockwool",
-            "NDA-DK.CO": "Nordea",
-        },
-        "no_obx": {
-            "HAFNI": "Hafnia",
-            "HAUTO": "Höegh Autoliners",
-            "TGS": "TGS",
-            "VAR": "Vår Energi",
-        },
-    }
-    for market_code, names in expected.items():
-        covered = {
-            r["ticker"]: r["company_name"]
-            for r in _override_rows()
-            if r["market_code"] == market_code
-        }
-        assert covered == names, f"{market_code}: expected {names}, found {covered}"
-
-
 TICKER_OVERRIDES = REPO / "dbt_analytics" / "seeds" / "ticker_overrides.csv"
 
 
@@ -1072,6 +958,27 @@ def test_ticker_overrides_target_real_constituents() -> None:
     assert not offenders, "; ".join(offenders)
 
 
+@pytest.mark.parametrize("path", [COMPANY_NAME_OVERRIDES, TICKER_OVERRIDES], ids=lambda p: p.name)
+def test_override_rows_carry_a_reason(path: Path) -> None:
+    """The `reason` column is the record of why each override exists; the tests check rules
+    that hold for every row rather than repeating the values."""
+    with path.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    missing = [f"{r['market_code']}/{r['ticker']}" for r in rows if not r["reason"].strip()]
+    assert not missing, f"{path.name}: rows without a reason: {missing}"
+
+
+def test_load_constituents_applies_every_ticker_override() -> None:
+    """End to end against the real files: the fetch list carries each corrected ticker, not the
+    raw one the source table gives."""
+    offenders = []
+    for row in _ticker_override_rows():
+        tickers = set(load_constituents(row["market_code"])["ticker"])
+        if row["corrected_ticker"] not in tickers or row["ticker"] in tickers:
+            offenders.append(f"{row['market_code']}/{row['ticker']} -> {row['corrected_ticker']}")
+    assert not offenders, "; ".join(offenders)
+
+
 def test_ticker_overrides_have_no_duplicate_keys() -> None:
     """Two rows for the same (market_code, ticker) is ambiguous: which correction applies?
 
@@ -1086,34 +993,6 @@ def test_ticker_overrides_have_no_duplicate_keys() -> None:
             dupes.append(f"{key[0]}/{key[1]} appears more than once")
         seen[key] = row["corrected_ticker"]
     assert not dupes, "; ".join(dupes)
-
-
-def test_ticker_overrides_covers_the_known_au_asx200_defect() -> None:
-    """Pins the one approved ticker correction, so it can't silently disappear."""
-    rows = [r for r in _ticker_override_rows() if r["market_code"] == "au_asx200"]
-    assert [r["ticker"] for r in rows] == ["XYX"]
-    assert rows[0]["corrected_ticker"] == "XYZ"
-
-
-def test_ticker_overrides_cover_the_nordic_and_canadian_yahoo_forms() -> None:
-    """Pins the seven corrections the six-market batch needs. Without them the six Canadian
-    class/unit shares are fetched with no exchange suffix and Nordea's Copenhagen line as
-    NDA.CO, all of which return nothing."""
-    expected = {
-        ("ca_tsx60", "CTC.A"): "CTC-A.TO",
-        ("ca_tsx60", "CCL.B"): "CCL-B.TO",
-        ("ca_tsx60", "GIB.A"): "GIB-A.TO",
-        ("ca_tsx60", "RCI.B"): "RCI-B.TO",
-        ("ca_tsx60", "TECK.B"): "TECK-B.TO",
-        ("ca_tsx60", "BIP.UN"): "BIP-UN.TO",
-        ("dk_omxc25", "NDA"): "NDA-DK.CO",
-    }
-    found = {
-        (r["market_code"], r["ticker"]): r["corrected_ticker"]
-        for r in _ticker_override_rows()
-        if r["market_code"] in {"ca_tsx60", "dk_omxc25"}
-    }
-    assert found == expected
 
 
 def test_every_ca_tsx60_symbol_carries_the_toronto_suffix() -> None:
@@ -1140,30 +1019,3 @@ def test_no_symbol_carries_a_dot_that_is_not_an_exchange_suffix(market_code: str
         if "." in symbol and not any(symbol.endswith(s) for s in suffixes)
     ]
     assert stray == []
-
-
-def test_ticker_overrides_cover_the_us_and_uk_class_shares() -> None:
-    expected = {
-        ("us_sp500", "BRK.B"): "BRK-B",
-        ("us_sp500", "BF.B"): "BF-B",
-        ("uk_ftse100", "BT.A"): "BT-A.L",
-    }
-    found = {
-        (r["market_code"], r["ticker"]): r["corrected_ticker"]
-        for r in _ticker_override_rows()
-        if r["market_code"] in {"us_sp500", "uk_ftse100"}
-    }
-    assert expected.items() <= found.items()
-
-
-def test_load_constituents_applies_the_au_asx200_ticker_override() -> None:
-    """End-to-end proof against the real files on disk, not a synthetic fixture.
-
-    The raw seed still says XYX (matching Wikipedia's own table); this proves the override
-    mechanism actually fires today and the yfinance fetch list would carry the correct ticker,
-    not just that `ticker_overrides.csv` has the right row in isolation.
-    """
-    constituents = load_constituents("au_asx200")
-    block_rows = constituents[constituents["company_name"].str.contains("Block", na=False)]
-    assert len(block_rows) == 1, f"expected exactly one Block row, found {len(block_rows)}"
-    assert block_rows.iloc[0]["ticker"] == "XYZ"
