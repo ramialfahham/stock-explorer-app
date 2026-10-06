@@ -1,32 +1,39 @@
 # Review
 
-diff_sha256: 818786e0311beedbd0a30f90e0259eb27a6ebd3a08d119d05d63fe71183e2ad8
-rounds: 1
+diff_sha256: 6b22713535f3683a7bf30198bd19186389fa6b968d7078fee23cb880f7f4e921
+rounds: 2
 
-Issue #37. Round 1 on the cumulative diff (tree 3d11bb8): platform-reviewer and scope-auditor
-PASS.
+Issue #41. Round 1 on the cumulative diff (tree 3729ced): platform-reviewer and scope-auditor
+PASS. Two platform-reviewer follow-ups applied: a test that a full recording clears
+`rerecorded_at`, and a midnight-safe date assertion. The third (non-atomic manifest write) is
+proposed to the owner as part of #43. Round 2 on the delta (tree 1c962a4): both PASS.
 
-Coordinator evidence: `pytest tests` 1089 passed; changing one name in each group (Nordea DK,
-Nestlé, SKY Perfect JSAT) fails all three pins; `company_name_overrides.csv` restored with no
-diff.
+Coordinator evidence: `pytest tests` 1103 passed. Reverting the script change fails the three
+manifest tests; widening the dot helper to any market's suffix fails the FOO.L/us_sp500,
+MT.AS/us_sp500 and AIR.PA/nl_aex cases; making the full recording merge instead of replace
+fails the new clear test. Files restored after each.
 
 ## platform-reviewer
 
+Round 1 PASS (tree 3729ced). Round 2:
+
 VERDICT: PASS
-reviewed_tree: 3d11bb85b9b91fbd4bc980df113151ac76116739
+reviewed_tree: 1c962a409be496fde1d81a5f092d97117dafd414
 risks_checked:
-- All 65 pinned (ticker, name) pairs match the committed override CSV, accented names
-  included; dict equality fails on a changed, added or removed row.
-- The reworded docstring matches the test body and `load_constituents`.
-- Test-only; no hook, CI, dependency, credential or cost change.
+- The new test pins that a full recording replaces the entry and clears `rerecorded_at`.
+- The date assertion covers every date the script can record across a midnight boundary.
+- Test-only delta; round-1 guarantees (dot guard, no file change on a failed network call)
+  untouched.
 follow_ups:
-- Optional: a check that every `market_code` in the override CSV is covered by a pin test,
-  so a row added for an unpinned market fails (pre-existing limit).
+- `main` writes `manifest.json` with a plain `write_text`; a crash mid-write could truncate
+  it (proposed as part of #43).
 
 ## scope-auditor
 
+Round 1 PASS (tree 3729ced). Round 2:
+
 VERDICT: PASS
-reviewed_tree: 3d11bb85b9b91fbd4bc980df113151ac76116739
+reviewed_tree: 1c962a409be496fde1d81a5f092d97117dafd414
 risks_checked:
-- Pinned pairs match the CSV line by line; value, addition and removal changes all fail.
-- The docstring claim matches `load_constituents` applying `ticker_overrides.csv`.
+- The midnight-safe assertion holds for a run that spans midnight.
+- The full-recording test isolates the manifest logic from data fetching and pins the clear.

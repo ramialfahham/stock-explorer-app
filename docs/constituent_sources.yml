@@ -11,6 +11,10 @@ markets:
     table_index: 0
     ticker_column: Symbol
     name_column: Security
+    notes: >
+      Class shares are dotted (BRK.B, BF.B); a dotted ticker passes to_yfinance_ticker
+      unchanged, so each one has a row in dbt_analytics/seeds/ticker_overrides.csv mapping it
+      to Yahoo's form (BRK-B).
 
   uk_ftse100:
     provider: wikipedia
@@ -18,6 +22,10 @@ markets:
     table_index: 6
     ticker_column: Ticker
     name_column: Company
+    notes: >
+      Class shares are dotted (BT.A); a dotted ticker passes to_yfinance_ticker unchanged, so
+      each one has a row in dbt_analytics/seeds/ticker_overrides.csv mapping it to Yahoo's form
+      (BT-A.L).
 
   au_asx200:
     provider: wikipedia

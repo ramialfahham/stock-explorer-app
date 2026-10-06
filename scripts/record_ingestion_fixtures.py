@@ -7,6 +7,10 @@ golden mart with `scripts/check_real_fixture_mart.py --write` and review its dif
 page each `provider: wikipedia` market refreshes from. `--ticker MARKET:TICKER` re-records
 only the named tickers and keeps every other recording, so the golden diff shows only what
 those tickers change.
+
+In `manifest.json`, a market's `recorded_at` is the date of its last full recording;
+`rerecorded_at` maps each ticker re-recorded since then to its own date, and a full recording
+clears it.
 """
 
 from __future__ import annotations
@@ -201,10 +205,16 @@ def main(argv: list[str] | None = None) -> int:
             if not sep or not ticker:
                 parser.error(f"--ticker takes MARKET:TICKER, got {item!r}")
             by_market.setdefault(code, []).append(ticker)
+        today = datetime.now(timezone.utc).date().isoformat()
         for code, tickers in by_market.items():
             entry = rerecord_tickers(code, tickers)
+            dates = dict(manifest["markets"][code].get("rerecorded_at", {}))
+            dates.update(dict.fromkeys(tickers, today))
+            entry["rerecorded_at"] = {t: dates[t] for t in sorted(dates) if t in entry["tickers"]}
             manifest["markets"][code].update(entry)
-        manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+            # Per market, so a later market's failure cannot leave this one's recording newer
+            # than its manifest entry.
+            manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
         print(f"re-recorded {sum(map(len, by_market.values()))} ticker(s)")
         return 0
 
