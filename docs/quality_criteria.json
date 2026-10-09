@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "approved_table": "Owner-approved bar for a professional repo; one area per row. A criterion may only be added, changed or removed with a version bump and owner approval.",
+  "areas": [
+    {
+      "key": "ingestion",
+      "row": "Re-runs are safe, failures are loud, nothing is fetched or dropped silently, and every rule has a test that fails without it.",
+      "paths": "ingestion/, scripts/run_ingestion.py, scripts/refresh_constituents.py, scripts/import_constituents.py, scripts/refresh_yfinance_names.py, scripts/archive_raw_to_supabase.py, scripts/record_ingestion_fixtures.py, scripts/replay_ingestion_fixtures.py",
+      "criteria": [
+        {
+          "id": "ING-1",
+          "rule": "A re-run (same inputs) yields the same state; an interrupted or failed run leaves no partially written or inconsistent output.",
+          "source": "approved table row (ingestion); .claude/agents/data-engineer-reviewer.md (idempotency, merge safety)"
+        },
+        {
+          "id": "ING-2",
+          "rule": "A failure is loud: no exception is swallowed (caught without re-raise, non-zero exit or a reported count) in a way that hides lost or wrong data.",
+          "source": "approved table row (ingestion); data-engineer-reviewer.md (honest completeness)"
+        },
+        {
+          "id": "ING-3",
+          "rule": "Nothing is fetched or dropped silently: every row or ticker dropped, skipped or defaulted is counted or reported.",
+          "source": "approved table row (ingestion)"
+        },
+        {
+          "id": "ING-4",
+          "rule": "Ingestion writes raw fields only, no derived metrics.",
+          "source": "CLAUDE.md Layout ('raw fields only, no derived metrics'); docs/project_context.md"
+        },
+        {
+          "id": "ING-5",
+          "rule": "Every validation, guard or rule in ingestion code has a test that would fail if the rule were removed.",
+          "source": "approved table row (ingestion); .claude/working-agreement.md section 4 (tests are non-negotiable)"
+        }
+      ]
+    },
+    {
+      "key": "dbt",
+      "row": "Every model sits in the right layer, has tests and docs, and has no dead models.",
+      "paths": "dbt_analytics/ (models, seeds, macros, tests, YAML)",
+      "criteria": [
+        {
+          "id": "DBT-1",
+          "rule": "Each model sits in the layer docs/layering.md assigns to what it does, including rules check_layer_contract.py cannot see mechanically.",
+          "source": "docs/layering.md"
+        },
+        {
+          "id": "DBT-2",
+          "rule": "Each model has the tests and documentation docs/engineering_standards.md sections 2 and 3 require for its layer.",
+          "source": "docs/engineering_standards.md sections 2, 3"
+        },
+        {
+          "id": "DBT-3",
+          "rule": "No dead model: every model is referenced downstream, exported, or is a documented terminal mart.",
+          "source": "approved table row (dbt)"
+        },
+        {
+          "id": "DBT-4",
+          "rule": "Naming and SQL structure follow docs/engineering_standards.md section 1 and 1.1.",
+          "source": "docs/engineering_standards.md sections 1, 1.1"
+        },
+        {
+          "id": "DBT-5",
+          "rule": "Comments follow docs/engineering_standards.md section 1.2 (WHY only, no history, no dates or MR references).",
+          "source": "docs/engineering_standards.md section 1.2"
+        }
+      ]
+    },
+    {
+      "key": "export",
+      "row": "Migrations match the database, and the export is checked in CI.",
+      "paths": "scripts/export_to_supabase.py, scripts/check_export_health.py, scripts/apply_supabase_migrations.py, supabase/migrations/, dbt_analytics/models/5_marts (contracts), docs/data_contract.md, docs/supabase_setup.md, .gitlab-ci.yml",
+      "criteria": [
+        {
+          "id": "EXP-1",
+          "rule": "The column sets and types agree across the dbt mart contract, the export column allowlist and the Postgres migrations.",
+          "source": "approved table row (export); issue #9 question 1"
+        },
+        {
+          "id": "EXP-2",
+          "rule": "Each export guarantee docs claim is checked by a CI job that actually runs it.",
+          "source": "approved table row (export); docs/development_workflow.md"
+        },
+        {
+          "id": "EXP-3",
+          "rule": "Grains and keys documented in docs/data_contract.md match the mart contract and the export's conflict keys.",
+          "source": "docs/data_contract.md; issue #9 question 2"
+        },
+        {
+          "id": "EXP-4",
+          "rule": "The migrations ledger in docs/supabase_setup.md matches the files in supabase/migrations/.",
+          "source": "docs/supabase_setup.md"
+        }
+      ]
+    },
+    {
+      "key": "frontend",
+      "row": "No business logic in the UI layer; behaviour matches the UI specs.",
+      "paths": "frontend/, streamlit_app.py, docs/ui/*.md, docs/north_star.md",
+      "criteria": [
+        {
+          "id": "FE-1",
+          "rule": "The frontend does not compute business logic that belongs upstream (metric values, eligibility, deduplication, ranking rules).",
+          "source": ".claude/working-agreement.md anti-patterns ('Doing real logic in the consumption/frontend layer'); approved table row (frontend)"
+        },
+        {
+          "id": "FE-2",
+          "rule": "Rendered copy, ordering and interaction match the spec in docs/ui/*.md for that component; cite the spec line and the code line.",
+          "source": "docs/ui/*.md; approved table row (frontend)"
+        },
+        {
+          "id": "FE-3",
+          "rule": "No dead frontend code: every function, constant and module is used.",
+          "source": "approved table row (repo hygiene)"
+        }
+      ]
+    },
+    {
+      "key": "docs",
+      "row": "One source per fact, no history narrative, no stale claims, every doc linked from CLAUDE.md.",
+      "paths": "docs/ (excluding docs/handover_*.md content, which are labelled point-in-time archives), README.md, CLAUDE.md, .claude/working-agreement.md, .claude/skills/, .claude/active_work.md",
+      "criteria": [
+        {
+          "id": "DOC-1",
+          "rule": "One source per fact: a fact is not restated in two places where the copies disagree, and CLAUDE.md links rather than restates substance.",
+          "source": "CLAUDE.md header ('the linked doc wins on conflict'); .claude/working-agreement.md section 2 (grep the claim)"
+        },
+        {
+          "id": "DOC-2",
+          "rule": "Durable docs state the current state only: no history narrative, rejected options, 'changed from X to Y', dates or MR references.",
+          "source": "global CLAUDE.md (repo files state only the current state); .claude/working-agreement.md section 2 (prose earns its place); docs/engineering_standards.md section 1.2"
+        },
+        {
+          "id": "DOC-3",
+          "rule": "No stale claim: every claim a doc makes about code, files, commands or behaviour holds in the current code; cite the doc line and the contradicting code line.",
+          "source": "approved table row (docs)"
+        },
+        {
+          "id": "DOC-4",
+          "rule": "No broken reference: every file, function, script, test or section a doc names exists.",
+          "source": "approved table row (docs)"
+        },
+        {
+          "id": "DOC-5",
+          "rule": "The two point-in-time handover archives in docs/ and the handover file .claude/active_work.md: report only as a documented decision worth revisiting (their existence and size), never as a defect.",
+          "source": "CLAUDE.md (labels them point-in-time archives); approved table row (repo hygiene)"
+        }
+      ]
+    },
+    {
+      "key": "hygiene",
+      "row": "No dead code, scripts or files; no archives that git history already covers.",
+      "paths": "whole repository (git ls-files), excluding .venv and ignored files",
+      "criteria": [
+        {
+          "id": "HYG-1",
+          "rule": "No dead script, module or file: each is imported, run by CI or a hook, or named as a command in a runbook doc.",
+          "source": "approved table row (repo hygiene)"
+        },
+        {
+          "id": "HYG-2",
+          "rule": "No tracked generated artifact, build output or duplicate copy of a file.",
+          "source": "approved table row (repo hygiene)"
+        },
+        {
+          "id": "HYG-3",
+          "rule": "No duplicated logic across modules unless the duplication is documented as deliberate (e.g. a mirrored constant with a test that keeps the copies equal).",
+          "source": "approved table row (repo hygiene); .claude/working-agreement.md section 4 (no unnecessary complexity)"
+        },
+        {
+          "id": "HYG-4",
+          "rule": "No leftover debug output, commented-out code or TODO/FIXME in tracked code.",
+          "source": "global CLAUDE.md (comment only the WHY); docs/engineering_standards.md section 1.2"
+        }
+      ]
+    },
+    {
+      "key": "guardrails",
+      "row": "Every reviewer and hook actually loads and runs, with a test proving it.",
+      "paths": ".claude/agents/, .claude/hooks/, .claude/settings.json, .claude/review_routing.json, .pre-commit-config.yaml, .gitlab-ci.yml, scripts/check_*.py, tests/tooling/",
+      "criteria": [
+        {
+          "id": "GRD-1",
+          "rule": "Every reviewer definition in .claude/agents/ has frontmatter that parses as YAML with name, description, tools and model, so the harness registers it.",
+          "source": "approved table row (guardrails)"
+        },
+        {
+          "id": "GRD-2",
+          "rule": "Every hook wired in .claude/settings.json or .pre-commit-config.yaml exists, and has a test that would fail if it stopped working.",
+          "source": "approved table row (guardrails)"
+        },
+        {
+          "id": "GRD-3",
+          "rule": "Every path pattern in .claude/review_routing.json matches at least one tracked file, or is documented as intentionally dormant.",
+          "source": "approved table row (guardrails)"
+        },
+        {
+          "id": "GRD-4",
+          "rule": "Every script a CI job runs exists, and every check a doc says CI runs is actually in .gitlab-ci.yml.",
+          "source": "approved table row (guardrails); docs/development_workflow.md"
+        }
+      ]
+    }
+  ]
+}
