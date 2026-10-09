@@ -3,47 +3,32 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #42 -- a constituent refresh fails, writing nothing, when the new table keeps
-  under 85% of the committed seed's tickers (every market, not only `strip_suffix` ones), and
-  onboarding documents `strip_suffix`.
+objective: Closes #54 -- the pre-commit-hooks hooks start as `python -m pre_commit_hooks.<module>`,
+  so Windows Smart App Control, which blocks pre-commit's unsigned .exe launchers, no longer
+  stops a commit.
 
 scope_paths:
-  - ingestion/constituents/seeds.py
-  - ingestion/constituents/refresh.py
-  - tests/ingestion/test_constituent_seeds.py
-  - tests/ingestion/test_real_fixtures.py
-  - docs/data_contract.md
-  - docs/operations_guide.md
-  - .claude/skills/onboard-market/SKILL.md
-  - .claude/active_work.md
+  - .pre-commit-config.yaml
+  - tests/tooling/test_precommit_config.py
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: settled by the owner in-thread -- option B (one overlap rule for every
-  market, replacing the issue's strip_suffix-only check), with (i) no bypass flag: a real
-  reshuffle past the threshold means checking the page and replacing the seed by hand. The
-  threshold is 85%, shared with the recorded-page test (`MIN_SEED_OVERLAP`). The manual import
-  (`import_constituents.py`) is not checked: an import replaces a seed by intent.
+decisions_reserved: settled by the owner in-thread -- override `entry` for every hook of the
+  pinned `pre-commit-hooks` repo (v5.0.0) rather than turning Smart App Control off. Same code,
+  same results, no new dependency.
 
 done_when:
-  - `refresh_market` passes `MIN_SEED_OVERLAP` to `write_constituents`, which raises before
-    writing when a committed seed exists and the new tickers keep under that share of it.
-  - The threshold is inclusive (17 of 20 passes, 16 fails); no committed seed means no check.
-  - The recorded DAX page without `strip_suffix` is refused against the committed seed, and
-    the seed is left byte-identical.
-  - The activation checklist (step 2) mentions `strip_suffix`; the runbook states the overlap
-    failure; the onboard-market skill's `table_index` trap reflects that only a first refresh
-    is still silent.
+  - All eight `pre-commit-hooks` hooks carry `entry: python -m pre_commit_hooks.<module>`, under
+    a one-line WHY comment; each module exists in v5.0.0 and has a `__main__` entry.
+  - Each of the eight passes `pre-commit run --all-files` on this machine with Smart App Control
+    on.
+  - A test fails if a hook from that repo lacks the override.
 
 known_limits:
-  - A first refresh (no committed seed) is not checked, so a wrong `table_index` at onboarding
-    still writes silently.
-  - Drift that never removes more than 15% of the seed in one refresh is not caught.
-  - A new table that contains the whole seed passes regardless of its size (a wrong
-    `table_index` landing on a larger table that includes every committed ticker).
+  - The entries name `pre-commit-hooks`' module paths; bumping `rev` to a version that renames a
+    module makes that hook fail loudly until its entry is updated.
 
 regression_checklist:
-  - Every recorded Wikipedia page still parses into its committed seed.
-  - The import path writes without an overlap check.
-  - A refused refresh leaves the committed seed unchanged.
+  - Hook ids, args and excludes are unchanged.
+  - The local hooks and gitleaks are untouched.
