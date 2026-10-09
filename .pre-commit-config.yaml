@@ -6,23 +6,32 @@
 # review-gate is Claude Code's commit policy: it acts whenever hooks run under CLAUDECODE=1
 # (a commit, in the checkout git is committing, or a manual `pre-commit run`; --verify skips it).
 repos:
+  # Started as `python -m`: Smart App Control blocks the unsigned .exe launchers (WinError 4551).
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: check-added-large-files
+        entry: python -m pre_commit_hooks.check_added_large_files
       - id: check-merge-conflict
+        entry: python -m pre_commit_hooks.check_merge_conflict
       - id: detect-private-key
+        entry: python -m pre_commit_hooks.detect_private_key
       - id: check-yaml
+        entry: python -m pre_commit_hooks.check_yaml
         args: [--unsafe]   # allow GitHub Actions ${{ }} syntax
       - id: check-json
+        entry: python -m pre_commit_hooks.check_json
         # .devcontainer/devcontainer.json is JSONC (allows // comments), which strict check-json can't parse.
         exclude: ^(dbt_analytics/target/|\.devcontainer/)
       - id: end-of-file-fixer
+        entry: python -m pre_commit_hooks.end_of_file_fixer
         exclude: \.(svg|png|jpe?g)$
       - id: trailing-whitespace
+        entry: python -m pre_commit_hooks.trailing_whitespace_fixer
         exclude: \.(md|svg)$
         args: [--markdown-linebreak-ext=md]
       - id: no-commit-to-branch
+        entry: python -m pre_commit_hooks.no_commit_to_branch
         args: [--branch, main, --branch, master]
 
   - repo: local
