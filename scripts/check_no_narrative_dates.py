@@ -1,5 +1,5 @@
-"""Fail when a comment, docstring, or DURABLE doc carries a date, an MR/PR reference, or
-"owner-approved"/"owner decision" wording -- narrative-history language that belongs in a
+"""Fail when a comment, docstring, or governed or DURABLE doc carries a date, an MR/PR reference,
+or "owner-approved"/"owner decision" wording -- narrative-history language that belongs in a
 commit message or MR description, not in the thing it describes (working-agreement.md §2;
 engineering_standards.md §1.2/§1.3).
 
@@ -7,10 +7,11 @@ Scanned: every `.py`/`.sql` file's comments and docstrings, including `supabase/
 -- a migration can be edited after it first merges (confirmed in this repo's own history), so
 it is not exempt (not code or string-literal data -- a Python docstring is found via `ast`, a
 SQL comment via a quote-aware `--`/`/* */` scan, so a dated test fixture value or a SQL `comment
-on column` string is never mistaken for a code comment); every Markdown file whose first 10
-lines declare a `> DURABLE.` header, outside fenced code blocks. A `DISPOSABLE` file (the
-handover, task contract/review) or an undeclared doc (the dated handover archives) is out of
-scope by construction -- those are the sanctioned, point-in-time home for this content.
+on column` string is never mistaken for a code comment); every governed Markdown doc
+(`GOVERNED_MARKDOWN`, by path, so a new doc is covered without opting in) and any other one whose
+first 10 lines declare a `> DURABLE.` header, outside fenced code blocks. Wording split across
+a line break counts. The handover and the task contract/review are `DISPOSABLE` and sit
+outside those paths: they are the sanctioned, point-in-time home for this content.
 Open/planned work with its own narrative lives in GitLab Issues instead, per
 working-agreement.md §2 -- outside this checker's file-scanning reach entirely, not an
 exemption it grants.
@@ -18,8 +19,9 @@ exemption it grants.
 Escape hatch for the rare case a rule needs to quote its own anti-pattern (engineering_standards.md
 quoting "not 'fixed in MR !115'" as an example): a `narrative-check: allow` marker
 (`# narrative-check: allow`, `-- narrative-check: allow`, `<!-- narrative-check: allow -->`)
-exempts the line it's on for a `#`/`--` comment or a Markdown line; for a Python docstring or a
-SQL block comment, which are checked as one unit, it exempts the whole comment/docstring.
+exempts the line it's on for a `#`/`--` comment or a Markdown line (and, for wording split
+across two Markdown lines, a marker on either line exempts it); for a Python docstring or
+a SQL block comment, which are checked as one unit, it exempts the whole comment/docstring.
 
 Usage (from repo root):
     python scripts/check_no_narrative_dates.py
@@ -28,6 +30,7 @@ Usage (from repo root):
 from __future__ import annotations
 
 import ast
+import fnmatch
 import re
 import sys
 import tokenize
@@ -37,7 +40,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 EXCLUDE_DIR_PARTS = {
     ".venv", "venv", ".git", "dbt_packages", "target", "node_modules", "__pycache__",
-    ".cache",
+    ".cache", ".pytest_cache",
 }
 
 DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
@@ -45,6 +48,10 @@ MR_PR_RE = re.compile(r"\b(?:MR|PR)\s*[!#]\d+\b")
 OWNER_DECISION_RE = re.compile(r"\bowner[- ](?:approved|decision)\b", re.IGNORECASE)
 ALLOW_MARKER = "narrative-check: allow"
 DURABLE_HEADER_RE = re.compile(r"^>\s*DURABLE\.")
+GOVERNED_MARKDOWN = (
+    "docs/*.md", "docs/ui/*.md", "README.md", "CLAUDE.md", ".claude/working-agreement.md",
+    ".claude/skills/*/*.md", ".claude/agents/*.md",
+)
 
 
 def _violation_kind(text: str) -> str | None:
@@ -149,13 +156,12 @@ def _sql_violations(path: Path) -> list[str]:
     return violations
 
 
-def _is_durable_markdown(path: Path) -> bool:
-    # docs/ui/*.md uses its own "**Scope:**"/"**Authority:**" header convention instead of
-    # "> DURABLE.", but check_context_budget.py already governs the whole directory at the
-    # same tier as CLAUDE.md and docs/*.md -- treated as always in-scope here for the same
-    # reason, rather than trying to also detect that second header shape.
-    if path.parent.name == "ui" and path.parent.parent.name == "docs":
-        return True
+def _is_durable_markdown(path: Path, root: Path) -> bool:
+    parts = path.relative_to(root).parts
+    for pattern in GOVERNED_MARKDOWN:
+        wanted = pattern.split("/")
+        if len(parts) == len(wanted) and all(map(fnmatch.fnmatchcase, parts, wanted)):
+            return True
     try:
         with path.open(encoding="utf-8") as f:
             for _ in range(10):
@@ -169,8 +175,8 @@ def _is_durable_markdown(path: Path) -> bool:
     return False
 
 
-def _markdown_violations(path: Path) -> list[str]:
-    if not _is_durable_markdown(path):
+def _markdown_violations(path: Path, root: Path) -> list[str]:
+    if not _is_durable_markdown(path, root):
         return []
 
     violations = []
@@ -180,13 +186,22 @@ def _markdown_violations(path: Path) -> list[str]:
         return violations
 
     in_fence = False
-    for lineno, line in enumerate(text.splitlines(), start=1):
+    lines = text.splitlines()
+    for lineno, line in enumerate(lines, start=1):
         if line.strip().startswith("```"):
             in_fence = not in_fence
             continue
         if in_fence:
             continue
         kind = _violation_kind(line)
+        following = lines[lineno] if lineno < len(lines) else ""
+        if not kind and not following.strip().startswith("```"):
+            # Joined with and without a space: a break can fall between words ("owner" /
+            # "decision") or inside a token ("owner-" / "approved", "MR !" / "115").
+            head, tail = line.rstrip(), following.lstrip()
+            joined_kind = _violation_kind(head + " " + tail) or _violation_kind(head + tail)
+            if joined_kind and not _violation_kind(following):
+                kind = joined_kind
         if kind:
             violations.append(f"{path}:{lineno}: {kind}")
 
@@ -203,7 +218,7 @@ def find_violations(root: Path) -> list[str]:
                            for v in _sql_violations(path))
     for path in _iter_repo_files(root, ".md"):
         violations.extend(v.replace(str(root) + "\\", "").replace(str(root) + "/", "")
-                           for v in _markdown_violations(path))
+                           for v in _markdown_violations(path, root))
     return sorted(violations)
 
 

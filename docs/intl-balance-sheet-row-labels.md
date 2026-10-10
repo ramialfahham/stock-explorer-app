@@ -33,7 +33,7 @@ python scripts/probe_balance_sheet_labels.py --sample 5        # all active mark
 python scripts/probe_balance_sheet_labels.py --market uk_ftse100 --sample 20
 ```
 
-Live probe (2026-07-07, `--sample 5 --seed 42`, share of sample where a fallback label
+Probe output (`--sample 5 --seed 42`, share of sample where a fallback label
 resolved to a value):
 
 | Field | us_sp500 | uk_ftse100 | jp_nikkei225 | au_asx200 | de_dax |
@@ -57,7 +57,7 @@ resolved without needing market-specific additions.
   liquidity metric for financials.
 - `Tangible Book Value` is present in every market, so price-to-tangible-book is sourceable
   directly rather than derived from goodwill/intangibles. (Which metrics each company type
-  actually shows is a later-slice owner decision — this doc only records sourcing.)
+  actually shows is decided elsewhere; this doc only records sourcing.)
 - `Total Assets` resolves for 100% of every market's sample, **including financials** — banks
   have no current/non-current split (so `stmt_current_*` are null for them) but do report total
   assets, making ROA (net income / total assets) sourceable across all company types.

@@ -1,7 +1,7 @@
 # Discover header — UI spec
 
 **Scope:** Top chrome shared across Discover and Saved (`_discovery_page` in `frontend/app.py`).  
-**Authority:** [`north_star.md`](../north_star.md) (explore model v2.5).
+**Authority:** [`north_star.md`](../north_star.md) (Discover explore model).
 
 ---
 
@@ -45,13 +45,13 @@ On Discover the same back row has no saved count: `[ ← Back to list ]` alone, 
 |---|--------|--------|-------|
 | 1 | Brand | `_render_brand_header()` | Product name only — no market name |
 | 2 | Tagline | `_render_brand_header()` | One line under brand. List views only |
-| 3 | Disclosure | `_render_brand_header()` | "Not investment advice." Permanent caption, not a one-time screen -- replaced the old first-run landing gate so it stays reachable every visit. List views only |
+| 3 | Disclosure | `_render_brand_header()` | "Not investment advice." Permanent caption, not a one-time screen, so it stays reachable every visit. List views only |
 | 4 | Nav | `_render_bottom_nav()` | One flex row, three equal-width siblings, uniform gap: Discover / Saved (`st.button()`, primary/secondary by active tab -- not `st.segmented_control`, which misses a click on the tab already active) plus **About** (`st.popover`), dimmer label + chevron kept (signals "opens in place") |
-| 5 | Persistent search | `_render_discover_search_box()` | **Discover list view only**: always-visible, global lookup across the full deck. A query replaces row 6 and the pool with results. Hidden while a card is focused. The only search entry point -- an earlier separate Search tab duplicated this and was removed |
+| 5 | Persistent search | `_render_discover_search_box()` | **Discover list view only**: always-visible, global lookup across the full deck. A query replaces row 6 and the pool with results. Hidden while a card is focused. The only search entry point |
 | 6 | Filters | `_render_explore_filters()` | **Discover list only, while row 5 is empty**: **Filters** popover (market + sector + metric-preset pills); closed row shows `filter_scope_summary()`. Hidden while a card is focused or a query is active |
 | 7 | Stats | `_render_discover_scope_stats()` / `_render_saved_scope_stats()` / `_render_back_row()` | Discover shows `{remaining} companies` (singular `{remaining} company` at 1), same form whether row 5 has a query or not -- counts whatever pool row 6/row 5 narrowed to; Saved shows `{saved} saved` plus its own `Clear saved` control (confirms in place); a focused card shows the back button alone on Discover, plus `{saved} saved` on Saved |
 
-The sticky **Save** action renders **below** the card body on Discover -- not in the header. A second sticky action, **Not now**, was removed: it only ever returned to the list, same as `← Back to list`, and logged a `skip` interaction `filter_pool` never read.
+The sticky **Save** action renders **below** the card body on Discover -- not in the header.
 
 ---
 
@@ -61,7 +61,7 @@ The sticky **Save** action renders **below** the card body on Discover -- not in
 
 **Open state:** Market selectbox, Sector selectbox (respects current market), then five metric-preset pills (`st.pills`, multi-select: High margin, Low debt, Growing revenue, Strong returns, Cash-safe -- `METRIC_PRESETS` in `frontend/explore_filters.py`). Market options come from live eligible cards (`market_filter_options()`), not the full static list. Changes return to the list via `_on_filter_change`.
 
-**Pills, not numeric min/max (issue #13):** a prior numeric attempt was too tall on mobile, had confusing sentinel defaults, and crashed on Clear. Plain-language toggles avoid all three: compact, unselected already means "no filter," no Clear control needed -- tap a pill again to deselect. A card whose company_type has no corresponding metric passes through untouched.
+**Pills, not numeric min/max (issue #13):** numeric min/max inputs are rejected for being too tall on mobile and for needing sentinel defaults and a Clear control. Plain-language toggles avoid all three: compact, unselected already means "no filter," no Clear control needed -- tap a pill again to deselect. A card whose company_type has no corresponding metric passes through untouched.
 
 **Removed:** "Surprise me worldwide" checkbox -- use **All markets** instead.
 
@@ -100,8 +100,8 @@ many. Content, in order (`render_about_panel` in `frontend/overflow_menu.py`):
    {snapshot}.` -- two plain sentences, no `·` (that's the chip separator, not prose)
 3. **Metrics line** (`MENU_METRICS_LINE`): "Fundamentals per company, no substitutes"
 4. **Markets line** (`markets_line`): which markets have cards, derived from live counts,
-   empty when there are none -- no per-market count breakdown (dropped: internal pipeline
-   detail, redundant with this line)
+   empty when there are none -- no per-market count breakdown (internal pipeline detail,
+   redundant with this line)
 5. `business_summary`-missing caption, only when the export lacks it
 
 `Clear saved` is on the Saved tab itself, next to the count it acts on -- not here.
@@ -114,8 +114,8 @@ many. Content, in order (`render_about_panel` in `frontend/overflow_menu.py`):
 - Moving filters below the card or into the About panel (filters must stay discoverable on Discover).
 - Duplicating “Exploring: UK · Technology” in both filters and a second banner under stats.
 - Global counters divorced from scope (e.g. `1/834` with no filter context).
-- A sticky action that does nothing but return to the list -- `Not now` did exactly that,
-  which is what `← Back to list` is already for.
+- A sticky action that does nothing but return to the list -- that is what
+  `← Back to list` is for.
 
 ---
 
@@ -126,7 +126,7 @@ many. Content, in order (`render_about_panel` in `frontend/overflow_menu.py`):
       distinguished only by its dimmer label and chevron
 - [ ] Discover list view: Filters row + stats + top of the list fit without horizontal scroll
 - [ ] Discover focus view: Filters row is gone, back row shows just `[ ← Back to list ]`
-      with no leftover gap where the Filters row or a saved count used to be
+      with no leftover gap where the Filters row or a saved count would sit
 - [ ] Save reachable when a card is shown
 
 ---

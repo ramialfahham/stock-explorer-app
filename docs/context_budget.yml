@@ -17,8 +17,6 @@ budgets:
   docs/data_contract.md: 65500
   docs/development_workflow.md: 7200
   docs/engineering_standards.md: 12000
-  docs/handover_2026-08-18.md: 36000
-  docs/handover_2026-09-03.md: 150000
   docs/intl-balance-sheet-row-labels.md: 5000
   docs/layering.md: 7000
   docs/metric_audit.md: 5000

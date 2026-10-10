@@ -257,12 +257,7 @@ paid by every visitor, a column on the card face by nobody until that card opens
 
 ## Monitoring (v1)
 
-**Pipeline failure email -- DONE.** Set via GitLab's built-in per-user notifications, not the
-"Pipeline emails" project integration this guide previously described -- that integration is
-not in the project's Settings → Integrations list. The API is consistent with that but does
-not prove it: `GET /integrations` returns only ACTIVATED integrations (`[]` here) and the
-per-integration endpoint 404s for anything never configured, so the API evidence establishes
-only that it was never set up. The route that works: the project's
+**Pipeline failure email.** Set through GitLab's per-user notifications: the project's
 notification dropdown (bell icon) → **Custom** → tick **Failed pipeline** (and **Fixed
 pipeline**), reachable also at <https://gitlab.com/-/profile/notifications>.
 

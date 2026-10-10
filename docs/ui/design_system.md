@@ -76,7 +76,7 @@ Saved, and a selected search result): those render the full card, not a row.
 
 ## Button variants
 
-- **Base radius + color** (global, Slice 6a + 6b): every `st.button` gets `var(--ss-radius-control)`
+- **Base radius + color** (global): every `st.button` gets `var(--ss-radius-control)`
   by default (`[data-testid="stButton"] button`), and every `button[kind="primary"]`/
   `button[kind="secondary"]` gets the same accent-gold / bordered-surface skin app-wide — one
   rule each, no per-surface scoping.
@@ -91,22 +91,20 @@ Saved, and a selected search result): those render the full card, not a row.
 
 ---
 
-## Popover trigger (Slice 6b)
+## Popover trigger
 
 Every `st.popover` trigger gets a base surface/border/`var(--ss-radius-control)` skin —
 one rule, `[data-testid="stPopoverButton"]` -- so every text-labeled trigger (**Filters**,
 **About**) reads as the same control-tier chrome.
 
-## Expander (Slice 6b)
+## Expander
 
 `st.expander` gets the same surface-tier treatment as the card and rows —
 `var(--ss-surface)` fill, `var(--ss-radius-surface)` corners, one rule,
 `[data-testid="stExpander"]` -- instead of default Streamlit chrome. Currently one instance:
-the card's own "Understand these numbers" learn panel (Slice 6c -- consolidated what used to
-be a separate HTML `<details>` plus a second "Practice with hypothetical numbers" expander
-into this single one); no per-surface exceptions.
+the card's own "Understand these numbers" learn panel; no per-surface exceptions.
 
-## Link button (Slice 6b)
+## Link button
 
 `st.link_button` renders as `<a data-testid="stBaseLinkButton-{kind}">`, not
 `<button kind="...">` — the button-variant rules above never reach it. All three kinds
@@ -126,7 +124,7 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
   add one to the table above in the same PR.
 - Reusing `--ss-title` for list-row text, or `--ss-row-title` for anything inside a card.
 - Scoping a button/popover/expander/link-button skin to one surface instead of the shared
-  global rule — the whole point of Slice 6b was closing exactly that kind of per-surface
+  global rule -- the shared rule exists to close exactly that kind of per-surface
   exception.
 - Trusting a `data-testid` from memory instead of the live DOM — `stLinkButton` looked
   right and was wrong (`stBaseLinkButton-{kind}` is real); a rule against a stale testid

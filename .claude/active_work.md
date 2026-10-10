@@ -5,13 +5,11 @@
 > **Never:** a definition, or a narrative of how work went. Those belong in a durable doc, in
 > git, or in the MR description. If a rule is only written here, it is lost on the next trim.
 
-_The next session is handed exactly this file. Keep it current. Full history through
-2026-09-03 is archived in [`docs/handover_2026-09-03.md`](../docs/handover_2026-09-03.md)
-(itself built on [`docs/handover_2026-08-18.md`](../docs/handover_2026-08-18.md);
-`docs/handover_2026-05-24.md` deleted in Phase 6, its own stated delete condition long since
-true) -- this file stays lean on purpose (it's injected whole at SessionStart by
+_The next session is handed exactly this file. Keep it current. Older history is in git
+(the handover archives were removed from `docs/`; `git log --all -- 'docs/handover_*'` finds
+them) -- this file stays lean on purpose (it's injected whole at SessionStart by
 `handover_in.py`, capped at 32,000 bytes). When a slice/MR merges, collapse its entry here to
-one or two lines and let the archive keep the detail._
+one or two lines and let git and the MR keep the detail._
 
 ## In flight
 
@@ -24,8 +22,7 @@ open MRs.
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
 above cosmetic. Criteria: `docs/quality_criteria.json` v1 (a change needs a version bump and
-the owner). Owner calls inside: #47 spec vs code per mismatch; #45 keep or drop the handover
-archives in `docs/`.
+the owner). Owner call inside: #47 spec vs code per mismatch.
 
 **Owner decisions open (ask one at a time):** #43 scope, name snapshot CSV only or also the
 fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
@@ -215,13 +212,12 @@ fill floor (!126), the AI read's labels and rendering (!129). The learn panel's 
   (`git add`)", pushing to `origin` with `gh`, and the claim that any merge command is
   hook-blocked.
 - **!97** README deploy target + screenshot; GitLab topics/description done.
-- **!95-!98** (merged 2026-09-05, after `docs/handover_2026-09-03.md`'s cutoff, so NOT in that
-  archive -- detail is in each MR's own `contract.md`/`review.md`): browser-storage coverage,
+- **!95-!98** (detail in each MR's own `contract.md`/`review.md`): browser-storage coverage,
   Discover/Search nav state loss, README accuracy, Saved-tab confirm + per-item removal. !98's
   planning caught two real bugs first: an out-of-sync "is this saved" check that would have
   stranded a removed ticker, now the shared `saved_keys_with_order()`, and a
   `clear_interactions()`/`st.rerun()` ordering bug.
-- **!73-!87** the nine Gemini-feedback points: see `docs/handover_2026-09-03.md`.
+- **!73-!87** the nine Gemini-feedback points: see those MRs.
 
 ## Market coverage
 
@@ -439,6 +435,5 @@ into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the c
   recovered as of 2026-09-18** (was suspended, which is why this repo moved to GitLab in
   the first place) -- GitLab stays canonical by owner choice, GitHub gets a one-way mirror
   the owner sets up (working agreement §3). No `origin` remote here regardless; push to
-  `gitlab`, use `glab`, never `gh`. Full narrative (the CI-minutes/runner
-  consolidation saga, the branch-protection ordering trap) is in
-  `docs/handover_2026-08-18.md` and `docs/handover_2026-09-03.md`.
+  `gitlab`, use `glab`, never `gh`. The branch-protection ordering trap is in
+  `docs/development_workflow.md`.

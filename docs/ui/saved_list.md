@@ -90,7 +90,7 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 - **Never repeat “As of …” on every row** — clutters the learning list.
 - **Never use the full card or metric grid in list mode** — list is for picking, not reading numbers.
 - **Never horizontal-scroll tables** of saved companies on mobile.
-- **Never “Compare with another saved company”** — removed in UX recovery v2.5.
+- **Never “Compare with another saved company”.**
 
 ---
 

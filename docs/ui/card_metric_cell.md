@@ -29,7 +29,7 @@
 
 **Visual hierarchy (strict):**
 
-1. **Label** — `.ss-metric-label` — a bordered/filled chip (Slice 6c; `--ss-bg` fill,
+1. **Label** -- `.ss-metric-label` -- a bordered/filled chip (`--ss-bg` fill,
    `--ss-radius-control` corners), applied uniformly to every metric — period in
    parentheses when needed (`Operating margin (TTM)` vs `(annual)` via `metric_label()`).
 2. **Value** — `.ss-metric-value` — numeric, dominant, on its own row.
@@ -42,12 +42,11 @@
 4. **Gloss** — `.ss-metric-gloss` — one plain-language line under the range mark (or
    under `.ss-metric-range-unavailable`'s placeholder line, when this metric has no
    mark); always visible on the card face (Tier 2). `0.5rem` top margin on both the
-   mark/placeholder (from the value) and the gloss (from the mark/placeholder) —
-   originally `0.1rem`, raised after owner feedback that the gloss line read as "too
-   close to the number or to the bullet graph." Both rules are scoped
+   mark/placeholder (from the value) and the gloss (from the mark/placeholder), so the
+   gloss line does not crowd the number or the bullet graph. Both rules are scoped
    `.ss-metric .ss-metric-gloss` / `.ss-metric .ss-metric-range-unavailable`, not bare
    single-class selectors — see the anti-pattern below, this isn't cosmetic.
-   Typography (owner feedback on a live card): `--ss-body` / `--ss-muted` /
+   Typography: `--ss-body` / `--ss-muted` /
    `line-height: 1.35`, deliberately one step LARGER and LIGHTER than the range mark's own
    `.ss-metric-range-number` / `.ss-metric-range-word` (`--ss-caption-size` /
    `--ss-caption`). At matched size and colour the explanation read as a footnote to the
@@ -80,9 +79,8 @@ grouped and ordered by analytical lens, via `metrics_for_card()` /
   `company_type` — e.g. an operating card spans 6 of the 7 lenses (including two metrics
   under **Solvency**: net debt/EBITDA and debt/equity — a real per-lens count, not a
   bug), while the pre-revenue survival set only touches Liquidity/Cash. Valuation is
-  empty on every card: forward P/E was the operating card's only
-  valuation metric and net cash moved to the Cash lens when it stopped being a ratio
-  against market cap. There
+  empty on every card: no catalogued metric is a valuation metric, and net cash, an
+  amount rather than a ratio to market cap, sits in the Cash lens. There
   is no hardcoded per-type metric list in this doc to keep in sync — read
   `metrics_for_card()` for the authoritative set.
 
@@ -132,22 +130,16 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - **Applies to every metric, not just the 9 with a range mark.** A metric without a
   mark (not `benchmarkable: true`, or a marked metric whose sector fell below the peer
   threshold this card) still gets the same plain cue — see the next section for why
-  the mark itself is more limited. This decouples two things an earlier design
-  conflated: whether a range MARK can be drawn (needs a sector cohort to compare
+  the mark itself is more limited. This keeps two things apart: whether a range MARK can be drawn (needs a sector cohort to compare
   against) and whether the direction CUE can be stated (a fact about the metric's own
   axis, independent of any cohort).
 - **This is a ceteris-paribus statement about the metric's own axis** — e.g. higher
   revenue growth is more growth, for the same quality of business — not a health
   judgment. The health verdict reads growth one-sidedly: a falling top line can hold a
   company back from green, while growth never earns it. Naming which way an axis points is
-  a different and lower-stakes claim than letting one metric drive a composite score (owner
-  decision). A caveat like "growth is not health" belongs in that metric's own deep-dive
+  a different and lower-stakes claim than letting one metric drive a composite score. A caveat like "growth is not health" belongs in that metric's own deep-dive
   explanation (analogy/learn text in "Understand these numbers"), not a hedge stuffed
-  into this short gloss line — an earlier draft tried exactly that hedge and was
-  correctly rejected as giving "no guidance at all."
-  (This bullet was written about forward P/E, which carried the same shape of caveat.
-  That metric was dropped from the catalogue, so the example moved to a
-  metric a reader can still look up.)
+  into this short gloss line, where it would give no guidance at all.
 - **Suppressed** for `net_debt_to_ebitda`'s "Net cash" branch and `debt_to_equity`'s
   "Negative equity" branch (see the value-aware gloss table above) — both already state
   the actual situation directly, and appending "Lower is better." on top would imply a
@@ -156,11 +148,9 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - A plain bar-and-marker otherwise implies "further right = better" the way a loading
   bar or battery does — true for `higher_better` metrics, which need no cue since that
   already matches the convention, but actively misleading for `lower_better` metrics
-  without one. Originally caught by equity-analyst-reviewer: an unlabeled spatial mark
-  carries a stronger implicit favorability signal than the old text-only indicator ever
-  did, for exactly the metric (debt) `north_star.md`'s "Do not use naive... rankings"
-  line already warns about. The cue being universal now (rather
-  than mark-gated) is a direct extension of that same reasoning to every metric.
+  without one. An unlabeled spatial mark carries a strong implicit favorability signal,
+  for exactly the metric (debt) `north_star.md`'s "Do not use naive... rankings" line
+  already warns about. The cue is universal, not mark-gated, for the same reason.
 - **When the mark IS drawn**, the gloss also names its population: `", vs sector"`
   inserted before the direction cue (`metric_gloss(..., benchmarked=True)`, the caller
   passes whether `_metric_range_html()` actually rendered for this metric+card). The
@@ -180,18 +170,17 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - **When either condition fails, or the metric isn't `benchmarkable: true` at all**,
   `_metric_range_html()` returns `""` and `_metric_cell_html()` falls back to
   `_metric_range_unavailable_html()` — a single calm line, `"No sector comparison for
-  this metric."` (`.ss-metric-range-unavailable`). Added after owner feedback that a
-  silent gap where the mark would have been "still looks like a bug"
-  — a missing element, not an intentional absence. The direction cue (previous
+  this metric."` (`.ss-metric-range-unavailable`), because a silent gap where the mark
+  would have been reads as a bug -- a missing element, not an intentional absence. The
+  direction cue (previous
   section) still shows either way, mark or placeholder.
 - Three rows: numbers (`.ss-metric-range-numbers`), bar (`.ss-metric-range-track`),
   words (`.ss-metric-range-words`). Min and max sit exactly at the track's own edges
   (`left: 0%` / `left: 100%`), centered via `transform: translateX(-50%)`.
   `.ss-metric-range-number` also carries `max-width: 5rem; overflow: hidden;
-  text-overflow: ellipsis` — added after cto-reviewer flagged that the equivalent
-  fixed-width-column protection on the old design (dropped when this design moved to
-  absolute positioning) had no replacement, for a data shape this doc's own "Known
-  data-quality interaction" note confirms is live today. This is a bounded cap, not an
+  text-overflow: ellipsis`, because an absolutely positioned label has no column width to
+  contain a long value, a data shape this doc's own "Known data-quality interaction" note
+  confirms is live. This is a bounded cap, not an
   unconditional guarantee: it comfortably covers every real value seen in production
   (including the -129,810.5% DYL outlier, ~68px rendered at the 13px axis size) with
   headroom to spare, but a
@@ -204,20 +193,19 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 - **Min/median/max share one alignment rule**, not three: every point renders via
   `_range_point_html()` into `.ss-metric-range-number` / `.ss-metric-range-word`, both
   styled with `transform: translateX(-50%)` in CSS — only the inline `left` position
-  differs per point. An earlier draft edge-anchored min/max instead (text growing
-  outward from the track's ends) while centering median on its own point; that read as
-  three different rules and made the max label drift away from its own tick. Don't
-  reintroduce a per-role class (`-min`/`-max`/`-median-label`) — the shared class *is*
-  the guarantee that all three stay visually consistent.
-- **Outlier-aware display range (Gemini feedback point 5).** `[min, max]` above is the
+  differs per point. Edge-anchoring min/max while centering the median would read as
+  three different rules and make the max label drift from its own tick, so there is no
+  per-role class (`-min`/`-max`/`-median-label`) -- the shared class *is* the guarantee
+  that all three stay visually consistent.
+- **Outlier-aware display range.** `[min, max]` above is the
   DISPLAYED bound, not necessarily the sector's raw most-extreme peer -- `benchmark_range()`
   clamps it to a Tukey fence (`Q1 - 1.5*IQR` .. `Q3 + 1.5*IQR`, the standard box-plot
   outlier-bound convention, not a value picked to fit any one card) whenever the sector's
   quartiles (`sector_q1_*`/`sector_q3_*`) are present. Falls back to the raw sector min/max
-  when quartiles are null (a sector exported before this shipped). For a normally-spread
+  when quartiles are null. For a normally-spread
   sector the fence is WIDER than the true min/max, so the clamp is a no-op -- it only changes
-  anything when a real outlier peer exists, which is exactly when the old behavior compressed
-  every OTHER peer's marker toward one end regardless of how ordinary that peer's own number
+  anything when a real outlier peer exists, which is exactly when an unclamped range would
+  compress every OTHER peer's marker toward one end regardless of how ordinary that peer's own number
   actually was. When this card's own value falls outside the clamped range, its marker pins
   to the near edge and a small directional arrow (`.ss-metric-range-offscale`,
   `_off_scale_arrow_html()` in `frontend/card_ui.py`) renders there -- the card's raw value in
@@ -247,7 +235,7 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   metric.
 - Min/median/max are all formatted through `format_metric_value()` — same units and
   precision the value itself already uses, no separate formatting logic. No "min "/"max "
-  text prefix on the numbers row (that was the old design) — the words row directly
+  text prefix on the numbers row -- the words row directly
   below carries "min"/"median"/"max" instead, once, for the whole row.
 - Only the 9 metrics with `benchmarkable: true` in the metric catalogue get a range
   mark today: operating margin, net debt/EBITDA, FCF margin, debt-to-equity, and current ratio
@@ -268,28 +256,24 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   detail panel.
 - When peers &lt; 8, that section shows one calm line: “Fewer than 8 similar companies in this market: sector compare is hidden.”
 
-**Known data-quality interaction, addressed (Gemini feedback point 5).** Sector min/max are
-still computed from raw ratios with no outlier handling at the metric-definition level --
-that underlying choice (whether to exclude or winsorize near-zero-revenue denominators
-upstream) is unchanged, and remains the dbt-layer metric-definition decision this note
-originally flagged (owner's call, `docs/layering.md` + working agreement §6). What changed is
-the DISPLAY layer: at least one live sector (ASX Energy, `fcf_margin_pct` / `ebit_margin_pct`)
-had its whole cohort's range dominated by one company with a near-zero-revenue denominator
-(Deep Yellow / DYL: -129,810.5% FCF margin), compressing every other company's marker in that
-sector toward one end of the bar. The range mark's display range now clamps to a Tukey fence
-(see "Range mark mechanics" above), so that sector's OTHER peers position sensibly again; Deep
-Yellow's own card correctly shows an off-scale marker instead of silently anchoring the whole
-sector's scale. The comparison for that sector is meaningful again at the display level; the
-underlying "should this metric even be computed this way for a near-zero-revenue company"
-question is still open and still belongs upstream, not here.
+**Known data-quality interaction.** Sector min/max are computed from raw ratios with no
+outlier handling at the metric-definition level; whether to exclude or winsorize
+near-zero-revenue denominators upstream is a dbt-layer metric-definition decision (owner's
+call, `docs/layering.md` + working agreement §6). The display layer handles it: one company
+with a near-zero-revenue denominator can dominate a sector's range (ASX Energy,
+`fcf_margin_pct` / `ebit_margin_pct`: Deep Yellow / DYL at -129,810.5% FCF margin), which
+would compress every other peer's marker toward one end of the bar. The display range clamps
+to a Tukey fence (see "Range mark mechanics" above), so the other peers position sensibly and
+the outlier's own card shows an off-scale marker instead of anchoring the sector's scale.
+Whether such a metric should be computed this way for a near-zero-revenue company is still
+open and belongs upstream, not here.
 
 ---
 
 ## Anti-patterns
 
 - Putting analogy or `METRIC_LEARN` paragraphs under the value on first load.
-- Using color alone for above/below median (monochrome only — deliberately reopened and
-  re-confirmed when the range mark replaced the text indicator, not an oversight).
+- Using color alone for above/below median (monochrome only, deliberately).
 - Hard-coding “Operating margin (TTM)” when `ebit_margin_basis` is `annual_latest`.
 - Replacing gloss with raw Yahoo field names (`operatingMargins`, etc.).
 - Two-column metric grids on mobile (net debt + FCF side by side).
@@ -301,10 +285,9 @@ question is still open and still belongs upstream, not here.
   unscoped margin compounds into a lopsided, oversized gap above every heading. Any
   margin change to this class needs the `.ss-metrics-stack`-scoped override kept in
   sync (or removed deliberately, not by accident) — see "Group heading spacing" above.
-- Gating the direction cue on range-mark availability again ("no mark → no cue") — that
-  was the old design, corrected deliberately (ceteris paribus applies regardless of
-  whether a cohort to compare against currently exists).
-- Leaving `_metric_range_html()`'s `""` return unhandled again (a silent gap where the
+- Gating the direction cue on range-mark availability ("no mark → no cue"): ceteris
+  paribus applies regardless of whether a cohort to compare against currently exists.
+- Leaving `_metric_range_html()`'s `""` return unhandled (a silent gap where the
   mark would have been) — always route it through `_metric_range_unavailable_html()`.
 - Styling a new `<p>`-rendered class in `frontend/styles.py` with a bare single-class
   selector and assuming its `margin` applies. Streamlit's own emotion-cache stylesheet

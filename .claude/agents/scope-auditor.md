@@ -18,7 +18,7 @@ through; your job is to find it. No praise, no positive adjectives.
    regression_checklist, known_limits, amendments.
 3. The round's `reviewed_tree` id, given when you are dispatched.
 4. Any decision-rights / CONTRIBUTING / CLAUDE.md doc the repo has. If none, use
-   the default owner-decision list below.
+   the default list of owner decisions below.
 5. Any file the diff touches, for context (read-only).
 
 ## Your hunt -- every time

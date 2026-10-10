@@ -4,9 +4,9 @@
 > **Never:** agent process. That is `.claude/working-agreement.md`, a different file with a
 > confusingly similar name.
 
-> **Agent process moved.** The general working agreement (how any AI agent operates here:
+> **Agent process.** The general working agreement (how any AI agent operates here:
 > the Explore → Plan → Confirm → Implement → Verify protocol, task contracts, review cycle,
-> branch rules, decision rights, escalation) now lives in
+> branch rules, decision rights, escalation) is
 > [`.claude/working-agreement.md`](../.claude/working-agreement.md). Read that first.
 >
 > This file keeps only the **project-specific UX PR gate** below, which is not part of the

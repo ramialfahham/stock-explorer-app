@@ -1,7 +1,7 @@
 # Discover list: UI spec
 
 **Scope:** Discover tab list view (not focus view).
-**Authority:** [`north_star.md`](../north_star.md) (explore model v2.5).
+**Authority:** [`north_star.md`](../north_star.md) (Discover explore model).
 **Implementation:** `frontend/app.py` (`_render_discover_tab`), `frontend/row_ui.py`
 (`build_rich_row_html`/`render_rich_row_list`, `.ss-row-rich*`, see
 [`design_system.md`](design_system.md) for the base row-primitive tokens this builds on),
@@ -25,10 +25,6 @@ Saved rows and search-result rows are picking rows, title and subtitle only, del
 (`saved_list.md`'s own anti-pattern: "list is for picking, not reading numbers"). Discover's
 filter narrows a large, unfamiliar pool (up to hundreds of companies), so the row carries one
 extra signal that helps a reader decide which company to open first: one glance metric.
-
-A verdict dot used to sit alongside the metric here; removed after it stayed visually
-misaligned even past its known emoji-glyph-metrics cause being fixed, see
-`frontend/row_ui.py`'s `build_rich_row_html` docstring.
 
 **The lead metric is not a free choice per row.** It's exactly the one metric that is a CORE,
 verdict-deciding axis for that company type's own verdict rule in `scripts/assessment_rules.py`,
@@ -84,10 +80,10 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
 | Rule | Detail |
 |------|--------|
 | Row structure | Same tap mechanics as the plain row (`st.container` plus an invisible overlay `st.button`), different HTML via `build_rich_row_html`, see `design_system.md`'s row primitive |
-| Ordering | Alphabetical by company name, not the retired walk's round-robin/skip order: a list should be stable and re-findable |
+| Ordering | Alphabetical by company name: a list should be stable and re-findable |
 | Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measures at ~2.4s before Streamlit even registers a click. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
 | Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and search results already use, unchanged |
-| Sticky action | **Save** renders on the **focus card only** (matching where it already lived), not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` already rejects. A second sticky action, **Not now**, was removed: it only ever returned to the list, the same as `← Back to list`, and logged a `skip` interaction nothing downstream ever read |
+| Sticky action | **Save** renders on the **focus card only**, not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` rejects |
 | Empty state | One `st.info`, no fake rows |
 
 ---
@@ -98,7 +94,7 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
   matching Saved's own precedent.
 - **The full metric grid in list mode.** One lead metric only; list is for picking, the focus
   card is for reading numbers.
-- **Reviving the retired walk's ordering** for the list. Round-robin/skip-deprioritization is
+- **Session-dependent ordering** for the list (round-robin, skip-deprioritization). It is
   session-interaction-dependent, which is confusing in something a reader re-scans, not
   something they walk through once.
 - **A placeholder or invented number when the lead metric is missing.** Omit the slot, exactly

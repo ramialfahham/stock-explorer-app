@@ -58,7 +58,7 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `007_router_card_columns.sql` | `company_type` + operating-card solvency/liquidity/returns columns (Sector Router 4a) |
 | `008_financial_card_metrics.sql` | Financial/bank-card metric columns (Sector Router 4b) |
 | `009_pre_revenue_card_metrics.sql` | Pre-revenue/survival-card metric columns (Sector Router 4c) |
-| `010_card_assessments.sql` | `card_assessments` table — health verdict + AI read (Slice 5) |
+| `010_card_assessments.sql` | `card_assessments` table -- health verdict + AI read |
 | `011_grant_roles.sql` | Explicit role grants — needed when "automatically expose new tables" (step 1) is off |
 | `012_sector_benchmark_min_max.sql` | Sector benchmark min/max columns on mart |
 | `013_net_cash.sql` | `net_cash` on mart, replacing `net_cash_to_market_cap` on the pre-revenue card |
@@ -71,9 +71,7 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `020_current_cards_view.sql` | `current_cards` view: the deck's newest row per company, leaving out any 28+ days behind its market. A later migration altering the mart must recreate it |
 | `021_fi_se_dk_no_ca_it_markets.sql` | Finland, Sweden, Denmark, Norway, Canada and Italy rows in `public.markets`. Same requirement as 014 |
 
-The table was previously missing 012 and 013, with a note excusing the gap; 016 and 017 then
-landed and were absent too, so the note went stale rather than the table getting fixed. It is
-complete as of 019. Keep it that way rather than adding another disclaimer.
+Every file in `supabase/migrations/` has a row here.
 
 After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives
 company descriptions. The app holds its deck in an in-process cache shared by all browser
@@ -192,8 +190,8 @@ Pipelines → Run pipeline**, then that job's manual play button. Never runs aut
 ## 3c. Export timing and the schema cache
 
 The card export is a single `replace_cards_snapshot` RPC, so the whole deck is one statement.
-Measured 2026-09-09: payload 3.9 MB (roughly 6 MB with the six queued markets) against an API
-that accepts at least 16 MB; execution 2.87s for the current deck and 4.21s at double size.
+Measured at nine markets: payload 3.9 MB (roughly 6 MB estimated for fifteen) against an API
+that accepts at least 16 MB; execution 2.87s, and 4.21s at double size.
 
 `pg_roles` shows `authenticator`, the role PostgREST connects as, carrying
 `statement_timeout=8s`, while `service_role` has none set. **Whether that 8s binds a
