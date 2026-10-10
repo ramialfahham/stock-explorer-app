@@ -292,7 +292,7 @@ comment). Pre-revenue's 4 metrics (`net_cash`, `working_capital`, `cash_runway_m
 `burn_rate_monthly`) are deliberately excluded: only 3 pre-revenue companies exist app-wide,
 which can never clear the 8-peer rendering threshold (see "Peer threshold" below).
 
-**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; the card shows its no-comparison placeholder in place of the range mark (`docs/north_star.md`, Benchmarking).
+**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; the card shows a no-comparison placeholder, not a range mark.
 
 Benchmark availability does **not** affect `is_card_eligible`.
 
@@ -930,11 +930,10 @@ contract, which the next task overwrites.
    Decide which it is, and if the membership is genuine add the symbol to
    `KNOWN_DUAL_INDEX_SYMBOLS` with the reason rather than editing a seed. The deck keeps one
    row per market the company belongs to. The All-markets list, its sector options and search
-   (`dedupe_by_company` in `frontend/explore_filters.py`) show a company once when its indices
-   track one listing: the same resolved Yahoo symbol
-   (`yfinance_symbol` in `frontend/live_quote.py`: ticker plus the market's exchange suffix,
-   unless the ticker already has a dot). The bare ticker is not an identity: `T` is AT&T in the
-   S&P 500 and Telus in the TSX 60. The later snapshot wins, a tie goes to the market listed
+   (`dedupe_by_company`) show a company once when its indices track one listing: the same
+   resolved Yahoo symbol (`yfinance_symbol` in `frontend/live_quote.py`: ticker plus the
+   market's exchange suffix, unless the ticker already has a dot). The bare ticker is not an
+   identity: `T` is AT&T in the S&P 500 and Telus in the TSX 60. The later snapshot wins, a tie goes to the market listed
    first in `MARKET_DISPLAY_NAMES`, and the winner sets the card's market label and sector peer
    group, which decides whether the sector comparison shows. A single-market filter lists every
    eligible listing of its market except a saved one. A company on two venues is two cards:
