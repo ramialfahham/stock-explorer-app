@@ -44,7 +44,7 @@ never a dash placeholder (`frontend/card_copy.py`, `frontend/card_ui.py`, pinned
    not compute.
 3. **Tests verify and guard.**
    - `dbt_analytics/seeds/_seeds.yml` — `not_null` / `unique` / `accepted_values` on the catalogue.
-   - `tests/test_metric_catalogue.py` — every catalogue metric is computed in the model; the
+   - `tests/tooling/test_metric_catalogue.py` -- every catalogue metric is computed in the model; the
      regenerated `metrics.json` matches the committed file (the frontend-bridge no-drift lock); the
      card-metrics table in `data_contract.md` matches a fresh render from the seed
      (`scripts/render_metric_table.py`, the docs no-drift lock); values are well-formed.
@@ -59,7 +59,7 @@ columns are the definition/spec, not a generator — the model computes the metr
 The football project guards model→catalogue drift with a jinja column-introspection dbt test. This
 repo's §1.1 SQL-structure gate (`scripts/check_dbt_sql_structure.py`) requires every `tests/*.sql` to
 start with `WITH`, which that jinja style can't satisfy — so the equivalent guard lives in
-`tests/test_metric_catalogue.py` (CI runs pytest). Same intent.
+`tests/tooling/test_metric_catalogue.py` (CI runs pytest). Same intent.
 
 ## Adding a metric
 
@@ -71,7 +71,7 @@ start with `WITH`, which that jinja style can't satisfy — so the equivalent gu
    which is not a decision anyone made.
 3. Regenerate the JSON and the contract table: `python scripts/export_metric_definitions_json.py`
    and `python scripts/render_metric_table.py`.
-4. `dbt build` + `pytest tests/test_metric_catalogue.py` pass once all exist.
+4. `dbt build` + `pytest tests/tooling/test_metric_catalogue.py` pass once all exist.
 
 ## Scope / follow-ups
 

@@ -104,8 +104,8 @@ prose is inconsistent, so this is a forward rule rather than a description of wh
 there, and a pre-existing dash on an untouched line is not a violation. No count of the current
 mix is given here: it depends on what you count as prose, and it changes with every commit.
 
-**Nothing enforces it**: there is no CI job, script or hook that checks it, so it holds only at
-review time.
+`scripts/check_no_em_dash.py` enforces it on added or edited lines only, as the `no-em-dash`
+pre-commit hook and in CI's `validate:pre-commit`.
 
 **No date-stamping a fix into doc prose that describes current behaviour**, the same rule §1.2
 applies to comments. "Fixed 2026-09-05" in a sentence about how something works today is a <!-- narrative-check: allow -->

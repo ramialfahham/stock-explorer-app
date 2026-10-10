@@ -46,8 +46,8 @@ The essence:
 
 ## Project knowledge (authoritative docs)
 
-Substance lives in `docs/` -- link to these rather than restating them. Every file in `docs/`
-and `docs/ui/` must have a line here; `scripts/check_docs_indexed.py` enforces it.
+Substance lives in `docs/` -- link to these rather than restating them. Every `.md` file in
+`docs/` and `docs/ui/` must have a line here; `scripts/check_docs_indexed.py` enforces it.
 
 - dbt layering contract: [`docs/layering.md`](docs/layering.md)
 - Naming, SQL structure (§1.1), testing, documentation, CI gate: [`docs/engineering_standards.md`](docs/engineering_standards.md)

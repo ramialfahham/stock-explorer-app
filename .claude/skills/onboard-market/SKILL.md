@@ -28,12 +28,9 @@ whose columns include Ticker or Symbol, and record the row count.
 ## Before starting, tell the owner what it costs
 
 A market is permanent load, not a one-off change: 20 to 60 more tickers ingested on every run,
-plus one Claude Haiku call per eligible card whenever that card's inputs change. For scale, the
-last five-market run took 73 minutes at 921 cards against a 2 hour CI timeout. Four markets
-have been activated since and none has run: France, Netherlands, Switzerland and Spain add 120
-tickers to that, projecting roughly 101 more cards. Both halves of this go stale: read the run
-history in `.claude/active_work.md` for what has actually run, and `docs/market_registry.yml`
-for what is active. This sentence is a starting figure, not a current one.
+plus one Claude Haiku call per eligible card whenever that card's inputs change, all counting
+against the `data-pipeline` job's 2-hour timeout. For current figures and headroom read the run
+history in `.claude/active_work.md` and the active set in `docs/market_registry.yml`.
 
 ## What is the owner's call
 

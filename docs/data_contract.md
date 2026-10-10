@@ -35,7 +35,8 @@ from Wikipedia or manual import.
 
 ## Raw parquet (ingestion output)
 
-Base path: `storage/raw/{market_code}/` (dbt var `raw_path`, default `../storage/raw`).
+Base path: `storage/raw/{market_code}/` (dbt var `raw_path`, default `storage/raw`, overridable
+with `DBT_RAW_PATH`).
 
 ### Current (Phase B baseline)
 
