@@ -1,42 +1,54 @@
 # Review
 
-diff_sha256: cb8f00da4458e6932066fcce32a21468ad87d5eaac94f054acbdd13795f26d83
-rounds: 2
+diff_sha256: d360ae0e0ad30870b7648aad621317053d0a0da048cf590735497e8a22987e28
+rounds: 3
 
-Issue #54. Round 1 on the cumulative diff (tree 2f31572): platform-reviewer PASS (wording fix:
-drop the unverifiable OS claim from the comment), scope-auditor FAIL (the test read only the
-first pre-commit-hooks block). Round 2 on the delta (tree 4f59888): the test covers every block
-for that repo; the comment is one line. Both PASS.
+Issue #53. Round 1 on the cumulative diff (tree ed485bd): platform-reviewer FAIL (nothing
+pinned the quote to its cited line), scope-auditor FAIL (same, plus a no-verdict finding shown
+as refuted). Round 2 on the delta (tree 1f91d12): window-edge, order and length tests; separate
+no-verdict and NOT AUDITED rendering; criteria fingerprint. platform-reviewer PASS,
+scope-auditor FAIL (the 10-character minimum refused a real short quote such as `except:`).
+Round 3 on the delta (tree 744de71): a short quote passes only as the whole cited line. Both
+PASS. Wording fixes applied after: the skeptic prompt, the docstring and the contract describe
+the short-quote rule in normalised characters.
 
-Coordinator evidence: each of the eight modules exists in v5.0.0 with a `__main__` entry; under
-Smart App Control `pre-commit run --all-files` passes all eight overridden hooks, every local
-hook and gitleaks; the test fails against the old config and with a second block holding an
-un-overridden hook; full suite 1106 passed.
+Re-hashed after main moved (MR !242, #54, merged first so hooks run under Smart App
+Control): all seven staged files are byte-identical to the reviewed staged state (git diff
+against it is empty); the hash changed only because `.claude/task/contract.md`'s diff is
+taken against the new main. Previous hash a9871416.
+
+Coordinator evidence: `pytest tests/tooling/test_quality_audit.py` 13 passed; full suite 1118
+passed; on this session's real audit output the checker gives "64 raised: 61 reported, 3
+refuted, 0 no verdict, 0 quote not found"; widening the window to the whole file fails the
+edge test.
 
 ## platform-reviewer
 
-Round 1 PASS (tree 2f31572). Round 2:
+Round 1 FAIL (tree ed485bd). Round 2 PASS (tree 1f91d12). Round 3:
 
 VERDICT: PASS
-reviewed_tree: 4f59888892ddc265c26d365c25c5c99c483cf4a8
+reviewed_tree: 744de71e499d6a87f807c1a7a28cee5a84f17074
 risks_checked:
-- The test collects hooks from every pre-commit-hooks block and fails closed on a missing
-  override.
-- Hook ids, args and excludes, the local hooks and gitleaks are unchanged.
-- The one-line comment matches observed behaviour; no new mechanism, dependency or cost.
+- Short-quote branch fails closed on line 0 or past EOF; longer quotes keep the window.
+- Reverting to the old minimum or to window matching fails the new test.
+- Criteria, docs index and context budget untouched by the delta.
+follow_ups:
+- A multi-line quote under 10 normalised characters can never pass (very unlikely in
+  practice).
 
 ## scope-auditor
 
-Round 1 FAIL (tree 2f31572). Round 2:
+Round 1 FAIL (tree ed485bd). Round 2 FAIL (tree 1f91d12). Round 3:
 
 VERDICT: PASS
-reviewed_tree: 4f59888892ddc265c26d365c25c5c99c483cf4a8
+reviewed_tree: 744de71e499d6a87f807c1a7a28cee5a84f17074
 risks_checked:
-- All eight modules exist in the pinned version with a `__main__` guard.
-- The round-1 defect is closed; the config matches main apart from the `entry` lines.
-- No doc describes the launcher, so no doc sync is needed.
+- The short-quote rule matches the owner-chosen option (b) and the contract.
+- The workflow description matches the code: a skeptic runs only for areas with findings.
+- All files in scope; the criteria and fingerprint are untouched.
+wording_fixes:
+- Skeptic prompt, contract known limit and docstring describe the short-quote rule (applied).
 follow_ups:
-- The test accepts any module name after the prefix; a typo fails only at hook run time.
-- A future pinned version dropping a `__main__` guard would make that hook a silent no-op.
-- `python -m` resolves against the working directory first; `-I` would rule out shadowing
-  (owner's call).
+- Console summary: print NOT AUDITED areas and exit non-zero, or keep the report-only signal
+  (owner decision).
+- Whole-token matching of short quotes (new case of the window known limit).

@@ -62,6 +62,7 @@ and `docs/ui/` must have a line here; `scripts/check_docs_indexed.py` enforces i
 - Production data flow + runbook for when it breaks: [`docs/operations_guide.md`](docs/operations_guide.md)
 - Supabase project setup, CI/CD variables, migrations ledger: [`docs/supabase_setup.md`](docs/supabase_setup.md)
 - Render deployment steps: [`docs/streamlit_deploy.md`](docs/streamlit_deploy.md)
+- Quality bar, audited by the `quality-baseline-audit` workflow then `scripts/verify_quality_audit.py`: [`docs/quality_criteria.json`](docs/quality_criteria.json)
 - Intl balance-sheet row-label fallback resolution: [`docs/intl-balance-sheet-row-labels.md`](docs/intl-balance-sheet-row-labels.md)
 - Prior session handovers, newest to oldest (point-in-time archives, not living docs): [`docs/handover_2026-09-03.md`](docs/handover_2026-09-03.md), [`docs/handover_2026-08-18.md`](docs/handover_2026-08-18.md)
 
