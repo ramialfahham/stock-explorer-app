@@ -10,7 +10,7 @@
 ```
 ┌─────────────────────────────────────────────┐
 │ Stock Explorer                              │  1. Brand
-│ Understand companies through five…          │  2. Tagline (`PRODUCT_TAGLINE`)
+│ Understand companies through their…         │  2. Tagline (`PRODUCT_TAGLINE`)
 │ Not investment advice.                      │  3. Disclosure (permanent caption)
 ├─────────────────────────────────────────────┤
 │ [ Discover ] [ Saved ] [ About ⌄ ]           │  4. Nav (+ About popover)

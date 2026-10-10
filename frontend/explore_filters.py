@@ -296,47 +296,6 @@ def sectors_for_market(
     return sorted(sectors, key=str.lower)
 
 
-def scope_summary(
-    *,
-    market_code: str,
-    sector: str,
-    pool_size: int,
-) -> str:
-    if market_code == ALL_MARKETS:
-        if sector != ALL_SECTORS:
-            return f"{pool_size} worldwide · {sector}"
-        return f"{pool_size} companies worldwide"
-    market_label = market_display_name(market_code)
-    if sector != ALL_SECTORS:
-        return f"{pool_size} in {market_label} · {sector}"
-    return f"{pool_size} in {market_label}"
-
-
-def walk_progress_line(*, position: int, total: int) -> str:
-    if total <= 0:
-        return ""
-    return f"{position} of {total}"
-
-
-def walk_meta_line(
-    *,
-    position: int,
-    total: int,
-    market_code: str,
-    sector: str,
-) -> str:
-    if total <= 0:
-        return ""
-    if market_code == ALL_MARKETS:
-        if sector != ALL_SECTORS:
-            return f"{position} of {total} worldwide · {sector}"
-        return f"{position} of {total} worldwide"
-    market_label = market_display_name(market_code)
-    if sector != ALL_SECTORS:
-        return f"{position} of {total} in {market_label} · {sector}"
-    return f"{position} of {total} in {market_label}"
-
-
 def deck_rows_lack_columns(
     cards: list[dict[str, Any]], columns: Iterable[str]
 ) -> bool:

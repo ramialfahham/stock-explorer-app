@@ -15,7 +15,6 @@ from explore_filters import (  # noqa: E402
     metric_preset_label,
     metric_preset_options,
     saved_keys_with_order,
-    walk_progress_line,
 )
 
 
@@ -92,12 +91,6 @@ def test_filter_scope_summary() -> None:
     assert filter_scope_summary(market_code="us_sp500", sector="Technology") == (
         "S&P 500 · Technology"
     )
-
-
-def test_walk_progress_line() -> None:
-    assert walk_progress_line(position=1, total=464) == "1 of 464"
-    assert walk_progress_line(position=3, total=47) == "3 of 47"
-    assert walk_progress_line(position=1, total=0) == ""
 
 
 def test_filter_pool_respects_sector() -> None:

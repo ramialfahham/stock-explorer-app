@@ -292,7 +292,7 @@ comment). Pre-revenue's 4 metrics (`net_cash`, `working_capital`, `cash_runway_m
 `burn_rate_monthly`) are deliberately excluded: only 3 pre-revenue companies exist app-wide,
 which can never clear the 8-peer rendering threshold (see "Peer threshold" below).
 
-**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; UI omits benchmark line.
+**Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; the card shows its no-comparison placeholder in place of the range mark (`docs/north_star.md`, Benchmarking).
 
 Benchmark availability does **not** affect `is_card_eligible`.
 

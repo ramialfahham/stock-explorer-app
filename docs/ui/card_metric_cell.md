@@ -164,9 +164,9 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
 
 - The range mark (`_metric_range_html()` in `frontend/card_ui.py`, via
   `benchmark_range()` in `frontend/card_copy.py`) shows only when `sector_peer_count >= 8`
-  **and** the sector has genuine spread (`sector_min != sector_max` for this metric) — a
-  sector where every eligible peer reports the same value has no range to show, not an
-  error to hide.
+  **and** the displayed range has width (`benchmark_range()` returns `None` when it collapses
+  to zero after the outlier clamp, for example when every eligible peer reports the same
+  value) -- there is no range to show, not an error to hide.
 - **When either condition fails, or the metric isn't `benchmarkable: true` at all**,
   `_metric_range_html()` returns `""` and `_metric_cell_html()` falls back to
   `_metric_range_unavailable_html()` — a single calm line, `"No sector comparison for

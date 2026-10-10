@@ -151,14 +151,14 @@ Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`
       each Saved row's own `Remove` button sits outside the row's invisible tap target
 - [ ] `Filters` trigger and the `About` nav trigger render with the same surface/border
       chrome, visibly lighter than a row, without looking loud
-- [ ] `Clear saved` (Saved tab, next to the saved count) renders with the same
-      accent/surface skin as the Discover action bar
+- [ ] `Clear saved` (Saved tab, next to the saved count) renders with the bordered-surface
+      secondary skin, not the accent skin of "Save"
 - [ ] The card's "Understand these numbers" `st.expander` renders bordered/filled, not
       default Streamlit grey
 - [ ] Metric-label chips and the verdict badge render with the same control-tier radius
       as buttons/popover triggers
 - [ ] The card footer's "Yahoo Finance" link renders with the same secondary-button skin
-      as "Save" on the sticky action below it
+      as `← Back to list`, visibly quieter than the accent-skinned "Save" below it
 - [ ] No new bare `border-radius:`/`padding:` literal introduced in touched sections of
       `styles.py` — every value traces to a token in the table above
 
