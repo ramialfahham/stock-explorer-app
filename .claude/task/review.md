@@ -1,57 +1,44 @@
 # Review
 
-diff_sha256: 4ef307d11b3a5fe54d1850060c7880209725d73cedf48c49ce9fb73d74b05691
-rounds: 1
+diff_sha256: 9561fb0defbbc1978381f3fe08b3be9d290ae393fc34a31615541b603979f795
+rounds: 3
 
-Issue #47, MR 1 of 2. Round 1 on the cumulative diff (tree cc8b5ca): scope-auditor, platform-reviewer
-and equity-analyst-reviewer all PASS. equity-analyst-reviewer ran as a general-purpose agent
-following `.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model (#48).
+Issue #47, MR 2 of 2. Round 1 (tree 4b70411): equity-analyst-reviewer FAIL (the identity key was the bare card ticker, which merges unrelated companies), platform-reviewer FAIL (one test did not discriminate), scope-auditor ESCALATE (saved identity; a stale-sentence file outside scope). Round 2 (tree 17da89d): equity-analyst-reviewer PASS, platform-reviewer FAIL (the dedupe-before-filter order had no test), scope-auditor ESCALATE (delegation record, dedupe order, FE-1). Round 3 (tree c693b6d, the cap): all three PASS. equity-analyst-reviewer ran as a general-purpose agent following `.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model (#48).
 
-Wording fixes applied after the PASS verdicts, no new round (the precedent in #46's review): north_star.md
-"no spread among them" reworded to match `benchmark_range`'s zero-width-after-clamp case, and the same
-claim in `docs/ui/card_metric_cell.md`; `docs/data_contract.md` "UI omits benchmark line" (a second
-copy of the claim finding 21 changes); the metric_layer.md paragraph cut to one sentence and its
-`assessment_rules.py` claim dropped; the `design_system.md` `Clear saved` smoke item (same skin claim
-as finding 25); the test docstring naming the gate; the `benchmark_range` docstring now names
-`PEER_THRESHOLD`; the sweep script's docstring, repo-root anchoring and self-exclusion. The two widened
-docs are recorded in the contract's decisions_reserved.
+Wording fixes applied after the round-3 PASS verdicts, no fourth round (the precedent in #46's review): the `active_work.md` FE-1 clause and the !248 state; the contract's statement of the user-visible changes (the 24 unrelated pairs show two cards again, five same-company pairs become two with News Corp's Class B pair precise, the Airbus and ArcelorMittal tie holds at equal snapshot_dates, the eligible-listings-only limit, the unmapped-market limit); the `dedupe_by_company` name in data_contract.md step 10 so the FE-1 exception is findable; the "(one per index)" gloss in north_star.md. Follow-ups filed as #58.
 
-Follow-ups, filed as issues after the MR opens: the Discover preset cutoffs differ from the verdict
-bands (owner content, `scripts/assessment_rules.py`), and a null value passes a preset
-(undocumented); `importance_tier` and `basis_column` have no frontend reader (seed column removal,
-stale claims in `scripts/export_metric_definitions_json.py` and `dbt_analytics/seeds/_seeds.yml`).
+Coordinator evidence: six mutations, each caught by a new test (bare ticker as identity, saved check by listing only, tie-break removed, dedupe after the filters, sector options not deduped, dedupe put back in `fetch_deck`); the four tests of round 1 fail on main; full suite 1161 passed; `scripts/bootstrap.py --verify` passes; the em-dash check passes; the contract greps return nothing.
 
-Coordinator evidence: `python .claude/task/dead_code_sweep.py` prints clean, and prints the 14 expected
-hits on main; every contract grep returns the stated result; `test_peer_threshold_matches_the_dbt_benchmark_gate`
-fails with PEER_THRESHOLD = 9; full suite 1148 passed; `scripts/bootstrap.py --verify` passes; the
-em-dash check passes.
+## Owner answers
+
+CPO ANSWER: recorded for #47. (a) Delegation: the owner wrote in this session "I have no idea. You should act as the expert." and later "go"; every decision in the contract's decisions_reserved except the FE-1 exception was made by the agent under that delegation, each stated with its reason before "go". (b) Dedupe before the sector and preset filters, saved state per listing, and the tie to registry order: decided by the agent under that delegation. (c) FE-1 (deduplication in the display layer): asked of the owner directly, who answered "A": record the exception and keep the rule in the display layer. It is recorded as criteria version 2 in docs/quality_criteria.json with its fingerprint in tests/tooling/test_quality_audit.py.
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: cc8b5cad34937c1299af2a63c9b19c7abe0836b1
+reviewed_tree: c693b6dd935ed29155db7c6cc841331cdc641fd3
 risks_checked:
-- Every path in the diff is inside scope_paths; no amendment lacked authority.
-- No behaviour change: `build_card_html` keeps only the old falsy-`scope_meta` path; render order is unchanged; the learn-panel string is byte-identical at PEER_THRESHOLD = 8.
-- Docs match the source: north_star.md, discover_list.md, discover_header.md, design_system.md against card_ui.py, card_copy.py, brand.py, app.py and the per-metric dbt gate.
-wording_fixes: all applied (see above).
+- Every owner-level item in the delta (All-markets list contents, tie-break winner and sector label, sector options, per-company saved semantics, north_star Save wording, FE-1 exception) is in decisions_reserved under the delegation or answer A; none slipped in silently.
+- The criteria bump changes only the version and the FE-1 rule text; version 1's fingerprint is untouched.
+- Saved state and the single-market path are unchanged against main; fetch_deck matches done_when.
+wording_fixes: applied.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: cc8b5cad34937c1299af2a63c9b19c7abe0836b1
+reviewed_tree: c693b6dd935ed29155db7c6cc841331cdc641fd3
 risks_checked:
-- No caller of a removed or changed symbol remains anywhere in the repo, including tests, scripts and docs.
-- Rendering is unchanged; the pin test fails closed, its regex matches the SQL line, and CI runs it without a path filter.
-- The two deleted tests asserted only the removed symbols; live `metrics_for_card` behaviour stays covered.
+- The round-2 FAIL is closed: both ordering tests fail under "dedupe after the filters"; the sector-options test fails if the All-markets dedupe is removed.
+- `sectors_for_market` has one call site and its single-market path is unchanged.
+- The suffix map equals the registry for all 15 markets and the test compares values.
 wording_fixes: applied.
 
 ## equity-analyst-reviewer
 
 VERDICT: PASS
-reviewed_tree: cc8b5cad34937c1299af2a63c9b19c7abe0836b1
+reviewed_tree: c693b6dd935ed29155db7c6cc841331cdc641fd3
 risks_checked:
-- The rewritten benchmark-unavailable behaviour matches `benchmark_range`, `_benchmark_eligible` and the per-metric dbt gate; the old false claim is gone.
-- No advice language, no invented threshold, no new score or percentile claim in the touched strings.
-- `METRIC_PRESETS` is read only inside `frontend/explore_filters.py`, so "only the Discover filter reads" holds.
+- Deduping before the sector and preset filters is the financially safer order: the row that passes a filter is the row the card shows.
+- The claim that the winner's market decides whether the sector comparison shows is true and disclosed in three places.
+- No metric, label, interpretation or verdict wording changed; no advice language.
 wording_fixes: applied.

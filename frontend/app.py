@@ -24,6 +24,7 @@ from card_ui import render_stock_card
 from explore_filters import (
     ALL_SECTORS,
     deck_rows_lack_columns,
+    dedupe_by_company,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
@@ -670,14 +671,17 @@ def _search_query_widget(*, placeholder: str) -> str:
 def _search_matches(cards: list[dict], query: str) -> list[dict]:
     """Ticker/company-name substring match, case-insensitive, sorted by display name.
     Global lookup across the full deck -- not scoped to Discover's market/sector filter or
-    its saved-ticker exclusion."""
+    its saved exclusion. A company whose indices track the same listing matches once, like the
+    All-markets list."""
     needle = query.lower()
-    matches = [
-        c
-        for c in cards
-        if needle in (c.get("ticker") or "").lower()
-        or needle in (c.get("company_name") or "").lower()
-    ]
+    matches = dedupe_by_company(
+        [
+            c
+            for c in cards
+            if needle in (c.get("ticker") or "").lower()
+            or needle in (c.get("company_name") or "").lower()
+        ]
+    )
     matches.sort(key=lambda c: (c.get("company_name") or c.get("ticker") or "").lower())
     return matches
 

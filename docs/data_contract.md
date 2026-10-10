@@ -919,17 +919,26 @@ contract, which the next task overwrites.
 8. Update [`operations_guide.md`](operations_guide.md) market table AND
    `frontend/markets.py` (`MARKET_DISPLAY_NAMES`, or the filter renders "Fr Cac40") and
    `frontend/live_quote.py` (`_EXCHANGE_SUFFIX`, needed whenever the source table gives bare
-   tickers rather than suffixed ones)
+   tickers rather than suffixed ones; it is also the All-markets company identity, step 10)
 9. Run `python scripts/seed_ci_raw_fixtures.py` before any local `dbt build`: the staging
    models read a per-market parquet path that does not exist until fixtures are written. CI
    does this itself; a local run does not.
 10. Run `pytest tests/ingestion/test_market_onboarding.py`. It pins every join above and
    detects a constituent that resolves to the same Yahoo symbol under two markets. That is
    usually a seed copied wrong, but occasionally a real dual-index membership: Airbus sits in
-   both the DAX and the CAC 40, and ArcelorMittal is in the CAC 40 while listing in Amsterdam.
+   both the DAX and the CAC 40, and ArcelorMittal's Amsterdam line is in both the CAC 40 and the AEX.
    Decide which it is, and if the membership is genuine add the symbol to
-   `KNOWN_DUAL_INDEX_SYMBOLS` with the reason rather than editing a seed. Note the deck then
-   shows that company once per market it belongs to (issue #7).
+   `KNOWN_DUAL_INDEX_SYMBOLS` with the reason rather than editing a seed. The deck keeps one
+   row per market the company belongs to. The All-markets list, its sector options and search
+   (`dedupe_by_company` in `frontend/explore_filters.py`) show a company once when its indices
+   track one listing: the same resolved Yahoo symbol
+   (`yfinance_symbol` in `frontend/live_quote.py`: ticker plus the market's exchange suffix,
+   unless the ticker already has a dot). The bare ticker is not an identity: `T` is AT&T in the
+   S&P 500 and Telus in the TSX 60. The later snapshot wins, a tie goes to the market listed
+   first in `MARKET_DISPLAY_NAMES`, and the winner sets the card's market label and sector peer
+   group, which decides whether the sector comparison shows. A single-market filter lists every
+   eligible listing of its market except a saved one. A company on two venues is two cards:
+   ArcelorMittal's Madrid line `MTS.MC`, Newmont, News Corp, Rio Tinto, ResMed, Block (issue #7).
    **There are TWO collision guards and they take different allowlists.** The symbol one above is
    keyed on the resolved Yahoo symbol, so it only sees a company whose two indices track the same
    listing. A company listed on two venues resolves to two symbols and is caught instead by

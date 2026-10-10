@@ -19,7 +19,10 @@ WORKFLOW = (REPO / ".claude" / "workflows" / "quality-baseline-audit.js").read_t
 )
 # One fingerprint per criteria version. Changing a criterion without adding a new version here
 # fails, so the bar cannot move silently between two audit runs that are meant to compare.
-FINGERPRINTS = {1: "c8938e30eef957c5af20e883f304fcb5870c08039b4d100b93f5f6245d26bff4"}
+FINGERPRINTS = {
+    1: "c8938e30eef957c5af20e883f304fcb5870c08039b4d100b93f5f6245d26bff4",
+    2: "c532f39acdc76a5cf8a54bc92ea28719d8acab779636ecfa3711eba9acf41b77",
+}
 
 
 def test_criteria_content_matches_its_version() -> None:

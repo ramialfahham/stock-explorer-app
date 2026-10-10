@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import Any
 
+from live_quote import yfinance_symbol
 from markets import MARKET_DISPLAY_NAMES, market_display_name
 
 ALL_MARKETS = "all"
@@ -138,6 +139,16 @@ def _card_key(card: dict[str, Any]) -> tuple[str, str]:
     return (card["market_code"], card["ticker"])
 
 
+_MARKET_RANK = {code: rank for rank, code in enumerate(MARKET_DISPLAY_NAMES)}
+
+
+def _market_rank(card: dict[str, Any]) -> tuple[int, str]:
+    """Registry order, so a tie between two listings of one company always resolves to the
+    same market whatever order the deck arrived in."""
+    code = str(card.get("market_code") or "")
+    return (_MARKET_RANK.get(code, len(_MARKET_RANK)), code)
+
+
 def _snapshot_sort_key(card: dict[str, Any]) -> str:
     raw = card.get("snapshot_date")
     if raw is None:
@@ -153,9 +164,10 @@ def _has_business_summary(card: dict[str, Any]) -> bool:
 def _dedupe_by_latest_snapshot(
     cards: list[dict[str, Any]], key_fn: Callable[[dict[str, Any]], Any]
 ) -> list[dict[str, Any]]:
-    """Keep one row per key_fn(card) -- latest snapshot_date wins. Shared by
-    `dedupe_to_latest_snapshot` and `_dedupe_by_ticker` so the business_summary backfill
-    below stays in one place rather than two copies that can drift apart."""
+    """Keep one row per key_fn(card) -- latest snapshot_date wins. An equal snapshot_date goes
+    to the market listed first in `MARKET_DISPLAY_NAMES`; within one market the first row seen
+    wins. Shared by `dedupe_to_latest_snapshot` and `dedupe_by_company` so the business_summary
+    backfill below stays in one place rather than two copies that can drift apart."""
     latest: dict[Any, dict[str, Any]] = {}
     for card in cards:
         key = key_fn(card)
@@ -165,12 +177,11 @@ def _dedupe_by_latest_snapshot(
             continue
         card_key = _snapshot_sort_key(card)
         prev_key = _snapshot_sort_key(prev)
-        if card_key > prev_key:
-            winner, loser = card, prev
-        elif card_key < prev_key:
-            winner, loser = prev, card
+        if card_key != prev_key:
+            card_wins = card_key > prev_key
         else:
-            winner, loser = prev, card
+            card_wins = _market_rank(card) < _market_rank(prev)
+        winner, loser = (card, prev) if card_wins else (prev, card)
         merged = dict(winner)
         if not _has_business_summary(merged) and _has_business_summary(loser):
             merged["business_summary"] = loser.get("business_summary")
@@ -239,17 +250,20 @@ def _latest_action_keys(
 def saved_keys_with_order(interactions: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
     """Currently-saved (market_code, ticker) keys, each mapped to its latest save
     timestamp. Public (not underscore-prefixed) because app.py's `_saved_count`/
-    `_saved_cards` share it as the single source of truth for "is this saved", so
-    Discover's exclusion and the Saved tab's own list can never disagree."""
+    `_saved_cards` and `filter_pool` share it as the single source of truth for "is this
+    saved"."""
     return _latest_action_keys(interactions, add_action="save", remove_action="unsave")
 
 
-def _dedupe_by_ticker(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep one row per ticker -- latest snapshot_date wins. A company listed in two
-    indices (e.g. Airbus in both the DAX and CAC 40) resolves to the same yfinance ticker
-    and would otherwise appear as two cards differing only by market_code. Only meaningful
-    for the ALL_MARKETS scope -- a single-market filter never has two rows sharing a ticker."""
-    return _dedupe_by_latest_snapshot(cards, lambda card: card["ticker"])
+def dedupe_by_company(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one row per company, identified by its resolved Yahoo symbol: the card's ticker plus
+    its market's exchange suffix, unless the ticker already contains a dot (`yfinance_symbol`).
+    Two indices that track the same listing (Airbus in the DAX and the CAC 40) are one company.
+    The bare ticker alone is not an identity: `T` is AT&T in the S&P 500 and Telus in the TSX
+    60. A company on two venues resolves to two symbols and is two cards (Shell, Unilever).
+    Which listing wins is `_dedupe_by_latest_snapshot`'s rule. Used by the All-markets list,
+    its sector options and search, the views that list companies across markets."""
+    return _dedupe_by_latest_snapshot(cards, yfinance_symbol)
 
 
 def filter_pool(
@@ -260,24 +274,32 @@ def filter_pool(
     sector: str,
     metric_presets: Iterable[str] = (),
 ) -> list[dict[str, Any]]:
-    """Return card-eligible rows in scope, excluding saved tickers."""
+    """Return card-eligible rows in scope, excluding saved ones.
+
+    Saving is per listing, and the list's unit follows its scope. A market filter lists
+    listings and hides the saved one. All markets lists companies (`dedupe_by_company`, applied
+    before the sector and preset filters) and hides a company when any of its current listings
+    is saved."""
     saved = saved_keys_with_order(interactions)
+    rows = [card for card in cards if card.get("is_card_eligible")]
+    if market_code == ALL_MARKETS:
+        saved_units = {yfinance_symbol(card) for card in rows if _card_key(card) in saved}
+        rows = dedupe_by_company(rows)
+        unit = yfinance_symbol
+    else:
+        saved_units = set(saved)
+        rows = [card for card in rows if card.get("market_code") == market_code]
+        unit = _card_key
     preset_ids = list(metric_presets)
     pool: list[dict[str, Any]] = []
-    for card in cards:
-        if not card.get("is_card_eligible"):
-            continue
-        if _card_key(card) in saved:
-            continue
-        if market_code != ALL_MARKETS and card.get("market_code") != market_code:
+    for card in rows:
+        if unit(card) in saved_units:
             continue
         if sector != ALL_SECTORS and (card.get("sector") or "Unknown") != sector:
             continue
         if preset_ids and not card_matches_metric_presets(card, preset_ids):
             continue
         pool.append(card)
-    if market_code == ALL_MARKETS:
-        pool = _dedupe_by_ticker(pool)
     return pool
 
 
@@ -286,14 +308,14 @@ def sectors_for_market(
     *,
     market_code: str,
 ) -> list[str]:
-    sectors: set[str] = set()
-    for card in cards:
-        if not card.get("is_card_eligible"):
-            continue
-        if market_code != ALL_MARKETS and card.get("market_code") != market_code:
-            continue
-        sectors.add(card.get("sector") or "Unknown")
-    return sorted(sectors, key=str.lower)
+    """Sectors held by at least one company in scope. All markets counts a company through its
+    winning listing only, so a sector held just by a losing listing is not offered."""
+    rows = [card for card in cards if card.get("is_card_eligible")]
+    if market_code == ALL_MARKETS:
+        rows = dedupe_by_company(rows)
+    else:
+        rows = [card for card in rows if card.get("market_code") == market_code]
+    return sorted({card.get("sector") or "Unknown" for card in rows}, key=str.lower)
 
 
 def deck_rows_lack_columns(

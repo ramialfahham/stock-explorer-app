@@ -56,28 +56,29 @@ def _paginate(build_query: Callable[[int], _TableQuery]) -> list[dict[str, Any]]
     return rows
 
 
-def fetch_deck_rows(client: _SupabaseClient) -> list[dict[str, Any]]:
-    """Every eligible current card, narrowed to DECK_COLUMNS; stale companies are already out."""
+def fetch_deck(client: _SupabaseClient) -> list[dict[str, Any]]:
+    """The deck: every eligible current card, slim columns only.
+
+    `current_cards` already holds one row per (market_code, ticker) with stale companies out.
+    Pages are sorted by that unique key: with LIMIT/OFFSET, a sort on a column most rows share
+    (snapshot_date) leaves the order within ties unspecified, so a row can repeat or go
+    missing across a page boundary.
+
+    No card_assessments join -- `health_verdict`/`ai_read` are read only by the card face
+    (card_ui/card_copy), never by a list row, so fetching them here would add two round trips
+    and ~900 KB to the cold path for data nothing on screen uses yet.
+    """
     select = ",".join(DECK_COLUMNS)
     return _paginate(
         lambda offset: (
             client.table("current_cards")
             .select(select)
             .eq("is_card_eligible", True)
-            .order("snapshot_date", desc=True)
+            .order("market_code")
+            .order("ticker")
             .range(offset, offset + PAGE_SIZE - 1)
         )
     )
-
-
-def fetch_deck(client: _SupabaseClient) -> list[dict[str, Any]]:
-    """The deck: latest snapshot per (market_code, ticker), slim columns only.
-
-    No card_assessments join -- `health_verdict`/`ai_read` are read only by the card face
-    (card_ui/card_copy), never by a list row, so fetching them here would add two round trips
-    and ~900 KB to the cold path for data nothing on screen uses yet.
-    """
-    return dedupe_to_latest_snapshot(fetch_deck_rows(client))
 
 
 def fetch_card_detail(
@@ -85,9 +86,8 @@ def fetch_card_detail(
 ) -> dict[str, Any] | None:
     """The full row for one card, assessment attached. None when the ticker has no rows.
 
-    Runs the same dedupe_to_latest_snapshot as the deck, over just this ticker's snapshots, so
-    the cross-snapshot `business_summary` backfill it performs is preserved rather than
-    reimplemented.
+    Runs dedupe_to_latest_snapshot over this ticker's snapshots: the newest wins and a missing
+    `business_summary` is backfilled from an older one.
     """
     rows = (
         client.table("mart_stock_cards")

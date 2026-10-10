@@ -148,7 +148,8 @@ The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 - Adds ticker to **Saved**.
 - Removes from scoped discover pool.
 - Entry point for headlines and external research (Yahoo Finance link on card footer).
-- Reversible: removing a company from Saved re-adds it to the scoped discover pool.
+- Reversible: removing a company from Saved re-adds it to the scoped discover pool (in All
+  markets, once none of its listings (one per index) is saved).
 
 Save doesn't delete pipeline data.
 

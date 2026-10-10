@@ -8,6 +8,8 @@ from explore_filters import (  # noqa: E402
     attach_assessments,
     card_matches_metric_presets,
     deck_rows_lack_columns,
+    dedupe_by_company,
+    dedupe_to_latest_snapshot,
     default_market_filter,
     filter_pool,
     filter_scope_summary,
@@ -157,9 +159,111 @@ def test_filter_pool_dual_index_ticker_keeps_latest_snapshot() -> None:
     assert pool[0]["market_code"] == "fr_cac40"
 
 
+def test_dual_index_tie_resolves_to_the_same_market_in_either_deck_order() -> None:
+    """An equal snapshot_date resolves to the market listed first in the registry, whatever
+    order the deck arrived in."""
+    de = _card("AIR.PA", "Industrials", market="de_dax", snapshot_date="2026-06-09")
+    fr = _card("AIR.PA", "Industrials", market="fr_cac40", snapshot_date="2026-06-09")
+    for deck in ([de, fr], [fr, de]):
+        pool = filter_pool(deck, [], market_code=ALL_MARKETS, sector=ALL_SECTORS)
+        assert [c["market_code"] for c in pool] == ["de_dax"]
+
+
+def test_all_markets_hides_a_company_when_either_listing_is_saved() -> None:
+    """All markets lists companies, so Airbus saved from the CAC 40 does not come back through
+    the DAX listing. A market filter lists listings, so it hides only the saved one."""
+    cards = [
+        _card("AIR.PA", "Industrials", market="de_dax"),
+        _card("AIR.PA", "Industrials", market="fr_cac40"),
+        _card("BMW", "Consumer Cyclical", market="de_dax"),
+    ]
+    saved = [{"market_code": "fr_cac40", "ticker": "AIR.PA", "action": "save", "created_at": "t1"}]
+    expected = {
+        ALL_MARKETS: ["BMW"],
+        "de_dax": ["AIR.PA", "BMW"],
+        "fr_cac40": [],
+    }
+    for market, tickers in expected.items():
+        pool = filter_pool(cards, saved, market_code=market, sector=ALL_SECTORS)
+        assert sorted(c["ticker"] for c in pool) == tickers, market
+
+
+def test_all_markets_ignores_a_saved_listing_that_left_the_deck() -> None:
+    """The Saved tab lists only listings still in the deck, so a saved listing that was evicted
+    must not hide the company's other, current listing."""
+    cards = [_card("AIR.PA", "Industrials", market="de_dax")]
+    saved = [{"market_code": "fr_cac40", "ticker": "AIR.PA", "action": "save", "created_at": "t1"}]
+    pool = filter_pool(cards, saved, market_code=ALL_MARKETS, sector=ALL_SECTORS)
+    assert [c["market_code"] for c in pool] == ["de_dax"]
+
+
+def test_all_markets_keeps_two_companies_that_share_a_bare_ticker() -> None:
+    """`MRK` is Merck & Co. in the S&P 500 and Merck KGaA in the DAX, `T` is AT&T and Telus: a
+    bare ticker is not an identity, so All markets lists both and saving one hides only it."""
+    cards = [
+        _card("MRK", "Healthcare", market="us_sp500"),
+        _card("MRK", "Healthcare", market="de_dax"),
+        _card("T", "Communication Services", market="us_sp500"),
+        _card("T", "Communication Services", market="ca_tsx60"),
+    ]
+    pool = filter_pool(cards, [], market_code=ALL_MARKETS, sector=ALL_SECTORS)
+    assert len(pool) == 4
+    saved = [{"market_code": "us_sp500", "ticker": "MRK", "action": "save", "created_at": "t1"}]
+    pool = filter_pool(cards, saved, market_code=ALL_MARKETS, sector=ALL_SECTORS)
+    assert sorted((c["market_code"], c["ticker"]) for c in pool) == [
+        ("ca_tsx60", "T"),
+        ("de_dax", "MRK"),
+        ("us_sp500", "T"),
+    ]
+
+
+def test_all_markets_judges_a_company_by_its_latest_listing_before_the_sector_filter() -> None:
+    """The older listing carries another sector; the company must follow the newer snapshot, so
+    filtering on the older listing's sector finds nothing and never surfaces the stale row."""
+    old = _card("AIR.PA", "Industrials", market="de_dax", snapshot_date="2026-05-01")
+    new = _card("AIR.PA", "Aerospace", market="fr_cac40", snapshot_date="2026-06-09")
+    for deck in ([old, new], [new, old]):
+        stale = filter_pool(deck, [], market_code=ALL_MARKETS, sector="Industrials")
+        assert stale == []
+        current = filter_pool(deck, [], market_code=ALL_MARKETS, sector="Aerospace")
+        assert [c["market_code"] for c in current] == ["fr_cac40"]
+
+
+def test_all_markets_judges_a_company_by_its_latest_listing_before_a_metric_preset() -> None:
+    margins = {"company_type": "operating"}
+    old = {**_card("AIR.PA", "Industrials", "de_dax", "2026-05-01"), **margins, "ebit_margin_pct": 30.0}
+    new = {**_card("AIR.PA", "Industrials", "fr_cac40", "2026-06-09"), **margins, "ebit_margin_pct": 5.0}
+    pool = filter_pool(
+        [old, new], [], market_code=ALL_MARKETS, sector=ALL_SECTORS, metric_presets=["high_margin"]
+    )
+    assert pool == []
+
+
+def test_sectors_for_market_all_markets_skips_a_sector_held_only_by_a_losing_listing() -> None:
+    from explore_filters import sectors_for_market
+
+    old = _card("AIR.PA", "Industrials", market="de_dax", snapshot_date="2026-05-01")
+    new = _card("AIR.PA", "Aerospace", market="fr_cac40", snapshot_date="2026-06-09")
+    assert sectors_for_market([old, new], market_code=ALL_MARKETS) == ["Aerospace"]
+    assert sectors_for_market([old, new], market_code="de_dax") == ["Industrials"]
+
+
+def test_dedupe_by_company_sorts_an_unknown_market_after_every_known_one() -> None:
+    known = _card("ABC.XX", "Industrials", market="de_dax")
+    unknown = _card("ABC.XX", "Industrials", market="zz_unlisted")
+    for deck in ([known, unknown], [unknown, known]):
+        assert [c["market_code"] for c in dedupe_by_company(deck)] == ["de_dax"]
+
+
+def test_dedupe_to_latest_snapshot_keeps_the_first_row_on_a_same_market_tie() -> None:
+    first = {**_card("ADI", "Technology"), "company_name": "first"}
+    second = {**_card("ADI", "Technology"), "company_name": "second"}
+    assert dedupe_to_latest_snapshot([first, second])[0]["company_name"] == "first"
+
+
 def test_filter_pool_single_market_scope_unaffected_by_dedup() -> None:
     """A market-scoped view must still show every eligible row for that market -- the
-    ticker dedup only fires for ALL_MARKETS, never for a single-market filter."""
+    company dedup only fires for ALL_MARKETS, never for a single-market filter."""
     cards = [
         _card("AIR.PA", "Industrials", market="de_dax"),
         _card("BMW", "Consumer Cyclical", market="de_dax"),
@@ -337,9 +441,7 @@ def test_filter_pool_excludes_saved() -> None:
 
 
 def test_filter_pool_reincludes_a_ticker_after_unsave() -> None:
-    """The bug this guards: filter_pool used to have its own separate 'is this saved' copy
-    with no concept of unsave, so removing a saved company from the Saved tab would leave it
-    excluded from Discover forever, with no way back in since Search has no Save action."""
+    """A company unsaved from the Saved tab is back in Discover's pool."""
     cards = [_card("AAPL", "Technology"), _card("MSFT", "Technology")]
     interactions = [
         {"market_code": "us_sp500", "ticker": "AAPL", "action": "save", "created_at": "t1"},
