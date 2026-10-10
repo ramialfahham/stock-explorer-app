@@ -13,27 +13,32 @@ one or two lines and let git and the MR keep the detail._
 
 ## In flight
 
-**Start here (2026-10-10).** The small-fix list is done and merged: #34, #32, #35, #36, #37,
-#41, #42 (!234-!238, !240, !241), plus #44 (override tests check every row by rule, !239),
-#54 (pre-commit-hooks hooks start as `python -m`, !242) and #53 (repeatable audit, !243).
-Milestone progress: #45 (no history narrative; narrative check covers every governed doc by
-path; handover archives removed from `docs/`, !245) and #46 (stale doc claims; guard test that
-every backticked repo path in a governed doc exists, !246) merged. No open MRs.
+**Start here (2026-10-10).** The small-fix list, #44, #53, #54, #45 and #46 are merged
+(!234-!246). #47 (frontend) is two MRs. !248 (merged): findings 21-29, 31, 32, specs aligned
+with shipped copy and dead frontend code removed; the owner delegated each spec-versus-code
+call to the agent, and the MR lists them. This MR: finding 20, one company-identity rule in
+the display layer (resolved Yahoo symbol, not the bare ticker, which merged ~24 unrelated
+pairs such as Merck & Co. with Merck KGaA, AT&T with Telus; later snapshot wins, a tie goes to registry order; All-markets
+list and search; saved state stays per listing), and finding 30, the deck paged by the
+view's unique key with no Python dedupe. Finding 33 stays as documented. Follow-ups: #56
+(preset cutoffs vs verdict bands), #57 (`importance_tier`, `basis_column`: no production reader),
+#58 (identity follow-ups).
 
-**Next: #47 (frontend), then #48-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
+**Next: #48-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
-above cosmetic. Criteria: `docs/quality_criteria.json` v1 (a change needs a version bump and
-the owner). Owner call inside: #47 spec vs code per mismatch. Way of working the owner set:
-one rule over every case instead of per-case fixes; make a sweep's "done" checkable (an exact
-search and a keep list in the contract); fix every copy of a changed claim.
+above cosmetic. Criteria: `docs/quality_criteria.json` v2 (a change needs a version bump and
+the owner). Way of working the owner set: one rule over every case instead of per-case fixes;
+make a sweep's "done" checkable (an exact search and a keep list in the contract); fix every
+copy of a changed claim.
 
 **Owner decisions open (ask one at a time):** #43 scope, name snapshot CSV only or also the
 fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
-criteria v2, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
-still name the removed handover archives; should
-`verify_quality_audit.py` name NOT AUDITED areas on the console and exit non-zero.
+criteria v3, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
+still name the removed handover archives; should `verify_quality_audit.py` name NOT AUDITED
+areas on the console and exit non-zero. Criteria are v2: FE-1 allows `dedupe_by_company` (owner
+answer A).
 
 **This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
 (`WinError 4551`); a hook from a remote repo needs `entry: python -m ...`
@@ -65,17 +70,14 @@ aggregates were gated on `sector_peer_count >= 8` (peer group size), not on how 
 peers had a non-null value for the specific metric -- fixed with a per-metric
 `n_<metric>` count each metric gates on instead.
 
-**Issue #23 CLOSED, MERGED (!210).** Follow-on doc fix: rewrote all ~50
-`sector_median/min/max/q1/q3_*` descriptions in `_intermediate.yml`/`_marts.yml` to match
-#24's corrected gate, and fixed `mart_stock_cards.sector_peer_count`'s description
-(pre_revenue join exclusion is the dominant cause).
+**Git push auth flakiness:** if it recurs, ask the owner; don't touch the credential store.
 
 **Null-when doc enforcement: MERGED (!207).** Added `check_null_when_documented` to
 `check_dbt_documentation.py` (exempts `info_`/`stmt_`/`qtr_` raw passthroughs,
 owner-approved); fixed 32 real violations plus 2 pre-existing-but-wrong null claims.
 **Durable lesson: a description already containing "null" can still be incomplete -- cost
-2 of 4 review rounds.** A larger family (~50 sector-benchmark columns, same gap) deferred
-to issue #23, not yet picked up.
+2 of 4 review rounds.** A larger family (~50 sector-benchmark columns, same gap) was fixed
+in issue #23 (!210).
 
 **dbt-layer audit + em-dash cleanup: MERGED (!205).** Manual audit vs.
 `docs/layering.md`/`docs/engineering_standards.md`: transformation layer clean, no layer
@@ -87,12 +89,6 @@ not acted on: `fct_fundamentals_snapshot` is "latest state" not true history des
 name; staging bypasses `source()` for `raw_parquet_union()` (freshness still works). Third
 (`int_stock__sector_benchmarks.sql`'s repetitive CASE blocks, same file the ~50-column
 docs gap below tracks) is now covered by issue #23.
-
-**Issue #22 CLOSED.** `verdict_meaning_violation` synonym fix (!202): zero read-gen
-failures, backlog cleared.
-
-**Git push auth flakiness:** failed once, retry hung, third clean; `glab`'s token
-unaffected. If recurring: ask the owner, don't touch the credential store.
 
 **Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu -> text-labeled
 `About` popover; Not-now removed end-to-end; per-row `Remove` added to Saved. **Lesson:
@@ -336,8 +332,10 @@ advice: `docs/north_star.md`. The snapshot gate in `attach_assessments` and why 
 simplified: its docstring in `frontend/explore_filters.py`. Performance, `DECK_COLUMNS` and
 why re-measuring the data layer proves nothing: `docs/operations_guide.md` "Performance".
 Run `python scripts/bootstrap.py --verify` before pushing: `docs/development_workflow.md`
-"Definition of done". Reserved and unbuilt from MR !111: a `DISTINCT ON` view to push deck deduplication
-into Postgres; `_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the constant.
+"Definition of done". Per-listing deck deduplication is the `current_cards` view (migration
+020); the cross-market rule, `dedupe_by_company` in `frontend/explore_filters.py`, is the FE-1
+exception recorded in criteria v2 (owner answer A).
+`_DECK_TTL_SECONDS`' approved 15-60 minute band sits beside the constant.
 
 ## Context / operational notes
 

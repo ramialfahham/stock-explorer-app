@@ -43,17 +43,17 @@ KNOWN_DUAL_INDEX_SYMBOLS: dict[str, tuple[frozenset[str], str]] = {
     "AIR.PA": (
         frozenset({"de_dax", "fr_cac40"}),
         "Airbus is a constituent of both the DAX and the CAC 40, and both indices track its "
-        "primary Paris line. The seeds are correct; the deck shows it twice when browsing all "
-        "markets, which is a display concern rather than a data one (issue #7).",
+        "primary Paris line. The seeds are correct; the app shows it once in All markets and "
+        "search and under each index in a single-market filter (issue #7).",
     ),
     "MT.AS": (
         frozenset({"fr_cac40", "nl_aex"}),
         "ArcelorMittal is a constituent of both the CAC 40 and the AEX, and both index pages "
         "give its Amsterdam line rather than a Paris one, so the two seeds agree by fact and "
-        "not by copying. The deck shows ArcelorMittal THREE times, not two: the IBEX 35 seed "
-        "carries its Madrid line as MTS.MC. This guard is keyed on the resolved Yahoo "
-        "symbol, so a third listing under a different symbol is invisible to it. Issue #7 "
-        "covers the display fix.",
+        "not by copying. The deck holds ArcelorMittal THREE times and All markets shows two "
+        "cards: MT.AS once, and the IBEX 35 seed's Madrid line MTS.MC. This guard is keyed "
+        "on the resolved Yahoo symbol, so a third listing under a different symbol is "
+        "invisible to it.",
     ),
 }
 
@@ -171,7 +171,8 @@ KNOWN_CROSS_MARKET_COMPANIES: dict[str, tuple[frozenset[str], str]] = {
     ),
     "arcelormittal": (
         frozenset({"fr_cac40", "nl_aex", "es_ibex35"}),
-        "Three cards. The CAC 40 and AEX both give the Amsterdam line (MT.AS, symbol-visible); "
+        "Three deck rows, two cards in All markets. The CAC 40 and AEX both give the Amsterdam "
+        "line (MT.AS, symbol-visible); "
         "the IBEX 35 gives the Madrid line (MTS.MC), which is not.",
     ),
     "shellplc": (
@@ -612,9 +613,9 @@ def test_every_active_market_is_named_and_suffixed_in_the_frontend() -> None:
     """The two joins the activation checklist requires and nothing else pins.
 
     A missing `MARKET_DISPLAY_NAMES` entry does not fail: `market_display_name` falls back to
-    title-casing the code, so the filter silently reads "Fr Cac40". A missing `_EXCHANGE_SUFFIX`
-    entry is inert only while every one of that market's seed tickers already carries a dot,
-    which is true for France and not guaranteed for the markets still queued.
+    title-casing the code, so the filter silently reads "Fr Cac40". `_EXCHANGE_SUFFIX` builds the
+    Yahoo link and is the All-markets company identity (`dedupe_by_company`), so a missing or
+    wrong value either breaks a link or merges and splits the wrong companies.
     """
     # Imported, not text-matched: a substring check over the file would be satisfied by the
     # market code appearing in a comment, which is exactly the state this guards against.
@@ -629,6 +630,14 @@ def test_every_active_market_is_named_and_suffixed_in_the_frontend() -> None:
     )
     assert not missing_suffixes, (
         f"frontend/live_quote.py _EXCHANGE_SUFFIX is missing {missing_suffixes}."
+    )
+    wrong_suffixes = {
+        m["market_code"]: (_EXCHANGE_SUFFIX[m["market_code"]], m["exchange_suffix"])
+        for m in _active()
+        if _EXCHANGE_SUFFIX[m["market_code"]] != m["exchange_suffix"]
+    }
+    assert not wrong_suffixes, (
+        f"frontend/live_quote.py _EXCHANGE_SUFFIX differs from the registry: {wrong_suffixes}."
     )
 
 

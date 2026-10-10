@@ -9,7 +9,6 @@ from supabase_cards import (  # noqa: E402
     export_lacks_business_summary,
     fetch_card_detail,
     fetch_deck,
-    fetch_deck_rows,
     is_undefined_column_error,
 )
 
@@ -38,7 +37,8 @@ class _FakeQuery:
         self._log.append(("gt", self._table, column, value))
         return self
 
-    def order(self, *_args, **_kwargs) -> _FakeQuery:
+    def order(self, column: str, *, desc: bool = False, **_kwargs) -> _FakeQuery:
+        self._log.append(("order", self._table, column, desc))
         return self
 
     def range(self, start: int, end: int) -> _FakeQuery:
@@ -66,6 +66,9 @@ class _FakeClient:
     def selects_for(self, table: str) -> list[str]:
         return [c for kind, t, c in (e for e in self.log if e[0] == "select") if t == table]
 
+    def orders_for(self, table: str) -> list[tuple[str, bool]]:
+        return [(e[2], e[3]) for e in self.log if e[0] == "order" and e[1] == table]
+
     def tables_touched(self) -> set[str]:
         return {entry[1] for entry in self.log}
 
@@ -81,11 +84,11 @@ def _mart(**overrides) -> dict:
     return row
 
 
-def test_fetch_deck_rows_paginates_past_1000() -> None:
+def test_fetch_deck_paginates_past_1000() -> None:
     first = [_mart(ticker=f"T{i}") for i in range(PAGE_SIZE)]
     second = [_mart(ticker="EXTRA", snapshot_date="2026-06-02")]
     client = _FakeClient({"current_cards": [first, second]})
-    assert len(fetch_deck_rows(client)) == PAGE_SIZE + 1
+    assert len(fetch_deck(client)) == PAGE_SIZE + 1
 
 
 def test_fetch_deck_requests_only_the_slim_column_set() -> None:
@@ -114,11 +117,18 @@ def test_fetch_deck_does_not_query_card_assessments() -> None:
     assert client.tables_touched() == {"current_cards"}
 
 
-def test_fetch_deck_keeps_latest_snapshot_per_ticker() -> None:
-    pages = [[_mart(snapshot_date="2026-06-09"), _mart(snapshot_date="2026-05-01")]]
-    cards = fetch_deck(_FakeClient({"current_cards": pages}))
-    assert len(cards) == 1
-    assert cards[0]["snapshot_date"] == "2026-06-09"
+def test_fetch_deck_pages_by_the_views_unique_key() -> None:
+    """A sort on snapshot_date alone leaves the order within ties unspecified, so rows can
+    repeat or go missing across a page boundary. (market_code, ticker) is the view's key."""
+    client = _FakeClient({"current_cards": [[_mart()]]})
+    fetch_deck(client)
+    assert client.orders_for("current_cards") == [("market_code", False), ("ticker", False)]
+
+
+def test_fetch_deck_returns_the_views_rows_as_served() -> None:
+    """The view owns one-row-per-listing; the fetch applies no dedupe of its own."""
+    rows = [_mart(snapshot_date="2026-06-09"), _mart(snapshot_date="2026-05-01")]
+    assert fetch_deck(_FakeClient({"current_cards": [rows]})) == rows
 
 
 def test_deck_reads_the_view_and_card_detail_reads_the_table() -> None:

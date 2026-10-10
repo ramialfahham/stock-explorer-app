@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "approved_table": "Owner-approved bar for a professional repo; one area per row. A criterion may only be added, changed or removed with a version bump and owner approval.",
   "areas": [
     {
@@ -100,7 +100,7 @@
       "criteria": [
         {
           "id": "FE-1",
-          "rule": "The frontend does not compute business logic that belongs upstream (metric values, eligibility, deduplication, ranking rules).",
+          "rule": "The frontend does not compute business logic that belongs upstream (metric values, eligibility, deduplication, ranking rules), except the cross-market company key `dedupe_by_company`, a display rule recorded in docs/data_contract.md (issue #7).",
           "source": ".claude/working-agreement.md anti-patterns ('Doing real logic in the consumption/frontend layer'); approved table row (frontend)"
         },
         {

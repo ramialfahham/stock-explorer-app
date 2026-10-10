@@ -98,6 +98,26 @@ def test_discover_page_slice_clamps_a_negative_page_index() -> None:
     assert len(page_items) == 10
 
 
+def test_search_matches_lists_a_company_in_two_indices_once() -> None:
+    cards = [
+        {"market_code": "fr_cac40", "ticker": "AIR.PA", "company_name": "Airbus SE"},
+        {"market_code": "de_dax", "ticker": "AIR.PA", "company_name": "Airbus SE"},
+        {"market_code": "us_sp500", "ticker": "AAPL", "company_name": "Apple Inc."},
+    ]
+    for deck in (cards, list(reversed(cards))):
+        matches = app_module._search_matches(deck, "airbus")
+        assert [(c["market_code"], c["ticker"]) for c in matches] == [("de_dax", "AIR.PA")]
+
+
+def test_search_matches_keeps_two_companies_that_share_a_bare_ticker() -> None:
+    cards = [
+        {"market_code": "us_sp500", "ticker": "MRK", "company_name": "Merck & Co."},
+        {"market_code": "de_dax", "ticker": "MRK", "company_name": "Merck"},
+    ]
+    matches = app_module._search_matches(cards, "merck")
+    assert sorted(c["market_code"] for c in matches) == ["de_dax", "us_sp500"]
+
+
 def test_discover_page_slice_handles_an_empty_pool() -> None:
     page_items, page = _discover_page_slice([], 0)
     assert page == 0
