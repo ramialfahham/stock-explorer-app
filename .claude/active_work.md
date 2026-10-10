@@ -15,57 +15,48 @@ one or two lines and let the archive keep the detail._
 
 ## In flight
 
-**Clone and continue: MERGED** (!220 guardrails owned by the repo, !221 one setup command +
-one proof command + `setup:clean-clone`/`validate:pre-commit` in CI). Setup is README
-"Getting started"; credentialed check passed on this machine (`check_supabase_connection.py`).
-**Review gate as a git pre-commit hook: MERGED (!224, issue #27).** `review-gate` hook,
-`powershell_git_guard.py`, GitLab `main` push set to "No one". Follow-up: issue #29
-(further bypass spellings, low priority).
+**Start here (2026-10-10).** The small-fix list is done and merged: #34, #32, #35, #36, #37,
+#41, #42 (!234-!238, !240, !241), plus #44 (override tests check every row by rule, !239),
+#54 (pre-commit-hooks hooks start as `python -m`, !242) and #53 (repeatable audit, !243). No
+open MRs.
 
-**Review rounds converge: MERGED (!225, issue #30).** Delta review after round 1, graded
-FAIL, frozen diff per round, fixed exit at the round cap (3). Follow-up: issue #31
-(equity-analyst reviewer's FAIL grounds).
+**Next: milestone "3 · Professional baseline", issues #45-#52** (61 audit findings, each with
+file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
+`python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
+above cosmetic. Criteria: `docs/quality_criteria.json` v1 (a change needs a version bump and
+the owner). Owner calls inside: #47 spec vs code per mismatch; #45 keep or drop the handover
+archives in `docs/`.
 
-**Raw-data archive: MERGED (!226, !227, issue #25).** Each `data-pipeline` run uploads
-`storage/raw/` to private Supabase Storage bucket `raw-archive` at
-`raw/<date>/<CI_JOB_ID>/<market>/` before dbt; an upload failure lets the cards refresh and
-fails the job at its end. First real archive: the next scheduled run (1st/15th) -- check the
-bucket after it. Follow-ups: #32 (test, docs), #33 (owner decisions: completion marker,
-local-run folder). Open, owner's: retention if the 1 GB quota is ever approached.
+**Owner decisions open (ask one at a time):** #43 scope, name snapshot CSV only or also the
+fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
+overlap check passes a larger table that contains the whole seed (file an issue or drop);
+criteria v2, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md`; should
+`verify_quality_audit.py` name NOT AUDITED areas on the console and exit non-zero.
 
-**README product-first: MERGED (!228).** Product funnel first, setup after it.
+**This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
+(`WinError 4551`); a hook from a remote repo needs `entry: python -m ...`
+(`test_precommit_config.py` enforces it for pre-commit-hooks). `equity-analyst-reviewer`
+does not load (frontmatter, #48); until fixed, run its role file through a general-purpose
+agent and say so in `review.md`.
 
-**`.mailmap`: MERGED (!229).** Portfolio order complete.
+**Merged, no action:** !220/!221 clone-and-continue; !224 review gate as a pre-commit hook
+(follow-up #29); !225 converging review rounds (follow-up #31); !228 README product-first;
+!229 `.mailmap`; !214/!215 comment trim; !212 README demo (disable `gif_creator` overlays);
+!216 stale-card eviction (verified live); !233 DAX tickers bare via `strip_suffix`.
+Declined by the owner: revenue-growth fallback, incremental dbt models. Hard constraint:
+zero cost.
 
-**Six markets: MERGED (!230), migration 021 applied (15 `markets` rows, checked live).**
-fi_omxh25, se_omxs30, dk_omxc25, no_obx, ca_tsx60, it_ftsemib. **OPEN until the first
-production run (Oct 15; checklist steps 5-6, full-run half):** confirm each market's eligible count from the run
-(sample estimate: about 22 / 27 / 20 / 24 / 51 / 30; Denmark sits at the 20-card warn
-line), and that Kojamo (KOJAMO.HE, no Yahoo data) and Golden Ocean (GOGL.OL, merged into
-CMB.Tech, stale on Wikipedia) dropped out by eligibility as expected.
+**Oct 15 production run, first with the six new markets, the raw archive and the
+class-share fix. Check after it:**
+- Six markets (!230, migration 021 live): each eligible count (sample estimate about
+  22 / 27 / 20 / 24 / 51 / 30 for fi / se / dk / no / ca / it; Denmark sits at the 20-card
+  warn line); Kojamo (KOJAMO.HE) and Golden Ocean (GOGL.OL) dropped out by eligibility.
+- Raw archive (!226, !227): `raw-archive` bucket holds `raw/<date>/<CI_JOB_ID>/<market>/`;
+  a failed upload fails the job at its end. Open, owner's: #33; retention near the 1 GB quota.
+- Class shares (!232): BRK-B, BF-B and BT-A.L cards exist.
 
-**Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads (5 tickers
-per market) through ingestion and dbt and compares the mart with a golden file (matched on
-CI's Linux runner). Open: #40 (follow-ups; owner: sector-benchmark sample size, em-dash rule on fixture data).
-
-**Class-share tickers: MERGED (!232, issue #38).** BRK.B, BF.B, BT.A map to Yahoo's form via
-ticker_overrides; a guard test fails CI on a stray dot. Confirm all three cards after the
-first run after merge (Brown-Forman is not in the fixture sample). Follow-ups: #41.
-
-**DAX ticker form: MERGED (!233, issue #39).** DAX tickers stay bare via `strip_suffix: .DE`
-in `docs/constituent_sources.yml`.
-
-**Comment trim to engineering_standards.md section 1.2: MERGED** (SQL !214, frontend !215).
-
-**Stale-card eviction: MERGED (!216), verified live.** Migration 020 applied by CI; the
-`current_cards` view serves 1047 companies, BXB/RMS/SPK out; the deployed app loads.
-
-**Owner's portfolio order, each needs its own go:** raw-data archive (merged),
-README product-first (merged), `.mailmap` (merged). DECLINED: revenue-growth fallback (MVP); incremental
-dbt models (ephemeral DuckDB, nothing to increment from). Hard constraint: zero cost.
-
-**README screenshot/demo refresh: MERGED (!212).** Lesson: disable `gif_creator`'s
-default overlays for portfolio recordings.
+**Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads through
+ingestion and dbt against a golden mart. Open: #40.
 
 **Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
 aggregates were gated on `sector_peer_count >= 8` (peer group size), not on how many
