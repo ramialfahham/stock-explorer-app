@@ -13,16 +13,12 @@ one or two lines and let git and the MR keep the detail._
 
 ## In flight
 
-**Start here (2026-10-10).** The small-fix list, #44, #53, #54, #45 and #46 are merged
-(!234-!246). #47 (frontend) is two MRs. !248 (merged): findings 21-29, 31, 32, specs aligned
-with shipped copy and dead frontend code removed; the owner delegated each spec-versus-code
-call to the agent, and the MR lists them. This MR: finding 20, one company-identity rule in
-the display layer (resolved Yahoo symbol, not the bare ticker, which merged ~24 unrelated
-pairs such as Merck & Co. with Merck KGaA, AT&T with Telus; later snapshot wins, a tie goes to registry order; All-markets
-list and search; saved state stays per listing), and finding 30, the deck paged by the
-view's unique key with no Python dedupe. Finding 33 stays as documented. Follow-ups: #56
-(preset cutoffs vs verdict bands), #57 (`importance_tier`, `basis_column`: no production reader),
-#58 (identity follow-ups).
+**Start here (2026-10-10).** The small-fix list, #44-#47, #53 and #54 are merged (!234-!249).
+The owner delegated #47's spec-versus-code calls to the agent ("act as the expert"); the FE-1
+exception (company dedupe stays in the display layer) is the owner's answer A, recorded as
+criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57 (`importance_tier`,
+`basis_column`: no production reader), #58 (company-identity follow-ups, two owner calls).
+No open MRs.
 
 **Next: #48-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
@@ -37,8 +33,7 @@ fixture `manifest.json` through one atomic-write helper (recommended: both); the
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
 criteria v3, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
 still name the removed handover archives; should `verify_quality_audit.py` name NOT AUDITED
-areas on the console and exit non-zero. Criteria are v2: FE-1 allows `dedupe_by_company` (owner
-answer A).
+areas on the console and exit non-zero.
 
 **This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
 (`WinError 4551`); a hook from a remote repo needs `entry: python -m ...`
