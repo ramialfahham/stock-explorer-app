@@ -54,6 +54,10 @@ never a dash placeholder (`frontend/card_copy.py`, `frontend/card_ui.py`, pinned
 There is no bespoke "metric engine" and no SQL codegen: the `numerator_expr` / `denominator_expr`
 columns are the definition/spec, not a generator — the model computes the metric by hand, once.
 
+Discover's metric-preset thresholds (`METRIC_PRESETS` in `frontend/explore_filters.py`) are
+screening cutoffs that only the Discover filter reads, so they are UI configuration, not
+catalogue entries.
+
 ## Why the drift guard is in Python (not a dbt singular test)
 
 The football project guards model→catalogue drift with a jinja column-introspection dbt test. This

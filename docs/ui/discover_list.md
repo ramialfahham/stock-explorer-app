@@ -46,7 +46,7 @@ the value is missing).
 
 ```
 ┌─────────────────────────────────────────────┐
-│ 924 companies · 0 saved                      │  ← stats line (header, not this spec)
+│ 924 companies                                │  ← stats line (header, not this spec)
 ├─────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────┐ │
 │ │ Diageo                            31.4% │ │  ← whole row tappable

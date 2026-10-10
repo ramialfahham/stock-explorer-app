@@ -394,16 +394,6 @@ def test_metrics_for_card_missing_company_type_defaults_operating() -> None:
     assert metrics_for_card(_full_card(None)) == metrics_for_card(_full_card("operating"))
 
 
-def test_metrics_for_card_tier_split() -> None:
-    card = _full_card("operating")
-    tier1 = metrics_for_card(card, tier=1)
-    tier2 = metrics_for_card(card, tier=2)
-    assert set(tier1).isdisjoint(tier2)
-    assert set(tier1) | set(tier2) == set(metrics_for_card(card))
-    assert "ebit_margin_pct" in tier1  # tier-1 metrics render on the card face
-    assert "statement_roe_pct" in tier2  # balance metric below the fold
-
-
 def test_freshness_line_silent_within_normal_cadence() -> None:
     """A snapshot from the tail of a healthy 1st/15th cycle must NOT read as stale —
     that's the exact noise this threshold exists to avoid. Pinned to a literal day

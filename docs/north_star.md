@@ -91,12 +91,12 @@ Three tiers — never all expanded at once on first load:
 |------|---------|------|
 | **Scan** | Name, ticker, market, sector headline, health verdict badge, metric values for this company's type (lens-grouped, no hero/tier split) | Answer “what company?” in seconds |
 | **Gloss** | AI read when one exists (always visible in full, as a bullet list -- one sentence per bullet, nothing folded), otherwise a deterministic verdict summary (same bullet-list treatment, always visible), sector one-liner, company blurb preview (expands inline to the full text when truncated), metric gloss lines under values | Plain-English context without clutter |
-| **Deep** | “How we compare to similar companies” (median + benchmarks), “What do these metrics mean?” (each metric behind its own Read more toggle), practice-number playgrounds — all in **one** learn panel. The full company summary has its own inline toggle on the card face instead (Gloss tier), not in this panel | Optional learning on demand |
+| **Deep** | “How we compare to similar companies” (median + benchmarks), “What each metric means” (each metric behind its own Read more toggle), practice-number playgrounds -- all in **one** learn panel. The full company summary has its own inline toggle on the card face instead (Gloss tier), not in this panel | Optional learning on demand |
 
 **Median primer and sector benchmarks** live inside **How we compare to similar companies**
 (inside the one learn panel `st.expander`), not always visible. When fewer than 8 eligible
-peers exist in the sector within that market, **hide benchmark UI entirely** — no orphan
-“unavailable” line on the card face.
+peers exist in the sector within that market, that section shows one plain line saying so
+instead of any benchmark.
 
 **Success check (mobile):** user can read company + sector + health verdict without
 scrolling; Save remains reachable. On Discover and Saved the header drops to the brand alone
@@ -119,8 +119,11 @@ The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
   (below), different mechanism; see [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 - **No color coding on benchmarks in v1 (monochrome only)** — applies to both mechanisms.
 - Show sector context: e.g. `Consumer Cyclical (42 companies)`.
-- **Benchmark is not required for eligibility.** If sector median is unavailable (fewer than **8**
-  eligible peers), **do not show** benchmark UI on the card — no warning line on the card face.
+- **Benchmark is not required for eligibility.** A metric with no sector comparison (fewer than
+  **8** eligible peers with a value for it, too little spread among them to draw a range, or
+  a metric that is not benchmarkable) shows one calm line, “No sector comparison for this metric.”, in place of its
+  range mark -- no warning styling, so the gap never reads as a bug
+  ([`ui/card_metric_cell.md`](ui/card_metric_cell.md)).
 - Do not use naive “Top 10% in sector” rankings — misleading for debt, negative growth, etc.
 
 ---

@@ -22,8 +22,6 @@ _METRICS = _load_metrics()
 _BY_ID = {m["metric_id"]: m for m in _METRICS}
 
 ALL_METRICS = tuple(m["metric_id"] for m in _METRICS)
-VISIBLE_METRICS = tuple(m["metric_id"] for m in _METRICS if m["importance_tier"] == 1)
-DEEP_DIVE_METRICS = tuple(m["metric_id"] for m in _METRICS if m["importance_tier"] == 2)
 
 METRIC_LABELS = {m["metric_id"]: m["label"] for m in _METRICS}
 METRIC_GLOSS = {m["metric_id"]: m["gloss"] for m in _METRICS}
@@ -31,7 +29,6 @@ METRIC_ANALOGY = {m["metric_id"]: m["analogy"] for m in _METRICS}
 METRIC_LEARN = {m["metric_id"]: m["learn"] for m in _METRICS}
 
 _METRIC_FORMAT = {m["metric_id"]: m["format"] for m in _METRICS}
-_METRIC_BASIS_COLUMN = {m["metric_id"]: (m["basis_column"] or None) for m in _METRICS}
 
 # Sector/Lifecycle Router: which company types render each metric (from the catalogue).
 DEFAULT_COMPANY_TYPE = "operating"
@@ -74,7 +71,7 @@ def metric_perspective_label(metric: str) -> str:
     return _PERSPECTIVE_BY_METRIC.get(metric, "").title()
 
 
-def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
+def metrics_for_card(card: dict) -> tuple[str, ...]:
     """Metric ids to render for this card, grouped by analytical lens then display order.
 
     Shows a metric only when it applies to the card's ``company_type`` and has a value, so a
@@ -86,8 +83,6 @@ def metrics_for_card(card: dict, tier: int | None = None) -> tuple[str, ...]:
     for definition in _METRICS:
         metric_id = definition["metric_id"]
         if company_type not in _METRIC_APPLIES_TO.get(metric_id, ()):
-            continue
-        if tier is not None and definition["importance_tier"] != tier:
             continue
         if card.get(metric_id) is None:
             continue
@@ -144,7 +139,7 @@ MEDIAN_PRIMER = (
 )
 
 BENCHMARK_COMPARE_UNAVAILABLE_LEARN = (
-    "Fewer than 8 similar companies in this market: sector compare is hidden."
+    f"Fewer than {PEER_THRESHOLD} similar companies in this market: sector compare is hidden."
 )
 
 
@@ -392,10 +387,10 @@ def benchmark_range(card: dict, metric: str, median_key: str) -> dict | None:
     Clamps to a Tukey fence (Q1 - 1.5*IQR .. Q3 + 1.5*IQR) when sector quartiles are present,
     so one extreme peer can't dominate every other peer's marker position; falls back to the
     raw [sector_min, sector_max] range when quartiles are null. Returns None when unavailable
-    (peer count < 8) or degenerate (range collapses to zero width). `min`/`max` in the result
-    are the displayed bound, fence-clamped when a fence narrows the range, not necessarily the
-    raw peer extreme. `low_off_scale`/`high_off_scale` flag only this card's marker position,
-    never its raw value.
+    (peer count below PEER_THRESHOLD) or degenerate (range collapses to zero width).
+    `min`/`max` in the result are the displayed bound, fence-clamped when a fence narrows the
+    range, not necessarily the raw peer extreme. `low_off_scale`/`high_off_scale` flag only
+    this card's marker position, never its raw value.
     """
     if not _benchmark_eligible(card):
         return None

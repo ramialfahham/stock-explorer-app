@@ -11,8 +11,6 @@ from card_copy import (
     DEFAULT_COMPANY_TYPE,
     FINANCIAL_CAPITAL_ADEQUACY_CAVEAT,
     MEDIAN_PRIMER,
-    METRIC_ANALOGY,
-    METRIC_LABELS,
     VERDICT_BADGE_LABEL,
     VERDICT_EMOJI,
     VERDICT_FALLBACK_READ,
@@ -337,17 +335,10 @@ def _metric_cell_html(card: dict, metric: str) -> str:
     )
 
 
-def build_card_html(
-    card: dict,
-    *,
-    scope_meta: str | None = None,
-) -> str:
+def build_card_html(card: dict) -> str:
     company = card.get("company_name") or card.get("ticker") or "Unknown"
     ticker = card.get("ticker") or "—"
-    if scope_meta:
-        meta_line = scope_meta
-    else:
-        meta_line = _format_market_code(card.get("market_code"))
+    meta_line = _format_market_code(card.get("market_code"))
 
     sector_head = sector_headline(card)
     sector_gloss = sector_gloss_line(card.get("sector"))
@@ -389,7 +380,7 @@ def render_learn_panel(card: dict, *, widget_key_prefix: str = "card") -> None:
         render_metric_playgrounds(card, widget_key_prefix=widget_key_prefix)
 
 
-def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
+def render_card_footer(card: dict) -> None:
     fresh = freshness_line(card)
     yahoo_url = yahoo_finance_url(card)
 
@@ -411,17 +402,7 @@ def render_card_footer(card: dict, *, widget_key_prefix: str = "card") -> None:
         )
 
 
-def render_stock_card(
-    card: dict,
-    *,
-    scope_meta: str | None = None,
-    widget_key_prefix: str = "card",
-    show_learn_panel: bool = True,
-) -> None:
-    st.markdown(
-        build_card_html(card, scope_meta=scope_meta),
-        unsafe_allow_html=True,
-    )
-    if show_learn_panel:
-        render_learn_panel(card, widget_key_prefix=widget_key_prefix)
-    render_card_footer(card, widget_key_prefix=widget_key_prefix)
+def render_stock_card(card: dict, *, widget_key_prefix: str = "card") -> None:
+    st.markdown(build_card_html(card), unsafe_allow_html=True)
+    render_learn_panel(card, widget_key_prefix=widget_key_prefix)
+    render_card_footer(card)

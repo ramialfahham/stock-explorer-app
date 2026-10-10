@@ -17,10 +17,8 @@ from browser_storage import (
 )
 from brand import PRODUCT_NAME, PRODUCT_TAGLINE
 from card_copy import (
-    freshness_line,
     lead_metric_for_row,
     saved_row_subtitle,
-    sector_headline,
 )
 from card_ui import render_stock_card
 from explore_filters import (
