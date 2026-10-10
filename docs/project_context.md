@@ -56,7 +56,8 @@ One DuckDB file (`storage/stock_data.db` locally; ephemeral in CI) with one sche
 | `marts` | `models/5_marts/` |
 
 Raw landing is **parquet** under `storage/raw/{market_code}/`. dbt reads via `sources.yml`.
-dbt var `raw_path` (default `../storage/raw`) must match ingestion output.
+dbt var `raw_path` (default `storage/raw`, overridable with `DBT_RAW_PATH`; see
+`dbt_analytics/dbt_project.yml`) must match ingestion output.
 
 Run dbt from repo root:
 

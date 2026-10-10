@@ -156,12 +156,18 @@ def _sql_violations(path: Path) -> list[str]:
     return violations
 
 
-def _is_durable_markdown(path: Path, root: Path) -> bool:
+def is_governed_markdown(path: Path, root: Path) -> bool:
     parts = path.relative_to(root).parts
     for pattern in GOVERNED_MARKDOWN:
         wanted = pattern.split("/")
         if len(parts) == len(wanted) and all(map(fnmatch.fnmatchcase, parts, wanted)):
             return True
+    return False
+
+
+def _is_durable_markdown(path: Path, root: Path) -> bool:
+    if is_governed_markdown(path, root):
+        return True
     try:
         with path.open(encoding="utf-8") as f:
             for _ in range(10):

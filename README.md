@@ -207,7 +207,7 @@ stock-explorer-app/
 ├── frontend/                  # Streamlit app (app.py)
 ├── streamlit_app.py           # Render's entry point (thin wrapper around frontend/app.py)
 ├── tests/                     # pytest, mirrors the pipeline's own layers
-├── storage/                   # Gitignored: raw parquet, constituent seeds (local/CI only)
+├── storage/                   # Raw parquet + DuckDB gitignored; seeds/ (constituents) committed
 ├── .gitlab-ci.yml              # CI + data pipeline
 ├── render.yaml                 # Render Blueprint (frontend deploy)
 ├── profiles.yml.example       # Copy to profiles.yml for local dbt

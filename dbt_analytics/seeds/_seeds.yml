@@ -47,8 +47,9 @@ seeds:
       benchmarkable flag and basis column, and the plain-language copy (gloss / analogy / learn).
       int_stock__card_metrics computes each metric once; this seed
       defines and documents it. The frontend reads frontend/metrics.json, generated from this seed by
-      scripts/export_metric_definitions_json.py. Integrity is guarded by tests/test_metric_catalogue.py
-      (catalogue metrics are computed in the model; the regenerated JSON matches the committed file).
+      scripts/export_metric_definitions_json.py. Integrity is guarded by
+      tests/tooling/test_metric_catalogue.py (catalogue metrics are computed in the model; the
+      regenerated JSON matches the committed file).
     config:
       column_types:
         importance_tier: integer

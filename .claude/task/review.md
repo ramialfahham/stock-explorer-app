@@ -1,67 +1,73 @@
 # Review
 
-diff_sha256: 384e12f1a4f759a4331b08cdbdee89ef9060f9a6c1e3d6d4813afa722fe7567d
-rounds: 3
+diff_sha256: fbb47bfc8cf06e1c870c7490644d0c4db3b9d27ebcd569f562f7eb0ab768fa6d
+rounds: 2
 
-Issue #45. Round 1 on the cumulative diff (tree 9c40bfb): platform-reviewer and
-equity-analyst-reviewer PASS, scope-auditor FAIL (history sweep incomplete; three governed docs
-outside scope_paths). Owner answers in-thread: code-comment Slice labels split to #55; "v2.5"
-labels removed. Round 2 on the delta (tree 7cf8242): sweep completed and made mechanical (exact
-pattern plus a 7-item keep list in the contract), paths anchored at the repo root, split rule over
-every pattern; platform and equity PASS, scope-auditor FAIL (a break inside a token was never
-rejoined). Round 3 on the delta (tree 3ee1979): joined with and without a space, `fnmatchcase`,
-`.pytest_cache` test, remaining history phrases; all three PASS. Wording fixes applied after:
-the liquidity-relief condition (negative working capital, both figures present) and the
-contract's split-test wording.
-
-scope-auditor's round-3 "trap 9" note: the fact is stated at `docs/development_workflow.md:22-26`
-(branch protection attaches to whichever branch is pushed first), without the archive's "trap 9"
-label.
+Issue #46. Round 1 on the cumulative diff (tree 080b674): platform-reviewer and
+equity-analyst-reviewer PASS, scope-auditor FAIL (metric_layer.md:74 still named a nonexistent
+path; the guard only saw a path that starts a backtick span). Round 2 on the delta (tree
+6b02a45): the guard checks every path-shaped word in any backtick span (a path in a command
+counts); the stronger guard found exactly that one more site, fixed; the same wrong claims
+fixed under the grep-the-claim rule in data_contract.md (raw_path default) and
+export_metric_definitions_json.py (test path). All three PASS. Wording fixes applied after: the
+last stale test-path copy in `dbt_analytics/seeds/_seeds.yml` and the contract's
+excluded-directory claim. The seed file routes to analytics-engineer-reviewer, which reviewed
+the cumulative diff at tree 03a22ee: PASS.
 
 equity-analyst-reviewer ran as a general-purpose agent following
-`.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model; the role file's
-frontmatter does not parse (#48).
+`.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model (#48).
 
-Coordinator evidence: checker tests 36 passed; full suite 1138 passed; checker, em-dash,
-context-budget and doc-index checks pass; the contract's sweep pattern returns exactly the 7
-keep-list hits; removing the no-space join fails the three in-token tests, removing the
-`.pytest_cache` exclusion fails its test, right-anchored matching fails the nested-path tests.
+Coordinator evidence: guard tests 11 passed; on main the guard reports the three broken
+metric_layer.md paths and nothing else; after the fix it passes; a grep for
+`tests/test_metric_catalogue` or `tests/test_metric_definitions` finds no copy outside the task
+files; full suite 1149 passed; narrative, em-dash, context-budget and doc-index checks pass.
 
 ## platform-reviewer
 
-Round 1 PASS (tree 9c40bfb). Round 2 PASS (tree 7cf8242). Round 3:
+Round 1 PASS (tree 080b674). Round 2:
 
 VERDICT: PASS
-reviewed_tree: 3ee1979a377b27eb7f337a25bf674bdc459fd890
+reviewed_tree: 6b02a4510cb72ba12014b1473da6ea81d3971beb
 risks_checked:
-- The no-space join adds only in-token splits; no realistic prose glues into a false positive.
-- The allow marker and fence guard still apply to both joins; no double report.
-- `fnmatchcase` makes the governed set identical on Windows and Linux; fails closed.
+- URL, selector, test-id, flag, quoted and placeholder words cannot fullmatch the path shape.
+- Reverting to the span-start regex fails the command-form cases.
+- Fail closed; no dependency, hook or workflow step.
+wording_fixes:
+- Drop "excluded directories skipped" from done_when (applied).
 follow_ups:
-- Lines ending in digits followed by `-MM-DD` could glue into a date; the allow marker is the
-  escape hatch.
+- The EXCLUDE_DIR_PARTS filter in the guard is redundant with the fixed-depth governed patterns.
 
 ## equity-analyst-reviewer
 
-Round 1 PASS (tree 9c40bfb). Round 2 PASS (tree 7cf8242). Round 3:
+Round 1 PASS (tree 080b674). Round 2:
 
 VERDICT: PASS
-reviewed_tree: 3ee1979a377b27eb7f337a25bf674bdc459fd890
+reviewed_tree: 6b02a4510cb72ba12014b1473da6ea81d3971beb
 risks_checked:
-- The liquidity sentence states the coverage condition matching `assessment_rules.py`.
-- The `--max-reads` qualifier on the ai_read self-heal is accurate; no rule changed.
-- Attribution removals change no metric label, format, threshold or condition.
+- Two hunks: a pytest path and the raw-path note; no metric, eligibility or guarantee change.
+- The raw_path default matches dbt_project.yml and the CI override.
 
 ## scope-auditor
 
-Round 1 FAIL (tree 9c40bfb). Round 2 FAIL (tree 7cf8242). Round 3:
+Round 1 FAIL (tree 080b674). Round 2:
 
 VERDICT: PASS
-reviewed_tree: 3ee1979a377b27eb7f337a25bf674bdc459fd890
+reviewed_tree: 6b02a4510cb72ba12014b1473da6ea81d3971beb
 risks_checked:
-- The three in-token splits fail only without the no-space join; between-word splits still
-  match.
-- The sweep returns exactly the 7 keep-list hits; the history phrases named in round 2 are gone.
-- Rewritten claims match source (attach_reads cap, CI cache, placeholder copy).
+- Every path-shaped word in the governed docs resolves; mis-paired link spans are skipped.
+- No governed doc names a gitignored file, so CI cannot false-block.
+- The widenings are the grep-the-claim rule applied, not a silent decision.
 wording_fixes:
-- Liquidity relief condition and contract split-test wording (applied).
+- `dbt_analytics/seeds/_seeds.yml:50` stale test path (applied, reviewed by
+  analytics-engineer-reviewer).
+
+## analytics-engineer-reviewer
+
+VERDICT: PASS
+reviewed_tree: 03a22eecb08cfa97d2aab2fa5ae12c111dcdee8b
+risks_checked:
+- Only the metric_catalogue description text changed; config, column docs and tests untouched.
+- The named test file holds the two guarantees the description states.
+- No metric logic added; the governed set has one definition.
+follow_ups:
+- `_seeds.yml:9-10` carries a dated decision note (already audit finding 13 in #49).

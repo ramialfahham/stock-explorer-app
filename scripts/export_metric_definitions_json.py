@@ -7,8 +7,9 @@ the Streamlit app binds to (label, format, direction, group/tier/order, benchmar
 applies_to per-type display membership, the basis column, and the plain-language copy). The
 catalogue is never modified here.
 
-Output must stay byte-identical unless a definition deliberately changes; tests/test_metric_definitions.py
-regenerates and asserts equality against the committed file (the no-drift lock).
+Output must stay byte-identical unless a definition deliberately changes;
+tests/tooling/test_metric_catalogue.py regenerates and asserts equality against the committed file
+(the no-drift lock).
 """
 
 from __future__ import annotations
