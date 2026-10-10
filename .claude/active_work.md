@@ -15,19 +15,24 @@ one or two lines and let git and the MR keep the detail._
 
 **Start here (2026-10-10).** The small-fix list is done and merged: #34, #32, #35, #36, #37,
 #41, #42 (!234-!238, !240, !241), plus #44 (override tests check every row by rule, !239),
-#54 (pre-commit-hooks hooks start as `python -m`, !242) and #53 (repeatable audit, !243). No
-open MRs.
+#54 (pre-commit-hooks hooks start as `python -m`, !242) and #53 (repeatable audit, !243).
+Milestone progress: #45 (no history narrative; narrative check covers every governed doc by
+path; handover archives removed from `docs/`, !245) and #46 (stale doc claims; guard test that
+every backticked repo path in a governed doc exists, !246) merged. No open MRs.
 
-**Next: milestone "3 · Professional baseline", issues #45-#52** (61 audit findings, each with
+**Next: #47 (frontend), then #48-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
 above cosmetic. Criteria: `docs/quality_criteria.json` v1 (a change needs a version bump and
-the owner). Owner call inside: #47 spec vs code per mismatch.
+the owner). Owner call inside: #47 spec vs code per mismatch. Way of working the owner set:
+one rule over every case instead of per-case fixes; make a sweep's "done" checkable (an exact
+search and a keep list in the contract); fix every copy of a changed claim.
 
 **Owner decisions open (ask one at a time):** #43 scope, name snapshot CSV only or also the
 fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
-criteria v2, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md`; should
+criteria v2, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
+still name the removed handover archives; should
 `verify_quality_audit.py` name NOT AUDITED areas on the console and exit non-zero.
 
 **This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
