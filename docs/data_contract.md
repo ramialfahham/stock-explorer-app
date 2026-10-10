@@ -255,11 +255,10 @@ fallbacks; latest period only): leave the gap honest, never fake it.
 - **pre_revenue** — `net_cash` non-null, i.e. cash and total debt are both present (the
   operating metrics break for revenue ≤ 0, and for positive-but-negligible revenue).
 
-`forward_pe` was dropped from the operating and financial sets, and
-pre_revenue moved from `net_cash_to_market_cap` to `net_cash`. A card must not be gated on a
-metric it does not display, and all three price-carrying metrics were removed from the
-catalogue (see below). The practical effect is that **more companies qualify**: eligibility
-no longer requires a forward P/E, nor a market cap for a pre-revenue company.
+No set requires `forward_pe`, and pre_revenue gates on `net_cash`, not
+`net_cash_to_market_cap`: a card must not be gated on a metric it does not display, and none of
+the three price-carrying metrics is catalogued (see below). Eligibility therefore needs no
+forward P/E, nor a market cap for a pre-revenue company.
 
 Missing any required metric → excluded from the discover pool.
 
@@ -278,10 +277,10 @@ Computed per `(market_code, sector)` over **card-eligible** tickers in that mark
 | Output | Description |
 |--------|-------------|
 | `sector_peer_count` | Count of eligible peers in sector |
-| `sector_median_*` | Median for each benchmarked metric (9; forward_pe is no longer one) |
+| `sector_median_*` | Median for each benchmarked metric (9; forward_pe is not one) |
 | `sector_min_*` | Minimum for each benchmarked metric (card range mark) |
 | `sector_max_*` | Maximum for each benchmarked metric (card range mark) |
-| `sector_q1_*` / `sector_q3_*` | 25th/75th percentile for each benchmarked metric (outlier-aware range-mark display clamp, Gemini feedback point 5 -- see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s "Range mark mechanics" for how these feed the clamp) |
+| `sector_q1_*` / `sector_q3_*` | 25th/75th percentile for each benchmarked metric (outlier-aware range-mark display clamp -- see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s "Range mark mechanics" for how these feed the clamp) |
 
 Benchmarked: `ebit_margin_pct`, `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`,
 `current_ratio_stmt` (operating-only); `net_margin_pct`, `roa_pct` (financial-only);
@@ -315,9 +314,7 @@ last good Supabase snapshot**; do not truncate to empty.
 `scripts/export_to_supabase.py` sends the whole deck to `replace_cards_snapshot`
 (`supabase/migrations/018_atomic_card_export.sql`), which deletes and re-inserts every
 `(market_code, snapshot_date)` pair the payload covers, inside one transaction. Either every row lands or none does and the previous
-snapshot stays intact. It previously wrote in batches of 500 with no transaction, so a failure
-partway left some tickers on the new snapshot and the rest on the old one, which the frontend
-then served as a mix with nothing marking it.
+snapshot stays intact.
 
 Three things worth knowing.
 
@@ -327,7 +324,7 @@ partial ingest legitimately produces more than one date across the payload, so r
 would turn a documented recovery step into a total export failure.
 
 A ticker that was in a `(market, date)` pair the payload covers, but is no longer in the
-mart, is deleted and not re-inserted. The old upsert left it.
+mart, is deleted and not re-inserted.
 
 What that does to the deck depends on what else the ticker has. Nothing has ever deleted from
 this table, so it holds roughly one row per `(ticker, snapshot_date)` ever exported. If any of
@@ -381,13 +378,12 @@ not "one market's ingestion quietly broke while the rest kept going." Per-market
 would need its own mechanism (e.g. a singular test grouping by `market_code`); not built here,
 an owner-level scope call if this gap is ever worth closing.
 
-**Local dev note:** a `storage/raw/` populated before daily prices gained `ingested_at` (i.e.
-from before this column existed) will fail `stg_yf__daily_prices`'s new `not_null` test on that
-column until re-ingested -- run ingestion fresh (or `--force-refetch`) for any market with
-old-schema price parquet before running `dbt build` locally. Not a risk in CI or production:
-`validate:full`'s fixtures always stamp `ingested_at`, and the scheduled pipeline job starts
-from an empty `storage/raw/` every run (no cache/artifacts across jobs), so this mixed-schema
-state can only arise in a local checkout that predates this change.
+**Local dev note:** a `storage/raw/` whose daily-price parquet lacks `ingested_at` fails
+`stg_yf__daily_prices`'s `not_null` test on that column until re-ingested -- run ingestion fresh
+(or `--force-refetch`) for any market with such price parquet before running `dbt build`
+locally. Not a risk in CI or production: `validate:full`'s fixtures always stamp `ingested_at`,
+and the scheduled pipeline job starts from an empty `storage/raw/` every run (no cache/artifacts
+across jobs), so such parquet can only exist in a local `storage/raw/`.
 
 ---
 
@@ -536,7 +532,7 @@ actually renders, the range is far narrower (`net_cash` -37M to 216M; `working_c
 517M; `burn_rate_monthly` 3.2M to 19.4M). Bounds cover the full population with headroom:
 `net_cash` -50T to 100T; `working_capital` +-20T; `burn_rate_monthly` 0 to 2.5T.
 
-**`dividend_yield_pct` was checked and left out.** A third dead-but-exported column (no longer
+**`dividend_yield_pct` was checked and left out.** A third dead-but-exported column (not
 catalogued, unrendered), same category as the pair above. Its real defect, per-row mixed units
 (issue #10, "What this does NOT cover" above), produces a plausible-looking WRONG value, not
 an extreme one -- confirmed by the measured range (0.0036% to 18.6%, 4,946 rows, no explosion
@@ -610,7 +606,7 @@ cannot see.
 | `sector` | text | |
 | `currency` | text | |
 | `business_summary` | text | Yahoo `longBusinessSummary`; nullable |
-| `forward_pe` | numeric | Superseded; still computed and stored, no longer catalogued. |
+| `forward_pe` | numeric | Superseded; still computed and stored, not catalogued. |
 | `ebit_margin_pct` | numeric | |
 | `revenue_growth_yoy_pct` | numeric | |
 | `net_debt_to_ebitda` | numeric | |
@@ -618,11 +614,11 @@ cannot see.
 | `debt_to_equity` | numeric | Operating-card solvency (statement-based); nullable. |
 | `current_ratio_stmt` | numeric | Operating-card liquidity (statement-based); nullable, null for financials. |
 | `statement_roe_pct` | numeric | Operating/financial-card returns (statement-based, period-end); nullable. |
-| `price_to_tangible_book` | numeric | Superseded; still computed and stored, no longer catalogued. Nullable. |
+| `price_to_tangible_book` | numeric | Superseded; still computed and stored, not catalogued. Nullable. |
 | `net_margin_pct` | numeric | Financial-card profitability; nullable. |
 | `roa_pct` | numeric | Financial-card returns (statement-based, period-end); nullable. |
-| `dividend_yield_pct` | numeric | Superseded; still computed and stored, no longer catalogued. Nullable. |
-| `net_cash_to_market_cap` | numeric | Superseded by `net_cash`; still computed and stored, no longer catalogued. Nullable. |
+| `dividend_yield_pct` | numeric | Superseded; still computed and stored, not catalogued. Nullable. |
+| `net_cash_to_market_cap` | numeric | Superseded by `net_cash`; still computed and stored, not catalogued. Nullable. |
 | `net_cash` | numeric | Pre-revenue-card cash metric (cash minus total debt, a money amount); nullable. |
 | `working_capital` | numeric | Pre-revenue-card liquidity (current assets − liabilities, a currency amount); nullable. |
 | `cash_runway_months` | numeric | Pre-revenue-card cash (months of cash left; null when not burning); nullable. |
@@ -689,10 +685,10 @@ and `roic` (see migration `002_fundamentals_mart.sql`).
 ## Supabase assessments — `card_assessments`
 
 AI **health assessment** per card, written by `scripts/generate_assessments.py` after the mart export
-(scheduled pipeline). Educational only — **not** investment advice. **Slice 5a** writes the deterministic
-verdict + `input_hash`; **Slice 5b** fills `ai_read` / `read_model` with a **Claude Haiku**
+(scheduled pipeline). Educational only -- **not** investment advice. It writes the deterministic
+verdict + `input_hash`, then fills `ai_read` / `read_model` with a **Claude Haiku**
 (`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and ends on the verdict's
-meaning — regenerated only when `input_hash` changes or `ai_read` is null. The card renders it in **Slice 6**.
+meaning -- regenerated only when `input_hash` changes or `ai_read` is null. The card renders it.
 The write is `_upsert_records()`, batched **by each record's exact set of present keys**, never
 a single upsert of the whole batch -- PostgREST computes `columns` as the union of keys across
 every record in ONE call, so a "carried" record (omits `ai_read`/`read_model` to keep the
@@ -709,7 +705,7 @@ showing under fresh numbers -- `attach_assessments()`'s snapshot_date guard
 (frontend/explore_filters.py) can't see `input_hash`. See `attach_reads()`'s docstring for
 both mechanisms.
 
-**Structured output + hallucination guard (Gemini feedback points 3/4).** The Haiku call forces
+**Structured output + hallucination guard.** The Haiku call forces
 tool-use (`tool_choice`, `write_card_read`): the model returns `read` (the prose) plus
 `referenced_metrics`, one `{label, value_as_shown}` entry per metric the read explicitly cites,
 copied exactly as shown in the prompt's own facts block. That facts block names each metric
@@ -754,12 +750,10 @@ AI-attributed, phrased as a general summary rather than a description of the rul
 since neither the decisive-vs-supporting metric split nor the per-metric thresholds are shown
 anywhere on the card. The first four causes are meant to be rare and self-correcting; a
 capped card is not -- once the owner sets a real `--max-reads` value, this is the expected,
-by-design outcome for every card past that run's cutoff. The upsert-clobbering bug above was
-neither rare nor by design: for some real stretch of time before it was fixed, roughly 80% of
-cards were in this state -- most readers saw the fallback line, not a real read. It self-heals
-with no separate cleanup needed: `attach_reads()` regenerates
-whenever `not existing.get("ai_read")`, independent of `input_hash`, so every clobbered row is
-eligible for a fresh read on the very next scheduled run once the fix ships.
+by-design outcome for every card past that run's cutoff. A card without `ai_read` self-heals
+with no separate cleanup: `attach_reads()` regenerates whenever `not existing.get("ai_read")`,
+independent of `input_hash`, so it is eligible for a fresh read on the next scheduled run
+(within the `--max-reads` cap).
 
 **Grain:** one row per `(market_code, ticker)` — latest snapshot only (differs from `mart_stock_cards`,
 keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migration `010_card_assessments.sql`).
@@ -769,7 +763,7 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `market_code` | text | FK → `markets` |
 | `ticker` | text | Provider symbol |
 | `company_type` | text | `operating` / `financial` / `pre_revenue` |
-| `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴 in Slice 6) |
+| `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴) |
 | `ai_read` | text | Claude Haiku prose read (`claude-haiku-4-5`); educational, never advice; reasons only from the card's numbers |
 | `read_model` | text | model id that wrote `ai_read` (from the Claude API response) |
 | `input_hash` | text | sha256 of the verdict inputs plus the display currency; drives 5b regenerate-on-change |
@@ -782,7 +776,7 @@ Conservative — one serious weakness caps it:
 - **operating** — leverage (`net_debt_to_ebitda`), profitability (`ebit_margin_pct`), cash (`fcf_margin_pct`);
   `debt_to_equity` / `current_ratio_stmt` / `statement_roe_pct` are supporting (tie-breakers).
 - **Sign-inversion guards.** Three metrics can flip sign when a denominator goes negative, and
-  banding the flipped value by raw magnitude used to read a distressed or thin-equity company as
+  banding the flipped value by raw magnitude would read a distressed or thin-equity company as
   good on that axis. All three guards check the ratio's own raw denominator directly, not the ratio's sign:
   `net_debt_to_ebitda`'s sign alone cannot tell a genuine net-cash position apart from real debt
   divided by negative earnings, and `debt_to_equity`'s numerator (total debt) can be exactly
@@ -801,9 +795,8 @@ Conservative — one serious weakness caps it:
   it is a supporting axis, same treatment as `debt_to_equity` above (`weak`, capping at yellow).
   On `financial` it is effectively a core axis (`good` is required for green; only `weak` on this
   or `net_margin_pct` forces red), so the guard bands `unknown` instead: it blocks green (an
-  `unknown` roe is never `good`) without forcing red on its own. This is a deliberate, narrower
-  choice than a first version that banded `weak` (forcing red outright), reasoned from US bank
-  capital regulation. Corrected in review: `company_type == 'financial'` is the whole GICS
+  `unknown` roe is never `good`) without forcing red on its own. Banding `weak` (forcing red
+  outright) would overreach: `company_type == 'financial'` is the whole GICS
   "Financial Services" sector (insurers, asset managers, broker-dealers, payment networks,
   exchanges, mortgage finance, not only depository banks), spans markets under entirely different
   regulatory regimes (this app covers US, UK, Japan, Australia, Germany, France, Netherlands,
@@ -811,13 +804,13 @@ Conservative — one serious weakness caps it:
   equity operating companies can have. Nothing in the data distinguishes a bank in genuine
   distress from a payment network mid-buyback, so `unknown` -- the same neutral treatment every
   other axis gets for information this app cannot actually determine -- is the honest choice.
-- **Joint liquidity evaluation, operating only.** `current_ratio_stmt` and free cash flow used
-  to be graded fully independently, so a company with excellent free cash flow but a
-  merely-weak current ratio was capped at yellow regardless of how strong its cash generation was.
-  `current_ratio_stmt` now bands `ok`
+- **Joint liquidity evaluation, operating only.** `current_ratio_stmt` and free cash flow are
+  graded together, so a merely-weak current ratio does not cap at yellow a company whose free
+  cash flow covers its working-capital shortfall: `current_ratio_stmt` bands `ok`
   instead of `weak` when free cash flow (`stmt_free_cash_flow`, a raw dollar figure) covers the
   working-capital shortfall (`stmt_free_cash_flow >= -working_capital`, both carried through for
-  exactly this check) AND `current_ratio_stmt` is at or above
+  exactly this check; applies only when working capital is negative and both figures are present,
+  a null in either earns no relief) AND `current_ratio_stmt` is at or above
   `CURRENT_RATIO_LIQUIDITY_FLOOR` (`0.5`) -- below that floor, current liabilities are more than
   double current assets, a real distress signal no amount of free cash flow should override. A
   dollar comparison, not `fcf_margin_pct` (free cash flow ÷ revenue): margin is scaled by
@@ -827,7 +820,7 @@ Conservative — one serious weakness caps it:
   right as a core axis, unrelated to this relief. Relief lands on `ok`, never `good`: it stops
   the ratio blocking green on its own, but does not claim the ratio itself is strong, and does
   not rescue any other weak axis. `debt_to_equity` and `statement_roe_pct` get no analogous
-  relief -- this is scoped to the one metric pair the feedback and the owner's decision named.
+  relief -- it is scoped to this one metric pair.
 - **financial** — `statement_roe_pct` / `net_margin_pct` / `roa_pct` (**profitability only** — capital
   adequacy such as CET1/Tier 1 is unsourceable from yfinance, so the verdict on a `financial`
   card stays modest -- for a whole sector, of which banks are only the part CET1/Tier 1 names).
@@ -853,8 +846,8 @@ Conservative — one serious weakness caps it:
   it only ever withholds green and never causes red, but the reason a bank's line moved is
   not the reason an operating company's did.
 - **pre_revenue** — `cash_runway_months` / `net_cash` / `working_capital`. The net-cash axis
-  now bands on zero for both weak and good (is there more cash than debt?), because a money
-  amount has no scale-free "good" level the way the old ratio's 0.2 did.
+  bands on zero for both weak and good (is there more cash than debt?), because a money
+  amount has no scale-free "good" level.
 
 **`burn_rate_monthly` is shown on the card and deliberately NOT read by the verdict.** That is
 the one intentional exception to "every metric a card shows feeds the verdict", and the reason is

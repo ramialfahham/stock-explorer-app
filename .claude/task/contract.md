@@ -3,50 +3,77 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #53 -- the quality-baseline audit re-runs against identical, versioned
-  criteria: criteria file, named workflow, mechanical quote check with tests, CLAUDE.md pointer.
+objective: Closes #45 -- durable docs state the current state only; the narrative checker covers
+  every governed doc by path and an MR reference split across a line break.
 
 scope_paths:
-  - docs/quality_criteria.json
-  - .claude/workflows/quality-baseline-audit.js
-  - scripts/verify_quality_audit.py
-  - tests/tooling/test_quality_audit.py
+  - scripts/check_no_narrative_dates.py
+  - tests/tooling/test_check_no_narrative_dates.py
+  - docs/handover_2026-08-18.md
+  - docs/handover_2026-09-03.md
+  - docs/context_budget.yml
   - CLAUDE.md
+  - .claude/active_work.md
+  - .claude/working-agreement.md
+  - .claude/agents/scope-auditor.md
+  - .claude/skills/onboard-market/SKILL.md
+  - docs/development_workflow.md
+  - docs/data_contract.md
+  - docs/operations_guide.md
+  - docs/supabase_setup.md
+  - docs/north_star.md
+  - docs/intl-balance-sheet-row-labels.md
+  - docs/ui/disclosure_pattern.md
+  - docs/ui/design_system.md
+  - docs/ui/discover_list.md
+  - docs/ui/discover_header.md
+  - docs/ui/card_metric_cell.md
+  - docs/ui/saved_list.md
+  - docs/ux_principles_finanz_lern_apps.md
+  - docs/working_agreement.md
   - .claude/task/contract.md
   - .claude/task/review.md
   - .claude/task/review_input.patch
 
-decisions_reserved: settled by the owner in-thread -- option 1 (criteria as a JSON file in the
-  repo, the script as a named workflow in `.claude/workflows/`). The criteria are the 30 the
-  audit behind #45-#52 ran against, unchanged apart from dropping the session-specific
-  known-issues list; the workflow reads open issues live instead. Changing a criterion needs a
-  version bump and owner approval.
+decisions_reserved: settled by the owner in-thread, as recommended -- D1 (b): the checker scans
+  every governed Markdown doc by path (docs/, docs/ui/, README, CLAUDE.md, the working agreement,
+  skills, agents) plus any `> DURABLE.` doc; D2: delete both handover archives from docs/ (git
+  history keeps them), move "trap 9" into development_workflow.md, drop their CLAUDE.md, budget
+  and handover references; D3: fix the cited findings, their named siblings, the widened
+  checker's hits, the "Slice N" labels and the same history phrasing found by a sweep.
+  Round-1 amendments, owner-approved in-thread: "Slice N" labels in code comments are split to
+  #55; "v2.5" version labels in governed docs are removed as history labels; the three governed
+  docs outside the original scope_paths (saved_list, ux_principles, docs/working_agreement) are
+  added under D3. `docs/quality_criteria.json` still names the deleted archives; changing it is
+  the owner's pending criteria-v2 decision, not this task.
 
 done_when:
-  - `docs/quality_criteria.json` holds version 1: 7 areas, 30 criteria, each with id, rule and
-    source; a test fails on a duplicate id or a criterion without a rule or source.
-  - `.claude/workflows/quality-baseline-audit.js` reads that file by default and audits the
-    same 7 areas; a test fails if the workflow, criteria and report cover different areas.
-  - `scripts/verify_quality_audit.py` reports only skeptic-confirmed findings whose verbatim
-    quote is at the cited file and line, and lists refuted and unverified ones separately;
-    tests pin both, plus the window edges, quote order, and that a quote under 10 normalised
-    characters passes only as the whole cited line; a finding with no
-    skeptic verdict and an area whose auditor failed are shown as such, never as refuted or
-    clean. On this session's real run it reproduces 61 reported of 64 raised.
-  - The criteria content is pinned to its version by a fingerprint test.
-  - CLAUDE.md points at the criteria file, the workflow and the checker.
+  - `check_no_narrative_dates.py` scans every governed doc (paths anchored at the repo root,
+    `.pytest_cache` excluded) without opting in, and flags any of its patterns split across two
+    lines (joined with and without a space, so a break inside a token counts) unless the allow
+    marker is on either line; tests pin each governed path, nested non-governed paths, the
+    `.pytest_cache` exclusion, splits between words (MR and owner patterns) and inside tokens
+    (all three patterns), and the marker on either line, and fail if either rule is removed.
+  - The checker passes on the repo.
+  - Findings 40-47 of #45 are fixed as proposed, with the sibling sites finding 45 names.
+  - No "Slice N" or "v2.5" label remains in a governed doc, and this sweep over governed docs
+    returns only the keep list below:
+    `git grep -n -i -E '\b(used to|previously|no longer|has since|have since|an earlier|the old [a-z]+|first version|was (removed|dropped|replaced|retired|renamed|reverted|changed)|were (removed|dropped|replaced)|retired|replaced the|once the fix|before it was fixed|before this (column|rule) existed|gemini feedback|prior [a-z]+ attempt|v[0-9]+\.[0-9]+\b|\(dropped:|removed as redundant|moved .* now lives|corrected in review|now bands|did exactly that|originally|reintroduce)'`.
+    Keep list (current behaviour or a user instruction): data_contract.md "no longer in the
+    mart", "an earlier snapshot", "naming the old one", "the old market list"; operations_guide.md
+    "an earlier one the same day", "no longer what ingestion produced"; supabase_setup.md "If you
+    previously ran".
+  - Both handover archives are gone; nothing in the repo links to them; trap 9 is stated in
+    development_workflow.md.
+  - Context-budget and doc-index checks pass.
 
 known_limits:
-  - A quote of 10 or more normalised characters matches within +-3 lines of the cited line, so
-    one that appears elsewhere in the window passes; a shorter one matches only as the whole
-    cited line.
-  - Read-only is enforced by the agents' instructions, not by a tool allowlist; restricting the
-    tools would change the setup the #45-#52 run used.
-  - DOC-2 and HYG-4 also cite the owner's global CLAUDE.md, outside the repo; changing a
-    criterion's source is a version 2 decision for the owner.
-  - The workflow's findings depend on the auditing model; the criteria and the checks are fixed,
-    the judgement is not.
+  - Undated history prose has no reliable pattern, so the checker still cannot catch it; review
+    and the quality-baseline audit's DOC-2 criterion carry that.
+  - "No longer" that describes current behaviour (a ticker dropping out between runs) is kept.
 
 regression_checklist:
-  - The criteria ids and rules match the run behind #45-#52 (version 1, 30 criteria).
-  - The docs-index and context-budget checks still pass.
+  - No rewritten sentence changes what a doc says is true now.
+  - The checker's Python and SQL scanning are unchanged apart from the shared excluded-directory
+    set (now also `.pytest_cache`); only Markdown scope, the split-line rule and the docstring
+    describing them changed.

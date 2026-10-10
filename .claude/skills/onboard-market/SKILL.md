@@ -10,11 +10,8 @@ description: Add or activate a stock market index (CAC 40, OBX, TSX 60, FTSE MIB
 **`docs/data_contract.md`, "Market activation checklist".** It is the only copy and it is the
 whole procedure. Read it before doing anything.
 
-France was onboarded without reading it: three of the seven steps it had then were done and
-four skipped. One of the skipped ones would have aborted the next scheduled export for **every**
-market, not just the new one, with every CI check green. The checklist has since been corrected
-and extended, and it explains that failure where it belongs, at the step concerned. The reason to
-read it is that improvising it has already failed once.
+Skipping a step can abort the next scheduled export for **every** market, not just the new one,
+with every CI check green. The checklist explains each such failure at the step concerned.
 
 ## Two traps the checklist cannot tell you
 
@@ -48,5 +45,5 @@ for what is active. This sentence is a starting figure, not a current one.
   `frontend/card_copy.py`: use each currency's real-world form, not a uniform one. Both copies
   must change together; `test_currency_symbol_maps_are_mirrors` catches a single-copy edit.
 
-A thin or stubbed constituent is NOT an owner decision: carry it and let eligibility drop it.
+A thin or stubbed constituent is NOT the owner's call: carry it and let eligibility drop it.
 Silently excluding a real index member to make a count look clean is the worse error.

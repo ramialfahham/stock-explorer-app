@@ -1,11 +1,13 @@
 """This is a guard, so each test proves it fires, not that a happy path passes. The repo
 tree itself is checked last: if that test fails, a real date/MR-ref/owner-decision wording
-sat in a comment, docstring, or DURABLE doc, and the fix is to state the current fact
+sat in a comment, docstring, or governed or DURABLE doc, and the fix is to state the current fact
 instead. narrative-check: allow (this docstring names the very pattern it guards against)."""
 
 from __future__ import annotations
 
 from pathlib import Path
+
+import pytest
 
 from check_no_narrative_dates import (  # noqa: E402
     REPO_ROOT,
@@ -85,6 +87,71 @@ def test_a_durable_markdown_doc_with_a_date_fails(tmp_path: Path) -> None:
 
 def test_a_non_durable_markdown_doc_with_a_date_passes(tmp_path: Path) -> None:
     _write(tmp_path / "a.md", "# Just a title\n\nFixed 2026-09-05.\n")
+    assert find_violations(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "docs/guide.md",
+        "docs/ui/spec.md",
+        "README.md",
+        "CLAUDE.md",
+        ".claude/working-agreement.md",
+        ".claude/skills/onboard/SKILL.md",
+        ".claude/agents/reviewer.md",
+    ],
+)
+def test_a_governed_doc_is_scanned_without_a_durable_header(tmp_path: Path, rel: str) -> None:
+    _write(tmp_path / rel, "# Title\n\nFixed 2026-09-05.\n")
+    violations = find_violations(tmp_path)
+    assert len(violations) == 1 and Path(rel).name in violations[0]
+
+
+@pytest.mark.parametrize(
+    "text,kind",
+    [
+        ("# Title\n\nThis rotted in MR\n!115 before it was fixed.\n", "MR/PR reference"),
+        ("# Title\n\nA lower-stakes claim (owner\ndecision) than a score.\n", "owner-approved"),
+        ("# Title\n\nThis rotted in MR !\n115 before it was fixed.\n", "MR/PR reference"),
+        ("# Title\n\nThe metric was owner-\napproved last week.\n", "owner-approved"),
+        ("# Title\n\nFixed on 2026-09-\n05 by a later run.\n", "date-stamp"),
+    ],
+)
+def test_wording_split_across_a_line_break_fails(tmp_path: Path, text: str, kind: str) -> None:
+    _write(tmp_path / "docs" / "a.md", text)
+    violations = find_violations(tmp_path)
+    assert len(violations) == 1 and ":3:" in violations[0].replace("\\", "/")
+    assert kind in violations[0]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "# Title\n\nNot 'fixed in MR\n!115'. <!-- narrative-check: allow -->\n",
+        "# Title\n\n<!-- narrative-check: allow --> Not 'fixed in MR\n!115'.\n",
+    ],
+)
+def test_a_split_mr_reference_with_the_allow_marker_on_either_line_passes(
+    tmp_path: Path, text: str
+) -> None:
+    _write(tmp_path / "docs" / "a.md", text)
+    assert find_violations(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "rel",
+    ["tests/README.md", "dbt_analytics/README.md", "docs/notes/old.md", ".pytest_cache/README.md"],
+)
+def test_a_doc_outside_the_governed_paths_is_not_scanned(tmp_path: Path, rel: str) -> None:
+    _write(tmp_path / rel, "# Title\n\nFixed 2026-09-05.\n")
+    assert find_violations(tmp_path) == []
+
+
+def test_a_durable_doc_inside_the_pytest_cache_is_not_scanned(tmp_path: Path) -> None:
+    _write(
+        tmp_path / ".pytest_cache" / "notes.md", "> DURABLE. **Owns:** x.\n\nFixed 2026-09-05.\n"
+    )
     assert find_violations(tmp_path) == []
 
 

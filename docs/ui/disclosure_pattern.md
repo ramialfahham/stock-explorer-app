@@ -33,13 +33,9 @@ list (`_bullets_html` in `frontend/card_ui.py`, one `<li>` per sentence, `.ss-ai
 Full legibility over the vertical space a fold would save (§6).
 
 **Company description (Discover/Saved card) uses this pattern directly on the card face**
-(`frontend/card_ui.py`'s `_company_summary_html`) — a real reversal of the Slice 6c
-consolidation, made deliberately after the owner found the consolidated version's UX bad in
-practice: the full text used to live inside the card's one learn panel
-(`st.expander("Understand these numbers")`) as an "About this company" section, reachable
-only after opening the panel and scrolling past every metric's explanation. It no longer
-lives in the learn panel at all — the toggle sits inline, right where the truncated preview
-ends, so reading the rest of the description needs no navigation and no scrolling past
+(`frontend/card_ui.py`'s `_company_summary_html`), not in the learn panel
+(`st.expander("Understand these numbers")`): the toggle sits inline, right where the truncated
+preview ends, so reading the rest of the description needs no navigation and no scrolling past
 unrelated content.
 
 **Learn panel metric bodies also use this pattern now** (`_metric_learn_blocks()` in

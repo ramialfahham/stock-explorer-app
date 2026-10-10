@@ -1,54 +1,67 @@
 # Review
 
-diff_sha256: d360ae0e0ad30870b7648aad621317053d0a0da048cf590735497e8a22987e28
+diff_sha256: 384e12f1a4f759a4331b08cdbdee89ef9060f9a6c1e3d6d4813afa722fe7567d
 rounds: 3
 
-Issue #53. Round 1 on the cumulative diff (tree ed485bd): platform-reviewer FAIL (nothing
-pinned the quote to its cited line), scope-auditor FAIL (same, plus a no-verdict finding shown
-as refuted). Round 2 on the delta (tree 1f91d12): window-edge, order and length tests; separate
-no-verdict and NOT AUDITED rendering; criteria fingerprint. platform-reviewer PASS,
-scope-auditor FAIL (the 10-character minimum refused a real short quote such as `except:`).
-Round 3 on the delta (tree 744de71): a short quote passes only as the whole cited line. Both
-PASS. Wording fixes applied after: the skeptic prompt, the docstring and the contract describe
-the short-quote rule in normalised characters.
+Issue #45. Round 1 on the cumulative diff (tree 9c40bfb): platform-reviewer and
+equity-analyst-reviewer PASS, scope-auditor FAIL (history sweep incomplete; three governed docs
+outside scope_paths). Owner answers in-thread: code-comment Slice labels split to #55; "v2.5"
+labels removed. Round 2 on the delta (tree 7cf8242): sweep completed and made mechanical (exact
+pattern plus a 7-item keep list in the contract), paths anchored at the repo root, split rule over
+every pattern; platform and equity PASS, scope-auditor FAIL (a break inside a token was never
+rejoined). Round 3 on the delta (tree 3ee1979): joined with and without a space, `fnmatchcase`,
+`.pytest_cache` test, remaining history phrases; all three PASS. Wording fixes applied after:
+the liquidity-relief condition (negative working capital, both figures present) and the
+contract's split-test wording.
 
-Re-hashed after main moved (MR !242, #54, merged first so hooks run under Smart App
-Control): all seven staged files are byte-identical to the reviewed staged state (git diff
-against it is empty); the hash changed only because `.claude/task/contract.md`'s diff is
-taken against the new main. Previous hash a9871416.
+scope-auditor's round-3 "trap 9" note: the fact is stated at `docs/development_workflow.md:22-26`
+(branch protection attaches to whichever branch is pushed first), without the archive's "trap 9"
+label.
 
-Coordinator evidence: `pytest tests/tooling/test_quality_audit.py` 13 passed; full suite 1118
-passed; on this session's real audit output the checker gives "64 raised: 61 reported, 3
-refuted, 0 no verdict, 0 quote not found"; widening the window to the whole file fails the
-edge test.
+equity-analyst-reviewer ran as a general-purpose agent following
+`.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model; the role file's
+frontmatter does not parse (#48).
+
+Coordinator evidence: checker tests 36 passed; full suite 1138 passed; checker, em-dash,
+context-budget and doc-index checks pass; the contract's sweep pattern returns exactly the 7
+keep-list hits; removing the no-space join fails the three in-token tests, removing the
+`.pytest_cache` exclusion fails its test, right-anchored matching fails the nested-path tests.
 
 ## platform-reviewer
 
-Round 1 FAIL (tree ed485bd). Round 2 PASS (tree 1f91d12). Round 3:
+Round 1 PASS (tree 9c40bfb). Round 2 PASS (tree 7cf8242). Round 3:
 
 VERDICT: PASS
-reviewed_tree: 744de71e499d6a87f807c1a7a28cee5a84f17074
+reviewed_tree: 3ee1979a377b27eb7f337a25bf674bdc459fd890
 risks_checked:
-- Short-quote branch fails closed on line 0 or past EOF; longer quotes keep the window.
-- Reverting to the old minimum or to window matching fails the new test.
-- Criteria, docs index and context budget untouched by the delta.
+- The no-space join adds only in-token splits; no realistic prose glues into a false positive.
+- The allow marker and fence guard still apply to both joins; no double report.
+- `fnmatchcase` makes the governed set identical on Windows and Linux; fails closed.
 follow_ups:
-- A multi-line quote under 10 normalised characters can never pass (very unlikely in
-  practice).
+- Lines ending in digits followed by `-MM-DD` could glue into a date; the allow marker is the
+  escape hatch.
+
+## equity-analyst-reviewer
+
+Round 1 PASS (tree 9c40bfb). Round 2 PASS (tree 7cf8242). Round 3:
+
+VERDICT: PASS
+reviewed_tree: 3ee1979a377b27eb7f337a25bf674bdc459fd890
+risks_checked:
+- The liquidity sentence states the coverage condition matching `assessment_rules.py`.
+- The `--max-reads` qualifier on the ai_read self-heal is accurate; no rule changed.
+- Attribution removals change no metric label, format, threshold or condition.
 
 ## scope-auditor
 
-Round 1 FAIL (tree ed485bd). Round 2 FAIL (tree 1f91d12). Round 3:
+Round 1 FAIL (tree 9c40bfb). Round 2 FAIL (tree 7cf8242). Round 3:
 
 VERDICT: PASS
-reviewed_tree: 744de71e499d6a87f807c1a7a28cee5a84f17074
+reviewed_tree: 3ee1979a377b27eb7f337a25bf674bdc459fd890
 risks_checked:
-- The short-quote rule matches the owner-chosen option (b) and the contract.
-- The workflow description matches the code: a skeptic runs only for areas with findings.
-- All files in scope; the criteria and fingerprint are untouched.
+- The three in-token splits fail only without the no-space join; between-word splits still
+  match.
+- The sweep returns exactly the 7 keep-list hits; the history phrases named in round 2 are gone.
+- Rewritten claims match source (attach_reads cap, CI cache, placeholder copy).
 wording_fixes:
-- Skeptic prompt, contract known limit and docstring describe the short-quote rule (applied).
-follow_ups:
-- Console summary: print NOT AUDITED areas and exit non-zero, or keep the report-only signal
-  (owner decision).
-- Whole-token matching of short quotes (new case of the window known limit).
+- Liquidity relief condition and contract split-test wording (applied).

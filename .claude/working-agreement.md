@@ -79,10 +79,9 @@ derived from the code, defines something the code cannot state itself (what a me
 what a contract guarantees), or is machine-checked (`scope_paths`, `diff_sha256`, verdicts).
 
 NARRATIVE belongs in the commit message and the MR description, which are append-only and so
-cannot rot into contradicting the current state. A contract or handover can rot, and did: MR
-!115 spent six of its eleven review rounds on findings against narrative prose, after the code
-it described had stopped changing. This is not licence to move a DECISION or an OPEN ITEM out
-of `.claude/active_work.md`, though: that file is injected into the next session and an MR
+cannot rot into contradicting the current state. A contract or handover can rot, and its
+review rounds then chase prose instead of code. This is not licence to move a DECISION or an
+OPEN ITEM out of `.claude/active_work.md`, though: that file is injected into the next session and an MR
 description is not, so anything a future session must ACT on stays there.
 
 Do not write a history of how the work went, a record of your
@@ -96,12 +95,11 @@ the same assertion standing elsewhere.
 ## 3. Branches
 
 Every change goes on a new branch, never a commit or push to `main`. GitLab is canonical for
-this repo by settled owner choice (the GitHub account, previously suspended, is now
-recovered): all agent work, CI, branches, and MRs stay on GitLab. GitHub carries a one-way
+this repo by settled owner choice (the GitHub account is recovered): all agent work, CI,
+branches, and MRs stay on GitLab. GitHub carries a one-way
 push mirror the owner set up in GitLab's UI, for portfolio visibility only -- per-repo, not
-a standing rule. **Do not add an `origin` remote or push to GitHub**: it would fight the mirror. A session
-pushed to `origin` once before this rule existed, why the remote was removed, not just
-warned about.
+a standing rule. **Do not add an `origin` remote or push to GitHub**: it would fight the
+mirror, which is why this checkout has no `origin` remote at all.
 
 Push to the `gitlab` remote with a FULL refspec (`git push gitlab <branch>:<branch>`)
 and use `glab`, never `gh`. Verify the push output's `-> <branch>` line names the feature

@@ -23,10 +23,7 @@ that company's type, plain language, optional depth. **Discover** is scoped expl
 **Not investment advice.** Metrics are informational. The app educates; it does not recommend
 buys or sells.
 
-**Interaction model:** **Save** -- not swipe gestures or dating-app patterns. A second
-action, **Not now**, existed through v2.5 and was removed: it only ever returned to the
-list, the same as the list's own back control, and its `skip` interaction had no
-downstream effect anything read.
+**Interaction model:** **Save** -- not swipe gestures or dating-app patterns.
 
 ---
 
@@ -60,11 +57,7 @@ The *required* (eligibility) sets per type live in [`data_contract.md`](data_con
 required set, isn't enumerated in any doc, including this one; `metrics_for_card()`
 (`frontend/card_copy.py`) is the sole authoritative source, deliberately not duplicated into a
 doc that would need to stay in sync with it (see [`ui/card_metric_cell.md`](ui/card_metric_cell.md)'s
-"Metric stack" section for why). An earlier version of this section hardcoded a single "five
-mandatory metrics" table that conflated the two concepts and fell out of sync with the app once
-card content started varying by company type. It was left standing after the (correct,
-`is_card_eligible`-level) five-metric picture stopped being the whole story for the growing
-majority of cards.
+"Metric stack" section for why).
 
 **Live price** is not on the batch card (pipeline is not real-time). No on-card live-quote
 widget in v1 — users open **Yahoo Finance** via the card footer link (`st.link_button`).
@@ -73,13 +66,13 @@ widget in v1 — users open **Yahoo Finance** via the card footer link (`st.link
 with its own inline Read more/Show less toggle when truncated (see
 [`ui/disclosure_pattern.md`](ui/disclosure_pattern.md)) — not inside the learn panel.
 
-**Health verdict + read (Slice 6c):** a 🟢/🟡/🔴 verdict (deterministic rules, Slice 5a) renders
+**Health verdict + read:** a 🟢/🟡/🔴 verdict (deterministic rules) renders
 right after identity, visible whenever a card has a matching `card_assessments` row that was
 computed from the snapshot the card is showing; omitted entirely (no placeholder) when it does
 not. Matching means the same `(market_code, ticker)` AND the same `snapshot_date`: a verdict
 computed from numbers the card is not displaying is withheld, because the reader cannot see the
 mismatch and the badge is the card's central claim. Alongside the badge: a short Claude-written
-plain-language read (Slice 5b) when one has passed generation and its hallucination guard, or
+plain-language read when one has passed generation and its hallucination guard, or
 otherwise a deterministic, non-AI one-line summary under its own "What the verdict means" heading
 (never labeled AI-written). See the Progressive disclosure table below and
 [`data_contract.md`](data_contract.md)'s `card_assessments` section.
@@ -132,7 +125,7 @@ The 480px checklist is in [`ui/card_metric_cell.md`](ui/card_metric_cell.md).
 
 ---
 
-## Discover: explore model (v2.5)
+## Discover: explore model
 
 | Rule | Behavior |
 |------|----------|
@@ -176,7 +169,7 @@ Filter default is **All markets · All sectors** — see [`explore_filters.py`](
 ### Search (v1)
 
 Intentional lookup by ticker or name, via the persistent search box on Discover's list --
-not a separate tab (removed as redundant once Discover carried it directly). Same Company
+not a separate tab. Same Company
 Snapshot layout if card-eligible.
 
 ---
@@ -217,7 +210,7 @@ Markets are **registry-driven** (`docs/market_registry.yml`), which is the list 
 than any count written into prose. Every market is added only after a **yfinance coverage audit**
 confirms the operating-type eligibility metrics (the majority case for any market's constituents)
 are obtainable for a meaningful share of its constituents. The audit is per market; whether
-markets are branched one at a time or in batches is the owner's call and has been both.
+markets are branched one at a time or in batches is the owner's call.
 
 Do not activate a market in the app until eligibility counts meet [`data_contract.md`](data_contract.md)
 thresholds.

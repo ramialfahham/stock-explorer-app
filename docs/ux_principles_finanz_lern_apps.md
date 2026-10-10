@@ -66,9 +66,8 @@ For each of the four fundamentals with a playground:
 3. **Playground** — low-cardinality inputs; hypothetical numbers only
 
 Port **patterns** onto Stock Explorer's four playground metrics (operating margin, revenue
-growth YoY, net debt/EBITDA, FCF margin) — do not swap to EPS/KGV/KBV/ROE/D/E from the doc examples.
-Forward P/E had the fifth playground before it was dropped from the catalogue
-along with the other price-carrying metrics; its tab was removed from `metric_school.py` with it.
+growth YoY, net debt/EBITDA, FCF margin) -- do not swap to EPS/KGV/KBV/ROE/D/E from the doc examples.
+No price-carrying metric is catalogued, so none has a playground in `metric_school.py`.
 
 | Stock Explorer metric | Doc analogue | Analogy direction |
 |----------------------|--------------|-----------------|
@@ -93,7 +92,7 @@ Per north_star and this doc:
 
 ## Discover default scope (doc alignment)
 
-- **Filter default:** All markets · All sectors (north_star v2.5)
+- **Filter default:** All markets · All sectors (`north_star.md`)
 - **List ordering:** alphabetical by company name
 - **Browse list on Discover:** filtering shows a paginated list of every match (30 rows at a time, Previous/Next below); tap a row to open the full snapshot, with a Back to list link
 - **Removed:** “Surprise me worldwide” checkbox, use **All markets** in Filters popover

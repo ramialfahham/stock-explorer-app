@@ -22,8 +22,8 @@ Never commit directly to `main`.
 
 **GitLab (recommended):** branch protection on `main` — require MR, disallow direct push. Read
 it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/protected_branches`
-(a GitLab project can end up with an unprotected default branch -- see "trap 9" in
-[`handover_2026-08-18.md`](handover_2026-08-18.md)).
+(a new project can end up with an unprotected default branch: protection attaches to
+whichever branch is pushed first, not to the name `main`).
 
 ---
 
@@ -98,13 +98,6 @@ After CI/CD variables are configured on GitLab:
 
 See the **market activation checklist** in
 [`data_contract.md`](data_contract.md#market-activation-checklist). It is the only copy.
-
-A shorter list used to live here and had drifted into contradicting it: it said to start with
-`ingest_active: false` (several steps read that flag and silently do nothing when it is unset),
-it inverted two steps, and it said to "update Supabase `markets` row" inline rather than in a
-numbered migration. That last one is not cosmetic. Nothing in the codebase upserts
-`public.markets`, three tables foreign-key to it, and a missing row aborts the export for every
-market on the next scheduled run with CI green throughout. France hit exactly that.
 
 ---
 
