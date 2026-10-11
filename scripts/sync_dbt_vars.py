@@ -12,26 +12,13 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ingestion.registry import active_market_codes
+
 DBT_PROJECT_PATH = REPO_ROOT / "dbt_analytics" / "dbt_project.yml"
-
-
-def _registry_active_codes() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    markets = data.get("markets") or []
-    out: list[str] = []
-    for row in markets:
-        if not isinstance(row, dict):
-            continue
-        if not row.get("ingest_active"):
-            continue
-        code = row.get("market_code")
-        if code:
-            out.append(str(code))
-    return sorted(out)
 
 
 class BlockNotFound(Exception):
@@ -66,7 +53,7 @@ def _update_dbt_project(codes: list[str]) -> bool:
 
 def main() -> int:
     try:
-        codes = _registry_active_codes()
+        codes = active_market_codes()
     except Exception as e:
         print(f"sync_dbt_vars: failed to read registry: {e}", file=sys.stderr)
         return 1

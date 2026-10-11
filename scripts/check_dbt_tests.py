@@ -13,6 +13,8 @@ from pathlib import Path
 
 import yaml
 
+from dbt_models import sql_model_names
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DBT_MODELS = REPO_ROOT / "dbt_analytics" / "models"
 DBT_TESTS = REPO_ROOT / "dbt_analytics" / "tests"
@@ -22,10 +24,6 @@ REF_PATTERN = re.compile(
     r"""ref\s*\(\s*['"]([^'"]+)['"]\s*\)""",
     re.IGNORECASE,
 )
-
-
-def _sql_model_names() -> set[str]:
-    return {p.stem for p in DBT_MODELS.rglob("*.sql")}
 
 
 def _tests_key(entry: dict) -> list:
@@ -61,7 +59,7 @@ def _singular_test_refs() -> dict[str, int]:
 
 def main() -> int:
     errors: list[str] = []
-    models = _sql_model_names()
+    models = sql_model_names(DBT_MODELS)
     yaml_counts = _model_tests_from_yaml()
     singular_counts = _singular_test_refs()
 

@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pandas as pd
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ingestion.registry import active_market_codes
+
 DEFAULT_RAW_DIR = REPO_ROOT / "storage" / "raw"
 SNAPSHOT = date.today()
 TICKERS = [f"CI{i:02d}" for i in range(1, 6)]
@@ -151,15 +155,6 @@ def _pre_revenue_fundamentals(market_code: str) -> dict:
     }
 
 
-def _load_active_markets() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    return sorted(
-        m["market_code"]
-        for m in data["markets"]
-        if m.get("ingest_active")
-    )
-
-
 def _write_market_fixtures(market_code: str, raw_dir: Path) -> None:
     out = raw_dir / market_code
     out.mkdir(parents=True, exist_ok=True)
@@ -263,7 +258,7 @@ def main(argv: list[str] | None = None) -> int:
         help="raw parquet root (default: storage/raw, which real ingestion also writes)",
     )
     args = parser.parse_args(argv)
-    markets = _load_active_markets()
+    markets = active_market_codes()
     for market_code in markets:
         _write_market_fixtures(market_code, args.out_dir)
         print(f"seed_ci_raw_fixtures: wrote fixtures for {market_code}")

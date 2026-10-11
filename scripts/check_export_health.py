@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import duckdb
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
 
 DEFAULT_MIN_FILL_RATE = 0.95
 DEFAULT_MAX_MISSING = 5
@@ -21,7 +18,7 @@ DEFAULT_MAX_MISSING = 5
 
 @dataclass(frozen=True)
 class ExportHealthReport:
-    deduped_eligible: int
+    eligible: int
     with_business_summary: int
     missing_business_summary: int
     fill_rate: float
@@ -32,40 +29,9 @@ def _card_key(card: dict[str, Any]) -> tuple[str, str]:
     return (str(card["market_code"]), str(card["ticker"]))
 
 
-def _snapshot_sort_key(card: dict[str, Any]) -> str:
-    raw = card.get("snapshot_date")
-    if raw is None:
-        return ""
-    return str(raw)[:10]
-
-
 def _has_business_summary(card: dict[str, Any]) -> bool:
     raw = card.get("business_summary")
     return bool(str(raw or "").strip())
-
-
-def dedupe_to_latest_snapshot(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep one row per (market_code, ticker) — latest snapshot_date wins."""
-    latest: dict[tuple[str, str], dict[str, Any]] = {}
-    for card in cards:
-        key = _card_key(card)
-        prev = latest.get(key)
-        if prev is None:
-            latest[key] = card
-            continue
-        card_key = _snapshot_sort_key(card)
-        prev_key = _snapshot_sort_key(prev)
-        if card_key > prev_key:
-            winner, loser = card, prev
-        elif card_key < prev_key:
-            winner, loser = prev, card
-        else:
-            winner, loser = prev, card
-        merged = dict(winner)
-        if not _has_business_summary(merged) and _has_business_summary(loser):
-            merged["business_summary"] = loser.get("business_summary")
-        latest[key] = merged
-    return list(latest.values())
 
 
 def assess_export_health(
@@ -77,10 +43,9 @@ def assess_export_health(
 ) -> tuple[ExportHealthReport, list[str]]:
     """Return report and failure messages (empty when healthy)."""
     eligible = [c for c in cards if c.get("is_card_eligible")]
-    deduped = dedupe_to_latest_snapshot(eligible)
-    with_summary = [c for c in deduped if _has_business_summary(c)]
-    missing = [c for c in deduped if not _has_business_summary(c)]
-    total = len(deduped)
+    with_summary = [c for c in eligible if _has_business_summary(c)]
+    missing = [c for c in eligible if not _has_business_summary(c)]
+    total = len(eligible)
     filled = len(with_summary)
     fill_rate = filled / total if total else 0.0
     missing_tickers = tuple(
@@ -88,7 +53,7 @@ def assess_export_health(
     )
 
     report = ExportHealthReport(
-        deduped_eligible=total,
+        eligible=total,
         with_business_summary=filled,
         missing_business_summary=len(missing),
         fill_rate=fill_rate,
@@ -97,13 +62,13 @@ def assess_export_health(
 
     failures: list[str] = []
     if total == 0:
-        failures.append("no deduped card-eligible rows in mart_stock_cards")
+        failures.append("no card-eligible rows in mart_stock_cards")
         return report, failures
 
     if fill_rate < min_fill_rate:
         failures.append(
             f"business_summary fill rate {fill_rate:.1%} below minimum {min_fill_rate:.1%} "
-            f"({filled}/{total} deduped eligible)"
+            f"({filled}/{total} eligible)"
         )
     if len(missing) > max_missing:
         failures.append(
@@ -113,27 +78,18 @@ def assess_export_health(
         )
 
     if required_tickers:
-        present = {_card_key(c) for c in deduped}
+        present = {_card_key(c) for c in eligible}
         for market_code, ticker in sorted(required_tickers):
             if (market_code, ticker) not in present:
-                failures.append(f"required ticker missing from deduped eligible: {market_code}:{ticker}")
+                failures.append(f"required ticker missing from eligible cards: {market_code}:{ticker}")
             else:
-                card = next(c for c in deduped if _card_key(c) == (market_code, ticker))
+                card = next(c for c in eligible if _card_key(c) == (market_code, ticker))
                 if not _has_business_summary(card):
                     failures.append(
                         f"required ticker {market_code}:{ticker} has empty business_summary"
                     )
 
     return report, failures
-
-
-def _load_active_markets() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    return sorted(
-        m["market_code"]
-        for m in data["markets"]
-        if m.get("ingest_active")
-    )
 
 
 def _load_mart_rows(conn: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
@@ -143,24 +99,13 @@ def _load_mart_rows(conn: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
             market_code,
             ticker,
             is_card_eligible,
-            business_summary,
-            snapshot_date
+            business_summary
         from marts.mart_stock_cards
         """
     ).fetchdf()
     if rows.empty:
         return []
     return rows.to_dict(orient="records")
-
-
-def _append_github_summary(markdown: str) -> None:
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if not summary_path:
-        return
-    with open(summary_path, "a", encoding="utf-8") as handle:
-        handle.write(markdown)
-        if not markdown.endswith("\n"):
-            handle.write("\n")
 
 
 def _parse_required_ticker(raw: str) -> tuple[str, str]:
@@ -170,7 +115,7 @@ def _parse_required_ticker(raw: str) -> tuple[str, str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Gate mart export on business_summary fill and deduped eligible sanity"
+        description="Gate mart export on business_summary fill and eligible-card sanity"
     )
     parser.add_argument(
         "--duckdb-path",
@@ -181,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         "--min-fill-rate",
         type=float,
         default=DEFAULT_MIN_FILL_RATE,
-        help="Minimum fill rate on deduped eligible cards (default 0.95)",
+        help="Minimum fill rate on eligible cards (default 0.95)",
     )
     parser.add_argument(
         "--max-missing",
@@ -220,25 +165,9 @@ def main(argv: list[str] | None = None) -> int:
         required_tickers=required or None,
     )
 
-    summary_lines = [
-        "## Export health check",
-        "",
-        f"- **Deduped eligible:** {report.deduped_eligible}",
-        f"- **With business_summary:** {report.with_business_summary}",
-        f"- **Fill rate:** {report.fill_rate:.1%}",
-        f"- **Min fill rate:** {args.min_fill_rate:.1%}",
-        f"- **Max missing allowed:** {args.max_missing}",
-    ]
-    if report.missing_tickers:
-        summary_lines.append("- **Missing business_summary:**")
-        summary_lines.extend(f"  - `{ticker}`" for ticker in report.missing_tickers[:20])
-        if len(report.missing_tickers) > 20:
-            summary_lines.append(f"  - … and {len(report.missing_tickers) - 20} more")
-    _append_github_summary("\n".join(summary_lines))
-
     print(
         "check_export_health: "
-        f"deduped_eligible={report.deduped_eligible} "
+        f"eligible={report.eligible} "
         f"with_business_summary={report.with_business_summary} "
         f"fill_rate={report.fill_rate:.1%}"
     )

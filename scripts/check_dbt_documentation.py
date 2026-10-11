@@ -10,6 +10,8 @@ from typing import Any
 
 import yaml
 
+from dbt_models import sql_model_names
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DBT_PROJECT = REPO_ROOT / "dbt_analytics"
 MODELS_DIR = DBT_PROJECT / "models"
@@ -47,13 +49,6 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _sql_model_names() -> set[str]:
-    names: set[str] = set()
-    for sql_path in MODELS_DIR.rglob("*.sql"):
-        names.add(sql_path.stem)
-    return names
-
-
 def _column_description(
     manifest_columns: dict[str, Any],
     column_name: str,
@@ -67,7 +62,7 @@ def _column_description(
 
 def check_model_descriptions(manifest: dict[str, Any], errors: list[str]) -> set[str]:
     documented: set[str] = set()
-    sql_models = _sql_model_names()
+    sql_models = sql_model_names(MODELS_DIR)
 
     for node in manifest.get("nodes", {}).values():
         if node.get("resource_type") != "model":

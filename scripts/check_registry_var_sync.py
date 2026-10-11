@@ -15,23 +15,12 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ingestion.registry import active_market_codes
+
 DBT_PROJECT_PATH = REPO_ROOT / "dbt_analytics" / "dbt_project.yml"
-
-
-def _registry_active_codes() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    markets = data.get("markets") or []
-    out: list[str] = []
-    for row in markets:
-        if not isinstance(row, dict):
-            continue
-        if not row.get("ingest_active"):
-            continue
-        code = row.get("market_code")
-        if code:
-            out.append(str(code))
-    return out
 
 
 def _dbt_var_codes() -> list[str]:
@@ -47,7 +36,7 @@ def _dbt_var_codes() -> list[str]:
 
 def main() -> int:
     try:
-        reg = _registry_active_codes()
+        reg = active_market_codes()
         var = _dbt_var_codes()
     except Exception as e:
         print(f"check_registry_var_sync: {e}", file=sys.stderr)

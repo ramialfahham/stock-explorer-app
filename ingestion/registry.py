@@ -41,6 +41,10 @@ def load_markets(*, active_only: bool = False) -> list[Market]:
     return markets
 
 
+def active_market_codes() -> list[str]:
+    return sorted(m.market_code for m in load_markets(active_only=True))
+
+
 def get_market(market_code: str) -> Market:
     for market in load_markets():
         if market.market_code == market_code:

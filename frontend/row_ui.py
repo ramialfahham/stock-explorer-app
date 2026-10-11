@@ -9,23 +9,20 @@ Streamlit. See docs/ui/design_system.md for the token/primitive spec this implem
 
 from __future__ import annotations
 
-import html
 from typing import Callable, TypeVar
 
 import streamlit as st
 
+from html_text import esc
+
 _T = TypeVar("_T")
-
-
-def _esc(value: object) -> str:
-    return html.escape("" if value is None else str(value))
 
 
 def build_row_html(title: str, subtitle: str) -> str:
     return (
         f'<div class="ss-row">'
-        f'<p class="ss-row-title">{_esc(title)}</p>'
-        f'<p class="ss-row-sub">{_esc(subtitle)}</p>'
+        f'<p class="ss-row-title">{esc(title)}</p>'
+        f'<p class="ss-row-sub">{esc(subtitle)}</p>'
         f"</div>"
     )
 
@@ -46,16 +43,16 @@ def build_rich_row_html(
         label, value = metric
         metric_html = (
             f'<span class="ss-row-metric">'
-            f'<span class="ss-row-metric-value">{_esc(value)}</span>'
-            f'<span class="ss-row-metric-label">{_esc(label)}</span>'
+            f'<span class="ss-row-metric-value">{esc(value)}</span>'
+            f'<span class="ss-row-metric-label">{esc(label)}</span>'
             f"</span>"
         )
     side_html = f'<div class="ss-row-side">{metric_html}</div>' if metric_html else ""
     return (
         f'<div class="ss-row ss-row-rich">'
         f'<div class="ss-row-main">'
-        f'<p class="ss-row-title">{_esc(title)}</p>'
-        f'<p class="ss-row-sub">{_esc(subtitle)}</p>'
+        f'<p class="ss-row-title">{esc(title)}</p>'
+        f'<p class="ss-row-sub">{esc(subtitle)}</p>'
         f"</div>"
         f"{side_html}"
         f"</div>"

@@ -3,35 +3,17 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from collections import Counter
 from pathlib import Path
 
 import duckdb
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-
-def _load_active_markets() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    return sorted(
-        m["market_code"]
-        for m in data["markets"]
-        if m.get("ingest_active")
-    )
-
-
-def _append_github_summary(markdown: str) -> None:
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if not summary_path:
-        return
-    with open(summary_path, "a", encoding="utf-8") as handle:
-        handle.write(markdown)
-        if not markdown.endswith("\n"):
-            handle.write("\n")
+from ingestion.registry import active_market_codes
 
 
 def _metric_labels(raw: object) -> list[str]:
@@ -94,14 +76,8 @@ def main(argv: list[str] | None = None) -> int:
         conn.close()
 
     failures: list[str] = []
-    summary_lines = [
-        "## Eligibility gaps summary",
-        "",
-        "| Market | Eligible | Ineligible | Near-miss (1 missing) | Top missing metric |",
-        "| --- | ---: | ---: | ---: | --- |",
-    ]
 
-    for market_code in _load_active_markets():
+    for market_code in active_market_codes():
         eligible = eligible_counts.get(market_code, 0)
         market_gaps = [row for row in gap_rows if str(row[0]) == market_code]
         ineligible = len(market_gaps)
@@ -117,15 +93,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.fail_on_empty_eligible and eligible == 0:
             failures.append(f"{market_code}: zero eligible rows in mart_stock_cards")
 
-        summary_lines.append(
-            f"| `{market_code}` | {eligible} | {ineligible} | {near_miss} | {top_missing} |"
-        )
         print(
             f"{market_code}: eligible={eligible} ineligible={ineligible} "
             f"near_miss={near_miss} top_missing={top_missing}"
         )
-
-    _append_github_summary("\n".join(summary_lines))
 
     if failures:
         print("FAIL: eligibility gaps check:")

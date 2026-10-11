@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Report balance-sheet row-label coverage per market (read-only).
 
-Companion to ``probe_quarterly_op_labels.py``. yfinance canonicalises balance-sheet row
-labels to a fixed key set, so a single canonical label per line should resolve across
+yfinance canonicalises balance-sheet row labels to a fixed key set, so a single
+canonical label per line should resolve across
 markets — this probe confirms that by sampling live ``ticker.balance_sheet`` frames and
 reporting, per market: for each field, the share of the sample where its label resolves to
 a value, plus the raw labels present (for human audit). Findings feed

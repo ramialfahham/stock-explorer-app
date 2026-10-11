@@ -7,24 +7,18 @@ import sys
 from pathlib import Path
 
 import duckdb
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ingestion.registry import active_market_codes
+
 RAW_ROOT = REPO_ROOT / "storage" / "raw"
 SEEDS_ROOT = REPO_ROOT / "storage" / "seeds"
 
 FAIL_ELIGIBLE_THRESHOLD = 5
 WARN_ELIGIBLE_THRESHOLD = 20
-
-
-def _load_active_markets() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    return sorted(
-        m["market_code"]
-        for m in data["markets"]
-        if m.get("ingest_active")
-    )
 
 
 def _count_seed_rows(market_code: str) -> int:
@@ -63,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     failures: list[str] = []
     warnings: list[str] = []
 
-    for market_code in _load_active_markets():
+    for market_code in active_market_codes():
         seed_rows = _count_seed_rows(market_code)
         if seed_rows == 0:
             failures.append(f"{market_code}: constituent seed missing or empty")
@@ -76,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     if db_path.exists():
         conn = duckdb.connect(str(db_path), read_only=True)
         try:
-            for market_code in _load_active_markets():
+            for market_code in active_market_codes():
                 eligible = _eligible_count(conn, market_code)
                 if eligible is None:
                     warnings.append(

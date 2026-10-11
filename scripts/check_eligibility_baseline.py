@@ -4,26 +4,19 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from datetime import date
 from pathlib import Path
 
 import duckdb
-import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_PATH = REPO_ROOT / "docs" / "market_registry.yml"
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ingestion.registry import active_market_codes
+
 DEFAULT_BASELINE_PATH = REPO_ROOT / "scripts" / "eligibility_baseline.json"
-
-
-def _load_active_markets() -> list[str]:
-    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
-    return sorted(
-        m["market_code"]
-        for m in data["markets"]
-        if m.get("ingest_active")
-    )
 
 
 def _eligible_counts(conn: duckdb.DuckDBPyConnection) -> dict[str, int]:
@@ -74,21 +67,11 @@ def _write_baseline(
                 "baseline_eligible": counts.get(market_code, 0),
                 "min_eligible": 5,
             }
-            for market_code in _load_active_markets()
+            for market_code in active_market_codes()
         },
-        "total_baseline_eligible": sum(counts.get(m, 0) for m in _load_active_markets()),
+        "total_baseline_eligible": sum(counts.get(m, 0) for m in active_market_codes()),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-
-
-def _append_github_summary(markdown: str) -> None:
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if not summary_path:
-        return
-    with open(summary_path, "a", encoding="utf-8") as handle:
-        handle.write(markdown)
-        if not markdown.endswith("\n"):
-            handle.write("\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -147,9 +130,9 @@ def main(argv: list[str] | None = None) -> int:
             fail_drop_fraction=fail_drop_fraction,
         )
         print(f"Wrote baseline to {baseline_path}")
-        for market_code in _load_active_markets():
+        for market_code in active_market_codes():
             print(f"  {market_code}: {counts.get(market_code, 0)} eligible")
-        print(f"  total: {sum(counts.get(m, 0) for m in _load_active_markets())}")
+        print(f"  total: {sum(counts.get(m, 0) for m in active_market_codes())}")
         return 0
 
     if not baseline_path.exists():
@@ -158,10 +141,9 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     warnings: list[str] = []
-    summary_rows: list[str] = ["| Market | Current | Baseline | Status |", "| --- | ---: | ---: | --- |"]
 
     market_entries = baseline.get("markets", {})
-    for market_code in _load_active_markets():
+    for market_code in active_market_codes():
         current = counts.get(market_code, 0)
         entry = market_entries.get(market_code, {})
         baseline_count = int(entry.get("baseline_eligible", 0))
@@ -173,32 +155,22 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(
                 f"{market_code}: eligible {current} < minimum {min_eligible}"
             )
-            status = "FAIL (min)"
         elif baseline_count and current < fail_floor:
             failures.append(
                 f"{market_code}: eligible {current} dropped >{fail_drop_fraction:.0%} "
                 f"from baseline {baseline_count} (floor {fail_floor})"
             )
-            status = "FAIL (drop)"
         elif baseline_count and current < warn_floor:
             warnings.append(
                 f"{market_code}: eligible {current} dropped >{warn_drop_fraction:.0%} "
                 f"from baseline {baseline_count} (warn floor {warn_floor})"
             )
-            status = "WARN (drop)"
         elif baseline_count and current < baseline_count:
             warnings.append(
                 f"{market_code}: eligible {current} below baseline {baseline_count}"
             )
-            status = "WARN"
-        else:
-            status = "OK"
 
-        summary_rows.append(
-            f"| `{market_code}` | {current} | {baseline_count} | {status} |"
-        )
-
-    total_current = sum(counts.get(m, 0) for m in _load_active_markets())
+    total_current = sum(counts.get(m, 0) for m in active_market_codes())
     total_baseline = int(baseline.get("total_baseline_eligible", 0))
     total_fail_floor = int(total_baseline * (1 - fail_drop_fraction)) if total_baseline else 0
     total_warn_floor = int(total_baseline * (1 - warn_drop_fraction)) if total_baseline else 0
@@ -213,23 +185,6 @@ def main(argv: list[str] | None = None) -> int:
             f"from baseline {total_baseline} (warn floor {total_warn_floor})"
         )
 
-    summary_rows.extend(
-        [
-            "",
-            f"- **Total eligible:** {total_current} (baseline {total_baseline})",
-            f"- **Warn drop fraction:** {warn_drop_fraction:.0%}",
-            f"- **Fail drop fraction:** {fail_drop_fraction:.0%}",
-        ]
-    )
-    if warnings:
-        summary_rows.append("- **Warnings:**")
-        summary_rows.extend(f"  - {msg}" for msg in warnings)
-    if failures:
-        summary_rows.append("- **Failures:**")
-        summary_rows.extend(f"  - {msg}" for msg in failures)
-
-    _append_github_summary("## Eligibility baseline check\n\n" + "\n".join(summary_rows))
-
     for msg in warnings:
         print(f"WARN: {msg}")
 
@@ -241,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("check_eligibility_baseline: OK")
     print(f"  total eligible: {total_current} (baseline {total_baseline})")
-    for market_code in _load_active_markets():
+    for market_code in active_market_codes():
         print(f"  {market_code}: {counts.get(market_code, 0)}")
     return 0
 

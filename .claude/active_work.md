@@ -24,7 +24,8 @@ patterns vs GRD-3; recommended: amend the criterion), #61 (real `YFRateLimitErro
 test), #62 (SQL-structure gate and a CTE that mixes a ref with other work), #63 (owner call: may
 an import CTE filter?), #64 (`layering.md` says base unions; no base model does), #65 (verdict:
 growth plays a small role; researched, the owner chose no new rule; open for a later one), #66
-(residual AI-read guard gaps). **Next: #50.**
+(residual AI-read guard gaps). #50 (repo hygiene) is done on branch `chore/repo-hygiene-50`; the owner merges
+its MR after the production run of 2026-10-11 (pipeline 2936387293) ends. **Next: #51, #52, #55.**
 
 **AI read, waiting on the production run.** Both AI-read MRs are merged, so the scheduled Oct 15
 06:00 UTC run regenerates every read once (about $5.10, about 95 of its 120 minutes); the owner may
@@ -36,7 +37,7 @@ glosses); `card_copy.metric_gloss` calls a negative debt ratio net cash even whe
 negative. The owner's writing standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 `football-data-pipeline/docs/working_agreement.md` section 9.
 
-**Next: #50-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
+**Next: #51, #52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
 above cosmetic. Criteria: `docs/quality_criteria.json` v3 (a change needs a version bump and
@@ -44,7 +45,10 @@ the owner). Way of working the owner set: one rule over every case instead of pe
 make a sweep's "done" checkable (an exact search and a keep list in the contract); fix every
 copy of a changed claim.
 
-**Owner decisions open (ask one at a time):** #43 scope, name snapshot CSV only or also the
+**Owner decisions open (ask one at a time):** `scripts/apply_supabase_migrations.py` reads
+`GITHUB_ACTIONS` (a Management-API pooler lookup and a "GitHub secret" hint that never run on
+GitLab): delete the branch, or port it to `GITLAB_CI`; left alone in #50 because it applies the
+Supabase migrations; #43 scope, name snapshot CSV only or also the
 fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
 criteria v4, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5

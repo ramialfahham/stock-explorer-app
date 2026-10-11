@@ -10,14 +10,18 @@ from pathlib import Path
 
 import pytest
 
+import ingestion.registry as registry_module
 import sync_dbt_vars
 
 REGISTRY = """markets:
   - market_code: us_sp500
+    index_name: S&P 500
     ingest_active: true
   - market_code: de_dax
+    index_name: DAX
     ingest_active: true
   - market_code: fr_cac40
+    index_name: CAC 40
     ingest_active: false
 """
 
@@ -39,7 +43,7 @@ def _point_at(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, project_text: str
     registry.write_text(REGISTRY, encoding="utf-8")
     project = tmp_path / "dbt_project.yml"
     project.write_text(project_text, encoding="utf-8")
-    monkeypatch.setattr(sync_dbt_vars, "REGISTRY_PATH", registry)
+    monkeypatch.setattr(registry_module, "REGISTRY_PATH", registry)
     monkeypatch.setattr(sync_dbt_vars, "DBT_PROJECT_PATH", project)
     return project
 
