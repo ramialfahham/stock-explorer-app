@@ -509,7 +509,8 @@ def business_summary_is_truncated(
 
 VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 # Health framing, not Strong/Weak, which would read as a verdict on the SHARE rather than the
-# company's finances. Must stay in step with VERDICT_MEANING in scripts/assessment_rules.py, or a card's prose contradicts its own badge.
+# company's finances. Must stay in step with VERDICT_MEANING in scripts/assessment_rules.py, the
+# meaning the model's hidden classification is checked against.
 VERDICT_BADGE_LABEL = {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
 
 # Fallback health-block text for when ai_read is absent; keep it a general summary, never the

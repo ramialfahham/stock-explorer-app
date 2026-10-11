@@ -38,12 +38,8 @@ COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 # existing prose untouched -- none of the numbers moved, so nothing tells the pipeline the
 # text is stale. Bumping the version moves every card's hash and makes them all eligible.
 #
-# "Eligible", not "guaranteed". A card whose Haiku call fails is counted and skipped without
-# ai_read being set, while the record still carries the new hash into the upsert, so the next
-# run's regenerate test (hash differs OR ai_read empty) can skip it and leave prose written
-# under an older prompt in place. Whether the old text survives or is nulled depends on how
-# PostgREST treats a batch whose rows have different keys, which nothing here pins and which
-# has not been verified. Worth checking before any run that regenerates the whole deck.
+# A card whose read failed a guard keeps no ai_read and is called again on every scheduled run,
+# whatever its hash, because attach_reads regenerates an empty ai_read.
 INPUT_HASH_VERSION = "5a.4"
 
 # Per-type card metric sets, mirroring metric_catalogue.csv `applies_to`. These feed the
@@ -432,16 +428,17 @@ def compute_input_hash(
 # scripts/generate_assessments.py makes the actual Claude Haiku call.
 
 # Owner-signed voice (§6). Educational, never advice; true-beginner language;
-# reason only from the given numbers; end on the verdict's meaning as financial
-# health/fragility "on these figures", never as a buy/sell.
-READ_SYSTEM_PROMPT = """You write a short, plain-language "read" of a company's financial health for a complete beginner using a stock-learning app. You are given the company type, a set of already-computed numbers, and a health verdict (green, yellow, or red) that fixed rules decided - not you. In 2-3 sentences, explain what those numbers say about the company's financial health, ending on what the verdict means in plain words.
+# reason only from the given numbers; one fact and its meaning per sentence, never the verdict
+# itself (the card's badge shows it), never a buy/sell.
+READ_SYSTEM_PROMPT = """You write a short, plain-language "read" of a company's financial health for a complete beginner using a stock-learning app. You are given the company type, a set of already-computed numbers, and a health verdict (green, yellow, or red) that fixed rules decided - not you. In 2-3 sentences, explain what those numbers say about the company's financial health. The card shows each sentence as its own bullet and shows the verdict in a badge right above your text, so every sentence states one fact from the numbers and what it means in plain words, and none of them states or restates the verdict.
 
 Rules:
 - Respond by calling the write_card_read tool with three fields: "read" (the prose),
   "referenced_metrics" (one entry per metric from the numbers list below that the read explicitly
   cites, each with "label" and "value_as_shown" copied EXACTLY as given below, character for
   character, not reformatted, rounded, or recomputed), and "verdict_meaning" (which of
-  healthy/mixed/fragile your closing sentence actually lands on). If the read cites no specific
+  healthy/mixed/fragile your overall reading of the numbers lands on; it is never shown to the
+  reader and must match the health verdict given below). If the read cites no specific
   number, "referenced_metrics" may be empty. Never invent a label or value that is not in the
   numbers list.
 - Educational only. Never give investment advice. Do not say or imply whether to buy, sell, hold, or avoid the share, whether it is cheap, expensive, or "worth it", and never predict the price. You explain what the numbers describe; you never recommend an action.
@@ -452,7 +449,7 @@ Rules:
 - Returns and growth are NOT amounts per unit of revenue, so never phrase them that way. Return on equity is profit measured against the owners' money, and return on assets is profit measured against everything the company owns. Revenue growth compares the latest reported quarter with the same quarter a year earlier, so it is one quarter's change, never a full year's: do not write "this year" or "over the year" about it.
 - Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
 - Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy. When growth is positive, never give it as the reason the verdict is not green, because the rules only ever count a fall. Describing a nearly flat top line accurately is fine; blaming the verdict on it is not.
-- End on the verdict's meaning, phrased as health or fragility on these figures - e.g. "financially healthy on these figures", "a mixed financial picture on these numbers", "financially fragile on these figures". Never phrase it as a good or bad buy.
+- Do not state the verdict or say it again in other words, and do not close with a summary of the whole picture ("these numbers together...", "on these figures it is..."): the badge above your text does that. Put what is strong first, if anything is. If the verdict is red, the last sentence names the figure that is actually poor (a loss, negative free cash flow, heavy net debt, short runway, negative net cash meaning more borrowed than held in cash, negative working capital); falling revenue alone never makes a company red, so never name it as the cause of red. If the verdict is yellow, the last sentence names the weakest figure, or says which figure is only modest, or that a measure could not be worked out, when nothing shown is clearly weak; never invent a weakness the numbers do not show. If the verdict is green, add no caveat sentence. A financial company's read still states the limit given in the lens below, as one of its 2-3 sentences. Never call a green company fragile or a red one healthy. Never phrase anything as a good or bad buy.
 - No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
 - Write like a person explaining this to someone they know, not like a model. Avoid the usual tells: no "not just X, but Y", no "it's worth noting" or "it's important to remember", no rhetorical questions, no three-item lists used for rhythm, no sentence that hedges and then pivots for the sake of sounding balanced. Vary your sentence lengths. Say the thing and stop. Plain is not the same as chatty, so stay calm and factual. This rule is about STYLE only: it never overrides the rules above or the company-type lens below. Where one of those requires a limit to be stated - above all the financial-company limit that these numbers cannot judge balance-sheet safety or capital strength - state it plainly and in full. A required caveat is never a tell to be trimmed.
 - Calm, clear, honest. No hype, no emoji, no exclamation marks.
@@ -463,8 +460,9 @@ Company-type lens:
 - pre_revenue: a survival story - not profitable yet, so focus on cash, how fast it is spending (burn), and how long the cash lasts (runway). Health = staying power, not profit."""
 
 
-# Plain-English meaning of each verdict token, given to the model so the read can
-# land on it. Mirrors the frontend token -> emoji mapping added in Slice 6.
+# Plain-English meaning of each verdict token, given to the model as context for its hidden
+# verdict_meaning field, never to be written in the read. Mirrors the frontend token -> emoji
+# mapping added in Slice 6.
 VERDICT_MEANING: dict[str, str] = {
     VERDICT_GREEN: "green - financially healthy on these figures",
     VERDICT_YELLOW: "yellow - a mixed financial picture on these figures",
@@ -472,38 +470,23 @@ VERDICT_MEANING: dict[str, str] = {
 }
 
 # The single word each verdict's meaning boils down to, for the write_card_read tool's
-# verdict_meaning field (below) -- what the model classifies its OWN closing sentence as,
-# checked against the verdict already decided by (deterministic, non-LLM) rules above.
+# verdict_meaning field (below) -- what the model classifies its OWN overall reading as (hidden
+# from the reader), checked against the verdict already decided by (deterministic, non-LLM)
+# rules above.
 VERDICT_MEANING_WORD: dict[str, str] = {
     VERDICT_GREEN: "healthy",
     VERDICT_YELLOW: "mixed",
     VERDICT_RED: "fragile",
 }
 
-# Words in the read text that count as expressing each meaning, checked by
-# verdict_meaning_violation's second check (issue #22): a compliant read can close on the
-# same meaning with a different word than the canonical one, so requiring only the exact
-# word reintroduced the same brittleness the structured verdict_meaning field was meant to
-# fix, one level down (word instead of phrase). A small, fixed list, not open-ended synonym
-# matching.
-VERDICT_MEANING_SYNONYMS: dict[str, tuple[str, ...]] = {
-    "healthy": ("healthy", "strong", "solid", "sound"),
-    "mixed": ("mixed", "uneven", "in between"),
-    "fragile": ("fragile", "strained", "weak", "struggling"),
-}
-
 
 # Forces structured output instead of free text: the model must name which facts it used, in the
 # exact form it was given them, so scripts/generate_assessments.py can check the read against
 # the card's own numbers before storing it -- a numeric hallucination guard, not an LLM judge.
-# verdict_meaning does the same job for the prompt's OTHER hard requirement (close on the
-# verdict's meaning): rather than pattern-matching the free-form prose for one fixed sentence
-# shape -- which rejected real, fully compliant reads that closed with the same meaning in a
-# different word order ("These figures show a healthy company" vs "...healthy on these
-# figures"), confirmed live -- the model states which of the three meanings it
-# landed on as its own separate, enum-constrained field, checked in code against the verdict
-# already decided (never the model's call) and against the read text actually containing that
-# word, so the field can't be right while the prose the reader sees is wrong.
+# verdict_meaning is the model's own overall classification, as a separate enum-constrained
+# field the reader never sees, checked in code against the verdict already decided (never the
+# model's call). Nothing reads the prose against the verdict; the prompt alone keeps the read
+# from stating or contradicting it.
 # Pure data, no I/O; the actual API call lives in scripts/generate_assessments.py.
 READ_TOOL_NAME = "write_card_read"
 READ_TOOL_SCHEMA: dict[str, Any] = {
@@ -514,7 +497,7 @@ READ_TOOL_SCHEMA: dict[str, Any] = {
         "properties": {
             "read": {
                 "type": "string",
-                "description": "The 2-3 sentence plain-language read, following every rule in the system prompt.",
+                "description": "The 2-3 sentence plain-language read, one fact and its meaning per sentence, never stating the verdict, following every rule in the system prompt.",
             },
             "referenced_metrics": {
                 "type": "array",
@@ -543,11 +526,9 @@ READ_TOOL_SCHEMA: dict[str, Any] = {
                 "type": "string",
                 "enum": ["healthy", "mixed", "fragile"],
                 "description": (
-                    "Which single word the read's closing sentence actually lands on, tied to "
-                    "'these figures'/'these numbers' as the system prompt requires -- healthy, "
-                    "mixed, or fragile. Must match the Health verdict given above, and the read "
-                    "itself must genuinely close on this word, in your own natural phrasing (not "
-                    "a fixed sentence to copy)."
+                    "Your own overall reading of the numbers: healthy, mixed, or fragile. "
+                    "Never shown to the reader. Must match the Health verdict given above, and "
+                    "the read itself must not state it."
                 ),
             },
         },
@@ -748,7 +729,7 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
     user = (
         f"Company type: {ctype}\n"
         f"{currency_line}"
-        f"Health verdict: {meaning}\n\n"
+        f"Health verdict: {meaning} (for your verdict_meaning field only; never write it in the read)\n\n"
         f"Numbers for this company:\n{facts}\n\n"
         "Write the 2-3 sentence read."
     )
@@ -973,33 +954,16 @@ def find_read_style_violations(read: str) -> list[str]:
 
 
 def verdict_meaning_violation(verdict: str, read: str, reported_meaning: str) -> str | None:
-    """Confirms the read actually closes on the verdict's meaning -- the prompt's other hard
-    requirement, alongside the style rules above, but checked differently on purpose.
+    """Confirms the model's hidden classification matches the verdict the rules already decided.
 
-    The prompt's own "e.g." examples are worked examples, not mandatory verbatim text: a
-    compliant read is free to close with the same meaning in different words ("These figures
-    show a healthy company" as readily as "...healthy on these figures"). Pattern-matching the
-    free-form prose for one fixed sentence shape rejected real, fully compliant reads over this
-    exact word-order variance (confirmed live against real production data) -- a brittleness
-    inherent to guessing at prose structure, not fixable by adding more patterns one at a time.
+    The model reports its own overall reading as a separate enum-constrained tool field
+    (verdict_meaning, forced by READ_TOOL_SCHEMA to "healthy"/"mixed"/"fragile"), which the
+    reader never sees. It must equal the verdict this row's rules ALREADY decided -- never the
+    model's own call -- which catches a self-report that disagrees with the verdict. `read`
+    is not inspected: that the text neither states nor contradicts the verdict is instructed by
+    the prompt only.
 
-    Instead, the model states which of the three meanings it landed on as its own separate,
-    enum-constrained tool field (verdict_meaning, forced by READ_TOOL_SCHEMA to one of exactly
-    "healthy"/"mixed"/"fragile") rather than us inferring it from the prose. Two checks, not one:
-    (1) that reported classification must match the verdict this row's rules ALREADY decided --
-    never the model's own call, catching a read whose content drifts from the actual verdict
-    color; (2) the reported meaning must genuinely be expressed in the read text too, so the
-    structured field can't be right while what the reader actually sees is wrong or missing it
-    entirely -- checked against VERDICT_MEANING_SYNONYMS' small, fixed word list per meaning
-    rather than the one canonical word alone, since a compliant read is equally free to express
-    "fragile" as "strained" as it is to reorder the sentence (production data: 4 of 10 rejected
-    reads in one run used a same-meaning word the canonical-only check didn't recognize).
-
-    Matched on whole-word boundaries, not a plain substring: several of the approved words are
-    short morphemes that collide with ordinary financial vocabulary as substrings ("solid" in
-    "consolidated", "strained" in "constrained"/"restrained", "weak" in "tweak") -- a bare `in`
-    check would accept a read that never actually expresses the verdict's meaning.
-
+    A read that fails is dropped and the card shows the fixed one-line verdict meaning instead.
     Returns a description of the violation, or None if the read has none.
     """
     expected = VERDICT_MEANING_WORD.get(verdict)
@@ -1008,8 +972,4 @@ def verdict_meaning_violation(verdict: str, read: str, reported_meaning: str) ->
             f'reported verdict_meaning "{reported_meaning}" does not match the verdict '
             f'"{verdict}" (expected "{expected}")'
         )
-    read_lower = read.lower()
-    accepted_words = VERDICT_MEANING_SYNONYMS.get(expected, (expected,))
-    if not any(re.search(rf"\b{re.escape(word)}\b", read_lower) for word in accepted_words):
-        return f'verdict_meaning "{expected}" does not actually appear in the read text'
     return None

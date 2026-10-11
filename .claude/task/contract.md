@@ -3,119 +3,91 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #47 (MR 2 of 2; MR 1 is !248, merged) -- findings 20 and 30. One company-identity
-  rule in the display layer, keyed on the resolved Yahoo symbol and applied to the All-markets
-  list, its sector options and search, and a deck fetch that pages by the `current_cards` view's
-  unique key with no Python dedupe. Finding 33 stays as documented, no edit.
+objective: The AI-written read on a card states facts and what they mean, not the verdict. The
+  card's badge already shows the verdict, and the last bullet used to repeat it. No issue; raised
+  by the owner from two card screenshots (3i, ABB).
 
 scope_paths:
-  - frontend/explore_filters.py
-  - frontend/app.py
-  - frontend/supabase_cards.py
-  - tests/frontend/test_explore_filters.py
-  - tests/frontend/test_supabase_cards.py
-  - tests/frontend/test_app.py
-  - tests/ingestion/test_market_onboarding.py
-  - tests/tooling/test_quality_audit.py
+  - scripts/assessment_rules.py
+  - scripts/generate_assessments.py
+  - frontend/card_copy.py
+  - tests/tooling/test_assessment_rules.py
+  - tests/frontend/test_card_ui.py
   - docs/data_contract.md
-  - docs/north_star.md
-  - docs/quality_criteria.json
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: delegated to the agent by the owner in-thread, in the owner's words "I have
-  no idea. You should act as the expert." and then "go", each call stated with its reason before.
-  Finding 20: the rule stays in the display layer (the owner's decision in issue #7), not moved
-  upstream. A company's identity is its resolved Yahoo symbol (`yfinance_symbol`), not the bare
-  card ticker: round-1 review showed the bare ticker merges unrelated companies (28 bare-ticker
-  collisions across the seeds, 24 of them unrelated, for example Merck & Co. and Merck KGaA,
-  AT&T and Telus, Boeing and BAE Systems), which the All-markets dedupe on main already does.
-  This ends that merge: the 24 unrelated pairs (Merck & Co. and Merck KGaA, AT&T and Telus,
-  Boeing and BAE Systems, others) each show two cards in All markets again. Five same-company
-  pairs that main merges by accident become two cards: Newmont, Rio Tinto, ResMed, Block (`XYZ`
-  in the S&P 500 and `XYZ.AX` on the ASX, after the ticker override) and News Corp's Class B pair
-  (NWS, NWS.AX); its Class A card NWSA is unchanged. The later snapshot wins; a tie goes to the
-  market listed first in `MARKET_DISPLAY_NAMES`, so with equal snapshot_dates Airbus shows as DAX
-  and ArcelorMittal's MT.AS as CAC 40; the winner sets the card's market label and
-  sector peer group, so the tie-break can decide whether the sector comparison shows. Dedupe runs
-  before the sector and preset filters, so a company is judged by its latest listing, and the
-  sector options follow the same rule. Saved state stays per listing (Saved tab, cookie,
-  single-market filters unchanged); All markets lists companies, so it hides a company when any
-  of its current listings is saved. Search lists a same-listing company once. Round-1 and round-2
-  scope widening under the grep-the-claim rule: `tests/ingestion/test_market_onboarding.py`
-  (three display sentences made false, and the suffix test now compares values to the registry),
-  `docs/north_star.md` (the Save reversibility sentence is false in All markets while a second
-  listing stays saved). Finding 30: the deck-level dedupe is dropped and the deck pages by
-  (market_code, ticker); the single-card dedupe and its business_summary backfill stay.
-  The owner's own answer, given after being asked: criterion FE-1 names deduplication as logic
-  the frontend must not compute, which this rule contradicts; the owner chose "A", record the
-  exception and keep the rule in the display layer. Recorded as criteria version 2
-  (`docs/quality_criteria.json` FE-1, with its fingerprint in `tests/tooling/test_quality_audit.py`).
+decisions_reserved: the owner chose "option 1, gradual" in-thread ("1 gradual but I would like to
+  the re-written examples"), saw hand-written example texts for 3i and ABB, and then said "go".
+  The prompt wording is owner-signed content (section 6): the structure the owner saw is kept.
+  The signed not-green sentence named "the one thing that holds the company back (for example
+  falling revenue, heavy debt, or thin cash)", but falling revenue can only stop green, never
+  make red (`_is_shrinking` gates green only). The owner was asked in plain words and chose "A"
+  (use the corrected wording, not the signed one): red names the figure that is actually poor
+  (a loss, negative free cash flow, heavy net debt, short runway, negative net cash, negative
+  working capital), falling revenue is never the cause of red, yellow names the weakest figure
+  or the most modest one, or says a measure could not be worked out, and never invents a
+  weakness; green adds no caveat except a financial company's limit, which stays one of its
+  sentences. The longer prompt adds input tokens per call, not calls. Rollout is gradual: `INPUT_HASH_VERSION`
+  is NOT bumped, so a stored read is rewritten when that card's numbers change or its read was
+  rejected; the deck mixes old and new styles meanwhile. Rewriting every read now costs one API
+  call per card and is not done (zero-spend rule). Decided by the agent under the owner's earlier
+  delegation ("act as the expert"): the guard change below, including dropping the text
+  contradiction check I had first proposed, because a rejected read is called again on every
+  scheduled run (cost, cap unset) and the check would also refuse a red read that calls one metric
+  healthy. Not decided, the owner's if wanted: a check that ties the visible text to the verdict
+  (for example banding the metrics a read cites).
+
+changes:
+  - Prompt: each sentence is one bullet; each states one fact and what it means; none states or
+    restates the verdict or closes with a summary; strengths first if any; red names the actually
+    poor figure, yellow the weakest or most modest, green adds no caveat; a financial company's
+    limit stays one of the 2-3 sentences; a green company is never called fragile, a red one
+    never healthy. The user message tells the model the verdict is for its hidden field only.
+  - Tool schema: `verdict_meaning` stays required but is the model's hidden overall take.
+  - Guard: `verdict_meaning_violation` keeps only the match of that hidden field against the
+    verdict the rules decided. The old check that the verdict word appears in the text, and
+    `VERDICT_MEANING_SYNONYMS`, are removed. No check reads the prose against the verdict.
+  - Wording fixed where it was false: the regenerate-on-reject claims in `data_contract.md`,
+    `generate_assessments.py` and the `INPUT_HASH_VERSION` comment (a rejected read leaves
+    `ai_read` empty and is called again next run), and four comments and a test name that said
+    the read ends on the verdict.
+  - A test pins `INPUT_HASH_VERSION`, so a silent bump cannot regenerate every card.
 
 done_when:
-  - All markets returns the same Airbus listing (`de_dax`) for either deck order at an equal
-    snapshot_date (`test_dual_index_tie_resolves_to_the_same_market_in_either_deck_order`).
-  - Saved is per listing: All markets hides Airbus when either listing is saved, the DAX filter
-    still lists it, the CAC 40 filter hides the saved one, and a saved listing no longer in the
-    deck hides nothing (`test_all_markets_hides_a_company_when_either_listing_is_saved`,
-    `test_all_markets_ignores_a_saved_listing_that_left_the_deck`).
-  - Companies sharing a bare ticker stay two (MRK in `us_sp500` and `de_dax`, T in `us_sp500`
-    and `ca_tsx60`) in the list, under a save, and in search
-    (`test_all_markets_keeps_two_companies_that_share_a_bare_ticker`,
-    `test_search_matches_keeps_two_companies_that_share_a_bare_ticker`).
-  - A company follows its latest listing through the sector filter, a metric preset and the
-    sector options (`test_all_markets_judges_a_company_by_its_latest_listing_before_the_sector_filter`,
-    `..._before_a_metric_preset`, `test_sectors_for_market_all_markets_skips_a_sector_held_only_by_a_losing_listing`).
-  - `app._search_matches` returns a same-listing company once, for either deck order
-    (`test_search_matches_lists_a_company_in_two_indices_once`).
-  - `fetch_deck` sorts by `market_code` then `ticker` and applies no dedupe of its own: two
-    snapshots of one key come back as served (`test_fetch_deck_pages_by_the_views_unique_key`,
-    `test_fetch_deck_returns_the_views_rows_as_served`).
-  - Each new test fails when its production change is reverted: the author ran six mutations
-    (bare ticker as key, saved check by listing only, tie-break removed, dedupe after the
-    filters, sector options not deduped, dedupe put back in `fetch_deck`) and each is caught.
-  - `_EXCHANGE_SUFFIX` equals the registry's `exchange_suffix` for every active market
-    (`test_every_active_market_is_named_and_suffixed_in_the_frontend`).
-  - `docs/quality_criteria.json` is version 2 and its fingerprint test passes.
-  - `git grep -n -e fetch_deck_rows -e dedupe_by_ticker -e _company_key -- frontend tests docs`
+  - The prompt no longer asks to end on the verdict: `git grep -n -i -e "closing sentence" -e "End on the verdict" -e "ending on what the verdict" -- scripts docs frontend`
+    prints nothing, and the prompt test checks the absence by regex.
+  - `verdict_meaning_violation` accepts any text under a matching hidden classification and
+    rejects a mismatch or an unknown verdict.
+  - `git grep -n "VERDICT_MEANING_SYNONYMS\|VERDICT_CONTRADICTING_WORDS" -- . ':!.claude/task'`
     prints nothing.
-  - `git grep -n -e "once per market it belongs to" -e "shows it twice" -e "Issue #7 covers the display fix" -- docs tests`
-    prints nothing; `docs/data_contract.md` states the resolved-symbol rule.
-  - `git grep -n -i "reserved and unbuilt" -- .claude/active_work.md` prints nothing.
-  - `.claude/active_work.md` stays under 32000 bytes (its budget test passes).
+  - Tests pin the new prompt's structure (no verdict restatement, the red and yellow cause rules,
+    the financial limit inside the sentences, green-never-fragile), the hidden-field description,
+    the verdict-for-hidden-field user line, and `INPUT_HASH_VERSION`.
+  - `docs/data_contract.md` states the rule and the retry behaviour truthfully.
   - `pytest tests` and `python scripts/bootstrap.py --verify` pass.
 
 known_limits:
-  - A company on two venues resolves to two symbols and is two cards (Shell, Unilever,
-    ArcelorMittal's MTS.MC, Newmont, News Corp, Rio Tinto, ResMed, Block). The upstream
-    name-level guard lives only in the onboarding test.
-  - Which market "owns" a same-listing company is arbitrary but stable (the dict order of
-    `MARKET_DISPLAY_NAMES`, pinned only by the Airbus pair), not a home-market rule; a home-market
-    rule needs data upstream and is the owner's product call. Because the winner sets the sector
-    peer group, it can decide whether a beginner sees the sector comparison at all.
-  - Saved state is per listing, so the two listings of one company behave independently outside
-    All markets: saving the CAC 40 listing leaves the DAX listing in the DAX filter, and saving
-    there adds a second Saved row. Search shows the winning listing only and has no saved
-    exclusion (search showed both listings before).
-  - The identity key is not upper-cased and rests on `_EXCHANGE_SUFFIX` in
-    `frontend/live_quote.py`, a module whose docstring covers Yahoo symbols and URLs; a test pins
-    its values to the registry. A market missing from the map would resolve with an empty suffix.
-  - "The latest snapshot decides" holds among eligible listings only (the deck and the filters
-    drop ineligible rows first): a company whose newest listing is ineligible and whose other
-    listing is eligible and older shows the older one. Main behaves the same way.
-  - The sort-key claim rests on Postgres documenting LIMIT/OFFSET over a non-unique ORDER BY as
-    unspecified; per-(market_code, ticker) uniqueness rests on the `current_cards` DISTINCT ON,
-    with no CI coverage of the SQL, only the fake-client call log.
-  - Present since round 1, filed as follow-ups: `docs/constituent_sources.yml` and one
-    `test_market_onboarding.py` docstring say a dual-index company "ships two cards" (true of
-    deck rows); `frontend/live_quote.py`'s docstring omits the identity use; migration 020's
-    comment says "each company's newest row" (per listing; an applied migration, not edited).
+  - Nothing reads the prose against the verdict: that a text neither states nor contradicts it
+    is instructed by the prompt only. The hidden classification is the model attesting to itself.
+    A check that bands the metrics a read cites would be a new mechanism (owner).
+  - The prompt cannot be exercised without an API call (zero spend), so the first real outputs
+    arrive in the next scheduled production run; the guards that remain catch rule breaks of the
+    numeric, style and hidden-field kinds, not weak wording.
+  - A read rejected by any guard leaves `ai_read` empty and is called again on every scheduled
+    run, with `--max-reads` still unset. This change removes one rejection trigger (the verdict
+    word missing from the text) and adds none.
+  - Old reads still end on the verdict until their card's numbers change or they are rejected.
+  - The red-cause list in the prompt is the same for every company type (the model only sees its
+    own type's figures); making it per type would change owner-signed wording.
+  - "That a measure could not be worked out" can be misapplied: a missing runway on a pre-revenue
+    company means it is not spending cash, not that something is unknown, and nothing in code
+    catches it. It is allowed only when nothing shown is clearly weak.
+  - `supabase/migrations/010_card_assessments.sql` says reads regenerate "only when input_hash
+    changes"; an applied migration, not edited.
 
 regression_checklist:
-  - A single-market filter lists every eligible row of that market except the saved listing, as
-    before (exclusion by (market_code, ticker)).
-  - The Saved tab is unchanged: it matches saved (market_code, ticker) keys exactly.
-  - `dedupe_to_latest_snapshot` (the single-card path) still backfills business_summary from the
-    older snapshot and resolves a same-market tie to the first row, as before.
-  - `DECK_COLUMNS` and the deck's selected columns are unchanged.
+  - Style, advice, numeric and currency guards and their tests are unchanged.
+  - The frontend renders as before: `ai_read_sentences` still gives one bullet per sentence.
+  - Reads already stored stay valid and render as before.

@@ -16,7 +16,7 @@ Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape and for -
 dev needs the schema exposed to PostgREST, see docs/supabase_setup.md). --dry-run returns
 before any credential or LLM call, so CI can smoke it secret-free; the real path also skips
 the reads when ANTHROPIC_API_KEY is absent or empty. A base record omits ai_read / read_model unless
-a fresh read was generated, so a re-run never clobbers a stored read -- true only because
+a fresh read was generated or a stale stored one is cleared, so a re-run never clobbers a current read -- true only because
 _upsert_records() groups each upsert call by a record's exact set of present keys; a plain
 single upsert call mixing "has a read" and "omits it" records does NOT preserve the omitted
 one (see _upsert_records()'s own docstring -- a real production incident, not a hypothetical).
@@ -202,8 +202,8 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     and a deterministic subset of the prompt's own style rules (find_read_style_violations)
     before accepting the read -- a malformed response, an empty read, an unverifiable citation,
     a verdict-meaning mismatch, or a style-rule violation is treated the same as an API failure:
-    fail closed, self-heals next run via the existing regenerate-on-input-hash-change path. No
-    retry.
+    fail closed. The card keeps no read and is called again on the next scheduled run, because
+    attach_reads regenerates an empty ai_read. No retry within a run.
     """
     system, user = build_read_messages(row, verdict)
     try:

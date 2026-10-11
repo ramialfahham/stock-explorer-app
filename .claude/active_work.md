@@ -56,6 +56,9 @@ class-share fix. Check after it:**
 - Raw archive (!226, !227): `raw-archive` bucket holds `raw/<date>/<CI_JOB_ID>/<market>/`;
   a failed upload fails the job at its end. Open, owner's: #33; retention near the 1 GB quota.
 - Class shares (!232): BRK-B, BF-B and BT-A.L cards exist.
+- AI reads, facts only (no closing verdict sentence; `INPUT_HASH_VERSION` not bumped, so a read
+  changes when its card's numbers change or its read was rejected): read a few new ones and the
+  `read REJECTED` lines in the `generate_assessments` log. A full rewrite costs one call per card.
 
 **Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads through
 ingestion and dbt against a golden mart. Open: #40.
