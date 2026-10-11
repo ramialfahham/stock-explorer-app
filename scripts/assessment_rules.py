@@ -10,10 +10,11 @@ metric was dropped from the catalogue.
 
 `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC` mirror `dbt_analytics/seeds/metric_catalogue.csv`
 (`applies_to` / `direction`), the same metric set 5b hashes and prompts over, so
-"regenerate the read iff a prompt input changed" holds by construction. A
-`tests/tooling` guard asserts this mirror stays in sync with the seed. The hash covers one
-thing beyond that set, the display currency, because the prompt names it and the read quotes
-it; see `compute_input_hash`.
+"regenerate the read iff a prompt input changed" holds for the metric set. A
+`tests/tooling` guard asserts this mirror stays in sync with the seed. The hash covers three
+things beyond that set: the display currency, because the prompt names it and the read quotes
+it; the rules' reasons for the verdict, which the prompt now gives; and whether an operating
+card's margin is the annual figure, which changes its label; see `compute_input_hash`.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ import json
 import math
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +44,7 @@ COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 #
 # A card whose read failed a guard keeps no ai_read and is called again on every scheduled run,
 # whatever its hash, because attach_reads regenerates an empty ai_read.
-INPUT_HASH_VERSION = "5a.5"
+INPUT_HASH_VERSION = "5a.6"
 
 # Per-type card metric sets, mirroring metric_catalogue.csv `applies_to`. These feed the
 # input hash (and, in 5b, the prompt), so they are the FULL displayed set per type, not
@@ -128,7 +130,7 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 # "explodes when EBITDA ~ 0 (distressed/pre-profit)"; debt_to_equity "flips or explodes and stops
 # being meaningful" when equity goes negative; statement_roe_pct "can read as a spuriously
 # positive percentage" over negative equity. statement_roe_pct's guard is used from BOTH
-# _verdict_operating and _verdict_financial, not operating only.
+# _evaluate_operating and _evaluate_financial, not operating only.
 #
 # All three guards check the RATIO'S OWN DENOMINATOR directly (info_ebitda,
 # stmt_stockholders_equity), not the ratio's sign, because the ratio's sign fails for a different
@@ -148,7 +150,7 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 #
 # The guards land on different bands because the axes play different roles, and the SAME axis
 # can play a different role in a different verdict function. net_debt_to_ebitda is a CORE axis in
-# _verdict_operating (every core axis must be "good" for green), so it is fixed by treating it as
+# _evaluate_operating (every core axis must be "good" for green), so it is fixed by treating it as
 # "unknown" -- the same neutral treatment every other axis already gets for a missing value.
 # debt_to_equity is a SUPPORTING axis, which never needs to be "good" to reach green -- only
 # "weak" changes anything, since supporting axes can block green but never rescue it. Relabeling
@@ -158,9 +160,9 @@ def _axis(row: Mapping[str, Any], metric: str, weak_th: float, good_th: float) -
 # always distress on its own (it can come from a healthy company's own buybacks, per the
 # catalogue's own applicability note) -- "weak" is deliberately the mildest band that still
 # changes anything, a caution rather than a verdict on the cause. statement_roe_pct gets the same
-# "weak" treatment in _verdict_operating (same supporting role as debt_to_equity), but "unknown"
-# in _verdict_financial, where it is effectively a CORE axis -- see the comment above
-# _verdict_financial for why that function's population makes "unknown" the honest choice rather
+# "weak" treatment in _evaluate_operating (same supporting role as debt_to_equity), but "unknown"
+# in _evaluate_financial, where it is effectively a CORE axis -- see the comment in
+# _evaluate_financial for why that function's population makes "unknown" the honest choice rather
 # than the harsher "weak" a first version of this guard used.
 
 
@@ -266,7 +268,69 @@ def _current_ratio_axis_with_fcf_coverage_relief(row: Mapping[str, Any]) -> str:
     return "weak"
 
 
-def _verdict_operating(row: Mapping[str, Any]) -> str:
+@dataclass(frozen=True)
+class Axis:
+    """One metric the verdict rules judged: `role` is "core" or "supporting", `band` is good, ok,
+    weak or unknown, and `note` says in plain words when a guard or the current-ratio relief applied."""
+
+    field: str
+    role: str
+    band: str
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class VerdictEvaluation:
+    """The verdict with the rules' own reasons, from one computation, so the two cannot drift apart.
+
+    `red_because` lists the core metrics that were weak; `held_back_by` lists what kept a card
+    from green (core metrics that are not good, weak supporting metrics, and a falling top line,
+    named "revenue_growth_yoy_pct"). Both are empty when they do not apply."""
+
+    verdict: str
+    axes: tuple[Axis, ...]
+    shrinking: bool
+    red_because: tuple[str, ...]
+    held_back_by: tuple[str, ...]
+
+
+EBITDA_NOTE = "EBITDA is zero or negative"
+EQUITY_NOTE = "equity is zero or negative"
+RELIEF_NOTE = "free cash flow covers the short-term shortfall"
+NO_BURN_NOTE = "no cash burn is shown"
+
+
+def _guard_note(row: Mapping[str, Any], denominator_field: str, text: str) -> str:
+    denominator = row.get(denominator_field)
+    return text if not _is_missing(denominator) and float(denominator) <= 0 else ""
+
+
+def _evaluation(verdict: str, axes: tuple[Axis, ...], shrinking: bool, held_roa: bool = False) -> VerdictEvaluation:
+    red = tuple(a.field for a in axes if a.role == "core" and a.band == "weak")
+    held = tuple(
+        a.field for a in axes
+        if (a.role == "core" and a.band != "good") or (a.role == "supporting" and a.band == "weak")
+    )
+    if held_roa and "roa_pct" not in held:
+        held += tuple(a.field for a in axes if a.field == "roa_pct")
+    if shrinking:
+        held += ("revenue_growth_yoy_pct",)
+    return VerdictEvaluation(
+        verdict=verdict,
+        axes=axes,
+        shrinking=shrinking,
+        red_because=red if verdict == VERDICT_RED else (),
+        held_back_by=held if verdict == VERDICT_YELLOW else (),
+    )
+
+
+def _relief_note(row: Mapping[str, Any], band: str) -> str:
+    """RELIEF_NOTE when the relief turned a weak current ratio into ok."""
+    raw = _axis(row, "current_ratio_stmt", weak_th=CURRENT_RATIO_WEAK_TH, good_th=CURRENT_RATIO_GOOD_TH)
+    return RELIEF_NOTE if raw == "weak" and band == "ok" else ""
+
+
+def _evaluate_operating(row: Mapping[str, Any]) -> VerdictEvaluation:
     # Core axes are eligibility-required, so present for eligible operating cards.
     # net_debt_to_ebitda goes through the sign-inversion guard: "unknown" (not "good") when
     # info_ebitda is present and <= 0, so a distressed company can't reach green just because
@@ -298,17 +362,27 @@ def _verdict_operating(row: Mapping[str, Any]) -> str:
         ),
     )
     if any(b == "weak" for b in core):
-        return VERDICT_RED
-    if (
+        verdict = VERDICT_RED
+    elif (
         all(b == "good" for b in core)
         and not any(b == "weak" for b in supporting)
         and not _is_shrinking(row)
     ):
-        return VERDICT_GREEN
-    return VERDICT_YELLOW
+        verdict = VERDICT_GREEN
+    else:
+        verdict = VERDICT_YELLOW
+    axes = (
+        Axis("net_debt_to_ebitda", "core", core[0], _guard_note(row, "info_ebitda", EBITDA_NOTE)),
+        Axis("ebit_margin_pct", "core", core[1]),
+        Axis("fcf_margin_pct", "core", core[2]),
+        Axis("debt_to_equity", "supporting", supporting[0], _guard_note(row, "stmt_stockholders_equity", EQUITY_NOTE)),
+        Axis("current_ratio_stmt", "supporting", supporting[1], _relief_note(row, supporting[1])),
+        Axis("statement_roe_pct", "supporting", supporting[2], _guard_note(row, "stmt_stockholders_equity", EQUITY_NOTE)),
+    )
+    return _evaluation(verdict, axes, _is_shrinking(row))
 
 
-def _verdict_financial(row: Mapping[str, Any]) -> str:
+def _evaluate_financial(row: Mapping[str, Any]) -> VerdictEvaluation:
     # Banks: profitability/returns only. Capital adequacy (CET1/Tier 1) is unsourceable
     # from yfinance, so this verdict is deliberately modest (documented in data_contract).
     # statement_roe_pct goes through the same sign-inversion guard as the operating verdict, but
@@ -333,18 +407,25 @@ def _verdict_financial(row: Mapping[str, Any]) -> str:
     margin = _axis(row, "net_margin_pct", weak_th=0.0, good_th=15.0)
     roa = _axis(row, "roa_pct", weak_th=0.0, good_th=0.8)
     if roe == "weak" or margin == "weak":
-        return VERDICT_RED
-    if (
+        verdict = VERDICT_RED
+    elif (
         roe == "good"
         and margin == "good"
         and roa in ("good", "unknown")
         and not _is_shrinking(row)
     ):
-        return VERDICT_GREEN
-    return VERDICT_YELLOW
+        verdict = VERDICT_GREEN
+    else:
+        verdict = VERDICT_YELLOW
+    axes = (
+        Axis("statement_roe_pct", "core", roe, _guard_note(row, "stmt_stockholders_equity", EQUITY_NOTE)),
+        Axis("net_margin_pct", "core", margin),
+        Axis("roa_pct", "supporting", roa),
+    )
+    return _evaluation(verdict, axes, _is_shrinking(row), held_roa=roa not in ("good", "unknown"))
 
 
-def _verdict_pre_revenue(row: Mapping[str, Any]) -> str:
+def _evaluate_pre_revenue(row: Mapping[str, Any]) -> VerdictEvaluation:
     # Survival story. cash_runway_months is null when NOT burning cash (a positive),
     # treat null runway as good; the net-cash and working-capital axes independently
     # catch a genuinely fragile pre-revenue company.
@@ -362,17 +443,17 @@ def _verdict_pre_revenue(row: Mapping[str, Any]) -> str:
     net_cash = _axis(row, "net_cash", weak_th=0.0, good_th=0.0)
     working_capital = _axis(row, "working_capital", weak_th=0.0, good_th=0.0)
     if runway == "weak" or net_cash == "weak" or working_capital == "weak":
-        return VERDICT_RED
-    if runway == "good" and net_cash == "good" and working_capital == "good":
-        return VERDICT_GREEN
-    return VERDICT_YELLOW
-
-
-_VERDICT_FN = {
-    "operating": _verdict_operating,
-    "financial": _verdict_financial,
-    "pre_revenue": _verdict_pre_revenue,
-}
+        verdict = VERDICT_RED
+    elif runway == "good" and net_cash == "good" and working_capital == "good":
+        verdict = VERDICT_GREEN
+    else:
+        verdict = VERDICT_YELLOW
+    axes = (
+        Axis("cash_runway_months", "core", runway, NO_BURN_NOTE if _is_missing(runway_val) else ""),
+        Axis("net_cash", "core", net_cash),
+        Axis("working_capital", "core", working_capital),
+    )
+    return _evaluation(verdict, axes, False)
 
 
 def normalize_company_type(company_type: Any) -> str:
@@ -382,10 +463,21 @@ def normalize_company_type(company_type: Any) -> str:
     return "operating"
 
 
+_EVALUATE_FN = {
+    "operating": _evaluate_operating,
+    "financial": _evaluate_financial,
+    "pre_revenue": _evaluate_pre_revenue,
+}
+
+
+def evaluate_verdict(row: Mapping[str, Any]) -> VerdictEvaluation:
+    """The verdict and the rules' own reasons for it, from one computation."""
+    return _EVALUATE_FN[normalize_company_type(row.get("company_type"))](row)
+
+
 def compute_verdict(row: Mapping[str, Any]) -> str:
     """Deterministic health verdict for a card row. Total: always returns a VERDICTS member."""
-    ctype = normalize_company_type(row.get("company_type"))
-    return _VERDICT_FN[ctype](row)
+    return evaluate_verdict(row).verdict
 
 
 def _canonical_number(value: Any) -> float | None:
@@ -403,7 +495,9 @@ def compute_input_hash(
     row: Mapping[str, Any], verdict: str, *, version: str = INPUT_HASH_VERSION
 ) -> str:
     """sha256 hex over the canonicalized per-type input set + company_type + verdict +
-    display currency + version.
+    display currency + the rules' reasons for the verdict (each judged metric's band and guard
+    note, and whether revenue is falling) + whether an operating card's margin is the annual
+    figure + version.
 
     5b regenerates the prose read only when this hash changes. Numbers only, plus the
     currency: name/sector are context, not signals ("reason only from the given numbers"),
@@ -413,8 +507,12 @@ def compute_input_hash(
     not churn every FTSE read for nothing.
     """
     ctype = normalize_company_type(row.get("company_type"))
+    evaluation = evaluate_verdict(row)
+    annual_margin = ctype == "operating" and row.get("ebit_margin_basis") == "annual_latest"
     payload = {
         "version": version,
+        "reasons": [[a.field, a.band, a.note] for a in evaluation.axes] + [evaluation.shrinking],
+        "annual_margin": annual_margin,
         "company_type": ctype,
         "verdict": verdict,
         "currency": _display_currency(row.get("currency")) or None,
@@ -452,7 +550,7 @@ Rules:
 - Write short sentences. Each sentence has one topic, is in the active voice, and has at most 25 words. Each sentence states one of the numbers below in digits, exactly as it appears (for example 24.0%), and says what it means in plain words, using the wording of that number's Meaning line. Use one word for one thing: call a number by the name it has in the list, every time. Pick the 2 or 3 numbers that most shape the picture.
 - Explain a number with the Meaning and Limit lines given for it under the numbers list, and say any finance term in plain words. Use a Limit line only when it applies to this company. Never say why the company has a number, how it got there, what it plans, or what the company can or cannot do. Write in words, never the symbols ≈, → or ÷.
 - Write every number in digits, never as a fraction or a phrase in words ("one third", "a quarter of", "a fifth", "half", "one in five"). A time period such as "the latest quarter" is not a number. Never write a currency symbol or code without an amount next to it.
-- Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy. When growth is positive, never give it as the reason the verdict is not green, because the rules only ever count a fall. Describing a nearly flat top line accurately is fine; blaming the verdict on it is not.
+- The Why lines under the numbers say how the rules reached the verdict. Explain what is strong or weak only with those lines, and give no other reason for the verdict. Falling revenue can stop a company being called healthy but never makes it red. Rising revenue does not make a company healthy, and is never a reason to buy.
 - Do not state the verdict or say it again in other words, and do not close with a summary of the whole picture ("these numbers together...", "on these figures it is..."): the badge above your text does that. Put what is strong first, if anything is. If the verdict is red, the last sentence names the figure that is actually poor (a loss, negative free cash flow, heavy net debt, short runway, negative net cash meaning more borrowed than held in cash, negative working capital); falling revenue alone never makes a company red, so never name it as the cause of red. If the verdict is yellow, the last sentence names the weakest figure, or says which figure is only modest, or that a measure could not be worked out, when nothing shown is clearly weak; never invent a weakness the numbers do not show. If the verdict is green, add no caveat sentence. A financial company's read still states the limit given in the lens below, as one of its 2-3 sentences. Never call a green company fragile or a red one healthy. Never phrase anything as a good or bad buy.
 - No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
 - Write like a person explaining this to someone they know, not like a model. Avoid the usual tells: no "not just X, but Y", no "it's worth noting" or "it's important to remember", no rhetorical questions, no three-item lists used for rhythm, no sentence that hedges and then pivots for the sake of sounding balanced. Vary your sentence lengths. Say the thing and stop. Plain is not the same as chatty, so stay calm and factual. This rule is about STYLE only: it never overrides the rules above or the company-type lens below. Where one of those requires a limit to be stated - above all the financial-company limit that these numbers cannot judge balance-sheet safety or capital strength - state it plainly and in full. A required caveat is never a tell to be trimmed.
@@ -729,6 +827,43 @@ def _present_metric_renderings(
     return out
 
 
+_BAND_WORDS = {"good": "good", "ok": "ok", "weak": "weak", "unknown": "not judged"}
+
+
+def verdict_why_lines(row: Mapping[str, Any]) -> list[str]:
+    """How the rules reached the verdict, in plain lines for the read: one line per judged metric
+    (label as in the numbers list, band word, and the note when one applied: a guard, the
+    current-ratio relief, or no cash burn shown), the falling top
+    line when it is, and one closing line. No thresholds. Built from `evaluate_verdict`, the same
+    computation that decides the color."""
+    evaluation = evaluate_verdict(row)
+    lines: list[str] = []
+    for axis in evaluation.axes:
+        if _is_missing(row.get(axis.field)) and not axis.note:
+            continue
+        note = f" ({axis.note})" if axis.note else ""
+        lines.append(f"- {read_metric_label(axis.field, row)}: {_BAND_WORDS[axis.band]}{note}")
+    if evaluation.shrinking:
+        lines.append(f"- {read_metric_label('revenue_growth_yoy_pct', row)}: falling")
+    bands = {a.field: a.band for a in evaluation.axes}
+
+    def name(field: str) -> str:
+        band = 'falling' if field == "revenue_growth_yoy_pct" else _BAND_WORDS[bands[field]]
+        return f"{read_metric_label(field, row)} ({band})"
+
+    if evaluation.verdict == VERDICT_RED:
+        lines.append("Placed at the bottom because of: " + ", ".join(name(f) for f in evaluation.red_because) + ".")
+    elif evaluation.verdict == VERDICT_YELLOW:
+        lines.append("Held back from the top by: " + ", ".join(name(f) for f in evaluation.held_back_by) + ".")
+    else:
+        lines.append(
+            "Every core figure is good, so nothing held it back."
+            if normalize_company_type(row.get("company_type")) == "pre_revenue"
+            else "Every core figure is good, no supporting figure is weak and no falling revenue is shown, so nothing held it back."
+        )
+    return lines
+
+
 def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]:
     """Pure: build the (system, user) messages for the Claude Haiku prose read.
 
@@ -754,6 +889,7 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
             entry += f"\n  Limit: {limit}"
         lines.append(entry)
     facts = "\n".join(lines) if lines else "- (no metric values available)"
+    why = "\n".join(verdict_why_lines(row))
     meaning = VERDICT_MEANING.get(verdict, verdict)
     display_currency = _display_currency(currency)
     currency_line = f"Currency this company trades in: {display_currency}\n" if display_currency else ""
@@ -762,6 +898,8 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
         f"{currency_line}"
         f"Health verdict: {meaning} (for your verdict_meaning field only; never write it in the read)\n\n"
         f"Numbers for this company:\n{facts}\n\n"
+        "Why lines (how the rules reached the verdict; explain only with these; never state the verdict itself):\n"
+        f"{why}\n\n"
         "Write the 2-3 sentence read."
     )
     return READ_SYSTEM_PROMPT, user

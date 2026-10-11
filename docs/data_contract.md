@@ -747,6 +747,14 @@ catalogue `applicability` as `Limit:`. `read_metric_meaning` mirrors the card's 
 equal by a test, with one
 difference: a negative debt ratio with non-positive EBITDA is not called net cash. `interpretation` is not given, because it carries rationale.
 
+The facts block also gives the rules' own reasons for the verdict (`verdict_why_lines`, built from
+`evaluate_verdict`, the same computation that decides the color): one line per judged metric with its
+band (good, ok, weak or not judged) and a plain note when a sign-inversion guard or the current-ratio
+relief applied or cash runway is missing ("no cash burn is shown"), the falling top line when it is, and one closing line naming what held the card back
+from the top, what placed it at the bottom, or (for a green card) that nothing held it back. No
+thresholds are shown. The read may explain the verdict only with these lines. The input hash covers
+these reasons, so a read regenerates when one changes even if no metric value and no color moved.
+
 **The whole health block is withheld when the assessment's `snapshot_date` differs from the
 card's** -- verdict and read together, with no placeholder; the financial caveat is not in
 the block and stays. That is a
@@ -783,7 +791,7 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴) |
 | `ai_read` | text | Claude Haiku prose read (`claude-haiku-4-5`); educational, never advice; reasons only from the card's numbers |
 | `read_model` | text | model id that wrote `ai_read` (from the Claude API response) |
-| `input_hash` | text | sha256 of the verdict inputs plus the display currency; drives 5b regenerate-on-change |
+| `input_hash` | text | sha256 of the verdict inputs, the display currency, the rules' reasons and the annual-margin flag; drives 5b regenerate-on-change |
 | `snapshot_date` | date | the mart snapshot the assessment reflects. Load-bearing at read time, not just provenance: the frontend attaches the verdict only when this equals the card's `snapshot_date` |
 | `generated_at` | timestamptz | last write |
 
@@ -884,7 +892,9 @@ Thresholds live in `scripts/assessment_rules.py`, whose `INPUT_FIELDS_BY_TYPE` /
 mirror this seed's `applies_to` / `direction` (a `tests/tooling` guard enforces it).
 
 **`input_hash`:** sha256 over the per-type card metric set + `company_type` + `health_verdict` +
-the card's display currency + `INPUT_HASH_VERSION` (numerics rounded to 6dp, NaN → null). The currency is
+the card's display currency + the rules' reasons for the verdict (each judged metric's band and note, and the
+falling-revenue flag) + whether an operating card's margin is the annual figure + `INPUT_HASH_VERSION`
+(numerics rounded to 6dp, NaN → null). The currency is
 in the payload because the prompt names it and the prose read quotes it, so a card whose currency is
 corrected upstream has to regenerate rather than keep prose naming the old one; it is hashed in its
 normalised display form, so a `GBp`/`GBP` case change does not churn every FTSE read. The verdict + hash

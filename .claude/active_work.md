@@ -28,18 +28,22 @@ recommended: amend the criterion), #61 (real `YFRateLimitError` in the retry tes
 with other work), #63 (owner call: may an import CTE filter?), #64 (`layering.md` says base
 unions; no base model does). After the AI-read fix below, take #50.
 
-**AI read fix, branch `fix/ai-read-grounded` (owner-reported, live cards AAPL, 3M, 4DMedical).**
+**AI read fix, merged (!257) and a follow-on on branch `fix/ai-read-reasons` (owner-reported,
+live cards AAPL, 3M, 4DMedical).**
 The reads invented purposes ("to fund growth"), ended with a verdict sentence, said "one third",
 and wrote "A$" with no amount; stored reads kept the old text because a read regenerates only
 when `input_hash` changes. The fix gives the model the catalogue `gloss` and `applicability`
 (never `interpretation`), rejects a read with a figure-less or over-25-word sentence, a
 fraction in words, a purpose or cause marker, or a lone currency symbol (no retry), and bumps
-`INPUT_HASH_VERSION` to 5a.5. The owner triggers the production run (about $5, about 95
+`INPUT_HASH_VERSION` to 5a.5. The follow-on tells the model the rules' own reasons for the
+color (`verdict_why_lines`), drops the growth patch sentence, and bumps it to 5a.6. The owner triggers the production run (about $5, about 95
 minutes). If this merges before the scheduled Oct 15 06:00 UTC run, that run does it unattended.
 Then count the `read REJECTED` lines in the `generate_assessments` log, check the live
 AAPL, 3M and 4DMedical cards, and report the rate. A high count means a second prompt pass.
-Open: #65 (verdict: growth plays almost no role; the owner wants researched, plausible rules, no
-guessing). Follow-ups to file: sector medians in the read (they need their own check); an audit of the
+#65 is researched, with an impact check on 1250 production cards: growth decides 44 cards today
+(a decline blocks green); a cap for growth below the sector's lower quartile would turn 28 green
+cards yellow (e.g. Accenture) and the owner chose no new rule (B). #65 stays open for a later
+rule. Follow-ups to file: sector medians in the read (they need their own check); an audit of the
 catalogue text against ISO/IEC 11179-4 (thin glosses: net debt / EBITDA, free cash, working
 capital, current ratio scale); `card_copy.metric_gloss` calls a negative debt ratio net cash
 even when EBITDA is negative. The owner's three writing standards (ISO 24495-1,

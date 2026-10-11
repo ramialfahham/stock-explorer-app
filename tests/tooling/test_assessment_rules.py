@@ -298,7 +298,7 @@ def test_debt_to_equity_guard_ignores_a_missing_equity_value() -> None:
 # company_type == 'financial' spans a heterogeneous, multi-jurisdiction population (insurers,
 # asset managers, payment networks, exchanges, not only depository banks, across markets with
 # very different bank regulators) the data cannot distinguish "genuine distress" from "a payment
-# network mid-buyback" within -- see the comment above _verdict_financial for the full account,
+# network mid-buyback" within -- see the comment inside _evaluate_financial for the full account,
 # including why an earlier version of this guard forcing red was corrected in review.
 
 def test_statement_roe_guard_function_is_isolated_from_debt_to_equitys_shared_denominator() -> None:
@@ -354,7 +354,7 @@ def test_operating_statement_roe_guard_caps_a_negative_equity_card_at_yellow() -
 
 
 def test_operating_statement_roe_call_site_is_actually_wired(monkeypatch) -> None:
-    """Proves _verdict_operating's statement_roe_pct call site is genuinely routed through the
+    """Proves _evaluate_operating's statement_roe_pct call site is genuinely routed through the
     guard, not just that the shared guard function behaves correctly on its own (the gap the
     direct function test above does not close, and the verdict-level test above cannot close
     either, since debt_to_equity's own guard on the SAME stmt_stockholders_equity field fires
@@ -850,7 +850,7 @@ def test_system_prompt_requires_figures_short_sentences_and_digits() -> None:
 
 def test_system_prompt_carries_the_growth_direction() -> None:
     lowered = rules.READ_SYSTEM_PROMPT.lower()
-    assert "falling revenue counts against a company" in lowered
+    assert "falling revenue can stop a company being called healthy but never makes it red" in lowered
     assert "rising revenue does not make a company healthy" in lowered
 
 
@@ -1068,6 +1068,193 @@ def test_each_line_of_a_read_is_checked_for_a_figure() -> None:
     read = "Operating margin is 20.4%\nThe picture is fine overall"
     violations = rules.find_read_figure_violations(_OP_ROW, read)
     assert any("The picture is fine overall" in v for v in violations)
+
+
+# --- The rules' own reasons (verdict_why_lines) ------------------------------------------------
+
+
+def _golden_rows() -> list[dict]:
+    import csv
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "fixtures" / "real" / "golden_mart.csv"
+    rows = []
+    with path.open(encoding="utf-8", newline="") as handle:
+        records = list(csv.DictReader(handle))
+    for raw in records:
+        row: dict = {}
+        for key, value in raw.items():
+            try:
+                row[key] = float(value) if value not in ("", None) else None
+            except ValueError:
+                row[key] = value
+        rows.append(row)
+    return rows
+
+
+def _check_reasons_match_the_color(row: dict) -> None:
+    evaluation = rules.evaluate_verdict(row)
+    if evaluation.verdict == rules.VERDICT_RED:
+        assert evaluation.red_because and not evaluation.held_back_by
+        weak_core = tuple(a.field for a in evaluation.axes if a.role == "core" and a.band == "weak")
+        assert evaluation.red_because == weak_core
+    elif evaluation.verdict == rules.VERDICT_YELLOW:
+        assert evaluation.held_back_by and not evaluation.red_because
+    else:
+        assert not evaluation.held_back_by and not evaluation.red_because
+        assert all(a.band == "good" for a in evaluation.axes if a.role == "core")
+
+
+def test_the_reasons_are_consistent_with_the_color_on_every_real_shaped_card() -> None:
+    rows = _golden_rows()
+    assert len(rows) > 50
+    for row in rows:
+        _check_reasons_match_the_color(row)
+        lines = rules.verdict_why_lines(row)
+        assert lines and lines[-1].endswith(".")
+
+
+def test_the_reasons_match_the_color_across_a_grid_of_operating_cards() -> None:
+    import itertools
+
+    grid = itertools.product(
+        (-1.0, 1.0, 2.0, 4.0, None),  # net_debt_to_ebitda
+        (-5.0, 5.0, 15.0),  # ebit_margin_pct
+        (-1.0, 3.0, 8.0),  # fcf_margin_pct
+        (0.5, 1.5, 3.0),  # debt_to_equity
+        (0.3, 0.8, 1.2, 2.0),  # current_ratio_stmt
+        (-2.0, 5.0, 15.0),  # statement_roe_pct
+        (-3.0, 3.0),  # revenue_growth_yoy_pct
+        (-50.0, 100.0),  # stmt_stockholders_equity
+        (-10.0, 100.0),  # info_ebitda
+    )
+    for nd, em, fcf, de, cr, roe, growth, equity, ebitda in grid:
+        _check_reasons_match_the_color({
+            "company_type": "operating", "net_debt_to_ebitda": nd, "ebit_margin_pct": em,
+            "fcf_margin_pct": fcf, "debt_to_equity": de, "current_ratio_stmt": cr,
+            "statement_roe_pct": roe, "revenue_growth_yoy_pct": growth,
+            "stmt_stockholders_equity": equity, "info_ebitda": ebitda,
+            "stmt_free_cash_flow": 50.0, "working_capital": -20.0,
+        })
+
+
+def test_the_why_lines_for_the_3m_card_name_debt_to_equity_and_not_growth() -> None:
+    lines = rules.verdict_why_lines(_OP_ROW)
+    assert "- Debt / equity: weak" in lines
+    assert lines[-1] == "Held back from the top by: Debt / equity (weak)."
+    assert not any("Rev growth" in line for line in lines)
+
+
+def test_the_why_lines_for_a_red_card_name_what_made_it_red() -> None:
+    lines = rules.verdict_why_lines(_LIVE_4DX_ROW)
+    assert lines[-1].startswith("Placed at the bottom because of: Operating margin (TTM) (weak)")
+    assert "Rev growth" not in " ".join(lines)
+
+
+def test_the_why_lines_for_a_green_card_say_nothing_held_it_back() -> None:
+    lines = rules.verdict_why_lines(_LIVE_AAPL_ROW)
+    assert lines[-1].startswith("Every core figure is good")
+
+
+def test_a_falling_top_line_is_listed_and_named_as_holding_the_card_back() -> None:
+    row = {"company_type": "operating", "ebit_margin_pct": 20.0, "fcf_margin_pct": 8.0,
+           "net_debt_to_ebitda": 0.5, "revenue_growth_yoy_pct": -2.0}
+    lines = rules.verdict_why_lines(row)
+    assert "- Rev growth YoY (quarter): falling" in lines
+    assert lines[-1] == "Held back from the top by: Rev growth YoY (quarter) (falling)."
+
+
+def test_a_guard_or_relief_is_named_in_plain_words() -> None:
+    row = {"company_type": "operating", "ebit_margin_pct": 20.0, "fcf_margin_pct": 8.0,
+           "net_debt_to_ebitda": -0.5, "info_ebitda": -5.0, "debt_to_equity": 0.4,
+           "stmt_stockholders_equity": -1.0, "current_ratio_stmt": 0.8,
+           "stmt_free_cash_flow": 100.0, "working_capital": -50.0}
+    lines = rules.verdict_why_lines(row)
+    assert "- Net debt / EBITDA: not judged (EBITDA is zero or negative)" in lines
+    assert "- Debt / equity: weak (equity is zero or negative)" in lines
+    assert "- Current ratio: ok (free cash flow covers the short-term shortfall)" in lines
+
+
+def test_a_pre_revenue_card_with_no_runway_says_no_cash_burn_is_shown() -> None:
+    row = {"company_type": "pre_revenue", "net_cash": 1.0e9, "working_capital": 5.0e8, "cash_runway_months": None}
+    lines = rules.verdict_why_lines(row)
+    assert "- Cash runway: good (no cash burn is shown)" in lines
+
+
+def test_a_financial_cards_return_on_assets_is_named_once_when_it_holds_the_card_back() -> None:
+    row = {"company_type": "financial", "statement_roe_pct": 12.0, "net_margin_pct": 20.0, "roa_pct": 0.3}
+    lines = rules.verdict_why_lines(row)
+    assert lines[-1] == "Held back from the top by: Return on assets (ok)."
+
+
+def test_the_facts_message_carries_the_why_block_between_the_numbers_and_the_ask() -> None:
+    _system, user = rules.build_read_messages(_OP_ROW, rules.VERDICT_YELLOW)
+    header = "Why lines (how the rules reached the verdict; explain only with these; never state the verdict itself):"
+    assert header in user
+    assert user.index("Numbers for this company:") < user.index(header) < user.index("Write the 2-3 sentence read.")
+    assert "Held back from the top by: Debt / equity (weak)." in user
+
+
+def test_system_prompt_explains_the_verdict_only_with_the_why_lines() -> None:
+    prompt = rules.READ_SYSTEM_PROMPT
+    assert "The Why lines under the numbers say how the rules reached the verdict" in prompt
+    assert "give no other reason for the verdict" in prompt
+    assert "never makes it red" in prompt
+
+
+def test_the_closing_line_of_the_4dmedical_card_names_only_the_core_cause() -> None:
+    lines = rules.verdict_why_lines(_LIVE_4DX_ROW)
+    assert "- Current ratio: weak" in lines  # a weak supporting figure is listed ...
+    assert lines[-1] == "Placed at the bottom because of: Operating margin (TTM) (weak)."  # ... but is not a cause of red
+
+
+def test_a_weak_return_on_assets_is_named_once() -> None:
+    row = {"company_type": "financial", "statement_roe_pct": 12.0, "net_margin_pct": 20.0, "roa_pct": -0.5}
+    assert rules.verdict_why_lines(row)[-1] == "Held back from the top by: Return on assets (weak)."
+
+
+def test_pre_revenue_cards_get_reasons_that_match_their_rules() -> None:
+    red = {"company_type": "pre_revenue", "net_cash": -1.0e6, "working_capital": 5.0e5, "cash_runway_months": 30.0}
+    assert rules.verdict_why_lines(red)[-1] == "Placed at the bottom because of: Net cash (weak)."
+    yellow = {"company_type": "pre_revenue", "net_cash": 1.0e9, "working_capital": 1.0e8, "cash_runway_months": 18.0}
+    assert rules.verdict_why_lines(yellow)[-1] == "Held back from the top by: Cash runway (ok)."
+    green = {"company_type": "pre_revenue", "net_cash": 1.0e9, "working_capital": 1.0e8, "cash_runway_months": 30.0}
+    assert rules.verdict_why_lines(green)[-1] == "Every core figure is good, so nothing held it back."
+
+
+def test_the_reasons_are_consistent_with_the_color_across_financial_and_pre_revenue_grids() -> None:
+    import itertools
+
+    for roe, margin, roa, growth, equity in itertools.product(
+        (-3.0, 4.0, 12.0), (-2.0, 8.0, 20.0), (-0.5, 0.3, 1.0, None), (-2.0, 4.0), (-10.0, 100.0)
+    ):
+        _check_reasons_match_the_color({
+            "company_type": "financial", "statement_roe_pct": roe, "net_margin_pct": margin,
+            "roa_pct": roa, "revenue_growth_yoy_pct": growth, "stmt_stockholders_equity": equity,
+        })
+    for net_cash, working_capital, runway in itertools.product(
+        (-1.0e6, 1.0e9, None), (-1.0e6, 1.0e8, None), (6.0, 18.0, 30.0, None)
+    ):
+        _check_reasons_match_the_color({
+            "company_type": "pre_revenue", "net_cash": net_cash,
+            "working_capital": working_capital, "cash_runway_months": runway,
+        })
+
+
+def test_a_guard_note_that_changes_no_color_still_changes_the_input_hash() -> None:
+    """Debt / equity is weak either way, so the color holds; only the reason differs."""
+    row = {"company_type": "operating", "currency": "USD", "ebit_margin_pct": 20.0, "fcf_margin_pct": 8.0,
+           "net_debt_to_ebitda": 0.5, "debt_to_equity": 3.0, "stmt_stockholders_equity": 100.0}
+    flipped = {**row, "stmt_stockholders_equity": -100.0}
+    assert rules.compute_verdict(row) == rules.compute_verdict(flipped) == rules.VERDICT_YELLOW
+    verdict = rules.VERDICT_YELLOW
+    assert rules.compute_input_hash(row, verdict) != rules.compute_input_hash(flipped, verdict)
+
+
+def test_the_operating_margin_basis_is_part_of_the_input_hash() -> None:
+    row = {"company_type": "operating", "currency": "USD", "ebit_margin_pct": 20.0}
+    annual = {**row, "ebit_margin_basis": "annual_latest"}
+    assert rules.compute_input_hash(row, rules.VERDICT_YELLOW) != rules.compute_input_hash(annual, rules.VERDICT_YELLOW)
 
 
 # --- Structured output + hallucination guard (Gemini feedback points 3/4) ------------------
@@ -1335,17 +1522,6 @@ def test_system_prompt_tells_the_model_what_to_do_with_no_currency() -> None:
     system = rules.READ_SYSTEM_PROMPT.lower()
     assert "if there is no such line" in system
     assert "do not phrase it per unit of money at all" in system
-
-
-def test_system_prompt_bars_blaming_the_verdict_on_positive_growth() -> None:
-    """The verdict downgrades only on an actual decline (GROWTH_DECLINE_THRESHOLD_PCT is
-    0.0), so prose blaming the badge on positive growth supplies a reason the badge does not
-    contain, and re-establishes the two-sided axis the design forbids. It must NOT go further
-    and deny that a flat top line is a weakness at all: +0.2% is a real-terms decline."""
-    system = rules.READ_SYSTEM_PROMPT.lower()
-    assert "never give it as the reason the verdict is not green" in system
-    assert "describing a nearly flat top line accurately is fine" in system
-    assert "never a weakness" not in system
 
 
 def test_system_prompt_pins_the_growth_period_to_one_quarter() -> None:
@@ -1736,7 +1912,7 @@ def test_system_prompt_does_not_ask_for_the_verdict_in_the_read() -> None:
 
 def test_system_prompt_names_the_real_cause_of_a_red_or_yellow_verdict() -> None:
     """Falling revenue can only stop green: red comes from a loss, negative free cash flow,
-    heavy net debt, short runway, negative net cash or negative working capital (`_verdict_*` in this module)."""
+    heavy net debt, short runway, negative net cash or negative working capital."""
     system = rules.READ_SYSTEM_PROMPT.lower()
     assert "put what is strong first, if anything is" in system
     assert "if the verdict is red, the last sentence names the figure that is actually poor" in system
@@ -1774,7 +1950,7 @@ def test_the_verdict_is_given_to_the_model_for_its_hidden_field_only() -> None:
 def test_input_hash_version_is_pinned() -> None:
     """Changing it regenerates every stored read, one API call per card. Bump it on purpose
     and update this value in the same change."""
-    assert rules.INPUT_HASH_VERSION == "5a.5"
+    assert rules.INPUT_HASH_VERSION == "5a.6"
 
 
 def test_system_prompt_bars_the_bare_advice_words() -> None:
