@@ -46,6 +46,8 @@ models:
       **Source:** `yf_daily_prices.parquet` per market under `storage/raw/{market_code}/`.
       **Grain:** One row per (market_code, ticker, trading_date).
       **What:** Typed OHLCV history from yfinance download; not shown on discovery cards.
+      **Used by:** no model, export or card. It exists to check the raw price files (grain,
+      ingest timestamp).
     meta:
       owner: data
       domain: stock_cards
@@ -97,7 +99,8 @@ models:
       - name: ingested_at
         description: >
           ISO timestamp when this row's batch was fetched during ingestion; one value per
-          yfinance download call, not per row. Backs dbt source freshness on yf_daily_prices.
+          yfinance download call, not per row. The dbt source freshness on yf_daily_prices reads the
+          same column from the raw file.
         data_tests:
           - not_null
 
@@ -253,9 +256,10 @@ models:
       - name: stmt_free_cash_flow
         description: >
           Free Cash Flow from latest annual cashflow statement column.
-      - name: stmt_fiscal_period_end
+      - name: stmt_fiscal_period_end_date
         description: >
-          End date of the fiscal period column used for statement fields.
+          End date of the fiscal period column used for statement fields (raw column
+          `stmt_fiscal_period_end`).
       - name: stmt_currency
         description: >
           Currency on the financial statement object when provided by Yahoo.

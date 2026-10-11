@@ -30,6 +30,12 @@ Column conventions:
 - Surrogate keys: `_sk` suffix
 - Natural/source keys: `_id` suffix
 
+Names read outside dbt are exempt from the table above. The mart names (`mart_stock_cards`,
+`mart_stock_eligibility_gaps`) and every column a mart exposes, including the natural keys
+`ticker` and `market_code`, are read by the export, Supabase, the frontend and
+`scripts/check_eligibility_gaps.py`, and they keep their names. The table applies to every
+other name.
+
 ---
 
 ## 1.1. SQL Structure
@@ -204,7 +210,8 @@ in YAML for eligibility rules and metric definitions reused across models.
   `unit_tests`, or a singular test that `ref()`s the model).
 - Column-level `data_tests` supplement model tests; they do not replace them.
 - `staging`: `not_null` on grain keys + `dbt_utils.unique_combination_of_columns` on grain.
-- `base`: same grain discipline after unions; do not re-assert the same uniqueness if grain unchanged.
+- `base`: same grain discipline after unions; do not re-assert the same uniqueness if grain
+  unchanged, unless it is the model's only model-level test.
 - `core` / `intermediate`: grain tests plus `dbt_utils.expression_is_true` for business rules.
 - `marts`: consumer contract — grain, eligibility columns, metric ranges; singular tests for
   cross-model consistency (row counts, referential integrity).

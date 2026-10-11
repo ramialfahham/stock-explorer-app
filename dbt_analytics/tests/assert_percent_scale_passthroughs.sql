@@ -1,6 +1,14 @@
 -- Percent-scale guard for three Yahoo passthroughs (bands in docs/data_contract.md); dividends
--- are read raw because the model's fraction rescale (issue #10) would hide a units flip.
+-- are read raw because the model's fraction rescale would hide a units flip.
 with
+fundamentals as (
+    select * from {{ ref('fct_fundamentals_snapshot') }}
+),
+
+card_metrics as (
+    select * from {{ ref('int_stock__card_metrics') }}
+),
+
 metrics as (
     select
         market_code,
@@ -8,7 +16,7 @@ metrics as (
         0.5 as min_median_abs,
         50.0 as max_median_abs,
         info_dividend_yield as metric_value
-    from {{ ref('fct_fundamentals_snapshot') }}
+    from fundamentals
 
     union all
 
@@ -18,7 +26,7 @@ metrics as (
         1.0 as min_median_abs,
         100.0 as max_median_abs,
         revenue_growth_yoy_pct as metric_value
-    from {{ ref('int_stock__card_metrics') }}
+    from card_metrics
 
     union all
 
@@ -28,7 +36,7 @@ metrics as (
         1.0 as min_median_abs,
         200.0 as max_median_abs,
         roe_pct as metric_value
-    from {{ ref('int_stock__card_metrics') }}
+    from card_metrics
 ),
 
 populated as (

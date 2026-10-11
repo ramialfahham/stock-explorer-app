@@ -38,7 +38,7 @@ select
     info_founded_year,
     stmt_total_revenue,
     stmt_free_cash_flow,
-    stmt_fiscal_period_end,
+    stmt_fiscal_period_end_date,
     stmt_currency,
     qtr_operating_income_0,
     qtr_operating_income_1,

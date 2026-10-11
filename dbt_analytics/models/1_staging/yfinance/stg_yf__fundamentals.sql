@@ -30,7 +30,7 @@ renamed as (
         cast(s.info_founded_year as bigint) as info_founded_year,
         cast(s.stmt_total_revenue as double) as stmt_total_revenue,
         cast(s.stmt_free_cash_flow as double) as stmt_free_cash_flow,
-        cast(s.stmt_fiscal_period_end as date) as stmt_fiscal_period_end,
+        cast(s.stmt_fiscal_period_end as date) as stmt_fiscal_period_end_date,
         cast(s.stmt_currency as varchar) as stmt_currency,
         cast(s.qtr_operating_income_0 as double) as qtr_operating_income_0,
         cast(s.qtr_operating_income_1 as double) as qtr_operating_income_1,

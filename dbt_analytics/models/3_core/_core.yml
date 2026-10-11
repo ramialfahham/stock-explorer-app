@@ -196,7 +196,7 @@ models:
       - name: stmt_free_cash_flow
         description: >
           Latest annual Free Cash Flow for FCF margin numerator.
-      - name: stmt_fiscal_period_end
+      - name: stmt_fiscal_period_end_date
         description: >
           Fiscal period end date for the statement columns used.
       - name: stmt_currency

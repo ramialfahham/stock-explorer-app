@@ -194,6 +194,74 @@ def test_a_date_inside_a_migration_s_sql_comment_on_string_passes(tmp_path: Path
     assert find_violations(tmp_path) == []
 
 
+def test_a_dated_dbt_yaml_comment_fails(tmp_path: Path) -> None:
+    _write(tmp_path / "dbt_analytics" / "models" / "m.yml", "version: 2\n# fixed 2026-09-05\n")
+    violations = find_violations(tmp_path)
+    assert len(violations) == 1
+    assert "m.yml:2" in violations[0] and "date-stamp" in violations[0]
+
+
+def test_an_owner_decision_in_a_dbt_yaml_block_description_fails(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "dbt_analytics" / "seeds" / "s.yml",
+        "seeds:\n  - name: x\n    description: >\n      Corrections live in the model\n"
+        "      (2026-08-28 owner decision: not the seed).\n    config:\n      a: b\n",
+    )
+    violations = find_violations(tmp_path)
+    assert len(violations) == 1
+    assert "s.yml:3" in violations[0] and "in description" in violations[0]
+
+
+def test_a_dated_inline_dbt_yaml_description_fails(tmp_path: Path) -> None:
+    _write(tmp_path / "dbt_analytics" / "models" / "m.yml", "description: Fixed in MR !115\n")
+    assert len(find_violations(tmp_path)) == 1
+
+
+def test_a_dated_test_data_value_in_dbt_yaml_passes(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "dbt_analytics" / "models" / "u.yml",
+        'rows:\n  - {ticker: A, snapshot_date: "2026-01-01"}\n  - ticker: B  # a 2nd row\n',
+    )
+    assert find_violations(tmp_path) == []
+
+
+def test_a_hash_inside_a_quoted_yaml_value_is_not_a_comment(tmp_path: Path) -> None:
+    _write(tmp_path / "dbt_analytics" / "models" / "m.yml", 'name: "a #2026-01-01"\n')
+    assert find_violations(tmp_path) == []
+
+
+def test_yaml_outside_the_dbt_project_is_not_scanned(tmp_path: Path) -> None:
+    _write(tmp_path / "other" / "x.yml", "# fixed 2026-09-05\n")
+    assert find_violations(tmp_path) == []
+
+
+def test_the_allow_marker_exempts_a_dbt_yaml_comment(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "dbt_analytics" / "models" / "m.yml",
+        '# not "fixed 2026-09-05" narrative-check: allow\n',
+    )
+    assert find_violations(tmp_path) == []
+
+
+def test_a_dated_comment_right_after_a_block_description_fails(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "dbt_analytics" / "models" / "m.yml",
+        "columns:\n  - name: a\n    description: >\n      text\n# fixed 2026-09-05\n  - name: b\n",
+    )
+    violations = find_violations(tmp_path)
+    assert len(violations) == 1
+    assert "m.yml:5" in violations[0] and "in comment" in violations[0]
+
+
+def test_a_dated_fixture_value_after_a_block_description_passes(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "dbt_analytics" / "models" / "m.yml",
+        "columns:\n  - name: a\n    description: >\n      text\n    given:\n"
+        '      - {snapshot_date: "2026-01-01"}\n',
+    )
+    assert find_violations(tmp_path) == []
+
+
 def test_the_repo_tree_has_no_narrative_dates() -> None:
     violations = find_violations(REPO_ROOT)
     assert violations == [], "\n".join(violations)

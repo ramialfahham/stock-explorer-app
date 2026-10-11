@@ -202,7 +202,7 @@ metrics as (
                 and s.stmt_stockholders_equity != 0
                 then s.stmt_net_income_common / s.stmt_stockholders_equity * 100.0
         end as statement_roe_pct,
-        -- Yahoo sends a few dividendYield values as fractions (issue #10); values under 0.05 are
+        -- Yahoo sends a few dividendYield values as fractions; values under 0.05 are
         -- rescaled to percent and counted each run by assert_dividend_yield_suspects.
         case
             when s.info_dividend_yield < 0.05 then round(s.info_dividend_yield * 100.0, 4)

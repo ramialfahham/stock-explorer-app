@@ -3,13 +3,17 @@ with constituents as (
 ),
 
 fundamentals as (
+    select * from {{ ref('base_yf__fundamentals') }}
+),
+
+latest_fundamentals as (
     select
         market_code,
         ticker,
         info_long_name,
         info_sector,
         info_currency
-    from {{ ref('base_yf__fundamentals') }}
+    from fundamentals
     qualify row_number() over (
         partition by market_code, ticker
         order by snapshot_date desc
@@ -24,7 +28,7 @@ joined as (
         f.info_sector as sector,
         f.info_currency as currency
     from constituents as c
-    left join fundamentals as f
+    left join latest_fundamentals as f
         on c.market_code = f.market_code
         and c.ticker = f.ticker
 )

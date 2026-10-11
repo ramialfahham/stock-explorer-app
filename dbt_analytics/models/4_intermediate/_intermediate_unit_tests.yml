@@ -556,9 +556,7 @@ unit_tests:
           # unfiltered card-eligible count) but only 7 peers survive the filter for these two
           # metrics -- n_debt_to_equity/n_statement_roe_pct = 7 < peer_threshold (8), so
           # combined's per-metric gate must null both metrics out even though sector_peer_count
-          # itself clears 8. Before the per-metric gate (issue #24), this fixture's 7 clean
-          # values rendered anyway because the gate only checked the unfiltered
-          # sector_peer_count -- the exact defect this test now proves is fixed.
+          # itself clears 8.
           - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
@@ -637,11 +635,8 @@ unit_tests:
           # reporting the 4 metrics that gate operating eligibility (ebit_margin_pct/
           # revenue_growth_yoy_pct/net_debt_to_ebitda/fcf_margin_pct -- guaranteed non-null by
           # construction), but only 3 of the 8 report forward_pe, which no eligibility rule
-          # requires (int_stock__card_metrics.sql dropped it from both gates). Before the
-          # per-metric gate (issue #24), forward_pe's median/min/max rendered anyway because the
-          # gate only checked sector_peer_count -- the exact defect this test proves is fixed:
-          # n_forward_pe = 3 < peer_threshold nulls forward_pe out, while the fully-covered
-          # ebit_margin_pct still computes in the same sector.
+          # requires. n_forward_pe = 3 < peer_threshold nulls forward_pe out, while the
+          # fully-covered ebit_margin_pct still computes in the same sector.
           - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
           - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
           - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
@@ -841,7 +836,7 @@ unit_tests:
   - name: card_metrics_dividend_yield_pct_percent_passthrough
     # Mocked input pins the transform only; live scale: dbt_analytics/tests/assert_percent_scale_passthroughs.sql.
     # A percent-scale value passes through; a fraction-scale value (below 0.05) is scaled by 100;
-    # 0.05 itself passes through, the boundary being "below", not "at" (issue #10).
+    # 0.05 itself passes through, the boundary being "below", not "at".
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -859,15 +854,10 @@ unit_tests:
         - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
         - {market_code: us_sp500, ticker: AVB, dividend_yield_pct: 3.87}
         - {market_code: us_sp500, ticker: EDGE, dividend_yield_pct: 0.05}
-  - name: card_metrics_eligibility_no_longer_needs_forward_pe
-    # The headline effect of the change, pinned. Before it, an operating or financial
-    # company with a null forward_pe was INELIGIBLE and never reached a card; now it qualifies on
-    # the remaining metrics alone. Nothing else in the suite covers this: the CI fixture set has
-    # forward_pe populated on every row, so the eligibility change passed a green build without a
-    # single row exercising the difference. OPNOPE is operating with no forward P/E, FINNOPE is a
-    # bank with none; both must now be eligible. PRENOCAP is the pre-revenue half of the same
-    # story -- no market cap at all, which used to make net_cash_to_market_cap null and the card
-    # ineligible, and which net_cash does not need.
+  - name: card_metrics_eligibility_without_forward_pe
+    # A null forward_pe does not block eligibility: OPNOPE is operating with no forward P/E and
+    # FINNOPE is a bank with none, and both qualify on the remaining metrics. PRENOCAP is
+    # pre-revenue with no market cap, which net_cash does not need.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -890,10 +880,7 @@ unit_tests:
     # (has cash + debt). PREOK has both -> eligible; PRENO lacks cash -> net_cash null -> ineligible.
     # Both classify pre_revenue (Healthcare, revenue 0).
     #
-    # Changed with the switch from net_cash_to_market_cap to net_cash. PRENO used to be the
-    # missing-MARKET-CAP case, because the old ratio divided by it. It no longer does, so a missing
-    # market cap cannot make a pre-revenue card ineligible any more -- that is the intended effect of
-    # taking the share price out, and it means MORE pre-revenue companies qualify than before.
+    # A missing market cap does not block a pre-revenue card; only net_cash gates it.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -909,7 +896,7 @@ unit_tests:
         - {market_code: us_sp500, ticker: PREOK, company_type: pre_revenue, is_card_eligible: true}
         - {market_code: us_sp500, ticker: PRENO, company_type: pre_revenue, is_card_eligible: false}
   - name: card_metrics_ratio_reclassified_pre_revenue_is_eligible
-    # A company reclassified pre_revenue via the NEW ratio branch (revenue positive but < 0.1% of
+    # A company reclassified pre_revenue via the ratio branch (revenue positive but < 0.1% of
     # market cap -- see card_metrics_company_type_classification for the classification pin alone)
     # must flip to the pre_revenue eligibility branch correctly too, exactly like a company that
     # classifies pre_revenue via the original revenue <= 0 branch above. DYL-like: revenue $1,000
