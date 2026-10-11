@@ -755,7 +755,7 @@ def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
     system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
     assert system == rules.READ_SYSTEM_PROMPT
     assert "never give investment advice" in system.lower()
-    # verdict + its plain meaning are stated for the model to land on
+    # verdict + its plain meaning are given to the model as context for its hidden field
     assert "green" in user
     assert rules.VERDICT_MEANING[rules.VERDICT_GREEN] in user
     # every present operating metric appears with its label
@@ -1414,23 +1414,18 @@ def test_find_read_style_violations_reports_every_violation_found_not_just_the_f
     assert any("investment-advice language" in v for v in violations)
 
 
-# --- verdict_meaning_violation: replaced find_read_style_violations' old regex-based
-# verdict-ending check (which only matched one fixed sentence shape, "...healthy ON THESE
-# FIGURES", and rejected real, fully compliant reads that closed with the same meaning in a
-# different word order -- confirmed live against real production data). The model now states its own
-# classification as a separate, enum-constrained tool field (verdict_meaning), checked here
-# against the verdict already decided and against the read text actually containing it.
+# --- verdict_meaning_violation: the model reports its own overall classification in a separate
+# enum-constrained field the reader never sees; it must equal the verdict the rules decided.
+# The read text is not inspected.
 
 
-def test_verdict_meaning_violation_accepts_a_matching_report() -> None:
-    read = "Margins are strong and debt is low, which is financially healthy on these figures."
+def test_verdict_meaning_violation_accepts_a_matching_report_whatever_the_text_says() -> None:
+    read = (
+        "It keeps 16.9% of its sales as operating profit. Its debt is light, "
+        "less than half a year's earnings."
+    )
     assert rules.verdict_meaning_violation("green", read, "healthy") is None
-
-
-def test_verdict_meaning_violation_accepts_the_leading_word_order() -> None:
-    # The exact real-world case that broke the old regex: the model is free to lead with
-    # the anchor phrase instead of trailing it, as long as the reported field is honest.
-    read = "Margins are thin. These figures paint a picture of a financially fragile company."
+    assert rules.verdict_meaning_violation("yellow", read, "mixed") is None
     assert rules.verdict_meaning_violation("red", read, "fragile") is None
 
 
@@ -1438,64 +1433,63 @@ def test_verdict_meaning_violation_catches_a_mismatch_against_the_actual_verdict
     # The verdict is decided by deterministic rules, never by the model -- a read that
     # reports a DIFFERENT meaning than the verdict it was actually given is a real problem
     # (its content has drifted from the badge it will be shown under), not a false positive.
-    read = "Margins are strong and debt is low, financially healthy on these figures."
+    read = "Margins are strong and debt is low."
     violation = rules.verdict_meaning_violation("red", read, "healthy")
     assert violation is not None
     assert "does not match the verdict" in violation
 
 
-def test_verdict_meaning_violation_catches_a_reported_word_missing_from_the_text() -> None:
-    # The structured field alone is not trusted -- it must correspond to something the
-    # reader actually sees in the prose, not just an internally consistent self-report.
-    # (Avoids "strong" here since it is now an accepted healthy-synonym -- see below.)
-    read = "Margins are thin and debt is high."
-    violation = rules.verdict_meaning_violation("green", read, "healthy")
-    assert violation is not None
-    assert "does not actually appear in the read text" in violation
+def test_verdict_meaning_violation_rejects_an_unknown_verdict() -> None:
+    assert rules.verdict_meaning_violation("purple", "Any text.", "healthy") is not None
 
 
-# --- Issue #22: a production run found the canonical-word-only check rejected compliant
-# reads that expressed the same meaning with a different word (4 of 10 failures in one run).
-# VERDICT_MEANING_SYNONYMS widens the second check to a small, fixed word list.
+def test_system_prompt_does_not_ask_for_the_verdict_in_the_read() -> None:
+    """The badge shows the verdict, and the read used to close by repeating it, so one bullet
+    in three was a duplicate. The read states facts and what they mean."""
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "none of them states or restates the verdict" in system
+    assert "do not state the verdict or say it again in other words" in system
+    assert not re.search(r"\bend(?:ing)? on (?:what )?the verdict", system)
 
 
-def test_verdict_meaning_violation_accepts_a_healthy_synonym() -> None:
-    read = "Margins are strong and debt is low, which is a solid position on these figures."
-    assert rules.verdict_meaning_violation("green", read, "healthy") is None
+def test_system_prompt_names_the_real_cause_of_a_red_or_yellow_verdict() -> None:
+    """Falling revenue can only stop green: red comes from a loss, negative free cash flow,
+    heavy net debt, short runway, negative net cash or negative working capital (`_verdict_*` in this module)."""
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "put what is strong first, if anything is" in system
+    assert "if the verdict is red, the last sentence names the figure that is actually poor" in system
+    assert "falling revenue alone never makes a company red" in system
+    assert "negative net cash meaning more borrowed than held in cash" in system
+    assert "negative working capital" in system
+    assert "or that a measure could not be worked out" in system
+    assert "never invent a weakness the numbers do not show" in system
 
 
-def test_verdict_meaning_violation_accepts_a_mixed_synonym() -> None:
-    read = "Margins are thin but cash is stable, an uneven picture on these figures."
-    assert rules.verdict_meaning_violation("yellow", read, "mixed") is None
+def test_system_prompt_keeps_the_financial_limit_inside_the_sentences() -> None:
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "a financial company's read still states the limit" in system
+    assert "no sentence needs a caveat" not in system
 
 
-def test_verdict_meaning_violation_accepts_a_fragile_synonym() -> None:
-    read = "Debt is high and cash is falling, a strained position on these figures."
-    assert rules.verdict_meaning_violation("red", read, "fragile") is None
+def test_system_prompt_bars_calling_green_fragile_or_red_healthy() -> None:
+    system = rules.READ_SYSTEM_PROMPT.lower()
+    assert "never call a green company fragile or a red one healthy" in system
 
 
-def test_verdict_meaning_violation_still_rejects_an_unlisted_near_miss_word() -> None:
-    # "promising" is a plausible near-miss a model might reach for, but it is not on the
-    # approved healthy-synonym list -- the widened check must still reject it.
-    read = "Margins are improving, a promising direction on these figures."
-    violation = rules.verdict_meaning_violation("green", read, "healthy")
-    assert violation is not None
-    assert "does not actually appear in the read text" in violation
+def test_verdict_meaning_field_is_described_as_hidden() -> None:
+    description = rules.READ_TOOL_SCHEMA["input_schema"]["properties"]["verdict_meaning"][
+        "description"
+    ]
+    assert "never shown to the reader" in description.lower()
 
 
-def test_verdict_meaning_violation_rejects_a_synonym_as_a_bare_substring() -> None:
-    # "solid" is an accepted healthy-synonym, but "consolidated" is ordinary financial
-    # vocabulary unrelated to health -- a plain substring check would wrongly accept this.
-    read = "Consolidated revenue held steady this quarter."
-    violation = rules.verdict_meaning_violation("green", read, "healthy")
-    assert violation is not None
-    assert "does not actually appear in the read text" in violation
+def test_the_verdict_is_given_to_the_model_for_its_hidden_field_only() -> None:
+    row = {"company_type": "operating", "ebit_margin_pct": 20.0}
+    _system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
+    assert "for your verdict_meaning field only; never write it in the read" in user
 
 
-def test_verdict_meaning_violation_rejects_a_fragile_synonym_as_a_bare_substring() -> None:
-    # "strained" is an accepted fragile-synonym, but "constrained"/"restrained" are ordinary
-    # words that don't themselves assert fragility.
-    read = "Spending remains constrained while cash reserves are restrained by covenants."
-    violation = rules.verdict_meaning_violation("red", read, "fragile")
-    assert violation is not None
-    assert "does not actually appear in the read text" in violation
+def test_input_hash_version_is_pinned() -> None:
+    """Changing it regenerates every stored read, one API call per card. Bump it on purpose
+    and update this value in the same change."""
+    assert rules.INPUT_HASH_VERSION == "5a.4"

@@ -688,8 +688,8 @@ and `roic` (see migration `002_fundamentals_mart.sql`).
 AI **health assessment** per card, written by `scripts/generate_assessments.py` after the mart export
 (scheduled pipeline). Educational only -- **not** investment advice. It writes the deterministic
 verdict + `input_hash`, then fills `ai_read` / `read_model` with a **Claude Haiku**
-(`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and ends on the verdict's
-meaning -- regenerated only when `input_hash` changes or `ai_read` is null. The card renders it.
+(`claude-haiku-4-5`) prose read that reasons only from the card's own numbers and is told to state facts, not the
+verdict -- regenerated only when `input_hash` changes or `ai_read` is null. The card renders it.
 The write is `_upsert_records()`, batched **by each record's exact set of present keys**, never
 a single upsert of the whole batch -- PostgREST computes `columns` as the union of keys across
 every record in ONE call, so a "carried" record (omits `ai_read`/`read_model` to keep the
@@ -720,16 +720,14 @@ cross-check, not an LLM judge. It catches the model stating a number that does n
 card's data, not an unsupported qualitative claim that cites no wrong number (an LLM-judge second
 pass would catch that too, at roughly double the cost; not built here). Any mismatch, unknown
 label, or malformed tool response fails exactly like an API exception already does: `ai_read` /
-`read_model` stay absent, and the existing regenerate-on-`input_hash`-change path picks the card
-up again next run. No retry, no separate failure state.
+`read_model` are cleared (absent for a new card) and the card is retried next scheduled run (below).
 
 A deterministic style guard (`find_read_style_violations`, same file) runs after the numeric
 guard and checks a subset of the system prompt's own rules that a plain string/regex check can
 enforce without semantic judgment: no em/en-dash, no exclamation marks or emoji, no
 investment-advice language, none of the prompt's own named AI-tell phrases, no "this
-year"/"over the year" about growth, and the read must end on the verdict's meaning. Any
-violation fails exactly the same way the numeric guard does -- fail closed, self-heals next
-`input_hash` change, no retry.
+year"/"over the year" about growth. A violation fails the same way. `verdict_meaning_violation` matches the model's hidden
+classification to the rules' verdict; only the prompt keeps the read from stating the verdict.
 
 **The whole health block is withheld when the assessment's `snapshot_date` differs from the
 card's** -- verdict and read together, with no placeholder; the financial caveat is not in

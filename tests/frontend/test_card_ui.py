@@ -496,17 +496,16 @@ def test_ai_label_heads_the_prose_not_the_rule_computed_badge() -> None:
     )
 
 
-def test_badge_labels_match_the_words_the_model_is_told_to_end_on() -> None:
-    """The badge and the prose must not contradict each other. VERDICT_MEANING is what
-    the model is told the verdict means, and the prompt tells it to end on that wording;
-    if the badge says one word and the paragraph under it lands on another, the card
-    argues with itself. Pins the owner-chosen set (§6)."""
+def test_badge_labels_match_the_meaning_the_model_classifies_against() -> None:
+    """VERDICT_MEANING is what the model is told the verdict means, and its hidden
+    classification is checked against it. If the badge says one word and that meaning another,
+    the card and the check disagree. Pins the owner-chosen set (§6)."""
     assert VERDICT_BADGE_LABEL == {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
     for token, badge in VERDICT_BADGE_LABEL.items():
         assert badge.lower() in VERDICT_MEANING[token].lower(), (
             f"badge {badge!r} for {token!r} does not appear in the model-facing meaning "
-            f"{VERDICT_MEANING[token]!r} — the prose would end on a different word than "
-            f"the badge shows."
+            f"{VERDICT_MEANING[token]!r}, so the hidden classification would differ from "
+            f"the badge."
         )
 
 
