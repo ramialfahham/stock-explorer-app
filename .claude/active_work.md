@@ -13,12 +13,13 @@ one or two lines and let git and the MR keep the detail._
 
 ## In flight
 
-**Start here (2026-10-10).** The small-fix list, #44-#47, #53 and #54 are merged (!234-!249).
-The owner delegated #47's spec-versus-code calls to the agent ("act as the expert"); the FE-1
-exception (company dedupe stays in the display layer) is the owner's answer A, recorded as
-criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57 (`importance_tier`,
-`basis_column`: no production reader), #58 (company-identity follow-ups, two owner calls).
-No open MRs.
+**Start here (2026-10-11).** The small-fix list, #44-#47, #53 and #54 are merged (!234-!249),
+and so are two AI-read changes: facts only, no closing verdict sentence (!251), and no buy,
+sell or price words (!252). The owner delegated #47's spec-versus-code calls to the agent ("act
+as the expert"); the FE-1 exception (company dedupe stays in the display layer) is the owner's
+answer A, recorded as criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
+(`importance_tier`, `basis_column`: no production reader), #58 (company-identity follow-ups).
+No open MRs. Next session: take #48.
 
 **Next: #48-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
@@ -33,13 +34,16 @@ fixture `manifest.json` through one atomic-write helper (recommended: both); the
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
 criteria v3, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
 still name the removed handover archives; should `verify_quality_audit.py` name NOT AUDITED
-areas on the console and exit non-zero.
+areas on the console and exit non-zero; #58's two calls (a home-market rule for the tie-break,
+`business_summary` in the deck fetch); whether to add a check that ties the AI read's text to
+the verdict (a new mechanism; the prompt alone keeps it from stating the verdict).
 
 **This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
 (`WinError 4551`); a hook from a remote repo needs `entry: python -m ...`
 (`test_precommit_config.py` enforces it for pre-commit-hooks). `equity-analyst-reviewer`
 does not load (frontmatter, #48); until fixed, run its role file through a general-purpose
-agent and say so in `review.md`.
+agent and say so in `review.md`. The local `.env` has no `SUPABASE_ANON_KEY` and listing `.env`
+is blocked by permissions; a read-only production query needs the owner to supply the key.
 
 **Merged, no action:** !220/!221 clone-and-continue; !224 review gate as a pre-commit hook
 (follow-up #29); !225 converging review rounds (follow-up #31); !228 README product-first;
@@ -53,20 +57,20 @@ with the six new markets, the raw archive, the class-share fix and the facts-onl
 Eligible cards: fi 24, se 30, dk 25, no 24, ca 59, it 40, ch 20 (at the warn line); 1241 in
 total. Raw archive (!226, !227): 45 files uploaded, job passed (open, owner's: #33, retention
 near the 1 GB quota). Reads: 223 generated, 1005 carried, 13 rejected, all by the advice guard
-on "sells" or "selling" in a business description; the prompt now bars buy, sell and price words (owner
-approved). `INPUT_HASH_VERSION` not bumped, so an older read changes only when its card's
+on "sells" or "selling" in a business description; the prompt now bars buy, sell and price
+words (!252), so the Oct 15 run should retry those 13 without rejecting them. `INPUT_HASH_VERSION` not bumped, so an older read changes only when its card's
 numbers, display currency or company type change, or it was rejected. **Not yet checked (needs a read-only production query,
 owner approval each time; the local `.env` has no `SUPABASE_ANON_KEY`):** a few new read
 texts, the BRK-B, BF-B and BT-A.L cards, and that Kojamo (KOJAMO.HE) and Golden Ocean (GOGL.OL)
-dropped out. The scheduled Oct 15 run still happens.
+dropped out. The scheduled Oct 15 run still happens. To run production on demand the owner
+asks explicitly: `glab api -X POST projects/rami.al-fahham%2Fstock-explorer-app/pipeline_schedules/4404666/play`
+(about 45 minutes, spends AI calls), then read the `generate_assessments` lines of the job log.
 
 **Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads through
 ingestion and dbt against a golden mart. Open: #40.
 
-**Issue #24 CLOSED, MERGED (!209).** `int_stock__sector_benchmarks.sql`'s benchmark
-aggregates were gated on `sector_peer_count >= 8` (peer group size), not on how many
-peers had a non-null value for the specific metric -- fixed with a per-metric
-`n_<metric>` count each metric gates on instead.
+**Issues #22-#24 CLOSED (!202, !209, !210):** verdict-meaning synonyms; per-metric benchmark
+gate `n_<metric>` in `int_stock__sector_benchmarks.sql`; the `sector_*` column docs.
 
 **Git push auth flakiness:** if it recurs, ask the owner; don't touch the credential store.
 
