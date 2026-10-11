@@ -341,7 +341,7 @@ def test_metrics_for_card_pre_revenue_omits_operating_and_financial_metrics() ->
 # for pre_revenue -- each is a CORE input to that type's own verdict rule in
 # scripts/assessment_rules.py, not just any input of any weight. An earlier version used
 # Return on equity for operating too, but that metric is only a tie-breaking supporting axis
-# for _verdict_operating, not one of the three axes that actually decide red/green -- caught
+# for _evaluate_operating, not one of the three axes that actually decide red/green -- caught
 # by equity-analyst-reviewer round 5, corrected before merge.
 def test_lead_metric_for_row_operating_is_operating_margin() -> None:
     assert lead_metric_for_row(_full_card("operating")) == ("Operating margin (TTM)", "1.0%")

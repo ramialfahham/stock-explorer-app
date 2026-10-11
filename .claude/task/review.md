@@ -1,61 +1,65 @@
 # Review
 
-diff_sha256: 9a2b7c0a7bbce427b652137e9ed4535c62ed3e40e89b24d5ad49152dbe425294
-rounds: 3
+diff_sha256: 1550761dd894c8c7b16d39ef51e9e425b89117cab644e0187c9d019173ec1241
+rounds: 2
 
-Grounded AI read (owner-reported live bug). Round 1 (tree ded58fc): scope-auditor, platform-reviewer
-and equity-analyst-reviewer all FAIL: a currency check that rejected "100 SEK", a fraction check
-that rejected "the third quarter", a false "net cash" line for negative EBITDA, thin glosses with the
-rule "explain only with the Meaning line", and handover items removed. Round 2 (tree cbd1734): equity
-and platform PASS, scope FAIL (hyphenated fractions slipped through; the Meaning lines differed from
-the card without recorded owner authority; a budget figure; two open items dropped from the handover).
-Round 3 (tree cb5bf11, the cap): equity and platform PASS, scope FAIL on two regex defects of the
-round-3 delta (a lookbehind on the euro, pound and yen signs let "C€" through; "the second-half of
-the year" was rejected). Both are fixed in code with tests, along with the auditor's wording fixes
-and the platform reviewer's boundary tests; that last delta was not re-reviewed, because the cap
-allows no round 4. The owner picks the exit below.
+The AI read gets the rules' own reasons for the verdict (#65 follow-on; no verdict rule changed). Round 1
+(tree 93c5b24): scope-auditor, platform-reviewer and equity-analyst-reviewer all FAIL: "the company is not
+burning cash" overstated a missing runway; the reasons were not in the input hash, so a stored read could
+quote a stale reason; four mutants survived the tests (the ROA dedupe, the core-only red cause, the
+pre-revenue reasons, the weak core axes); a negative prompt assertion broke the done_when search; the
+header and growth line differed from the wording first shown to the owner. Round 2 (tree 889ecf9, delta
+only): all three PASS. Wording fixes applied after the PASS verdicts, no round 3: the green closing line
+says "no falling revenue is shown" (a missing growth value counts as not falling); the hash covers only an
+operating card's annual-margin flag; docs describe the new hash recipe and the no-burn note; stale
+function names and hash comments repointed; a test renamed to say what it checks.
+equity-analyst-reviewer's remaining follow-ups ("weak" for a guard-driven band reads as a verdict on the
+cause) are declared in the contract and filed with #66.
 
-Coordinator evidence: `pytest tests` 1334 passed; `scripts/bootstrap.py --verify` passes (dbt build
-149 tests); budget, narrative-date and em-dash checks pass. The rejection rate of the new checks is
-unknown until the production run (zero extra spend); it is counted from the job log afterwards.
+Coordinator evidence:
+- Mutation checks, file restored after each: dropping the ROA dedupe, the core-only red filter, a
+  pre-revenue axis role and the reasons in the hash each fail 1 to 4 tests.
+- `pytest tests` 1350 passed; `scripts/bootstrap.py --verify` passes (dbt build 149 tests); budget,
+  narrative-date and em-dash checks pass. Every existing verdict test passes unchanged.
+- No band, threshold or color changed. Impact check behind the #65 decision: production 1250 cards, growth
+  decides 44; a growth cap would move 28 green cards to yellow; the owner chose no new rule.
 
-follow_ups: filed as issue #66 (residual guard gaps; the net-cash line on the card face; sector
-medians; catalogue audit against ISO/IEC 11179-4) and #65 (verdict: growth plays almost no role).
+follow_ups: #66 (residual guard gaps, plus the items below) and #65 (open for any later growth rule):
+reword guard-driven "weak" bands; a metric absent from the numbers list can still be named; the card face's
+net-cash line; `build_read_messages` takes the verdict and the row separately.
 
 ## Owner answers
 
-CPO ANSWER: commit what is proven and file the rest. The owner answered "commit and push it" to the
-round-3 exit question; the remaining scope-auditor FAIL (two regex defects, fixed with tests after the
-verdict and not re-reviewed because of the cap) and the other leftovers go to follow-up issue #66.
-Earlier chat answers: the AI feature stays; digits for figures; regenerate every read once;
-deterministic rejection with no retry; the catalogue is the only source of meaning; the three writing
-standards; the prompt wording as shown; the one Meaning difference from the card (answer A); growth
-keeps its direction cue; budget 67000.
+CPO ANSWER: acknowledged. The owner answered "A, commit and push" to the question listing the block header,
+the growth line label, the closing-line wording, "no cash burn is shown", the hash change, three extra
+comment and doc files in scope and the data contract budget 67000 to 68100. No FAIL stands at round 2.
+Earlier chat answers: tell the AI the real reasons (yes); no new growth rule (B). Follow-ups: #66, #65.
 
 ## scope-auditor
 
-VERDICT: FAIL
-reviewed_tree: cb5bf116e8e41628b0b1b08e778576d24e2e19c1
+VERDICT: PASS
+reviewed_tree: 889ecf923673723e3467d3b1caae2af5bb2ab23c
 risks_checked:
-- Round-2 items (fractions with a hyphen, the Meaning parity, the budget, the handover items) confirmed resolved.
-- Two defects in the regex the delta changed: euro, pound and yen signs without an amount passed after the lookbehind; hyphenated "second-half", "last-half", "latter-half" time phrases were rejected.
-wording_fixes: applied. Both defects fixed after the verdict, with tests; not re-reviewed (cap).
+- No band, threshold or color changed; every `_evaluate_*` body keeps its thresholds.
+- The changed header, growth label and closing lines are disclosed and match the signed prompt bullet.
+- Scope additions are comment and doc pointers.
+wording_fixes: applied.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: cb5bf116e8e41628b0b1b08e778576d24e2e19c1
+reviewed_tree: 889ecf923673723e3467d3b1caae2af5bb2ab23c
 risks_checked:
-- Fraction and currency regexes traced against every contract example; lookbehinds are fixed width.
-- Growth cue restored and the parity test equals the card for every field; one remaining difference, pinned.
-- Newline test now pins the split; budgets fit.
+- The four surviving mutants are now pinned by exact-line and invariant tests.
+- The hash stays deterministic and the existing hash tests still hold.
+- The dead wrappers are gone and `normalize_company_type` is intact.
 wording_fixes: applied.
 
 ## equity-analyst-reviewer
 
 VERDICT: PASS
-reviewed_tree: cb5bf116e8e41628b0b1b08e778576d24e2e19c1
+reviewed_tree: 889ecf923673723e3467d3b1caae2af5bb2ab23c
 risks_checked:
-- The restored growth cue does not contradict the rule that growth never explains the verdict; both are pinned by tests.
-- The data-contract paragraph matches the code, with one difference from the card gloss.
+- "no cash burn is shown" is accurate for every null-runway case.
+- The data_contract paragraph matches the code; the remaining gaps are declared.
 wording_fixes: applied.

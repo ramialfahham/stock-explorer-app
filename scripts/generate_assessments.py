@@ -73,12 +73,12 @@ ASSESSMENT_INPUT_COLUMNS = [
     "snapshot_date",
     # Verdict-computation signals, not displayed metrics -- deliberately NOT routed through
     # INPUT_FIELDS_BY_TYPE (that set is specifically "the full displayed set per type" per its
-    # own docstring). Feed _verdict_operating's two sign-inversion guards: info_ebitda tells
+    # own docstring). Feed _evaluate_operating's two sign-inversion guards: info_ebitda tells
     # genuine net cash apart from a ratio flipped by negative EBITDA; stmt_stockholders_equity
     # tells genuine low leverage apart from a ratio flipped by negative equity, checked directly
     # rather than inferred from debt_to_equity's own sign (unreliable when total debt is exactly
-    # zero). Neither is hashed separately since compute_input_hash already hashes the computed
-    # verdict itself, and a verdict either guard changes already moves it.
+    # zero). Neither is hashed as a raw value; each guard's effect reaches compute_input_hash
+    # through the rules' reasons.
     "info_ebitda",
     "stmt_stockholders_equity",
     # Feeds current_ratio_stmt's joint-liquidity-evaluation relief: a real dollar comparison of
@@ -88,7 +88,8 @@ ASSESSMENT_INPUT_COLUMNS = [
     # it regardless of company_type (the mart computes it unconditionally).
     "stmt_free_cash_flow",
     # Names operating margin the way the card face does on this row ("(TTM)" or "(annual)");
-    # see assessment_rules.read_metric_label. Not a number, so not hashed.
+    # see assessment_rules.read_metric_label. Not a number; compute_input_hash hashes whether it
+    # is the annual basis, so a basis change regenerates an operating card's read.
     "ebit_margin_basis",
     *_METRIC_COLUMNS,
 ]

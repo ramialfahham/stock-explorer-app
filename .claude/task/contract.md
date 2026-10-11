@@ -3,94 +3,74 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Bug reported by the owner on live cards (AAPL, 3M, 4DMedical): the AI read invents
-  purposes ("to fund growth"), ends with a verdict sentence the prompt already bars, says "one third"
-  for figures, and writes "A$" with no amount. Causes: the prompt gives the model hand-written
-  glosses and never the catalogue's text; it says "don't recite every number back"; nothing requires
-  a figure in a sentence or limits its length; and a stored read regenerates only when `input_hash`
-  changes (2026-10-11 log: `read carried for us_sp500/AAPL (unchanged)`).
-
-standards: The owner's writing standards (`football-data-pipeline/docs/working_agreement.md` section
-  9): ISO 24495-1 plain language; ISO/IEC 11179-4 (a definition says what the thing is, no rationale);
-  ASD-STE100 (one word per meaning, one topic per sentence, active voice, 25 words in a description). Applied:
-  the model gets only definition-style catalogue text (`gloss`, `applicability`), never
-  `interpretation`; the prompt follows the STE rules; code checks sentence length.
+objective: Refs #65 (the growth research) and the owner's rule "no hallucinated reasons". The AI read
+  is told the verdict color but not why the rules chose it, so it guesses reasons (3M: "mixed because
+  revenue is barely growing"; the rules said debt / equity 2.68 is weak). A prompt sentence ("never
+  give positive growth as the reason") patches one guess and duplicates verdict logic in prose. The
+  fix: the model is given the rules' own reasons and may explain the verdict only with them.
+  The verdict rules do not change: the owner chose no new growth rule after the research and an
+  impact check on 1250 production cards.
 
 scope_paths:
   - scripts/assessment_rules.py
+  - tests/tooling/test_assessment_rules.py
+  - tests/tooling/test_generate_assessments.py
   - scripts/generate_assessments.py
   - docs/data_contract.md
   - docs/context_budget.yml
-  - tests/tooling/test_assessment_rules.py
-  - tests/tooling/test_generate_assessments.py
+  - docs/ui/discover_list.md
+  - tests/frontend/test_card_copy.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Answered by the owner in chat: the AI feature stays; figures in digits; one-time
-  regeneration by bumping `INPUT_HASH_VERSION`; deterministic rejection, NO retry, no extra API call;
-  the catalogue is the only source of meaning; the three standards apply; the prompt wording below
-  (approved as shown, "go ahead"); answer A: the facts block differs from the card face in one
-  place (below) and a follow-up fixes the card; growth keeps its direction cue (restored). `docs/data_contract.md` budget 65500 to 67000 for
-  the new paragraph (reason in the MR). No seed, frontend, export or dbt change.
+decisions_reserved: Answered by the owner in chat: yes, tell the AI the real reasons; no new growth
+  rule (B). The prompt wording below is owner-signed content (section 6): it takes effect on the
+  owner's "go". No verdict band, threshold or color changes; no seed, frontend, export or dbt change.
+  `docs/data_contract.md` budget 67000 to 68100 for the new paragraphs (reason in the MR).
 
 changes:
-  - Facts block: per metric `- {label}: {value}`, `  Meaning: {gloss + direction cue}`, `  Limit:
-    {applicability}`, from `frontend/metrics.json` (kept equal to the seed by the existing lock).
-    `read_metric_meaning` mirrors `frontend/card_copy.py` `metric_gloss`, pinned equal by a test,
-    except: a negative debt ratio with non-positive EBITDA is not called net cash. `gloss` leaves
-    `READ_METRIC_BRIEF`.
-  - Prompt, replacing "Interpret, don't list...": (1) "Write short sentences. Each sentence has one
-    topic, is in the active voice, and has at most 25 words. Each sentence states one of the numbers
-    below in digits, exactly as it appears (for example 24.0%), and says what it means in plain
-    words, using the wording of that number's Meaning line. Use one word for one thing: call a number
-    by the name it has in the list, every time. Pick the 2 or 3 numbers that most shape the picture."
-    (2) "Explain a number with the Meaning and Limit lines given for it under the numbers list, and
-    say any finance term in plain words. Use a Limit line only when it applies to this company. Never
-    say why the company has a number, how it got there, what it plans, or what the company can or
-    cannot do. Write in words, never the symbols ≈, → or ÷." (3) "Write every number in digits, never as
-    a fraction or a phrase in words ("one third", "a quarter of", "a fifth", "half", "one in five").
-    A time period such as "the latest quarter" is not a number. Never write a currency symbol or code
-    without an amount next to it." The "may be empty" sentence is removed; the financial lens ends
-    "Its revenue is net interest plus fees, never sales, even where a Meaning line says sales."
-  - `INPUT_HASH_VERSION` "5a.4" to "5a.5": the next run regenerates all 1241 reads (about $5, about
-    95 minutes; no `--max-reads` cap, which would clear stored reads).
-  - `find_read_figure_violations(row, read)` in `_generate_read` after the style check, rejecting
-    like every other check: (1) a sentence with none of the card's figures (digit boundaries, leading
-    minus ignored), unless it contains "balance-sheet", "capital strength" or "could not be worked
-    out"; (2) a sentence over 25 words; (3) a fraction in words: thirds, fifths, tenths, halves,
-    a/one third|fifth|tenth|half (space or hyphen), "half of", "half the", a/one quarter of, three
-    quarters, "one in five" forms (time references pass); (4) "to fund", "to finance", "in order to",
-    "because", "thanks to", "driven by", "ability to", "so it can", "allowing it"; (5) a currency
-    symbol or code without a digit next to it (one space allowed before, spaces after).
-  - Tests for each rule (violating and compliant), the three live reads as violating cases, the
-    prompt and catalogue pins, figure-stating fake reads; docs paragraph; handover.
+  - One evaluation: each `_verdict_*` function keeps its exact rules but returns the bands it used
+    (per metric: core or supporting, good/ok/weak/not judged, a note when a sign-inversion guard or
+    the current-ratio relief applied), the revenue-shrinking flag, the metrics that made it red, and
+    the ones that held it back from green. `compute_verdict` returns that evaluation's verdict, so the
+    reasons and the color cannot drift apart. Existing verdict tests stay unchanged and green.
+  - The user message gains, under the numbers: "Why lines (how the rules reached the verdict; explain
+    only with these; never state the verdict itself):", one line per judged metric (label as in the
+    numbers list, band word, note), "Rev growth YoY (quarter): falling" only when it is, and one
+    closing line: "Held back from the top by: ...", "Placed at the bottom because of: ..." or, for a
+    green card, that nothing held it back. No thresholds are shown. (Header and growth line differ
+    from the wording first shown to the owner; the owner is asked to acknowledge at commit.)
+  - Prompt: the bullet "Falling revenue counts against a company here ... blaming the verdict on it is
+    not." becomes "The Why lines under the numbers say how the rules reached the verdict. Explain what
+    is strong or weak only with those lines, and give no other reason for the verdict. Falling revenue
+    can stop a company being called healthy but never makes it red. Rising revenue does not make a
+    company healthy, and is never a reason to buy." The other bullets are unchanged.
+  - `INPUT_HASH_VERSION` 5a.5 to 5a.6 (a merge before the Oct 15 06:00 UTC run lets one run cover both).
+    The hash also covers the reasons (each judged metric's band and note, whether revenue is falling)
+    and the operating-margin basis, so a read regenerates when a reason changes without a color change.
+    The dead `_verdict_*` wrappers and `_VERDICT_FN` are removed; comments name `_evaluate_*`. A
+    missing runway now reads "no cash burn is shown" (not "is not burning cash"); the green closing line
+    says "no falling revenue is shown". Comment and doc pointers in three extra files were repointed.
+  - Tests: the reasons are consistent with the color (red names only weak core metrics, yellow names what
+    held it back, green names nothing) on the 73 golden-mart rows and synthetic grids for every type; the Why block for the live 3M, 4DMedical and AAPL numbers; growth listed only
+    when shrinking; guard notes; the pins on the old growth sentences replaced. Docs paragraph; handover.
 
 done_when:
-  - `git grep -n "recite every number" -- scripts docs tests` finds only the test asserting it is
-    absent; `git grep -nE "5a\.4" -- scripts tests docs` finds nothing; `git grep -n '"gloss"' --
-    scripts/assessment_rules.py` finds only the catalogue read in `read_metric_meaning`.
-  - A test fails if the facts block differs from the catalogue text, or if any `gloss` or
-    `applicability` a read uses trips the advice or style guards.
-  - The check rejects the three live reads and accepts compliant reads; `pytest tests -q` and
-    `python scripts/bootstrap.py --verify` pass.
-  - No seed, frontend, export, dbt or migration change; advice, style and verdict-meaning guards
-    unchanged.
-  - After the owner triggers a production run (not part of the merge): count `read REJECTED` lines,
-    check the live AAPL, 3M and 4DMedical cards and a sample, report the rate.
+  - The old growth sentence ("never give it as the reason") is gone from scripts, tests and docs; every verdict test
+    that passed before passes unchanged; the Why block for 3M names debt / equity as weak and nothing
+    about growth; `pytest tests -q` and `python scripts/bootstrap.py --verify` pass.
+  - No band, threshold, seed, frontend, export, dbt or migration change.
 
 known_limits:
-  - No check can guarantee free prose never invents a claim; a clause attached to a figure can carry
-    one the marker list does not know. The plain-word explanation of a finance term (EBITDA) is the
-    model's own and unchecked. The symbols ban and active voice are prompt-only.
-  - The rejection rate is unknown until the run; a rejected card shows the plain fallback line.
-  - Word lists are partial: bare "half" ("nearly half") and "a quarter" without "of" pass.
-  - Sector medians in the read are left out (not covered by `validate_read_metrics`). Follow-ups:
-    that, a catalogue audit against ISO/IEC 11179-4, and the card face's net-cash line.
-  - The first run needs about 95 of the job's 120 minutes; a merge before the Oct 15 06:00 UTC
-    schedule makes that run regenerate every read unattended.
+  - The model can still phrase a claim around a figure that the marker list does not know; the reasons
+    shrink the room for invention but do not remove it. The rejection rate is counted after the run.
+  - The reasons name bands, not thresholds; the card's own gloss and the Limit lines carry meaning.
+  - A metric with no value can still be named ("not judged", or weak because equity is zero or
+    negative) though the numbers list does not show it; "weak" for a guard is a caution, not a
+    verdict on the cause; the card face keeps its own net-cash line (#66).
+  - #65 stays open for any later growth rule; sector medians in the read remain a follow-up (#66).
 
 regression_checklist:
-  - Advice, style and verdict-meaning guards and their tests unchanged.
-  - Every `_generate_read` test passes with a figure-stating read; other prompt rules unchanged.
-  - The card face and frontend untouched.
+  - Verdict colors for every existing test row unchanged; advice, style, figure and verdict-meaning
+    guards unchanged; the other prompt rules unchanged.

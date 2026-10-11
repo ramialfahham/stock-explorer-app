@@ -32,9 +32,9 @@ not merely any input of any weight to it:
 
 | Company type | Lead metric | Why this one |
 |---|---|---|
-| Operating | Operating margin (TTM) | One of the three core axes (`net_debt_to_ebitda`, `ebit_margin_pct`, `fcf_margin_pct`) that alone decide red/green in `_verdict_operating`; `statement_roe_pct` was considered but is only a supporting axis there, which "can break a tie but never rescue a red flag" (that function's own comment) |
-| Financial | Return on equity | Co-primary in `_verdict_financial`: checked first, alone can force red, and required good for green |
-| Pre-revenue | Cash runway (months) | The central axis of `_verdict_pre_revenue`'s "survival story" framing |
+| Operating | Operating margin (TTM) | One of the three core axes (`net_debt_to_ebitda`, `ebit_margin_pct`, `fcf_margin_pct`) that alone decide red/green in `_evaluate_operating`; `statement_roe_pct` was considered but is only a supporting axis there, which "can break a tie but never rescue a red flag" (that function's own comment) |
+| Financial | Return on equity | Co-primary in `_evaluate_financial`: checked first, alone can force red, and required good for green |
+| Pre-revenue | Cash runway (months) | The central axis of `_evaluate_pre_revenue`'s "survival story" framing |
 
 A row with no value for its type's lead metric still renders, just without that slot. Never a
 blank space or an invented number (`lead_metric_for_row` returns `None`, not a placeholder, when
