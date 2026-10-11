@@ -48,17 +48,17 @@ agent and say so in `review.md`.
 Declined by the owner: revenue-growth fallback, incremental dbt models. Hard constraint:
 zero cost.
 
-**Oct 15 production run, first with the six new markets, the raw archive and the
-class-share fix. Check after it:**
-- Six markets (!230, migration 021 live): each eligible count (sample estimate about
-  22 / 27 / 20 / 24 / 51 / 30 for fi / se / dk / no / ca / it; Denmark sits at the 20-card
-  warn line); Kojamo (KOJAMO.HE) and Golden Ocean (GOGL.OL) dropped out by eligibility.
-- Raw archive (!226, !227): `raw-archive` bucket holds `raw/<date>/<CI_JOB_ID>/<market>/`;
-  a failed upload fails the job at its end. Open, owner's: #33; retention near the 1 GB quota.
-- Class shares (!232): BRK-B, BF-B and BT-A.L cards exist.
-- AI reads, facts only (no closing verdict sentence; `INPUT_HASH_VERSION` not bumped, so a read
-  changes when its card's numbers change or its read was rejected): read a few new ones and the
-  `read REJECTED` lines in the `generate_assessments` log. A full rewrite costs one call per card.
+**Production run, owner-triggered 2026-10-11 (pipeline 2935437069, success, 43 min), the first
+with the six new markets, the raw archive, the class-share fix and the facts-only AI read.**
+Eligible cards: fi 24, se 30, dk 25, no 24, ca 59, it 40, ch 20 (at the warn line); 1241 in
+total. Raw archive (!226, !227): 45 files uploaded, job passed (open, owner's: #33, retention
+near the 1 GB quota). Reads: 223 generated, 1005 carried, 13 rejected, all by the advice guard
+on "sells" or "selling" in a business description; the prompt now bars buy, sell and price words (owner
+approved). `INPUT_HASH_VERSION` not bumped, so an older read changes only when its card's
+numbers, display currency or company type change, or it was rejected. **Not yet checked (needs a read-only production query,
+owner approval each time; the local `.env` has no `SUPABASE_ANON_KEY`):** a few new read
+texts, the BRK-B, BF-B and BT-A.L cards, and that Kojamo (KOJAMO.HE) and Golden Ocean (GOGL.OL)
+dropped out. The scheduled Oct 15 run still happens.
 
 **Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads through
 ingestion and dbt against a golden mart. Open: #40.
@@ -222,7 +222,7 @@ fill floor (!126), the AI read's labels and rendering (!129). The learn panel's 
 
 Nine markets active and run in production: US S&P 500, UK FTSE 100, Japan Nikkei 225,
 Australia ASX 200, Germany DAX, France CAC 40, Netherlands AEX, Switzerland SMI, Spain
-IBEX 35. Six more merged (!230), first production run Oct 15 (see In flight). **Read `docs/data_contract.md`'s market activation checklist
+IBEX 35. Six more merged (!230), first production run 2026-10-11 (see In flight). **Read `docs/data_contract.md`'s market activation checklist
 before onboarding any of them** (the `onboard-market` skill routes there); it carries the
 procedure and two traps no other doc holds (Wikipedia rejecting pandas' default user agent;
 `table_index` being positional, and silently wrong on a first refresh).
