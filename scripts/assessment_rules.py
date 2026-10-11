@@ -1,7 +1,7 @@
 """Deterministic per-type financial-health verdict + regeneration hash (Slice 5a).
 
-Pure, no I/O. The verdict COLOR is decided here by transparent rules, never by the
-LLM (5b writes only the prose read). The verdict measures **financial health /
+Pure; the one file it reads is frontend/metrics.json, once. The verdict COLOR is decided here
+by transparent rules, never by the LLM (5b writes only the prose read). The verdict measures **financial health /
 resilience** from the card's own numbers, and it is **not** investment advice. Growth was
 excluded from the verdict and now enters ONE-SIDED: a shrinking top line blocks green, while
 growth never earns green and never causes red (see the policy comment below). Valuation used
@@ -18,11 +18,13 @@ it; see `compute_input_hash`.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import math
 import re
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 # Verdict tokens (ASCII; the frontend maps token -> 🟢/🟡/🔴 in Slice 6).
@@ -40,7 +42,7 @@ COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 #
 # A card whose read failed a guard keeps no ai_read and is called again on every scheduled run,
 # whatever its hash, because attach_reads regenerates an empty ai_read.
-INPUT_HASH_VERSION = "5a.4"
+INPUT_HASH_VERSION = "5a.5"
 
 # Per-type card metric sets, mirroring metric_catalogue.csv `applies_to`. These feed the
 # input hash (and, in 5b, the prompt), so they are the FULL displayed set per type, not
@@ -438,9 +440,8 @@ Rules:
   cites, each with "label" and "value_as_shown" copied EXACTLY as given below, character for
   character, not reformatted, rounded, or recomputed), and "verdict_meaning" (which of
   healthy/mixed/fragile your overall reading of the numbers lands on; it is never shown to the
-  reader and must match the health verdict given below). If the read cites no specific
-  number, "referenced_metrics" may be empty. Never invent a label or value that is not in the
-  numbers list.
+  reader and must match the health verdict given below). Never invent a label or value that is
+  not in the numbers list.
 - Educational only. Never give investment advice. Do not say or imply whether to buy, sell, hold, or avoid the share, whether it is cheap, expensive, or "worth it", and never predict the price. You explain what the numbers describe; you never recommend an action.
 - Never use the words buy, buys, buying, sell, sells, selling or price anywhere, even about what the company does or charges: say "revenue" instead ("sales" is fine for an operating company), or name what it makes. A check rejects the whole read if any of them appears.
 - Write for someone who knows no finance vocabulary. If you use a term, gloss it in plain words or an everyday comparison. Leave no jargon unexplained.
@@ -448,7 +449,9 @@ Rules:
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
 - A margin is a percentage, not money. Explaining one as the amount kept out of every unit of revenue is good teaching and is encouraged, but it must use the currency given on the "Currency this company trades in" line below and no other, whichever currency that turns out to be. Where that currency has no everyday small unit, say it per 100 units of that same currency instead. If there is no such line, describe the margin as a percentage or a share and do not phrase it per unit of money at all. Never mix two currencies in one explanation. A margin is per unit of revenue, never per item sold: you are not told how many units the company delivers and must never imply profit per item.
 - Returns and growth are NOT amounts per unit of revenue, so never phrase them that way. Return on equity is profit measured against the owners' money, and return on assets is profit measured against everything the company owns. Revenue growth compares the latest reported quarter with the same quarter a year earlier, so it is one quarter's change, never a full year's: do not write "this year" or "over the year" about it.
-- Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
+- Write short sentences. Each sentence has one topic, is in the active voice, and has at most 25 words. Each sentence states one of the numbers below in digits, exactly as it appears (for example 24.0%), and says what it means in plain words, using the wording of that number's Meaning line. Use one word for one thing: call a number by the name it has in the list, every time. Pick the 2 or 3 numbers that most shape the picture.
+- Explain a number with the Meaning and Limit lines given for it under the numbers list, and say any finance term in plain words. Use a Limit line only when it applies to this company. Never say why the company has a number, how it got there, what it plans, or what the company can or cannot do. Write in words, never the symbols ≈, → or ÷.
+- Write every number in digits, never as a fraction or a phrase in words ("one third", "a quarter of", "a fifth", "half", "one in five"). A time period such as "the latest quarter" is not a number. Never write a currency symbol or code without an amount next to it.
 - Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy. When growth is positive, never give it as the reason the verdict is not green, because the rules only ever count a fall. Describing a nearly flat top line accurately is fine; blaming the verdict on it is not.
 - Do not state the verdict or say it again in other words, and do not close with a summary of the whole picture ("these numbers together...", "on these figures it is..."): the badge above your text does that. Put what is strong first, if anything is. If the verdict is red, the last sentence names the figure that is actually poor (a loss, negative free cash flow, heavy net debt, short runway, negative net cash meaning more borrowed than held in cash, negative working capital); falling revenue alone never makes a company red, so never name it as the cause of red. If the verdict is yellow, the last sentence names the weakest figure, or says which figure is only modest, or that a measure could not be worked out, when nothing shown is clearly weak; never invent a weakness the numbers do not show. If the verdict is green, add no caveat sentence. A financial company's read still states the limit given in the lens below, as one of its 2-3 sentences. Never call a green company fragile or a red one healthy. Never phrase anything as a good or bad buy.
 - No dashes as punctuation. Never use an em dash or en dash. Use a comma, a full stop, or brackets instead. Hyphens inside ordinary compound words are fine.
@@ -457,7 +460,7 @@ Rules:
 
 Company-type lens:
 - operating: profitability (does it earn on sales?), leverage (how much it has borrowed), cash generation.
-- financial: profitability and returns (margin, return on equity, return on assets). State the honest limit: this shows profitability only - it can't judge this financial company's balance-sheet safety or capital strength, which these numbers don't show.
+- financial: profitability and returns (margin, return on equity, return on assets). State the honest limit: this shows profitability only - it can't judge this financial company's balance-sheet safety or capital strength, which these numbers don't show. Its revenue is net interest plus fees, never sales, even where a Meaning line says sales.
 - pre_revenue: a survival story - not profitable yet, so focus on cash, how fast it is spending (burn), and how long the cash lasts (runway). Health = staying power, not profit."""
 
 
@@ -538,78 +541,66 @@ READ_TOOL_SCHEMA: dict[str, Any] = {
 }
 
 
-# Per-metric beginner brief for the facts block: label + one plain gloss + a value
-# format. Keys MUST cover every field in INPUT_FIELDS_BY_TYPE, every label is the
+# Per-metric brief for the facts block: label + a value format. The meaning text beside each
+# number is the catalogue gloss plus its direction cue, built by read_metric_meaning; it is not
+# written here. Keys MUST
+# cover every field in INPUT_FIELDS_BY_TYPE, every label is the
 # catalogue's label for that metric, and every fmt renders the value exactly as
 # frontend/card_copy.py renders it on the card face; tests/tooling pins all three against
 # dbt_analytics/seeds/metric_catalogue.csv, so the read can only cite what the reader sees
-# beside it. The growth line states which way growth counts, so the read never turns it into
-# a buy cue. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
+# beside it. (Owner-signed §6, alongside READ_SYSTEM_PROMPT.)
 READ_METRIC_BRIEF: dict[str, dict[str, str]] = {
     "ebit_margin_pct": {
         "label": "Operating margin (TTM)",
         "fmt": "pct",
-        "gloss": "share of sales kept as operating profit (higher = more profitable); can look extreme when revenue is very small",
     },
     "revenue_growth_yoy_pct": {
         "label": "Rev growth YoY (quarter)",
         "fmt": "pct",
-        "gloss": "how fast the top line is growing; for a financial company that is net interest plus fees, not sales. A fall counts against the verdict, a rise does not count for it. A very big percentage either way can just mean an unusual prior year rather than real change",
     },
     "net_debt_to_ebitda": {
         "label": "Net debt / EBITDA",
         "fmt": "ratio",
-        "gloss": "roughly how many years of earnings would clear net debt (lower = less borrowing); can explode to a huge or distorted number when earnings are near zero",
     },
     "fcf_margin_pct": {
         "label": "FCF margin (annual)",
         "fmt": "pct",
-        "gloss": "share of sales kept as real cash (higher = stronger); negative = burning cash; can look extreme when revenue is very small",
     },
     "debt_to_equity": {
         "label": "Debt / equity",
         "fmt": "ratio",
-        "gloss": "borrowed money versus the owners' stake (lower = more cushion; distorted or meaningless if equity is thin or negative)",
     },
     "current_ratio_stmt": {
         "label": "Current ratio",
         "fmt": "ratio",
-        "gloss": "short-term assets versus short-term bills (above 1 = covers near-term bills); a very high ratio isn't automatically good either - it can mean cash sitting idle",
     },
     "statement_roe_pct": {
         "label": "Return on equity",
         "fmt": "pct",
-        "gloss": "profit earned on the owners' money (higher = more efficient; can look spuriously positive if equity is negative)",
     },
     "net_margin_pct": {
         "label": "Net margin",
         "fmt": "pct",
-        "gloss": "share of revenue kept as final profit after all costs (higher = more profitable); for a financial company \"revenue\" means net interest plus fees, not sales",
     },
     "roa_pct": {
         "label": "Return on assets",
         "fmt": "pct",
-        "gloss": "profit earned on everything the company owns (higher = more efficient)",
     },
     "net_cash": {
         "label": "Net cash",
         "fmt": "currency",
-        "gloss": "cash and equivalents minus borrowings, a money amount (positive = more cash than borrowings). Not every obligation, and the cash figure excludes short-term investments; a big number is only a long cushion if the burn is slow",
     },
     "working_capital": {
         "label": "Working capital",
         "fmt": "currency",
-        "gloss": "short-term assets minus short-term bills, a money amount (positive = a near-term cushion, negative = a squeeze)",
     },
     "cash_runway_months": {
         "label": "Cash runway",
         "fmt": "ratio_1",
-        "gloss": "in months: how long the cash lasts at the current spend (higher = more time before needing to raise money)",
     },
     "burn_rate_monthly": {
         "label": "Cash burn (monthly)",
         "fmt": "currency",
-        "gloss": "how fast cash is going out each month, a money amount (lower = the cash lasts longer)",
     },
 }
 
@@ -682,6 +673,42 @@ def read_metric_label(field: str, row: Mapping[str, Any]) -> str:
     return READ_METRIC_BRIEF[field]["label"]
 
 
+@functools.lru_cache(maxsize=1)
+def _catalogue_text() -> dict[str, dict[str, str]]:
+    """metric_id -> catalogue text, from frontend/metrics.json (generated from the seed, kept
+    equal to it by tests/tooling/test_metric_catalogue.py). The one place this module reads a file."""
+    path = Path(__file__).resolve().parents[1] / "frontend" / "metrics.json"
+    metrics = json.loads(path.read_text(encoding="utf-8"))["metrics"]
+    return {m["metric_id"]: m for m in metrics}
+
+
+def read_metric_meaning(field: str, row: Mapping[str, Any]) -> str:
+    """The definition the read is given for this metric on THIS row: the catalogue gloss plus its
+    direction cue, mirroring frontend/card_copy.py's metric_gloss(benchmarked=False) with its
+    three row-specific forms (a test pins the two equal). One deliberate difference: a negative
+    debt ratio with non-positive EBITDA is not called net cash, because negative EBITDA also
+    makes the ratio negative. `interpretation` is not used: it carries rationale, and a
+    definition states what the thing is (ISO/IEC 11179-4)."""
+    value = row.get(field)
+    present = not _is_missing(value)
+    if field == "net_debt_to_ebitda" and present and float(value) < 0:
+        ebitda = row.get("info_ebitda")
+        if _is_missing(ebitda) or float(ebitda) > 0:
+            return "Net cash: cash on hand exceeds debt"
+    if field == "debt_to_equity" and present and float(value) < 0:
+        return "Negative equity, so this ratio isn't a normal leverage read"
+    if field == "ebit_margin_pct" and row.get("ebit_margin_basis") == "annual_latest":
+        base = "Operating profit as share of sales (latest annual)"
+    else:
+        base = _catalogue_text()[field]["gloss"]
+    direction = DIRECTION_BY_METRIC.get(field)
+    if direction == "higher_better":
+        return f"{base}. Higher is better."
+    if direction == "lower_better":
+        return f"{base}. Lower is better."
+    return base
+
+
 def _present_metric_renderings(
     row: Mapping[str, Any], ctype: str, currency: str | None
 ) -> dict[str, str]:
@@ -717,12 +744,15 @@ def build_read_messages(row: Mapping[str, Any], verdict: str) -> tuple[str, str]
     if _is_missing(currency):
         currency = None
     renderings = _present_metric_renderings(row, ctype, currency)
-    glosses = {field: READ_METRIC_BRIEF[field]["gloss"] for field in INPUT_FIELDS_BY_TYPE[ctype]}
     labels_to_fields = {read_metric_label(f, row): f for f in INPUT_FIELDS_BY_TYPE[ctype]}
-    lines = [
-        f"- {label}: {rendered} - {glosses[labels_to_fields[label]]}"
-        for label, rendered in renderings.items()
-    ]
+    lines = []
+    for label, rendered in renderings.items():
+        field = labels_to_fields[label]
+        entry = f"- {label}: {rendered}\n  Meaning: {read_metric_meaning(field, row)}"
+        limit = _catalogue_text()[field]["applicability"].strip()
+        if limit:
+            entry += f"\n  Limit: {limit}"
+        lines.append(entry)
     facts = "\n".join(lines) if lines else "- (no metric values available)"
     meaning = VERDICT_MEANING.get(verdict, verdict)
     display_currency = _display_currency(currency)
@@ -836,7 +866,7 @@ _ADVICE_ACTION_RE = re.compile(
 #
 # "share"/"shares" excludes two further, real collisions (cto-reviewer's round-2 finding,
 # confirmed against actual prompt-encouraged vocabulary): "share OF X" is a portion, not the
-# security -- READ_METRIC_BRIEF's own margin gloss says "share of sales kept as... profit", and
+# security -- the catalogue's margin gloss says "Operating profit as share of sales", and
 # the existing _CLEAN_READ fixture already uses "a solid share of every sale" -- so "share"
 # immediately followed by "of" is excluded. "MARKET share" is a similar, unrelated business
 # term (a portion of a market) -- excluded via a lookbehind. Neither exclusion touches "stock":
@@ -951,6 +981,99 @@ def find_read_style_violations(read: str) -> list[str]:
                 "(rule: revenue growth is one quarter's change, never a full year's)"
             )
             break
+
+    return violations
+
+
+# --- Figure, length and wording check (the rules of READ_SYSTEM_PROMPT that code can verify) ----
+# Like find_read_style_violations it rejects the whole read; unlike it, it needs the card's own
+# rendered figures, so it takes the row. Every sentence of a read must state one of the card's
+# figures as shown, so a read with a closing verdict sentence that cites no figure, or any
+# sentence that talks about the company instead of a number, is rejected whole.
+
+READ_MAX_WORDS = 25
+
+# A sentence with no figure is allowed only when it states a limit the prompt requires: the
+# financial-company limit, or a measure that could not be worked out.
+_LIMIT_SENTENCE_RE = re.compile(r"balance-sheet|capital strength|could not be worked out", re.IGNORECASE)
+
+_NUMBER_WORDS = "one|two|three|four|five|six|seven|eight|nine|ten"
+_FRACTION_WORDS_RE = re.compile(
+    r"\b(?:thirds|fifths|tenths|halves)\b"
+    r"|\b(?:a|one)[\s-]+(?:third|fifth|tenth|half)\b(?!\s*-?\s*(?:party|quarter|year|time))"
+    r"|(?<!first[ -])(?<!second[ -])(?<!last[ -])(?<!latter[ -])\bhalf\s+(?:of|the)\b"
+    r"|\b(?:a|one)[\s-]+quarter\s+of\b|\bthree[\s-]+quarters\b"
+    rf"|\b(?:{_NUMBER_WORDS})\s+(?:in|out\s+of)\s+(?:two|three|four|five|six|seven|eight|nine|ten)\b",
+    re.IGNORECASE,
+)
+
+_CAUSE_MARKER_RE = re.compile(
+    r"\b(?:to fund|to finance|in order to|because|thanks to|driven by|ability to|so it can|allowing it)\b",
+    re.IGNORECASE,
+)
+
+# A symbol or code is fine with an amount right after it ("$2.1B", "CHF 2.1B") or right before it
+# ("100 SEK", "100 \u20ac"): the margin rule asks for "per 100 units" of a bare-code currency.
+_CURRENCY_NO_AMOUNT_RE = re.compile(
+    r"(?<!\d)(?<!\d\s)(?:(?:[AC]\$|(?<![AC])\$|[\u00a3\u00a5\u20ac])(?!\s*\d)"
+    r"|\b(?:USD|GBP|EUR|JPY|AUD|CAD|CHF|SEK|DKK|NOK)\b(?!\s*\d))"
+)
+
+
+def _read_sentences(read: str) -> list[str]:
+    parts = re.split(r"\n+", read.strip())
+    sentences = [p for part in parts for p in _SENTENCE_BOUNDARY_RE.split(part)]
+    return [s.strip() for s in sentences if s.strip()]
+
+
+def _figure_pattern(rendered: str) -> re.Pattern[str]:
+    # Digit boundaries so "5.6%" never matches inside "15.6%" or "5.65%"; a leading minus is
+    # ignored because a read may say "a loss of 12.0%" for "-12.0%".
+    return re.compile(r"(?<![\d.])" + re.escape(rendered.lstrip("-")) + r"(?!\d)")
+
+
+def find_read_figure_violations(row: Mapping[str, Any], read: str) -> list[str]:
+    """Deterministic checks of the read against THIS card's figures and the prompt's wording
+    rules. One description per violated rule; an empty list means none fired, not that the read
+    is fully prompt-compliant (active voice, one word per meaning and one topic per sentence
+    stay in the prompt only)."""
+    ctype = normalize_company_type(row.get("company_type"))
+    currency = row.get("currency")
+    if _is_missing(currency):
+        currency = None
+    patterns = [_figure_pattern(r) for r in _present_metric_renderings(row, ctype, currency).values()]
+    violations: list[str] = []
+
+    no_figure = [
+        s for s in _read_sentences(read)
+        if not any(p.search(s) for p in patterns) and not _LIMIT_SENTENCE_RE.search(s)
+    ] if patterns else []
+    if no_figure:
+        violations.append(
+            f'sentence with none of the card\'s figures: "{no_figure[0]}" '
+            "(rule: every sentence states one of the numbers, exactly as shown)"
+        )
+
+    too_long = [s for s in _read_sentences(read) if len(s.split()) > READ_MAX_WORDS]
+    if too_long:
+        violations.append(
+            f"sentence of {len(too_long[0].split())} words (rule: at most {READ_MAX_WORDS} words)"
+        )
+
+    m = _FRACTION_WORDS_RE.search(read)
+    if m:
+        violations.append(f'number written in words: "{m.group(0)}" (rule: write every number in digits)')
+
+    m = _CAUSE_MARKER_RE.search(read)
+    if m:
+        violations.append(
+            f'purpose or cause wording: "{m.group(0)}" '
+            "(rule: never say why the company has a number or what it can do)"
+        )
+
+    m = _CURRENCY_NO_AMOUNT_RE.search(read)
+    if m:
+        violations.append(f'currency "{m.group(0)}" without an amount (rule: no currency symbol or code alone)')
 
     return violations
 

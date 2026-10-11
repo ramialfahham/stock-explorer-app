@@ -44,6 +44,7 @@ from assessment_rules import (
     build_read_messages,
     compute_input_hash,
     compute_verdict,
+    find_read_figure_violations,
     find_read_style_violations,
     validate_read_metrics,
     verdict_meaning_violation,
@@ -199,9 +200,11 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     Forces tool-use (READ_TOOL_SCHEMA) so the model returns the read alongside the exact
     metrics it cited and its own verdict_meaning classification, then checks those against the
     card's own numbers (validate_read_metrics), the verdict already decided (verdict_meaning_violation),
-    and a deterministic subset of the prompt's own style rules (find_read_style_violations)
+    a deterministic subset of the prompt's own style rules (find_read_style_violations), and
+    its figure, length and wording rules (find_read_figure_violations)
     before accepting the read -- a malformed response, an empty read, an unverifiable citation,
-    a verdict-meaning mismatch, or a style-rule violation is treated the same as an API failure:
+    a verdict-meaning mismatch, a style-rule violation, or a figure, length or wording violation
+    is treated the same as an API failure:
     fail closed. The card keeps no read and is called again on the next scheduled run, because
     attach_reads regenerates an empty ai_read. No retry within a run.
     """
@@ -264,6 +267,14 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     if style_violations:
         print(
             f"  read REJECTED (style: {'; '.join(style_violations)}) for "
+            f"{row.get('market_code')}/{row.get('ticker')}",
+            file=sys.stderr,
+        )
+        return None, None
+    figure_violations = find_read_figure_violations(row, text)
+    if figure_violations:
+        print(
+            f"  read REJECTED (figures: {'; '.join(figure_violations)}) for "
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )

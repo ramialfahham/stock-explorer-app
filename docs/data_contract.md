@@ -727,7 +727,25 @@ guard and checks a subset of the system prompt's own rules that a plain string/r
 enforce without semantic judgment: no em/en-dash, no exclamation marks or emoji, no
 investment-advice language, none of the prompt's own named AI-tell phrases, no "this
 year"/"over the year" about growth. A violation fails the same way. `verdict_meaning_violation` matches the model's hidden
-classification to the rules' verdict; only the prompt keeps the read from stating the verdict.
+classification to the rules' verdict; only the prompt keeps the read from stating the verdict in so many words.
+
+A figure guard (`find_read_figure_violations`) runs after the style guard and checks the rules
+that need the card's own figures. Every sentence contains one of the card's figures as the card
+shows it (a leading minus may be dropped); a sentence containing "balance-sheet", "capital
+strength" or "could not be worked out" is exempt. No sentence has more than 25 words. No
+fraction is written in words: thirds, fifths, tenths, halves, "a/one third|fifth|tenth|half",
+"half of", "half the", "a/one quarter of", "three quarters" (a space or a hyphen in each) and
+"one in five" style phrases; a time reference such as "the third quarter" or "the first half of
+the year" passes. No sentence contains a purpose or cause phrase ("to fund", "to finance", "in
+order to", "because", "thanks to", "driven by", "ability to", "so it can", "allowing it"). No
+currency symbol or code stands without a digit next to it (one space allowed before, spaces
+after). These are word lists: a paraphrase that avoids them passes, and a legitimate read that
+uses them is rejected. A violation rejects the whole read and fails the same way, with no retry.
+
+The facts block gives each metric its catalogue `gloss` and a direction cue as `Meaning:` and its
+catalogue `applicability` as `Limit:`. `read_metric_meaning` mirrors the card's `metric_gloss`, pinned
+equal by a test, with one
+difference: a negative debt ratio with non-positive EBITDA is not called net cash. `interpretation` is not given, because it carries rationale.
 
 **The whole health block is withheld when the assessment's `snapshot_date` differs from the
 card's** -- verdict and read together, with no placeholder; the financial caveat is not in
