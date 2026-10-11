@@ -19,8 +19,11 @@ sell or price words (!252). The owner delegated #47's spec-versus-code calls to 
 as the expert"); the FE-1 exception (company dedupe stays in the display layer) is the owner's
 answer A, recorded as criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
 (`importance_tier`, `basis_column`: no production reader), #58 (company-identity follow-ups).
-#48 (guardrail tests, reviewer frontmatter, routing) is on branch `fix/guardrails-tested`; once
-its MR merges, take #49.
+#48 is merged (!254): every wired guard has a test, and `tests/tooling/test_every_guard_has_a_test.py`
+fails when a new one has none. Its follow-ups: #59 (the scalar-subquery rule in
+`check_dbt_sql_structure.py` cannot fire on a WITH-first model), #60 (owner call: dormant routing
+patterns, criterion GRD-3 versus the stricter test; recommended: amend the criterion), #61 (real
+`YFRateLimitError` in the retry test). Next session: take #49.
 
 **Next: #49-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
@@ -73,12 +76,7 @@ gate `n_<metric>` in `int_stock__sector_benchmarks.sql`; the `sector_*` column d
 
 **Git push auth flakiness:** if it recurs, ask the owner; don't touch the credential store.
 
-**Null-when doc enforcement: MERGED (!207).** Added `check_null_when_documented` to
-`check_dbt_documentation.py` (exempts `info_`/`stmt_`/`qtr_` raw passthroughs,
-owner-approved); fixed 32 real violations plus 2 pre-existing-but-wrong null claims.
-**Durable lesson: a description already containing "null" can still be incomplete -- cost
-2 of 4 review rounds.** A larger family (~50 sector-benchmark columns, same gap) was fixed
-in issue #23 (!210).
+**Null-when doc enforcement: MERGED (!207, !210).** `check_null_when_documented` in `check_dbt_documentation.py`; a description that already says "null" can still be incomplete.
 
 **dbt-layer audit + em-dash cleanup: MERGED (!205).** Manual audit vs.
 `docs/layering.md`/`docs/engineering_standards.md`: transformation layer clean, no layer
