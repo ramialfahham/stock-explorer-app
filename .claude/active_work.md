@@ -13,41 +13,28 @@ one or two lines and let git and the MR keep the detail._
 
 ## In flight
 
-**Start here (2026-10-11).** The small-fix list, #44-#47, #53 and #54 are merged (!234-!249),
-and so are two AI-read changes: facts only, no closing verdict sentence (!251), and no buy,
-sell or price words (!252). The owner delegated #47's spec-versus-code calls to the agent ("act
-as the expert"); the FE-1 exception (company dedupe stays in the display layer) is the owner's
-answer A, recorded as criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
-(`importance_tier`, `basis_column`: no production reader), #58 (company-identity follow-ups).
-#48 is merged (!254): `tests/tooling/test_every_guard_has_a_test.py` fails when a wired guard has
-no test. Its follow-ups: #59 (the scalar-subquery rule in `check_dbt_sql_structure.py` cannot
-fire on a WITH-first model), #60 (owner call: dormant routing patterns versus criterion GRD-3;
-recommended: amend the criterion), #61 (real `YFRateLimitError` in the retry test).
-#49 is merged (!256): section 1 exempts names read outside dbt, the narrative check scans dbt
-`.yml`, criteria v3. Follow-ups: #62 (the SQL-structure gate cannot see a CTE that mixes a ref
-with other work), #63 (owner call: may an import CTE filter?), #64 (`layering.md` says base
-unions; no base model does). After the AI-read fix below, take #50.
+**Start here (2026-10-11).** Merged: the small-fix list #44-#47, #53, #54 (!234-!249); the AI-read
+changes !251, !252, !257 (catalogue-grounded read, figure and wording checks, 5a.5) and !258 (the
+rules' own reasons for the verdict, 5a.6); #48 (!254); #49 (!256). Criteria
+`docs/quality_criteria.json` is v3 (the FE-1 exception is the owner's answer A; DBT-3 allows a
+documented raw-file check model). Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
+(`importance_tier`, `basis_column`: no production reader), #58 (company identity), #59 (the
+scalar-subquery rule cannot fire on a WITH-first model), #60 (owner call: dormant routing
+patterns vs GRD-3; recommended: amend the criterion), #61 (real `YFRateLimitError` in the retry
+test), #62 (SQL-structure gate and a CTE that mixes a ref with other work), #63 (owner call: may
+an import CTE filter?), #64 (`layering.md` says base unions; no base model does), #65 (verdict:
+growth plays a small role; researched, the owner chose no new rule; open for a later one), #66
+(residual AI-read guard gaps). **Next: #50.**
 
-**AI read fix, merged (!257) and a follow-on on branch `fix/ai-read-reasons` (owner-reported,
-live cards AAPL, 3M, 4DMedical).**
-The reads invented purposes ("to fund growth"), ended with a verdict sentence, said "one third",
-and wrote "A$" with no amount; stored reads kept the old text because a read regenerates only
-when `input_hash` changes. The fix gives the model the catalogue `gloss` and `applicability`
-(never `interpretation`), rejects a read with a figure-less or over-25-word sentence, a
-fraction in words, a purpose or cause marker, or a lone currency symbol (no retry), and bumps
-`INPUT_HASH_VERSION` to 5a.5. The follow-on tells the model the rules' own reasons for the
-color (`verdict_why_lines`), drops the growth patch sentence, and bumps it to 5a.6. The owner triggers the production run (about $5, about 95
-minutes). If this merges before the scheduled Oct 15 06:00 UTC run, that run does it unattended.
-Then count the `read REJECTED` lines in the `generate_assessments` log, check the live
-AAPL, 3M and 4DMedical cards, and report the rate. A high count means a second prompt pass.
-#65 is researched, with an impact check on 1250 production cards: growth decides 44 cards today
-(a decline blocks green); a cap for growth below the sector's lower quartile would turn 28 green
-cards yellow (e.g. Accenture) and the owner chose no new rule (B). #65 stays open for a later
-rule. Follow-ups to file: sector medians in the read (they need their own check); an audit of the
-catalogue text against ISO/IEC 11179-4 (thin glosses: net debt / EBITDA, free cash, working
-capital, current ratio scale); `card_copy.metric_gloss` calls a negative debt ratio net cash
-even when EBITDA is negative. The owner's three writing standards (ISO 24495-1,
-ISO/IEC 11179-4, ASD-STE100) are in `football-data-pipeline/docs/working_agreement.md` section 9.
+**AI read, waiting on the production run.** Both AI-read MRs are merged, so the scheduled Oct 15
+06:00 UTC run regenerates every read once (about $5.10, about 95 of its 120 minutes); the owner may
+trigger it earlier (below). Then: count the `read REJECTED` lines in the `generate_assessments`
+log by rule, check the live AAPL, 3M and 4DMedical cards and a sample of yellow cards with falling
+revenue, and report the rate; a high rate means a second prompt pass. Follow-ups (#66): sector
+medians in the read need their own check; audit the catalogue text against ISO/IEC 11179-4 (thin
+glosses); `card_copy.metric_gloss` calls a negative debt ratio net cash even when EBITDA is
+negative. The owner's writing standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
+`football-data-pipeline/docs/working_agreement.md` section 9.
 
 **Next: #50-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
