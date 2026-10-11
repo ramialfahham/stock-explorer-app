@@ -19,7 +19,7 @@ def test_out_dir_receives_every_market_and_the_default_is_untouched(
 
     assert seed.main(["--out-dir", str(out)]) == 0
 
-    markets = seed._load_active_markets()
+    markets = seed.active_market_codes()
     assert markets
     for market in markets:
         for name in ("yf_constituents", "yf_daily_prices", "yf_fundamentals"):

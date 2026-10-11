@@ -3,74 +3,111 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Refs #65 (the growth research) and the owner's rule "no hallucinated reasons". The AI read
-  is told the verdict color but not why the rules chose it, so it guesses reasons (3M: "mixed because
-  revenue is barely growing"; the rules said debt / equity 2.68 is weak). A prompt sentence ("never
-  give positive growth as the reason") patches one guess and duplicates verdict logic in prose. The
-  fix: the model is given the rules' own reasons and may explain the verdict only with them.
-  The verdict rules do not change: the owner chose no new growth rule after the research and an
-  impact check on 1250 production cards.
+objective: Closes #50 (repo hygiene from the quality audit, findings 49-55: logic copied across
+  scripts and modules, and tracked files whose job is done). One rule per kind of problem, each with
+  an exact search in `.claude/task/hygiene_sweep.py`; the sweep exits 0 when the work is done.
 
 scope_paths:
-  - scripts/assessment_rules.py
-  - tests/tooling/test_assessment_rules.py
-  - tests/tooling/test_generate_assessments.py
-  - scripts/generate_assessments.py
-  - docs/data_contract.md
-  - docs/context_budget.yml
-  - docs/ui/discover_list.md
-  - tests/frontend/test_card_copy.py
+  - scripts/probe_quarterly_op_labels.py
+  - scripts/probe_roa_total_assets.py
+  - storage/seeds/_imports/jp_nikkei225_starter.csv
+  - .claude/task/dead_code_sweep.py
+  - scripts/probe_balance_sheet_labels.py
+  - scripts/check_export_health.py
+  - scripts/check_eligibility_baseline.py
+  - scripts/check_eligibility_gaps.py
+  - scripts/check_pipeline_completeness.py
+  - scripts/seed_ci_raw_fixtures.py
+  - scripts/check_registry_var_sync.py
+  - scripts/sync_dbt_vars.py
+  - scripts/check_dbt_documentation.py
+  - scripts/check_dbt_tests.py
+  - scripts/dbt_models.py
+  - ingestion/registry.py
+  - frontend/card_ui.py
+  - frontend/row_ui.py
+  - frontend/html_text.py
+  - frontend/card_copy.py
+  - requirements.txt
+  - .gitlab-ci.yml
+  - tests/tooling/test_check_export_health.py
+  - tests/tooling/test_check_registry_var_sync.py
+  - tests/tooling/test_sync_dbt_vars.py
+  - tests/tooling/test_seed_ci_raw_fixtures.py
+  - tests/ingestion/test_registry.py
+  - tests/frontend/test_html_text.py
+  - tests/tooling/test_dbt_models.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
+  - .claude/task/hygiene_sweep.py
 
-decisions_reserved: Answered by the owner in chat: yes, tell the AI the real reasons; no new growth
-  rule (B). The prompt wording below is owner-signed content (section 6): it takes effect on the
-  owner's "go". No verdict band, threshold or color changes; no seed, frontend, export or dbt change.
-  `docs/data_contract.md` budget 67000 to 68100 for the new paragraphs (reason in the MR).
+decisions_reserved: Answered by the owner in chat (2026-10-11): (1) delete
+  `probe_quarterly_op_labels.py`; (2) delete the health check's own dedupe, the gate counts mart rows
+  as they are (the mart is unique per market and ticker, a dbt test enforces it); (3) include the
+  extra copies the rules found (`_esc`, `_sql_model_names`, the CI pytest pin, the old task sweep
+  script; `governed_files` / `governed_docs` stay). Still the owner's: a GitLab replacement for the
+  removed job summaries (none added); a permanent CI or pre-commit sweep (not built); the
+  `GITHUB_ACTIONS` branch in `scripts/apply_supabase_migrations.py` (below).
 
 changes:
-  - One evaluation: each `_verdict_*` function keeps its exact rules but returns the bands it used
-    (per metric: core or supporting, good/ok/weak/not judged, a note when a sign-inversion guard or
-    the current-ratio relief applied), the revenue-shrinking flag, the metrics that made it red, and
-    the ones that held it back from green. `compute_verdict` returns that evaluation's verdict, so the
-    reasons and the color cannot drift apart. Existing verdict tests stay unchanged and green.
-  - The user message gains, under the numbers: "Why lines (how the rules reached the verdict; explain
-    only with these; never state the verdict itself):", one line per judged metric (label as in the
-    numbers list, band word, note), "Rev growth YoY (quarter): falling" only when it is, and one
-    closing line: "Held back from the top by: ...", "Placed at the bottom because of: ..." or, for a
-    green card, that nothing held it back. No thresholds are shown. (Header and growth line differ
-    from the wording first shown to the owner; the owner is asked to acknowledge at commit.)
-  - Prompt: the bullet "Falling revenue counts against a company here ... blaming the verdict on it is
-    not." becomes "The Why lines under the numbers say how the rules reached the verdict. Explain what
-    is strong or weak only with those lines, and give no other reason for the verdict. Falling revenue
-    can stop a company being called healthy but never makes it red. Rising revenue does not make a
-    company healthy, and is never a reason to buy." The other bullets are unchanged.
-  - `INPUT_HASH_VERSION` 5a.5 to 5a.6 (a merge before the Oct 15 06:00 UTC run lets one run cover both).
-    The hash also covers the reasons (each judged metric's band and note, whether revenue is falling)
-    and the operating-margin basis, so a read regenerates when a reason changes without a color change.
-    The dead `_verdict_*` wrappers and `_VERDICT_FN` are removed; comments name `_evaluate_*`. A
-    missing runway now reads "no cash burn is shown" (not "is not burning cash"); the green closing line
-    says "no falling revenue is shown". Comment and doc pointers in three extra files were repointed.
-  - Tests: the reasons are consistent with the color (red names only weak core metrics, yellow names what
-    held it back, green names nothing) on the 73 golden-mart rows and synthetic grids for every type; the Why block for the live 3M, 4DMedical and AAPL numbers; growth listed only
-    when shrinking; guard notes; the pins on the old growth sentences replaced. Docs paragraph; handover.
+  - Finding 49: `check_export_health.py` loses `dedupe_to_latest_snapshot`, `_snapshot_sort_key` and
+    its unused `snapshot_date` read; its log wording drops "deduped" (`eligible=N`, "no card-eligible
+    rows in mart_stock_cards", "required ticker missing from eligible cards: M:T", "(a/b eligible)").
+    Thresholds and pass/fail rules are unchanged. The app keeps its own dedupe.
+  - Finding 50: `_append_github_summary`, its 3 call sites and the markdown built only for it are
+    removed from the three check scripts. Console output is unchanged.
+  - Finding 51: `ingestion.registry.active_market_codes()` (sorted, active only) replaces
+    `_load_active_markets` (5 scripts, one never called) and `_registry_active_codes` (2 scripts).
+    The registry modules import only the standard library and PyYAML (the pre-commit hook has only
+    PyYAML); a test pins that.
+  - Findings 52, 53, 54: the one-time import CSV (and its folder), `probe_roa_total_assets.py` and
+    `probe_quarterly_op_labels.py` are deleted; the balance-sheet probe's docstring no longer names
+    its deleted companion.
+  - Finding 55: `requirements.txt` drops the four pins `frontend/requirements.txt` already holds;
+    the effective pinned set is identical before and after.
+  - Extras: one `esc` in `frontend/html_text.py` (was `_esc` in `card_ui.py` and `row_ui.py`); one
+    `sql_model_names` in `scripts/dbt_models.py`; CI reads the pytest pin from `requirements-dev.txt`
+    like the pre-commit job does; the previous task's sweep script is replaced by this one. A comment
+    in `card_copy.py` that named the removed `_esc` now names `esc`.
+  - Stricter registry parsing, from using `load_markets`: a registry row without `market_code` or
+    `index_name` now raises even when the row is inactive (the old copies skipped it). The real
+    registry and `test_registry_entries_declare_every_required_field` already require both.
 
 done_when:
-  - The old growth sentence ("never give it as the reason") is gone from scripts, tests and docs; every verdict test
-    that passed before passes unchanged; the Why block for 3M names debt / equity as weak and nothing
-    about growth; `pytest tests -q` and `python scripts/bootstrap.py --verify` pass.
-  - No band, threshold, seed, frontend, export, dbt or migration change.
+  - `python .claude/task/hygiene_sweep.py` exits 0 (R1 copies, R2 unused scripts, R3 seed folders,
+    R4 repeated pins, R5 GITHUB names in code, R6 removed names). Before the work it printed 50 hits.
+  - `pytest tests -q` and `python scripts/bootstrap.py --verify` pass.
+  - The effective pinned set of `requirements.txt` + `frontend/requirements.txt` is identical to HEAD's.
+  - No change to `assessment_rules.py`, `generate_assessments.py`, the verdict rules, dbt, migrations
+    or `export_to_supabase.py`.
+
+keep_list (the sweep exempts these, each for a stated reason):
+  - Same name, different job: `main`, `find_violations`, `render`, `_load_mart_rows` (three
+    different queries), `_cell`, `_summarize`, and the gate's `_card_key` / `_has_business_summary`
+    (mart columns only; the app's also read a raw yfinance field and keep raw key types).
+  - Same body over different data: `governed_files` and `governed_docs` (different file patterns).
+  - `scripts/apply_supabase_migrations.py` reads `GITHUB_ACTIONS` (a Management-API pooler lookup
+    and a "GitHub secret" hint that never run on GitLab). It applies the Supabase migrations, which
+    the owner froze during the production run, and a GitLab equivalent is a behavior change.
 
 known_limits:
-  - The model can still phrase a claim around a figure that the marker list does not know; the reasons
-    shrink the room for invention but do not remove it. The rejection rate is counted after the run.
-  - The reasons name bands, not thresholds; the card's own gloss and the Limit lines carry meaning.
-  - A metric with no value can still be named ("not judged", or weak because equity is zero or
-    negative) though the numbers list does not show it; "weak" for a guard is a caution, not a
-    verdict on the cause; the card face keeps its own net-cash line (#66).
-  - #65 stays open for any later growth rule; sector medians in the read remain a follow-up (#66).
+  - R1 finds identical bodies and shared names; a near-copy that differs in one statement and has a
+    different name is not found.
+  - R2 counts a mention in a doc, CI, hook config, test or another script's import; it does not
+    check that the doc is accurate.
+  - `ingestion.registry` must stay importable with PyYAML alone; `validate:pre-commit` in CI would
+    catch a break, and `tests/ingestion/test_registry.py` pins the imports of the three registry
+    files (standard library, PyYAML, `ingestion.paths`, `ingestion.registry` only).
+  - Four scripts and two tests still build the active-code set inline from
+    `load_markets(active_only=True)` (`refresh_constituents.py`, `refresh_yfinance_names.py`,
+    `record_ingestion_fixtures.py`, `check_company_names_vs_yfinance.py`). They already use the
+    registry loader the audit proposed, so R1 does not flag them.
 
 regression_checklist:
-  - Verdict colors for every existing test row unchanged; advice, style, figure and verdict-meaning
-    guards unchanged; the other prompt rules unchanged.
+  - `--write-baseline` and every script print markets in the same sorted order as before.
+  - The health check still fails on: zero eligible rows, fill rate below the minimum, more missing
+    than the maximum, a required ticker absent or with an empty summary.
+  - The registry var sync and `sync_dbt_vars.py` behave as before on matching, differing and
+    missing-block inputs (their tests now use realistic registry rows with `index_name`).
+  - Every removed name returns no hit in the sweep's R6 search.

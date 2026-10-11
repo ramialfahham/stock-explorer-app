@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import html
-
 import streamlit as st
 
 from card_copy import (
@@ -36,6 +34,7 @@ from card_copy import (
     sector_headline,
 )
 from disclosure_html import disclosure_html
+from html_text import esc
 from markets import market_display_name
 from live_quote import yahoo_finance_url
 from metric_school import render_metric_playgrounds
@@ -72,9 +71,9 @@ def _metric_range_html(card: dict, metric: str) -> str:
         if rng is None:
             return ""
         currency = card.get("currency")
-        min_label = _esc(format_metric_value(metric, rng["min"], currency))
-        max_label = _esc(format_metric_value(metric, rng["max"], currency))
-        median_label = _esc(format_metric_value(metric, rng["median"], currency))
+        min_label = esc(format_metric_value(metric, rng["min"], currency))
+        max_label = esc(format_metric_value(metric, rng["max"], currency))
+        median_label = esc(format_metric_value(metric, rng["median"], currency))
         median_pct = rng["median_pct"]
         value_pct = rng["position_pct"]
         # median's *label* position (not the bar's own gap, which stays exact) is floored
@@ -132,8 +131,8 @@ def _benchmark_compare_body(card: dict) -> str:
             if label:
                 bench_items.append(
                     f"<li>"
-                    f'<span class="ss-benchmark-metric">{_esc(metric_label(metric, card))}</span> '
-                    f'<span class="ss-bench-indicator">{_esc(label)}</span>'
+                    f'<span class="ss-benchmark-metric">{esc(metric_label(metric, card))}</span> '
+                    f'<span class="ss-bench-indicator">{esc(label)}</span>'
                     f"</li>"
                 )
             break
@@ -142,12 +141,12 @@ def _benchmark_compare_body(card: dict) -> str:
         return ""
 
     bench_list = f'<ul class="ss-benchmark-list">{"".join(bench_items)}</ul>'
-    return f'<p class="ss-median-primer">{_esc(MEDIAN_PRIMER)}</p>{bench_list}'
+    return f'<p class="ss-median-primer">{esc(MEDIAN_PRIMER)}</p>{bench_list}'
 
 
 def _metric_learn_block_html(card: dict, metric: str) -> str:
     value = card.get(metric)
-    full_body = f'<p class="ss-metric-learn-body">{_esc(metric_learn_text(metric, value, card))}</p>'
+    full_body = f'<p class="ss-metric-learn-body">{esc(metric_learn_text(metric, value, card))}</p>'
     toggle = disclosure_html(
         "",
         full_body,
@@ -156,8 +155,8 @@ def _metric_learn_block_html(card: dict, metric: str) -> str:
     )
     return (
         f'<div class="ss-metric-learn-item">'
-        f'<p class="ss-metric-learn-heading">{_esc(metric_label(metric, card))}</p>'
-        f'<p class="ss-metric-analogy">{_esc(metric_analogy(metric, value, card))}</p>'
+        f'<p class="ss-metric-learn-heading">{esc(metric_label(metric, card))}</p>'
+        f'<p class="ss-metric-analogy">{esc(metric_analogy(metric, value, card))}</p>'
         f"{toggle}"
         f"</div>"
     )
@@ -169,10 +168,6 @@ def _metric_learn_blocks(card: dict) -> str:
 
 def _metric_definitions_body(card: dict) -> str:
     return f'<div class="ss-metric-learn-list">{_metric_learn_blocks(card)}</div>'
-
-
-def _esc(value: object) -> str:
-    return html.escape("" if value is None else str(value))
 
 
 def _format_market_code(market_code: str | None) -> str:
@@ -200,7 +195,7 @@ def build_learn_panel_body_html(card: dict) -> str:
         compare_section = (
             f'<div class="ss-learn-section">'
             f'<p class="ss-learn-heading">How we compare to similar companies</p>'
-            f'<p class="ss-benchmark-unavailable">{_esc(unavailable)}</p>'
+            f'<p class="ss-benchmark-unavailable">{esc(unavailable)}</p>'
             f"</div>"
         )
     return (
@@ -222,7 +217,7 @@ BLOCK_LABEL_VERDICT_MEANING = "What the verdict means"
 
 
 def _block_label_html(text: str) -> str:
-    return f'<p class="ss-block-label">{_esc(text)}</p>'
+    return f'<p class="ss-block-label">{esc(text)}</p>'
 
 
 def _company_summary_html(card: dict) -> str:
@@ -236,11 +231,11 @@ def _company_summary_html(card: dict) -> str:
     label = _block_label_html(BLOCK_LABEL_DESCRIPTION)
     full = business_summary_full(card)
     if not business_summary_is_truncated(card) or not full:
-        body = f'<p class="ss-company-summary">{_esc(preview)}</p>'
+        body = f'<p class="ss-company-summary">{esc(preview)}</p>'
     else:
         body = disclosure_html(
-            _esc(preview),
-            f'<p class="ss-company-summary-full">{_esc(full)}</p>',
+            esc(preview),
+            f'<p class="ss-company-summary-full">{esc(full)}</p>',
             more_label="Read more",
             less_label="Show less",
         )
@@ -258,8 +253,8 @@ def _health_block_html(card: dict) -> str:
         return ""
     badge = (
         f'<p class="ss-verdict-badge">'
-        f'<span class="ss-verdict-emoji">{_esc(VERDICT_EMOJI[token])}</span>'
-        f'<span class="ss-verdict-label">{_esc(VERDICT_BADGE_LABEL[token])}</span>'
+        f'<span class="ss-verdict-emoji">{esc(VERDICT_EMOJI[token])}</span>'
+        f'<span class="ss-verdict-label">{esc(VERDICT_BADGE_LABEL[token])}</span>'
         f"</p>"
     )
     # Badge before the "AI-written" label: the verdict comes from fixed rules, not the model.
@@ -281,7 +276,7 @@ def _bullets_html(text: str, *, list_class: str) -> str:
     both the AI-written read (`ss-ai-read-list`) and the deterministic fallback
     (`ss-verdict-fallback-list`) -- distinct classes styled identically in styles.py, kept
     apart so the two stay distinguishable in the DOM and in tests."""
-    items = "".join(f"<li>{_esc(sentence)}</li>" for sentence in ai_read_sentences(text))
+    items = "".join(f"<li>{esc(sentence)}</li>" for sentence in ai_read_sentences(text))
     return f'<ul class="{list_class}">{items}</ul>'
 
 
@@ -293,7 +288,7 @@ def _financial_caveat_html(card: dict) -> str:
     "" for every other type."""
     if (card.get("company_type") or DEFAULT_COMPANY_TYPE) != "financial":
         return ""
-    return f'<p class="ss-financial-caveat">{_esc(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)}</p>'
+    return f'<p class="ss-financial-caveat">{esc(FINANCIAL_CAPITAL_ADEQUACY_CAVEAT)}</p>'
 
 
 def _metric_stack_with_groups(card: dict, cell_fn) -> str:
@@ -307,7 +302,7 @@ def _metric_stack_with_groups(card: dict, cell_fn) -> str:
     for metric in metrics_for_card(card):
         group = metric_perspective_label(metric)
         if group != current_group:
-            blocks.append(f'<p class="ss-metric-group-heading">{_esc(group)}</p>')
+            blocks.append(f'<p class="ss-metric-group-heading">{esc(group)}</p>')
             current_group = group
         blocks.append(cell_fn(card, metric))
     return "".join(blocks)
@@ -319,15 +314,15 @@ def _metric_cell_html(card: dict, metric: str) -> str:
     range_html = _metric_range_html(card, metric)
     gloss = metric_gloss(metric, card.get(metric), card, benchmarked=bool(range_html))
     range_html = range_html or _metric_range_unavailable_html()
-    gloss_html = f'<p class="ss-metric-gloss">{_esc(gloss)}</p>'
+    gloss_html = f'<p class="ss-metric-gloss">{esc(gloss)}</p>'
     value_row = (
         f'<p class="ss-metric-value-row">'
-        f'<span class="ss-metric-value">{_esc(value)}</span>'
+        f'<span class="ss-metric-value">{esc(value)}</span>'
         f"</p>"
     )
     return (
         f'<div class="ss-metric">'
-        f'<p class="ss-metric-label">{_esc(label)}</p>'
+        f'<p class="ss-metric-label">{esc(label)}</p>'
         f"{value_row}"
         f"{range_html}"
         f"{gloss_html}"
@@ -347,15 +342,15 @@ def build_card_html(card: dict) -> str:
 
     identity = (
         f'<section class="ss-card ss-card-identity">'
-        f'<p class="ss-meta-line">{_esc(meta_line)}</p>'
+        f'<p class="ss-meta-line">{esc(meta_line)}</p>'
         f'<p class="ss-identity">'
-        f'<span class="ss-company">{_esc(company)}</span> '
-        f'<span class="ss-ticker">{_esc(ticker)}</span></p>'
+        f'<span class="ss-company">{esc(company)}</span> '
+        f'<span class="ss-ticker">{esc(ticker)}</span></p>'
         f"{_health_block_html(card)}"
         f"{_company_summary_html(card)}"
         f'<div class="ss-sector-context">'
-        f'<p class="ss-sector-headline">{_esc(sector_head)}</p>'
-        f'<p class="ss-sector-gloss">{_esc(sector_gloss)}</p>'
+        f'<p class="ss-sector-headline">{esc(sector_head)}</p>'
+        f'<p class="ss-sector-gloss">{esc(sector_gloss)}</p>'
         f"</div>"
         f"</section>"
     )
@@ -390,7 +385,7 @@ def render_card_footer(card: dict) -> None:
     with fresh_col:
         if fresh:
             st.markdown(
-                f'<p class="ss-freshness">{_esc(fresh)}</p>',
+                f'<p class="ss-freshness">{esc(fresh)}</p>',
                 unsafe_allow_html=True,
             )
 

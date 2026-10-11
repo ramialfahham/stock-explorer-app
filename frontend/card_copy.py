@@ -514,7 +514,7 @@ VERDICT_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 VERDICT_BADGE_LABEL = {"green": "Healthy", "yellow": "Mixed", "red": "Fragile"}
 
 # Fallback health-block text for when ai_read is absent; keep it a general summary, never the
-# verdict engine's internal thresholds. No apostrophes/em-dashes: _esc() breaks a literal-substring test match on them.
+# verdict engine's internal thresholds. No apostrophes/em-dashes: esc() breaks a literal-substring test match on them.
 VERDICT_FALLBACK_READ = {
     "green": "Strong across all financial-health metrics, with zero red flags.",
     "yellow": "No severe financial vulnerabilities, but not every metric clears the bar for strong.",

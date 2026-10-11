@@ -10,18 +10,19 @@ import pytest
 import yaml
 
 import check_registry_var_sync as gate
+import ingestion.registry as registry_module
 
 ACTIVE = [
-    {"market_code": "us", "ingest_active": True},
-    {"market_code": "de", "ingest_active": True},
-    {"market_code": "xx", "ingest_active": False},
+    {"market_code": "us", "index_name": "US", "ingest_active": True},
+    {"market_code": "de", "index_name": "DE", "ingest_active": True},
+    {"market_code": "xx", "index_name": "XX", "ingest_active": False},
 ]
 
 
 @pytest.fixture
 def files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     registry, project = tmp_path / "market_registry.yml", tmp_path / "dbt_project.yml"
-    monkeypatch.setattr(gate, "REGISTRY_PATH", registry)
+    monkeypatch.setattr(registry_module, "REGISTRY_PATH", registry)
     monkeypatch.setattr(gate, "DBT_PROJECT_PATH", project)
 
     def write(registry_markets, var_codes) -> None:
@@ -69,6 +70,6 @@ def test_a_var_that_is_not_a_list_fails(files, capsys) -> None:
 
 
 def test_no_active_markets_fails(files, capsys) -> None:
-    files([{"market_code": "xx", "ingest_active": False}], ["xx"])
+    files([{"market_code": "xx", "index_name": "XX", "ingest_active": False}], ["xx"])
     assert gate.main() == 1
     assert "no ingest_active markets" in capsys.readouterr().err

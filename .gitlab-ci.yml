@@ -183,8 +183,7 @@ validate:full:
     - python scripts/check_eligibility_gaps.py --duckdb-path /tmp/stock_data_ci.db
     - dbt docs generate --project-dir dbt_analytics --profiles-dir "$HOME/.dbt"
     - python scripts/check_dbt_documentation.py
-    # Pin matches requirements-dev.txt; keep both in sync if it's ever bumped.
-    - pip install pytest==9.1.1 && python -m pytest tests/ -q
+    - pip install "$(grep -E '^pytest==' requirements-dev.txt)" && python -m pytest tests/ -q
     - python scripts/audit_mart_vs_yfinance.py --duckdb-path /tmp/stock_data_ci.db --offline --sample-size 5
     # Real-shaped fixtures: recorded yfinance payloads replayed offline through the real
     # ingestion code, built by dbt in their own database, compared with the golden mart.
