@@ -19,9 +19,10 @@ sell or price words (!252). The owner delegated #47's spec-versus-code calls to 
 as the expert"); the FE-1 exception (company dedupe stays in the display layer) is the owner's
 answer A, recorded as criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
 (`importance_tier`, `basis_column`: no production reader), #58 (company-identity follow-ups).
-No open MRs. Next session: take #48.
+#48 (guardrail tests, reviewer frontmatter, routing) is on branch `fix/guardrails-tested`; once
+its MR merges, take #49.
 
-**Next: #48-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
+**Next: #49-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
 above cosmetic. Criteria: `docs/quality_criteria.json` v2 (a change needs a version bump and
@@ -40,9 +41,7 @@ the verdict (a new mechanism; the prompt alone keeps it from stating the verdict
 
 **This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
 (`WinError 4551`); a hook from a remote repo needs `entry: python -m ...`
-(`test_precommit_config.py` enforces it for pre-commit-hooks). `equity-analyst-reviewer`
-does not load (frontmatter, #48); until fixed, run its role file through a general-purpose
-agent and say so in `review.md`. The local `.env` has no `SUPABASE_ANON_KEY` and listing `.env`
+(`test_precommit_config.py` enforces it for pre-commit-hooks). The local `.env` has no `SUPABASE_ANON_KEY` and listing `.env`
 is blocked by permissions; a read-only production query needs the owner to supply the key.
 
 **Merged, no action:** !220/!221 clone-and-continue; !224 review gate as a pre-commit hook
