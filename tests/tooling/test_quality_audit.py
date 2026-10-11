@@ -22,6 +22,7 @@ WORKFLOW = (REPO / ".claude" / "workflows" / "quality-baseline-audit.js").read_t
 FINGERPRINTS = {
     1: "c8938e30eef957c5af20e883f304fcb5870c08039b4d100b93f5f6245d26bff4",
     2: "c532f39acdc76a5cf8a54bc92ea28719d8acab779636ecfa3711eba9acf41b77",
+    3: "b0e846e28499e1cba92bd88239307508d30e3c7c2fb623b509ac7f5a8698450c",
 }
 
 

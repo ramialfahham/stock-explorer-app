@@ -17,7 +17,7 @@ models/
   2_base/               # base_<domain>__<entity>
   3_core/               # dim_*, fct_*
   4_intermediate/       # int_<domain>__<purpose>
-  5_marts/              # mart_<domain>__<purpose>
+  5_marts/              # mart_<domain>__<purpose>; the two marts read outside dbt keep their names
 ```
 
 ## Commands (from repo root)

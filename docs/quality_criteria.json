@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "approved_table": "Owner-approved bar for a professional repo; one area per row. A criterion may only be added, changed or removed with a version bump and owner approval.",
   "areas": [
     {
@@ -51,7 +51,7 @@
         },
         {
           "id": "DBT-3",
-          "rule": "No dead model: every model is referenced downstream, exported, or is a documented terminal mart.",
+          "rule": "No dead model: every model is referenced downstream, exported, is a documented terminal mart, or is documented as existing to check raw files.",
           "source": "approved table row (dbt)"
         },
         {

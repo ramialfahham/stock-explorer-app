@@ -9,7 +9,9 @@ it is not exempt (not code or string-literal data -- a Python docstring is found
 SQL comment via a quote-aware `--`/`/* */` scan, so a dated test fixture value or a SQL `comment
 on column` string is never mistaken for a code comment); every governed Markdown doc
 (`GOVERNED_MARKDOWN`, by path, so a new doc is covered without opting in) and any other one whose
-first 10 lines declare a `> DURABLE.` header, outside fenced code blocks. Wording split across
+first 10 lines declare a `> DURABLE.` header, outside fenced code blocks; every dbt `.yml` under
+`dbt_analytics/`, its `#` comments and its single-line and `>`/`|` block `description:` text (a
+quoted test-data value is not text, so a dated fixture row passes). Wording split across
 a line break counts. The handover and the task contract/review are `DISPOSABLE` and sit
 outside those paths: they are the sanctioned, point-in-time home for this content.
 Open/planned work with its own narrative lives in GitLab Issues instead, per
@@ -156,6 +158,63 @@ def _sql_violations(path: Path) -> list[str]:
     return violations
 
 
+def _yaml_comment_span(line: str) -> str | None:
+    """The `#` comment on a YAML line, or None. A `#` opens a comment only at the start of the
+    line or after whitespace, and never inside a quoted string."""
+    quote = ""
+    for i, ch in enumerate(line):
+        if quote:
+            if ch == quote:
+                quote = ""
+        elif ch in "'\"":
+            quote = ch
+        elif ch == "#" and (i == 0 or line[i - 1].isspace()):
+            return line[i:]
+    return None
+
+
+def _yaml_violations(path: Path) -> list[str]:
+    violations = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except UnicodeDecodeError:
+        return violations
+
+    description = re.compile(r"^(\s*)(?:-\s+)?description:\s*(.*)$")
+    block: tuple[int, int, list[str]] | None = None
+    for lineno, line in enumerate(lines, start=1):
+        if block is not None:
+            key_indent, start, parts = block
+            indent = len(line) - len(line.lstrip())
+            if line.strip() and indent <= key_indent:
+                kind = _violation_kind(" ".join(parts))
+                if kind:
+                    violations.append(f"{path}:{start}: {kind} in description")
+                block = None
+            else:
+                parts.append(line.strip())
+                continue
+        span = _yaml_comment_span(line)
+        if span is not None:
+            kind = _violation_kind(span)
+            if kind:
+                violations.append(f"{path}:{lineno}: {kind} in comment")
+        match = description.match(line)
+        if match:
+            value = match.group(2).strip()
+            if value[:1] in (">", "|"):
+                block = (len(match.group(1)), lineno, [])
+            else:
+                kind = _violation_kind(value)
+                if kind:
+                    violations.append(f"{path}:{lineno}: {kind} in description")
+    if block is not None:
+        kind = _violation_kind(" ".join(block[2]))
+        if kind:
+            violations.append(f"{path}:{block[1]}: {kind} in description")
+    return violations
+
+
 def is_governed_markdown(path: Path, root: Path) -> bool:
     parts = path.relative_to(root).parts
     for pattern in GOVERNED_MARKDOWN:
@@ -222,6 +281,10 @@ def find_violations(root: Path) -> list[str]:
     for path in _iter_repo_files(root, ".sql"):
         violations.extend(v.replace(str(root) + "\\", "").replace(str(root) + "/", "")
                            for v in _sql_violations(path))
+    for path in _iter_repo_files(root, ".yml"):
+        if path.relative_to(root).parts[0] == "dbt_analytics":
+            violations.extend(v.replace(str(root) + "\\", "").replace(str(root) + "/", "")
+                               for v in _yaml_violations(path))
     for path in _iter_repo_files(root, ".md"):
         violations.extend(v.replace(str(root) + "\\", "").replace(str(root) + "/", "")
                            for v in _markdown_violations(path, root))

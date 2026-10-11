@@ -3,77 +3,103 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #48 (milestone "3 · Professional baseline", guardrails). Every guard that is
-  wired in has a test that fails when it stops working, every reviewer definition loads, and
-  every routing pattern matches a file. Four rules, each enforced by a test.
+objective: Closes #49 (milestone "3 · Professional baseline", dbt standards). The checklist in
+  the issue is the source for what and why; this contract holds scope and the checkable "done".
 
 scope_paths:
-  - tests/tooling/claude_hooks/test_agent_definitions.py
-  - tests/tooling/claude_hooks/test_pre_push_gate.py
-  - tests/tooling/claude_hooks/test_review_routing_patterns.py
-  - tests/tooling/test_every_guard_has_a_test.py
-  - tests/tooling/test_check_layer_contract.py
-  - tests/tooling/test_check_dbt_sql_structure.py
-  - tests/tooling/test_check_registry_var_sync.py
-  - tests/ingestion/test_rate_limit.py
-  - .claude/agents/equity-analyst-reviewer.md
-  - .claude/review_routing.json
+  - docs/engineering_standards.md
+  - dbt_analytics/README.md
+  - dbt_analytics/models/1_staging/yfinance/stg_yf__fundamentals.sql
+  - dbt_analytics/models/1_staging/yfinance/_yfinance_staging.yml
+  - dbt_analytics/models/2_base/yfinance/_yfinance_base.yml
+  - dbt_analytics/models/3_core/_core.yml
+  - dbt_analytics/models/3_core/fct_fundamentals_snapshot.sql
+  - dbt_analytics/models/3_core/dim_stock.sql
+  - dbt_analytics/tests/assert_percent_scale_passthroughs.sql
+  - dbt_analytics/tests/assert_dividend_yield_suspects.sql
+  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
+  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
+  - dbt_analytics/seeds/_seeds.yml
+  - scripts/check_no_narrative_dates.py
+  - tests/tooling/test_check_no_narrative_dates.py
+  - docs/quality_criteria.json
+  - tests/tooling/test_quality_audit.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Both answered by the owner in chat. (1) The dead pattern
-  `.github/workflows/*` is removed, with its mention in the routing comment (answer A). (2) The
-  registry-sync script gets its own test and the existing onboarding test stays (answer A). No
-  guard script is changed.
+decisions_reserved: All four answered by the owner in chat. D1 (items 7, 10, 15): amend
+  engineering_standards section 1 so names that leave dbt keep their names; rename only the
+  internal `stmt_fiscal_period_end`. D2 (item 14): keep `stg_yf__daily_prices`, document it as a
+  raw-file check model, amend DBT-3 (criteria v3). D3 (items 12, 13): fix every hit and widen the
+  narrative check to dbt `.yml`. D4 (item 11): the uniqueness test stays on `base_yf__fundamentals`
+  because it is that model's only model-level test (section 3 and `check_dbt_tests.py` require
+  one); section 3 says so. Nothing else is decided here: the optional "one ref per CTE"
+  gate extension is not built; no mart, Supabase or frontend name changes.
 
 rules:
-  R1: every file in `.claude/agents/` has frontmatter that `yaml.safe_load` parses, with `name`,
-    `description`, `tools`, `model`, and `name` equals the file stem.
-  R2: every script wired in `.claude/settings.json` hooks or in a local hook of
-    `.pre-commit-config.yaml` (entry `python <path>.py`) has a test file, other than
-    `test_hooks_import.py` and the meta-test itself, that names its module. One behaviour test
-    per script, each with a violating and a compliant case.
-  R3: every pattern in `review_routing.json` (`paths`, `artifact_only`, `artifact_only_never`)
-    matches at least one file from `git ls-files`.
-  R4: `call_with_retry` raises a non-rate-limit error after one call, retries a rate-limit
-    error (`429`, `Too Many Requests`, `YFRateLimitError`) and raises it after `max_attempts`,
-    and returns the value after one 429. `time.sleep` is patched.
+  A (naming): section 1 states that the mart names and the columns a mart exposes (including
+    `ticker` and `market_code`) are the consumer contract and keep their names; every other name
+    follows the table. `stmt_fiscal_period_end` is named `stmt_fiscal_period_end_date` in staging
+    and downstream; the raw parquet column keeps its name.
+  B (structure): every SQL file under `dbt_analytics/models/` and `dbt_analytics/tests/` has one
+    import CTE per ref() and each CTE one purpose (section 1.1); base models do not re-assert a
+    uniqueness test staging already asserts on the same grain, unless it is the model's only
+    model-level test (section 3).
+  C (comments and prose): a `#` or `--` comment in dbt yml/sql states what is true now: no change
+    history, no issue/MR reference, no date, no approval marker. A `description:` carries no date
+    or approval marker. `check_no_narrative_dates.py` scans dbt `.yml` comments and `description:`
+    text for date, MR/PR reference and owner-approved/decision wording.
+  D (no dead model): a model nothing reads is allowed only if its description says it exists to
+    check raw files; DBT-3 says so.
 
 changes:
-  - `equity-analyst-reviewer.md`: the `description` value is quoted; the em-dash on that line
-    becomes `--` (project rule for any edited line).
-  - `review_routing.json`: the `.github/workflows/*` pattern and its mention in
-    `_comment_guard_paths` are removed.
-  - The tests above. Fixture SQL is built in `tmp_path`; no tracked fixture files.
-  - Handover: #48 collapsed to one line; the unloadable-reviewer note removed.
+  - Items 7, 15: section 1 gets the rule A paragraph; the `dbt_analytics/README.md` layer comment
+    for marts matches it.
+  - Item 8: `assert_percent_scale_passthroughs.sql` gets import CTEs `fundamentals` and
+    `card_metrics`; `metrics` builds the union from those names.
+  - Item 9: `dim_stock.sql` gets an import CTE `fundamentals` and a `latest_fundamentals` CTE.
+  - Item 10: rename in `stg_yf__fundamentals.sql`, `fct_fundamentals_snapshot.sql` and the three
+    yml column entries.
+  - Item 11: remove the `unique_combination_of_columns` test from `base_yf__constituents` (it
+    keeps its unit tests); keep it on `base_yf__fundamentals`; make the "union" wording true.
+  - Item 12 and the same-family hits: rewrite each history comment as one sentence on what the
+    test pins now; drop `(issue #N)` from comments.
+  - Item 13: delete the dated parenthetical in `_seeds.yml`.
+  - Item 14: the description of `stg_yf__daily_prices` says no card reads it and it checks the
+    raw price files; `docs/quality_criteria.json` version 3, DBT-3 amended.
+  - The narrative check gains `.yml` scanning with tests; handover updated.
 
 done_when:
-  - The tests above pass, including the R1 test on `equity-analyst-reviewer.md` and the R3 test
-    on every routing pattern.
-  - `git grep -nF ".github/workflows"` outside the keep list finds nothing.
-    Keep list: `.gitlab-ci.yml:1` (a header note that CI was ported from GitHub; not a routing
-    claim) and this contract.
-  - `pytest tests -q` and `python scripts/bootstrap.py --verify` pass.
-  - No guard script (`scripts/check_*.py`, `.claude/hooks/*.py`, `ingestion/`) is modified.
+  - Exact search 1 finds nothing outside the keep list:
+    `git grep -nEi "(#|--) .*(\bbefore\b|used to|no longer|the change|headline effect|changed with|issue #|\bMR ?!|\bnow\b|\bold\b|\bformerly\b|\bpreviously\b)" -- 'dbt_analytics/*.yml' 'dbt_analytics/*.sql'`
+    Keep list: `_seeds.yml:129` ("before any yfinance" states an ordering that is true now) and
+    `int_stock__card_metrics.sql:240` ("since a ..." is not in the pattern; listed only if it
+    matches), checked line by line at implementation; any other hit is rewritten.
+  - Exact search 2 for the renamed column: `git grep -nw "stmt_fiscal_period_end" -- dbt_analytics docs scripts ingestion`
+    hits only raw-column sites. Keep list: `stg_yf__fundamentals.sql` (reads the raw column),
+    `dbt_analytics/models/sources.yml`, `docs/data_contract.md` (raw parquet table),
+    `scripts/audit_mart_vs_yfinance.py` (raw schema), `ingestion/yfinance/ingest.py`,
+    `scripts/seed_ci_raw_fixtures.py`, and the staging yml entry that documents the raw name.
+  - Exact search 3: `git grep -nE "owner[- ](approved|decision)|20[0-9]{2}-[0-9]{2}-[0-9]{2}" -- 'dbt_analytics/*.yml'`
+    finds only quoted test-data values in `*_unit_tests.yml` (keep list: those files' fixture rows).
+  - `python scripts/check_no_narrative_dates.py` passes, and its new test shows it fails on a
+    dated `# comment` and a dated `description:` in a temp dbt yml.
+  - `pytest tests -q` and `python scripts/bootstrap.py --verify` (dbt build with unit tests)
+    pass; mart row counts and the golden mart check are unchanged.
+  - No mart, Supabase, export, frontend or ingestion file changes (`git diff --stat` shows none).
 
 known_limits:
-  - R2 proves a test names the script, not that the test is good; the behaviour tests carry
-    that. The meta-test finds wired scripts from `settings.json` and the `entry:` lines of
-    local pre-commit hooks; a guard wired some other way is not seen.
-  - The routing test is stricter than criterion GRD-3 in `docs/quality_criteria.json`: it has no exemption for a pattern documented as
-    dormant. No pattern is dormant today.
-  - R1 checks that the frontmatter parses and has the four keys, not that the harness accepts
-    every value.
-  - `check_dbt_sql_structure.py`: its scalar-subquery regex is anchored at the start of the file
-    (`^\s*select`), but every compliant model starts with WITH, so the rule can only fire on a
-    file that already fails the WITH rule. The test pins the case that fires; fixing the regex
-    changes a gate and is a separate issue.
-  - The registry-sync duplicate: `test_dbt_active_markets_match_the_registry` stays as a second copy of the
-    invariant.
+  - Exact search 1 is a word heuristic: a history comment worded without those words is not
+    caught. The narrative check covers dates, MR/PR references and owner wording only.
+  - `(issue #N)` references inside `description:` text and phrases such as "No longer
+    catalogued" in descriptions state a current fact and stay.
+  - The base models' `deduped` CTEs stay; whether they are still needed is not decided here.
+  - `check_dbt_sql_structure.py` is unchanged and cannot see items 8 or 9.
+  - Criteria v3 changes DBT-3 only; the other pending criteria edits stay open in the handover.
 
 regression_checklist:
-  - Existing hook and tooling tests unchanged and passing.
-  - Every reviewer named in `review_routing.json` still has a role file
-    (`test_every_routed_reviewer_has_a_role_file`).
-  - The remaining routing patterns are unchanged.
+  - Mart schemas, row counts and the golden mart comparison are unchanged.
+  - Every dbt model still has at least one model-level test (section 3) after item 11.
+  - `check_dbt_documentation.py` (column docs, null-when) still passes for the renamed column.
+  - The narrative check still passes on every file it scanned before.

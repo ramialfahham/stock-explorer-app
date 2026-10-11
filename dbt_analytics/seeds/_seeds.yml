@@ -6,8 +6,8 @@ seeds:
       Manual corrections for a constituent's `company_name`, applied in
       base_yf__constituents so a wrong or legal-register seed name never reaches a card
       headline uncorrected. One row per (market_code, ticker) needing a fix; a ticker not
-      listed here is untouched. Does not edit storage/seeds/*/constituents.csv, by design
-      (2026-08-28 owner decision: corrections live in the model, not the raw seed).
+      listed here is untouched. Does not edit storage/seeds/*/constituents.csv, by design:
+      corrections live in the model, not the raw seed.
     config:
       column_types:
         market_code: varchar

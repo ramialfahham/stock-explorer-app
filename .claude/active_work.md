@@ -19,16 +19,17 @@ sell or price words (!252). The owner delegated #47's spec-versus-code calls to 
 as the expert"); the FE-1 exception (company dedupe stays in the display layer) is the owner's
 answer A, recorded as criteria v2. Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
 (`importance_tier`, `basis_column`: no production reader), #58 (company-identity follow-ups).
-#48 is merged (!254): every wired guard has a test, and `tests/tooling/test_every_guard_has_a_test.py`
-fails when a new one has none. Its follow-ups: #59 (the scalar-subquery rule in
-`check_dbt_sql_structure.py` cannot fire on a WITH-first model), #60 (owner call: dormant routing
-patterns, criterion GRD-3 versus the stricter test; recommended: amend the criterion), #61 (real
-`YFRateLimitError` in the retry test). Next session: take #49.
+#48 is merged (!254): `tests/tooling/test_every_guard_has_a_test.py` fails when a wired guard has
+no test. Its follow-ups: #59 (the scalar-subquery rule in `check_dbt_sql_structure.py` cannot
+fire on a WITH-first model), #60 (owner call: dormant routing patterns versus criterion GRD-3;
+recommended: amend the criterion), #61 (real `YFRateLimitError` in the retry test).
+#49 (dbt standards) is on branch `fix/dbt-standards-49`: section 1 exempts names read outside dbt,
+the narrative check scans dbt `.yml`, criteria v3. Once its MR merges, take #50.
 
-**Next: #49-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
+**Next: #50-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
-above cosmetic. Criteria: `docs/quality_criteria.json` v2 (a change needs a version bump and
+above cosmetic. Criteria: `docs/quality_criteria.json` v3 (a change needs a version bump and
 the owner). Way of working the owner set: one rule over every case instead of per-case fixes;
 make a sweep's "done" checkable (an exact search and a keep list in the contract); fix every
 copy of a changed claim.
@@ -36,7 +37,7 @@ copy of a changed claim.
 **Owner decisions open (ask one at a time):** #43 scope, name snapshot CSV only or also the
 fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
-criteria v3, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
+criteria v4, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
 still name the removed handover archives; should `verify_quality_audit.py` name NOT AUDITED
 areas on the console and exit non-zero; #58's two calls (a home-market rule for the tie-break,
 `business_summary` in the deck fetch); whether to add a check that ties the AI read's text to
@@ -70,9 +71,6 @@ asks explicitly: `glab api -X POST projects/rami.al-fahham%2Fstock-explorer-app/
 
 **Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads through
 ingestion and dbt against a golden mart. Open: #40.
-
-**Issues #22-#24 CLOSED (!202, !209, !210):** verdict-meaning synonyms; per-metric benchmark
-gate `n_<metric>` in `int_stock__sector_benchmarks.sql`; the `sector_*` column docs.
 
 **Git push auth flakiness:** if it recurs, ask the owner; don't touch the credential store.
 
