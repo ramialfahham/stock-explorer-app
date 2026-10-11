@@ -23,8 +23,27 @@ answer A, recorded as criteria v2. Open follow-ups: #56 (preset cutoffs vs verdi
 no test. Its follow-ups: #59 (the scalar-subquery rule in `check_dbt_sql_structure.py` cannot
 fire on a WITH-first model), #60 (owner call: dormant routing patterns versus criterion GRD-3;
 recommended: amend the criterion), #61 (real `YFRateLimitError` in the retry test).
-#49 (dbt standards) is on branch `fix/dbt-standards-49`: section 1 exempts names read outside dbt,
-the narrative check scans dbt `.yml`, criteria v3. Once its MR merges, take #50.
+#49 is merged (!256): section 1 exempts names read outside dbt, the narrative check scans dbt
+`.yml`, criteria v3. Follow-ups: #62 (the SQL-structure gate cannot see a CTE that mixes a ref
+with other work), #63 (owner call: may an import CTE filter?), #64 (`layering.md` says base
+unions; no base model does). After the AI-read fix below, take #50.
+
+**AI read fix, branch `fix/ai-read-grounded` (owner-reported, live cards AAPL, 3M, 4DMedical).**
+The reads invented purposes ("to fund growth"), ended with a verdict sentence, said "one third",
+and wrote "A$" with no amount; stored reads kept the old text because a read regenerates only
+when `input_hash` changes. The fix gives the model the catalogue `gloss` and `applicability`
+(never `interpretation`), rejects a read with a figure-less or over-25-word sentence, a
+fraction in words, a purpose or cause marker, or a lone currency symbol (no retry), and bumps
+`INPUT_HASH_VERSION` to 5a.5. The owner triggers the production run (about $5, about 95
+minutes). If this merges before the scheduled Oct 15 06:00 UTC run, that run does it unattended.
+Then count the `read REJECTED` lines in the `generate_assessments` log, check the live
+AAPL, 3M and 4DMedical cards, and report the rate. A high count means a second prompt pass.
+Open: #65 (verdict: growth plays almost no role; the owner wants researched, plausible rules, no
+guessing). Follow-ups to file: sector medians in the read (they need their own check); an audit of the
+catalogue text against ISO/IEC 11179-4 (thin glosses: net debt / EBITDA, free cash, working
+capital, current ratio scale); `card_copy.metric_gloss` calls a negative debt ratio net cash
+even when EBITDA is negative. The owner's three writing standards (ISO 24495-1,
+ISO/IEC 11179-4, ASD-STE100) are in `football-data-pipeline/docs/working_agreement.md` section 9.
 
 **Next: #50-#52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
@@ -40,110 +59,49 @@ overlap check passes a larger table that contains the whole seed (file an issue 
 criteria v4, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
 still name the removed handover archives; should `verify_quality_audit.py` name NOT AUDITED
 areas on the console and exit non-zero; #58's two calls (a home-market rule for the tie-break,
-`business_summary` in the deck fetch); whether to add a check that ties the AI read's text to
-the verdict (a new mechanism; the prompt alone keeps it from stating the verdict).
+`business_summary` in the deck fetch); a Hugging Face Spaces migration; an httpx deck fetch instead
+of the Supabase client library (a mechanism change); whether to add a check that ties the AI read's text to the
+verdict (the figure check rejects a read with a sentence that cites no figure).
 
 **This machine:** Smart App Control is on and blocks pre-commit's unsigned `.exe` launchers
 (`WinError 4551`); a hook from a remote repo needs `entry: python -m ...`
 (`test_precommit_config.py` enforces it for pre-commit-hooks). The local `.env` has no `SUPABASE_ANON_KEY` and listing `.env`
 is blocked by permissions; a read-only production query needs the owner to supply the key.
 
-**Merged, no action:** !220/!221 clone-and-continue; !224 review gate as a pre-commit hook
-(follow-up #29); !225 converging review rounds (follow-up #31); !228 README product-first;
-!229 `.mailmap`; !214/!215 comment trim; !212 README demo (disable `gif_creator` overlays);
-!216 stale-card eviction (verified live); !233 DAX tickers bare via `strip_suffix`.
-Declined by the owner: revenue-growth fallback, incremental dbt models. Hard constraint:
-zero cost.
+**Declined by the owner:** revenue-growth fallback, incremental dbt models. Hard constraint:
+zero cost. Open from merged work: #29 (review gate bypass spellings), #31 (equity reviewer
+FAIL grounds); README demo: disable `gif_creator` overlays.
 
 **Production run, owner-triggered 2026-10-11 (pipeline 2935437069, success, 43 min), the first
 with the six new markets, the raw archive, the class-share fix and the facts-only AI read.**
 Eligible cards: fi 24, se 30, dk 25, no 24, ca 59, it 40, ch 20 (at the warn line); 1241 in
 total. Raw archive (!226, !227): 45 files uploaded, job passed (open, owner's: #33, retention
-near the 1 GB quota). Reads: 223 generated, 1005 carried, 13 rejected, all by the advice guard
-on "sells" or "selling" in a business description; the prompt now bars buy, sell and price
-words (!252), so the Oct 15 run should retry those 13 without rejecting them. `INPUT_HASH_VERSION` not bumped, so an older read changes only when its card's
-numbers, display currency or company type change, or it was rejected. **Not yet checked (needs a read-only production query,
-owner approval each time; the local `.env` has no `SUPABASE_ANON_KEY`):** a few new read
-texts, the BRK-B, BF-B and BT-A.L cards, and that Kojamo (KOJAMO.HE) and Golden Ocean (GOGL.OL)
-dropped out. The scheduled Oct 15 run still happens. To run production on demand the owner
+near the 1 GB quota). Reads: 223 generated, 1005 carried, 13 rejected on "sells" or "selling" (barred since !252).
+**Not yet checked (needs a read-only production query, owner approval each time; the local
+`.env` has no `SUPABASE_ANON_KEY`):** the BRK-B, BF-B and BT-A.L cards, and that Kojamo
+(KOJAMO.HE) and Golden Ocean (GOGL.OL) dropped out. The scheduled Oct 15 run still happens. To run production on demand the owner
 asks explicitly: `glab api -X POST projects/rami.al-fahham%2Fstock-explorer-app/pipeline_schedules/4404666/play`
 (about 45 minutes, spends AI calls), then read the `generate_assessments` lines of the job log.
 
-**Real-shaped fixtures: MERGED (!231).** `validate:full` replays recorded payloads through
-ingestion and dbt against a golden mart. Open: #40.
+**Real-shaped fixtures:** `validate:full` replays recorded payloads against a golden mart. Open: #40.
 
 **Git push auth flakiness:** if it recurs, ask the owner; don't touch the credential store.
 
 **Null-when doc enforcement: MERGED (!207, !210).** `check_null_when_documented` in `check_dbt_documentation.py`; a description that already says "null" can still be incomplete.
 
-**dbt-layer audit + em-dash cleanup: MERGED (!205).** Manual audit vs.
-`docs/layering.md`/`docs/engineering_standards.md`: transformation layer clean, no layer
-violations, full doc/test coverage. Only real gap (8 files' leftover em/en-dashes,
-grandfathered by `check_no_em_dash.py`'s diff-only design) fixed. **Durable lesson: a
-"mechanical" rule needing a judgment call IS the owner's -- six review rounds here were the
-same root cause, an undocumented exception invented along the way.** Two minor findings
-not acted on: `fct_fundamentals_snapshot` is "latest state" not true history despite the
-name; staging bypasses `source()` for `raw_parquet_union()` (freshness still works). Third
-(`int_stock__sector_benchmarks.sql`'s repetitive CASE blocks, same file the ~50-column
-docs gap below tracks) is now covered by issue #23.
+**dbt-layer audit: MERGED (!205).** Durable lesson: a "mechanical" rule needing a judgment call
+IS the owner's; six review rounds were one undocumented exception invented along the way. Not
+acted on: `fct_fundamentals_snapshot` is "latest state" despite the name; staging bypasses
+`source()` for `raw_parquet_union()` (freshness still works).
 
-**Nav/About redesign + Not-now removal: MERGED (!200).** Overflow menu -> text-labeled
-`About` popover; Not-now removed end-to-end; per-row `Remove` added to Saved. **Lesson:
-an objective copy DEFECT is a mechanical fix, not an approval round-trip -- only a change
-to what the copy CLAIMS needs asking.** Popover alignment (~2.4px gap) accepted as-is.
-
-**Metric-preset filter bug: MERGED (!197).** Two of five presets checked fields
-`DECK_COLUMNS` never fetched, silently passing everything -- fixed; `metric_preset_options`
-now hides a preset only when its target type(s) have zero eligible cards, data-driven.
-
-**Discover control-tier contrast: MERGED (!198).** Landed on two tonal tiers by FUNCTION:
-content (unchanged) vs control (every button/input, one step lighter). **Lesson: when
-visual iteration keeps getting rejected as "random," ask what FUNCTIONAL categories the
-elements fall into first, don't keep tweaking hex values.**
-
-**GitLab issue backlog prioritization push (owner 2026-09-16), CLOSED -- all 5 phases
-merged (!171-!179).** **Lesson: citing past incidents as precedent is not the owner
-deciding fresh (working-agreement.md SS7).**
-
-**Repo renamed stock-swipe-app -> stock-explorer-app: MERGED (!194).** GitLab project,
-GitHub mirror, local `gitlab` remote, every in-repo reference, and the push-mirror's PAT
-all fixed/verified.
-
-**README scope note: MERGED (!193).** Owner's wording, verbatim.
-**Lesson: when the owner supplies literal wording, use it verbatim** -- an agent-added
-parenthetical, even accurate, is still unauthorized owner-reserved copy.
-
-**Issue #3, #21, Search tab removal, seed governance: MERGED (!181-!184).** Issue #22's
-first fix landed in !195 (see the current #22 entry above for status -- issue itself still
-open). **Durable lesson: when a fix "feels like a hack," the tell is usually real --
-pattern-matching free text to infer something the model already knows is the wrong layer;
-make it state that structurally instead.**
-
-**GitHub recovered/published (!185-!187): MERGED.** One-way mirror GitLab -> GitHub, both public.
-
-**Search unified into Discover's filtered list (!188, !189): MERGED.** Three narrow
-point-fixes for separate search bugs replaced with one concept: `_discover_pool()` picks
-search- or filter-matched rows, `_render_discover_tab()` renders either identically.
-**Lesson: a THIRD bug on one feature after two narrow fixes means find the shared root
-cause, stop patching symptoms.**
-
-**Nav buttons fixed when re-tapping the active tab: MERGED (!191).** `st.segmented_control`
-only reports a NEW selection, silently broke Saved's focus too. Fix: plain `st.button()`s,
-always fire, one handler; `bottom_nav` session key deleted, `active_page` sole truth.
-
-**Repo-cleanup push (owner 2026-09-15), CLOSED -- all six phases MERGED (!160, !161, !163,
-!165, !167, !169).** Detail in each phase's own MR; lessons folded into "Context /
-operational notes" below.
-
-**Portfolio-grade push (owner 2026-09-15), CLOSED.** Item 8 (AI-read cost) and MR !116's
-guardrail gaps resolved. **`--max-reads` for the `data-pipeline` CI job still unset --
-owner's call**, ideally after one clean scheduled run's real counts.
-
-**Load-time work (owner 2026-09-14, zero spend), CLOSED for now.** !140-!143 merged:
-first-paint splash, cookie-based saved list, telemetry/file-watcher off, lazy yfinance.
-Warm-run server time re-measured: 141ms -- fast, not the bottleneck anymore. **NEXT,
-owner's calls:** Hugging Face Spaces migration; httpx deck fetch instead of the Supabase
-client library (mechanism change).
+**Durable lessons from merged work (detail in git):** an objective copy defect is a mechanical
+fix, only a change to what the copy CLAIMS needs asking; when visual iteration keeps being
+rejected as "random", ask what functional categories the elements fall into before tweaking
+values; citing past incidents as precedent is not the owner deciding fresh (working-agreement
+SS7); when the owner supplies literal wording, use it verbatim; when a fix "feels like a hack",
+pattern-matching free text to infer something is the wrong layer, so state it structurally; a
+third bug on one feature after two narrow fixes means find the shared root cause. The repo is
+`stock-explorer-app` (renamed from stock-swipe-app); GitHub is a one-way public mirror of GitLab.
 
 **Owner question left open by !130:** a decimals-based discriminator for fraction-scale
 yields would catch a fraction row at any yield but mis-scale a genuine four-decimal

@@ -673,7 +673,8 @@ def test_read_brief_covers_every_input_field() -> None:
     union = {m for fields in rules.INPUT_FIELDS_BY_TYPE.values() for m in fields}
     assert union <= set(rules.READ_METRIC_BRIEF)
     for brief in rules.READ_METRIC_BRIEF.values():
-        assert {"label", "gloss", "fmt"} <= set(brief)
+        assert {"label", "fmt"} <= set(brief)
+        assert "gloss" not in brief  # the meaning is the catalogue's, not written twice
         assert brief["fmt"] in {"pct", "ratio", "ratio_1", "currency"}
     # _present_metric_renderings keys its dict by label, not field name, for every company
     # type -- if two fields for the same type ever shared a label, one would silently
@@ -762,15 +763,9 @@ def test_build_read_messages_operating_has_system_verdict_and_facts() -> None:
     for field in rules.INPUT_FIELDS_BY_TYPE["operating"]:
         assert rules.READ_METRIC_BRIEF[field]["label"] in user
     assert "24.0%" in user  # percent formatting
-    # The growth line must tell the model which way growth counts, since the verdict reads it
-    # one-sidedly. Pinning the direction rather than a catchphrase: a falling top line counts
-    # against the verdict, a rising one does not count for it.
-    # Assert against the BUILT message, not the constant. Reading the constant would prove
-    # only that it contains the words, so deleting the gloss from build_read_messages' f-string
-    # would leave the whole suite green and the model would never be told which way growth
-    # counts. Nothing else in this file covers gloss text reaching the prompt.
-    assert "counts against the verdict" in user.lower()
-    assert "does not count for it" in user.lower()
+    # The meaning beside each number is the catalogue's, never the verdict rules: which way
+    # growth counts is in the system prompt (test_system_prompt_carries_the_growth_direction...).
+    assert "Meaning: " in user and "Limit: " in user
     assert "forward_pe" not in rules.INPUT_FIELDS_BY_TYPE["operating"]
 
 
@@ -787,6 +782,292 @@ def test_build_read_messages_omits_missing_metrics() -> None:
     assert rules.READ_METRIC_BRIEF["current_ratio_stmt"]["label"] not in user
     assert rules.READ_METRIC_BRIEF["net_debt_to_ebitda"]["label"] in user
     assert "None" not in user  # missing values never render as a number
+
+
+# --- Catalogue meaning in the facts block (ISO/IEC 11179-4: a definition, not a rationale) -----
+
+_ALL_READ_FIELDS = sorted({f for fields in rules.INPUT_FIELDS_BY_TYPE.values() for f in fields})
+
+
+def test_read_meaning_matches_the_card_gloss() -> None:
+    """The model is told what each number means in the words the card shows beside it."""
+    import card_copy
+
+    rows = [{f: 1.5} for f in _ALL_READ_FIELDS]
+    rows += [
+        {"ebit_margin_pct": 4.0, "ebit_margin_basis": "annual_latest"},
+        {"ebit_margin_pct": 4.0, "ebit_margin_basis": "ttm"},
+        {"net_debt_to_ebitda": -1.0},
+        {"debt_to_equity": -0.5},
+        {"net_debt_to_ebitda": None},
+    ]
+    for row in rows:
+        for field in _ALL_READ_FIELDS:
+            expected = card_copy.metric_gloss(field, row.get(field), row, benchmarked=False)
+            assert rules.read_metric_meaning(field, row) == expected, (field, row)
+
+
+def test_facts_block_gives_each_metric_its_catalogue_meaning_and_limit() -> None:
+    catalogue = rules._catalogue_text()
+    for ctype, fields in rules.INPUT_FIELDS_BY_TYPE.items():
+        row = {"company_type": ctype, "currency": "USD", **{f: 1.5 for f in fields}}
+        _system, user = rules.build_read_messages(row, rules.VERDICT_GREEN)
+        for field in fields:
+            assert f"Meaning: {rules.read_metric_meaning(field, row)}" in user, (ctype, field)
+            limit = catalogue[field]["applicability"].strip()
+            assert (f"Limit: {limit}" in user) == bool(limit), (ctype, field)
+            interpretation = catalogue[field]["interpretation"].strip()
+            assert interpretation not in user, f"{field}: interpretation carries rationale"
+
+
+def test_catalogue_text_given_to_a_read_names_no_advice_word() -> None:
+    """The model copies the wording it is given; a barred word there would reject the read."""
+    for field in _ALL_READ_FIELDS:
+        for key in ("gloss", "applicability"):
+            text = rules._catalogue_text()[field][key]
+            assert not rules._ADVICE_ACTION_RE.search(text), f"{field} {key}: {text}"
+            assert not rules._ADVICE_VALUE_SHARE_RE.search(text), f"{field} {key}: {text}"
+            assert rules.find_read_style_violations(text) == [], f"{field} {key}: {text}"
+
+
+def test_system_prompt_requires_figures_short_sentences_and_digits() -> None:
+    prompt = rules.READ_SYSTEM_PROMPT
+    assert "at most 25 words" in prompt
+    assert "exactly as it appears" in prompt
+    assert "that number's Meaning line" in prompt
+    assert "with the Meaning and Limit lines given for it" in prompt
+    assert "say any finance term in plain words" in prompt
+    assert "Use a Limit line only when it applies to this company" in prompt
+    assert "what the company can or cannot do" in prompt
+    assert "never the symbols" in prompt
+    assert "without an amount next to it" in prompt
+    assert "even where a Meaning line says sales" in prompt
+    assert "never as a fraction or a phrase in words" in prompt
+    assert "without an amount" in prompt
+    assert "recite every number" not in prompt
+    assert "may be empty" not in prompt
+
+
+def test_system_prompt_carries_the_growth_direction() -> None:
+    lowered = rules.READ_SYSTEM_PROMPT.lower()
+    assert "falling revenue counts against a company" in lowered
+    assert "rising revenue does not make a company healthy" in lowered
+
+
+# --- Figure, length and wording check ---------------------------------------------------------
+
+_OP_ROW = {
+    "company_type": "operating", "currency": "USD", "ebit_margin_pct": 20.4,
+    "revenue_growth_yoy_pct": 2.5, "net_debt_to_ebitda": 1.21, "fcf_margin_pct": 5.6,
+    "debt_to_equity": 2.68, "current_ratio_stmt": 1.71, "statement_roe_pct": 69.1,
+}
+
+# The three reads seen on the live app, each with a row of the figures those reads quote.
+_LIVE_3M = (
+    "This company turns a strong operating profit from its sales at 20.4%, showing solid "
+    "underlying profitability, but the picture is mixed because revenue is barely growing at 2.5% "
+    "and the company is carrying significant debt at 2.68 times its owners' equity stake.\n"
+    "Cash generation lags well behind profit, with only 5.6% of sales converting to actual free "
+    "cash, which limits the company's ability to pay down the debt burden while still growing.\n"
+    "These figures paint a mixed financial picture on these numbers."
+)
+_LIVE_4DX_ROW = {
+    "company_type": "operating", "currency": "AUD", "ebit_margin_pct": -823.3,
+    "revenue_growth_yoy_pct": 42.3, "net_debt_to_ebitda": 1.74, "debt_to_equity": 0.07,
+    "current_ratio_stmt": 0.89,
+}
+_LIVE_4DX = (
+    "This company is losing money at an extreme rate, burning A$ in cash rather than generating "
+    "it, with an operating margin of -823.3% showing that losses vastly outweigh the tiny amount "
+    "of revenue coming in.\n"
+    "The company has borrowed only modestly relative to its owners' stake, but it cannot cover "
+    "its near-term bills with the cash on hand.\n"
+    "These figures paint a financially fragile picture."
+)
+_LIVE_AAPL_ROW = {
+    "company_type": "operating", "currency": "USD", "ebit_margin_pct": 32.0,
+    "revenue_growth_yoy_pct": 16.4, "net_debt_to_ebitda": 0.19, "fcf_margin_pct": 24.0,
+}
+_LIVE_AAPL = (
+    "This company is highly profitable, keeping about one third of every dollar of sales as "
+    "operating profit and converting nearly a quarter of revenue into real cash year on year.\n"
+    "It has taken on some debt to fund growth, but that debt load is manageable at less than a "
+    "fifth of a year's earnings, and growth is running at a healthy 16.4% compared to the same "
+    "quarter last year.\n"
+    "On these figures, the company is financially healthy."
+)
+
+
+@pytest.mark.parametrize(
+    ("row", "read", "expected"),
+    [
+        (_OP_ROW, _LIVE_3M, ("none of the card's figures", "words (rule: at most 25", "purpose or cause")),
+        (_LIVE_4DX_ROW, _LIVE_4DX, ("none of the card's figures", "without an amount")),
+        (_LIVE_AAPL_ROW, _LIVE_AAPL, ("none of the card's figures", "number written in words", "purpose or cause")),
+    ],
+    ids=["3m", "4dmedical", "aapl"],
+)
+def test_the_live_reads_are_rejected(row, read, expected) -> None:
+    joined = " | ".join(rules.find_read_figure_violations(row, read))
+    for part in expected:
+        assert part in joined, (part, joined)
+
+
+_COMPLIANT_OPERATING = (
+    "Operating margin is 20.4%, so the company keeps 20.4 of every 100 of sales as operating "
+    "profit. Revenue grew 2.5% on the same quarter a year ago. Debt is 2.68 times the owners' stake."
+)
+
+
+def test_a_compliant_operating_read_passes() -> None:
+    assert rules.find_read_figure_violations(_OP_ROW, _COMPLIANT_OPERATING) == []
+
+
+def test_a_compliant_financial_read_with_the_required_limit_sentence_passes() -> None:
+    row = {"company_type": "financial", "currency": "GBP", "statement_roe_pct": 12.5, "net_margin_pct": 20.0}
+    read = (
+        "Return on equity is 12.5%. Net margin is 20.0%. This shows profitability only and cannot "
+        "judge balance-sheet safety or capital strength."
+    )
+    assert rules.find_read_figure_violations(row, read) == []
+
+
+def test_a_compliant_pre_revenue_read_passes() -> None:
+    row = {"company_type": "pre_revenue", "currency": "USD", "net_cash": 2.1e9, "cash_runway_months": 7.1}
+    assert rules.find_read_figure_violations(row, "Cash runway is 7.1 months. Net cash is $2.1B.") == []
+
+
+def test_a_measure_that_could_not_be_worked_out_may_be_stated_without_a_figure() -> None:
+    read = "Operating margin is 20.4%. Free cash flow could not be worked out."
+    assert rules.find_read_figure_violations(_OP_ROW, read) == []
+
+
+def test_a_verdict_sentence_without_a_figure_is_rejected() -> None:
+    read = "Operating margin is 20.4%. On these figures, the company is financially healthy."
+    assert any("none of the card's figures" in v for v in rules.find_read_figure_violations(_OP_ROW, read))
+
+
+def test_a_figure_inside_a_longer_number_does_not_count() -> None:
+    row = {"company_type": "operating", "currency": "USD", "fcf_margin_pct": 5.6}
+    assert rules.find_read_figure_violations(row, "FCF margin is 15.6%.")
+    assert rules.find_read_figure_violations(row, "FCF margin is 5.65%.")
+    assert rules.find_read_figure_violations(row, "FCF margin is 5.6%.") == []
+
+
+def test_a_loss_may_be_stated_without_its_minus_sign() -> None:
+    row = {"company_type": "operating", "currency": "USD", "ebit_margin_pct": -12.0}
+    assert rules.find_read_figure_violations(row, "The company lost 12.0% of its sales as operating profit.") == []
+
+
+def test_the_length_limit_is_25_words() -> None:
+    row = {"company_type": "operating", "currency": "USD", "ebit_margin_pct": 20.4}
+    at_limit = "Operating margin is 20.4% " + " ".join(["so"] * 21) + "."
+    over_limit = "Operating margin is 20.4% " + " ".join(["so"] * 22) + "."
+    assert len(at_limit.split()) == 25 and len(over_limit.split()) == 26
+    assert rules.find_read_figure_violations(row, at_limit) == []
+    assert any("26 words" in v for v in rules.find_read_figure_violations(row, over_limit))
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "about one third of sales", "a third of sales", "two thirds of sales", "a fifth of sales",
+        "a tenth of sales", "half of sales", "two halves", "a quarter of sales", "one quarter of sales",
+        "three quarters of sales", "one in five sales", "two out of three sales",
+    ],
+)
+def test_a_number_written_in_words_is_rejected(phrase: str) -> None:
+    read = f"Operating margin is 20.4%, {phrase}."
+    assert any("number written in words" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), phrase
+
+
+def test_a_hyphenated_fraction_is_rejected() -> None:
+    for phrase in ("one-third of sales", "one-fifth of revenue", "one-tenth of sales",
+                   "three-quarters of sales", "one-half of sales", "one-quarter of sales"):
+        read = f"Operating margin is 20.4%, {phrase}."
+        assert any("in words" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), phrase
+
+
+@pytest.mark.parametrize("text", ["100 A$ of sales", "100 C$ of sales", "A$100 of sales"])
+def test_an_amount_with_a_dollar_variant_passes(text: str) -> None:
+    read = f"Operating margin is 20.4%, so it keeps {text}."
+    assert not any("without an amount" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), text
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    ["the latest quarter", "the same quarter a year ago", "20.4 of every 100", "1 in 5 sales", "a quarter's change",
+     "the third quarter", "the fifth year", "the first half of the year", "the half-year", "third-party sales",
+     "the latter half of the year", "the last half of the year", "the first-half of the year",
+     "the second-half of the year", "the last-half of the year", "the latter-half of the year"],
+)
+def test_a_time_period_and_digits_are_not_a_number_in_words(phrase: str) -> None:
+    read = f"Operating margin is 20.4% over {phrase}."
+    assert not any("in words" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), phrase
+
+
+@pytest.mark.parametrize(
+    "marker",
+    ["to fund growth", "to finance it", "in order to grow", "because it grew", "thanks to growth",
+     "driven by sales", "the ability to repay", "so it can repay", "allowing it to repay"],
+)
+def test_a_purpose_or_cause_marker_is_rejected(marker: str) -> None:
+    read = f"Operating margin is 20.4%, {marker}."
+    assert any("purpose or cause" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), marker
+
+
+@pytest.mark.parametrize("text", ["burning A$ in cash", "paid in $ terms", "reported in GBP", "kept C$ aside", "a £ figure", "paid C€ of sales", "paid A£ of sales"])
+def test_a_currency_without_an_amount_is_rejected(text: str) -> None:
+    read = f"Operating margin is 20.4%, {text}."
+    assert any("without an amount" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), text
+
+
+@pytest.mark.parametrize("text", ["cash of A$12.0M", "net cash of $2.1B", "CHF 2.1B in cash", "£ 5.0M of cash"])
+def test_a_currency_with_an_amount_passes(text: str) -> None:
+    row = {"company_type": "operating", "currency": "USD", "ebit_margin_pct": 20.4}
+    assert not any("without an amount" in v for v in rules.find_read_figure_violations(row, f"Operating margin is 20.4%, {text}."))
+
+
+def test_a_negative_debt_ratio_is_net_cash_only_when_ebitda_is_positive() -> None:
+    """Negative EBITDA also makes the ratio negative; that company has debt, not net cash.
+    The card face (frontend/card_copy.py) still says net cash there, so this differs from it."""
+    net_cash = {"net_debt_to_ebitda": -0.5, "info_ebitda": 100.0}
+    distressed = {"net_debt_to_ebitda": -0.5, "info_ebitda": -100.0}
+    assert rules.read_metric_meaning("net_debt_to_ebitda", net_cash).startswith("Net cash")
+    meaning = rules.read_metric_meaning("net_debt_to_ebitda", distressed)
+    assert "Net cash" not in meaning and meaning.endswith("Lower is better.")
+
+
+def test_a_zero_ebitda_is_not_net_cash_either() -> None:
+    row = {"net_debt_to_ebitda": -0.5, "info_ebitda": 0.0}
+    assert "Net cash" not in rules.read_metric_meaning("net_debt_to_ebitda", row)
+
+
+def test_revenue_growth_meaning_has_the_cards_direction_cue() -> None:
+    """A faster rate is better as a number; the system prompt keeps growth from being used as a
+    reason for the verdict (test_system_prompt_carries_the_growth_direction)."""
+    meaning = rules.read_metric_meaning("revenue_growth_yoy_pct", {"revenue_growth_yoy_pct": 5.0})
+    assert meaning.endswith("Higher is better.")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["20.4 SEK of every 100 SEK of sales", "100 CHF of sales", "100 € of sales", "20.4 JPY of every 100 JPY"],
+)
+def test_an_amount_before_a_currency_code_or_symbol_passes(text: str) -> None:
+    read = f"Operating margin is 20.4%, so it keeps {text}."
+    assert not any("without an amount" in v for v in rules.find_read_figure_violations(_OP_ROW, read)), text
+
+
+def test_a_card_with_no_present_metric_has_nothing_to_state_a_figure_about() -> None:
+    row = {"company_type": "operating", "currency": "USD"}
+    assert rules.find_read_figure_violations(row, "Nothing could be worked out.") == []
+
+
+def test_each_line_of_a_read_is_checked_for_a_figure() -> None:
+    read = "Operating margin is 20.4%\nThe picture is fine overall"
+    violations = rules.find_read_figure_violations(_OP_ROW, read)
+    assert any("The picture is fine overall" in v for v in violations)
 
 
 # --- Structured output + hallucination guard (Gemini feedback points 3/4) ------------------
@@ -966,7 +1247,8 @@ def test_metric_glosses_name_no_currency() -> None:
     for metric, brief in rules.READ_METRIC_BRIEF.items():
         if brief["fmt"] == "currency":
             continue  # money amounts SHOULD carry their currency
-        assert not _names_a_currency(brief["gloss"]), f"{metric} gloss names a currency"
+        gloss = rules._catalogue_text()[metric]["gloss"]
+        assert not _names_a_currency(gloss), f"{metric} gloss names a currency"
 
 
 @pytest.mark.parametrize(
@@ -1250,8 +1532,8 @@ def test_find_read_style_violations_catches_advice_value_words_anchored_to_the_s
 def test_find_read_style_violations_allows_share_as_a_portion_not_the_security(
     phrase: str,
 ) -> None:
-    # cto-reviewer's round-2 finding: "share of X" (a portion, e.g. READ_METRIC_BRIEF's own
-    # margin gloss "share of sales kept as... profit") and "market share" (an unrelated business
+    # cto-reviewer's round-2 finding: "share of X" (a portion, e.g. the catalogue's margin gloss
+    # "Operating profit as share of sales") and "market share" (an unrelated business
     # term) are both real, prompt-encouraged vocabulary that the anchored advice-value check must
     # not confuse with a claim about the security.
     clean = f"The company can {phrase}, financially healthy on these figures."
@@ -1492,7 +1774,7 @@ def test_the_verdict_is_given_to_the_model_for_its_hidden_field_only() -> None:
 def test_input_hash_version_is_pinned() -> None:
     """Changing it regenerates every stored read, one API call per card. Bump it on purpose
     and update this value in the same change."""
-    assert rules.INPUT_HASH_VERSION == "5a.4"
+    assert rules.INPUT_HASH_VERSION == "5a.5"
 
 
 def test_system_prompt_bars_the_bare_advice_words() -> None:

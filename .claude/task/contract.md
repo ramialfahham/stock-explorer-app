@@ -3,103 +3,94 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Closes #49 (milestone "3 · Professional baseline", dbt standards). The checklist in
-  the issue is the source for what and why; this contract holds scope and the checkable "done".
+objective: Bug reported by the owner on live cards (AAPL, 3M, 4DMedical): the AI read invents
+  purposes ("to fund growth"), ends with a verdict sentence the prompt already bars, says "one third"
+  for figures, and writes "A$" with no amount. Causes: the prompt gives the model hand-written
+  glosses and never the catalogue's text; it says "don't recite every number back"; nothing requires
+  a figure in a sentence or limits its length; and a stored read regenerates only when `input_hash`
+  changes (2026-10-11 log: `read carried for us_sp500/AAPL (unchanged)`).
+
+standards: The owner's writing standards (`football-data-pipeline/docs/working_agreement.md` section
+  9): ISO 24495-1 plain language; ISO/IEC 11179-4 (a definition says what the thing is, no rationale);
+  ASD-STE100 (one word per meaning, one topic per sentence, active voice, 25 words in a description). Applied:
+  the model gets only definition-style catalogue text (`gloss`, `applicability`), never
+  `interpretation`; the prompt follows the STE rules; code checks sentence length.
 
 scope_paths:
-  - docs/engineering_standards.md
-  - dbt_analytics/README.md
-  - dbt_analytics/models/1_staging/yfinance/stg_yf__fundamentals.sql
-  - dbt_analytics/models/1_staging/yfinance/_yfinance_staging.yml
-  - dbt_analytics/models/2_base/yfinance/_yfinance_base.yml
-  - dbt_analytics/models/3_core/_core.yml
-  - dbt_analytics/models/3_core/fct_fundamentals_snapshot.sql
-  - dbt_analytics/models/3_core/dim_stock.sql
-  - dbt_analytics/tests/assert_percent_scale_passthroughs.sql
-  - dbt_analytics/tests/assert_dividend_yield_suspects.sql
-  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
-  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
-  - dbt_analytics/seeds/_seeds.yml
-  - scripts/check_no_narrative_dates.py
-  - tests/tooling/test_check_no_narrative_dates.py
-  - docs/quality_criteria.json
-  - tests/tooling/test_quality_audit.py
+  - scripts/assessment_rules.py
+  - scripts/generate_assessments.py
+  - docs/data_contract.md
+  - docs/context_budget.yml
+  - tests/tooling/test_assessment_rules.py
+  - tests/tooling/test_generate_assessments.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: All four answered by the owner in chat. D1 (items 7, 10, 15): amend
-  engineering_standards section 1 so names that leave dbt keep their names; rename only the
-  internal `stmt_fiscal_period_end`. D2 (item 14): keep `stg_yf__daily_prices`, document it as a
-  raw-file check model, amend DBT-3 (criteria v3). D3 (items 12, 13): fix every hit and widen the
-  narrative check to dbt `.yml`. D4 (item 11): the uniqueness test stays on `base_yf__fundamentals`
-  because it is that model's only model-level test (section 3 and `check_dbt_tests.py` require
-  one); section 3 says so. Nothing else is decided here: the optional "one ref per CTE"
-  gate extension is not built; no mart, Supabase or frontend name changes.
-
-rules:
-  A (naming): section 1 states that the mart names and the columns a mart exposes (including
-    `ticker` and `market_code`) are the consumer contract and keep their names; every other name
-    follows the table. `stmt_fiscal_period_end` is named `stmt_fiscal_period_end_date` in staging
-    and downstream; the raw parquet column keeps its name.
-  B (structure): every SQL file under `dbt_analytics/models/` and `dbt_analytics/tests/` has one
-    import CTE per ref() and each CTE one purpose (section 1.1); base models do not re-assert a
-    uniqueness test staging already asserts on the same grain, unless it is the model's only
-    model-level test (section 3).
-  C (comments and prose): a `#` or `--` comment in dbt yml/sql states what is true now: no change
-    history, no issue/MR reference, no date, no approval marker. A `description:` carries no date
-    or approval marker. `check_no_narrative_dates.py` scans dbt `.yml` comments and `description:`
-    text for date, MR/PR reference and owner-approved/decision wording.
-  D (no dead model): a model nothing reads is allowed only if its description says it exists to
-    check raw files; DBT-3 says so.
+decisions_reserved: Answered by the owner in chat: the AI feature stays; figures in digits; one-time
+  regeneration by bumping `INPUT_HASH_VERSION`; deterministic rejection, NO retry, no extra API call;
+  the catalogue is the only source of meaning; the three standards apply; the prompt wording below
+  (approved as shown, "go ahead"); answer A: the facts block differs from the card face in one
+  place (below) and a follow-up fixes the card; growth keeps its direction cue (restored). `docs/data_contract.md` budget 65500 to 67000 for
+  the new paragraph (reason in the MR). No seed, frontend, export or dbt change.
 
 changes:
-  - Items 7, 15: section 1 gets the rule A paragraph; the `dbt_analytics/README.md` layer comment
-    for marts matches it.
-  - Item 8: `assert_percent_scale_passthroughs.sql` gets import CTEs `fundamentals` and
-    `card_metrics`; `metrics` builds the union from those names.
-  - Item 9: `dim_stock.sql` gets an import CTE `fundamentals` and a `latest_fundamentals` CTE.
-  - Item 10: rename in `stg_yf__fundamentals.sql`, `fct_fundamentals_snapshot.sql` and the three
-    yml column entries.
-  - Item 11: remove the `unique_combination_of_columns` test from `base_yf__constituents` (it
-    keeps its unit tests); keep it on `base_yf__fundamentals`; make the "union" wording true.
-  - Item 12 and the same-family hits: rewrite each history comment as one sentence on what the
-    test pins now; drop `(issue #N)` from comments.
-  - Item 13: delete the dated parenthetical in `_seeds.yml`.
-  - Item 14: the description of `stg_yf__daily_prices` says no card reads it and it checks the
-    raw price files; `docs/quality_criteria.json` version 3, DBT-3 amended.
-  - The narrative check gains `.yml` scanning with tests; handover updated.
+  - Facts block: per metric `- {label}: {value}`, `  Meaning: {gloss + direction cue}`, `  Limit:
+    {applicability}`, from `frontend/metrics.json` (kept equal to the seed by the existing lock).
+    `read_metric_meaning` mirrors `frontend/card_copy.py` `metric_gloss`, pinned equal by a test,
+    except: a negative debt ratio with non-positive EBITDA is not called net cash. `gloss` leaves
+    `READ_METRIC_BRIEF`.
+  - Prompt, replacing "Interpret, don't list...": (1) "Write short sentences. Each sentence has one
+    topic, is in the active voice, and has at most 25 words. Each sentence states one of the numbers
+    below in digits, exactly as it appears (for example 24.0%), and says what it means in plain
+    words, using the wording of that number's Meaning line. Use one word for one thing: call a number
+    by the name it has in the list, every time. Pick the 2 or 3 numbers that most shape the picture."
+    (2) "Explain a number with the Meaning and Limit lines given for it under the numbers list, and
+    say any finance term in plain words. Use a Limit line only when it applies to this company. Never
+    say why the company has a number, how it got there, what it plans, or what the company can or
+    cannot do. Write in words, never the symbols ≈, → or ÷." (3) "Write every number in digits, never as
+    a fraction or a phrase in words ("one third", "a quarter of", "a fifth", "half", "one in five").
+    A time period such as "the latest quarter" is not a number. Never write a currency symbol or code
+    without an amount next to it." The "may be empty" sentence is removed; the financial lens ends
+    "Its revenue is net interest plus fees, never sales, even where a Meaning line says sales."
+  - `INPUT_HASH_VERSION` "5a.4" to "5a.5": the next run regenerates all 1241 reads (about $5, about
+    95 minutes; no `--max-reads` cap, which would clear stored reads).
+  - `find_read_figure_violations(row, read)` in `_generate_read` after the style check, rejecting
+    like every other check: (1) a sentence with none of the card's figures (digit boundaries, leading
+    minus ignored), unless it contains "balance-sheet", "capital strength" or "could not be worked
+    out"; (2) a sentence over 25 words; (3) a fraction in words: thirds, fifths, tenths, halves,
+    a/one third|fifth|tenth|half (space or hyphen), "half of", "half the", a/one quarter of, three
+    quarters, "one in five" forms (time references pass); (4) "to fund", "to finance", "in order to",
+    "because", "thanks to", "driven by", "ability to", "so it can", "allowing it"; (5) a currency
+    symbol or code without a digit next to it (one space allowed before, spaces after).
+  - Tests for each rule (violating and compliant), the three live reads as violating cases, the
+    prompt and catalogue pins, figure-stating fake reads; docs paragraph; handover.
 
 done_when:
-  - Exact search 1 finds nothing outside the keep list:
-    `git grep -nEi "(#|--) .*(\bbefore\b|used to|no longer|the change|headline effect|changed with|issue #|\bMR ?!|\bnow\b|\bold\b|\bformerly\b|\bpreviously\b)" -- 'dbt_analytics/*.yml' 'dbt_analytics/*.sql'`
-    Keep list: `_seeds.yml:129` ("before any yfinance" states an ordering that is true now) and
-    `int_stock__card_metrics.sql:240` ("since a ..." is not in the pattern; listed only if it
-    matches), checked line by line at implementation; any other hit is rewritten.
-  - Exact search 2 for the renamed column: `git grep -nw "stmt_fiscal_period_end" -- dbt_analytics docs scripts ingestion`
-    hits only raw-column sites. Keep list: `stg_yf__fundamentals.sql` (reads the raw column),
-    `dbt_analytics/models/sources.yml`, `docs/data_contract.md` (raw parquet table),
-    `scripts/audit_mart_vs_yfinance.py` (raw schema), `ingestion/yfinance/ingest.py`,
-    `scripts/seed_ci_raw_fixtures.py`, and the staging yml entry that documents the raw name.
-  - Exact search 3: `git grep -nE "owner[- ](approved|decision)|20[0-9]{2}-[0-9]{2}-[0-9]{2}" -- 'dbt_analytics/*.yml'`
-    finds only quoted test-data values in `*_unit_tests.yml` (keep list: those files' fixture rows).
-  - `python scripts/check_no_narrative_dates.py` passes, and its new test shows it fails on a
-    dated `# comment` and a dated `description:` in a temp dbt yml.
-  - `pytest tests -q` and `python scripts/bootstrap.py --verify` (dbt build with unit tests)
-    pass; mart row counts and the golden mart check are unchanged.
-  - No mart, Supabase, export, frontend or ingestion file changes (`git diff --stat` shows none).
+  - `git grep -n "recite every number" -- scripts docs tests` finds only the test asserting it is
+    absent; `git grep -nE "5a\.4" -- scripts tests docs` finds nothing; `git grep -n '"gloss"' --
+    scripts/assessment_rules.py` finds only the catalogue read in `read_metric_meaning`.
+  - A test fails if the facts block differs from the catalogue text, or if any `gloss` or
+    `applicability` a read uses trips the advice or style guards.
+  - The check rejects the three live reads and accepts compliant reads; `pytest tests -q` and
+    `python scripts/bootstrap.py --verify` pass.
+  - No seed, frontend, export, dbt or migration change; advice, style and verdict-meaning guards
+    unchanged.
+  - After the owner triggers a production run (not part of the merge): count `read REJECTED` lines,
+    check the live AAPL, 3M and 4DMedical cards and a sample, report the rate.
 
 known_limits:
-  - Exact search 1 is a word heuristic: a history comment worded without those words is not
-    caught. The narrative check covers dates, MR/PR references and owner wording only.
-  - `(issue #N)` references inside `description:` text and phrases such as "No longer
-    catalogued" in descriptions state a current fact and stay.
-  - The base models' `deduped` CTEs stay; whether they are still needed is not decided here.
-  - `check_dbt_sql_structure.py` is unchanged and cannot see items 8 or 9.
-  - Criteria v3 changes DBT-3 only; the other pending criteria edits stay open in the handover.
+  - No check can guarantee free prose never invents a claim; a clause attached to a figure can carry
+    one the marker list does not know. The plain-word explanation of a finance term (EBITDA) is the
+    model's own and unchecked. The symbols ban and active voice are prompt-only.
+  - The rejection rate is unknown until the run; a rejected card shows the plain fallback line.
+  - Word lists are partial: bare "half" ("nearly half") and "a quarter" without "of" pass.
+  - Sector medians in the read are left out (not covered by `validate_read_metrics`). Follow-ups:
+    that, a catalogue audit against ISO/IEC 11179-4, and the card face's net-cash line.
+  - The first run needs about 95 of the job's 120 minutes; a merge before the Oct 15 06:00 UTC
+    schedule makes that run regenerate every read unattended.
 
 regression_checklist:
-  - Mart schemas, row counts and the golden mart comparison are unchanged.
-  - Every dbt model still has at least one model-level test (section 3) after item 11.
-  - `check_dbt_documentation.py` (column docs, null-when) still passes for the renamed column.
-  - The narrative check still passes on every file it scanned before.
+  - Advice, style and verdict-meaning guards and their tests unchanged.
+  - Every `_generate_read` test passes with a figure-stating read; other prompt rules unchanged.
+  - The card face and frontend untouched.

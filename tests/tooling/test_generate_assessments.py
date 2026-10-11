@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from pathlib import Path
 
 import duckdb
@@ -153,7 +155,7 @@ _MEANING_WORDS = ("healthy", "mixed", "fragile")
 
 
 class _FakeMessages:
-    def __init__(self, text: str = "A steady read, financially healthy on these figures.",
+    def __init__(self, text: str = "A steady read, operating margin is 24.0% and FCF margin is 16.0%.",
                  model: str = "claude-haiku-4-5",
                  fail_calls: set[int] = frozenset(),
                  referenced_metrics: list | None = None,
@@ -192,7 +194,8 @@ class _FakeMessages:
             verdict_meaning = next(
                 (w for w in _MEANING_WORDS if w in str(user_content).lower()), "healthy"
             )
-            text = f"A steady read, financially {verdict_meaning} on these figures."
+            figure = re.search(r"^- [^\n]*?: (\S+)$", str(user_content), re.M)
+            text = f"The first figure is {figure.group(1) if figure else 'n/a'}, a {verdict_meaning} picture."
         return _FakeMessage(
             text, self._model, self._referenced_metrics,
             verdict_meaning=verdict_meaning,
@@ -296,10 +299,10 @@ def _metric_row(ticker: str = "OPX") -> dict:
 
 def test_attach_reads_generates_for_new_card() -> None:
     rec = _base_record()
-    client = _FakeAnthropic(text="Sturdy, financially healthy on these figures.")
+    client = _FakeAnthropic(text="Sturdy, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
-    assert rec["ai_read"] == "Sturdy, financially healthy on these figures."
+    assert rec["ai_read"] == "Sturdy, operating margin is 24.0% and FCF margin is 16.0%."
     assert rec["read_model"] == "claude-haiku-4-5"
     assert len(client.messages.calls) == 1
 
@@ -318,31 +321,31 @@ def test_attach_reads_carries_forward_unchanged() -> None:
 def test_attach_reads_regenerates_on_hash_change() -> None:
     rec = _base_record(input_hash="h2")
     existing = {("us_sp500", "OPX"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"}}
-    client = _FakeAnthropic(text="fresh read, financially healthy on these figures.")
+    client = _FakeAnthropic(text="fresh read, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, existing, client)
     assert summary["generated"] == 1
-    assert rec["ai_read"] == "fresh read, financially healthy on these figures."
+    assert rec["ai_read"] == "fresh read, operating margin is 24.0% and FCF margin is 16.0%."
     assert len(client.messages.calls) == 1
 
 
 def test_attach_reads_regenerates_when_stored_read_null() -> None:
     rec = _base_record(input_hash="h1")
     existing = {("us_sp500", "OPX"): {"input_hash": "h1", "ai_read": None, "read_model": None}}
-    client = _FakeAnthropic(text="filled in, financially healthy on these figures.")
+    client = _FakeAnthropic(text="filled in, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, existing, client)
     assert summary["generated"] == 1
-    assert rec["ai_read"] == "filled in, financially healthy on these figures."
+    assert rec["ai_read"] == "filled in, operating margin is 24.0% and FCF margin is 16.0%."
 
 
 def test_attach_reads_isolates_a_failed_card() -> None:
     a = _base_record(ticker="AAA")
     b = _base_record(ticker="BBB")
     rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
-    client = _FakeAnthropic(text="ok read, financially healthy on these figures.", fail_calls={0})  # first card's call raises
+    client = _FakeAnthropic(text="ok read, operating margin is 24.0% and FCF margin is 16.0%.", fail_calls={0})  # first card's call raises
     summary = gen.attach_reads([a, b], rows, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in a                     # nothing was stored, nothing to clear
-    assert b["ai_read"] == "ok read, financially healthy on these figures."   # the batch kept going
+    assert b["ai_read"] == "ok read, operating margin is 24.0% and FCF margin is 16.0%."   # the batch kept going
 
 
 def test_attach_reads_clears_a_stale_read_when_its_regeneration_attempt_fails() -> None:
@@ -373,7 +376,7 @@ def test_attach_reads_logs_every_card_not_just_failures(capsys) -> None:
         ("us_sp500", "GENERATED"): _metric_row("GENERATED"),
         ("us_sp500", "CAPPED"): _metric_row("CAPPED"),
     }
-    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
+    client = _FakeAnthropic(text="ok read, operating margin is 24.0% and FCF margin is 16.0%.")
     # order matters: no_stored_read before needs_refresh, so GENERATED (no stored read)
     # is attempted and CAPPED (also no stored read) is the one the cap does not reach.
     summary = gen.attach_reads(
@@ -434,7 +437,7 @@ def test_max_reads_none_is_unbounded_default() -> None:
     a = _base_record(ticker="AAA")
     b = _base_record(ticker="BBB")
     rows = {("us_sp500", "AAA"): _metric_row("AAA"), ("us_sp500", "BBB"): _metric_row("BBB")}
-    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
+    client = _FakeAnthropic(text="ok read, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([a, b], rows, {}, client)
     assert summary == {"generated": 2, "carried": 0, "capped": 0, "failed": 0}
 
@@ -448,7 +451,7 @@ def test_max_reads_caps_new_calls_and_reports_capped() -> None:
         ("us_sp500", "BBB"): _metric_row("BBB"),
         ("us_sp500", "CCC"): _metric_row("CCC"),
     }
-    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
+    client = _FakeAnthropic(text="ok read, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([a, b, c], rows, {}, client, max_reads=2)
     assert summary == {"generated": 2, "carried": 0, "capped": 1, "failed": 0}
     assert len(client.messages.calls) == 2
@@ -471,10 +474,10 @@ def test_max_reads_prioritizes_cards_with_no_stored_read_over_refreshes() -> Non
         ("us_sp500", "FRESH"): _metric_row("FRESH"),
     }
     existing = {("us_sp500", "STALE"): {"input_hash": "h1", "ai_read": "old", "read_model": "m"}}
-    client = _FakeAnthropic(text="ok read, financially healthy on these figures.")
+    client = _FakeAnthropic(text="ok read, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([stale, fresh], rows, existing, client, max_reads=1)
     assert summary == {"generated": 1, "carried": 0, "capped": 1, "failed": 0}
-    assert fresh["ai_read"] == "ok read, financially healthy on these figures."  # no-stored-read card wins the slot...
+    assert fresh["ai_read"] == "ok read, operating margin is 24.0% and FCF margin is 16.0%."  # no-stored-read card wins the slot...
     # ...the refresh is deferred; its stale H1 read is explicitly cleared, not left showing
     # under this run's fresh verdict (equity-analyst-reviewer finding: the frontend's own
     # staleness guard checks snapshot_date, not input_hash, so it can't catch this itself).
@@ -509,14 +512,14 @@ def test_attach_reads_rejects_a_read_citing_a_number_that_does_not_match() -> No
 def test_attach_reads_accepts_a_read_citing_a_number_that_matches() -> None:
     rec = _base_record()
     client = _FakeAnthropic(
-        text="Operating margin looks strong, financially healthy on these figures.",
+        text="Operating margin looks strong, operating margin is 24.0% and FCF margin is 16.0%.",
         referenced_metrics=[  # correct
             {"label": "Operating margin (TTM)", "value_as_shown": "24.0%"}
         ],
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
-    assert rec["ai_read"] == "Operating margin looks strong, financially healthy on these figures."
+    assert rec["ai_read"] == "Operating margin looks strong, operating margin is 24.0% and FCF margin is 16.0%."
 
 
 def test_attach_reads_rejects_a_style_violation(capsys) -> None:
@@ -524,7 +527,7 @@ def test_attach_reads_rejects_a_style_violation(capsys) -> None:
     treated exactly like a hallucination-guard rejection -- fails closed, same "failed" count,
     same self-healing path, no separate return-value shape."""
     rec = _base_record()
-    client = _FakeAnthropic(text="This is a great buy right now! Financially healthy on these figures.")
+    client = _FakeAnthropic(text="A great buy at 24.0%! Operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
@@ -536,7 +539,7 @@ def test_attach_reads_rejects_a_style_violation(capsys) -> None:
 def test_attach_reads_accepts_a_style_clean_read() -> None:
     rec = _base_record()
     client = _FakeAnthropic(
-        text="Operating margin is strong and debt is low, financially healthy on these figures."
+        text="Operating margin is strong and debt is low, operating margin is 24.0% and FCF margin is 16.0%."
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
@@ -552,10 +555,32 @@ def test_attach_reads_style_check_call_site_is_actually_wired(monkeypatch) -> No
     violation above is proven to depend on the real call site, not some other guard."""
     monkeypatch.setattr(gen, "find_read_style_violations", lambda read: [])
     rec = _base_record()
-    client = _FakeAnthropic(text="This is a great buy right now! Financially healthy on these figures.")  # style-dirty, metric-clean
+    client = _FakeAnthropic(text="A great buy at 24.0%! Operating margin is 24.0% and FCF margin is 16.0%.")  # style-dirty, metric-clean
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
-    assert rec["ai_read"] == "This is a great buy right now! Financially healthy on these figures."
+    assert rec["ai_read"] == "A great buy at 24.0%! Operating margin is 24.0% and FCF margin is 16.0%."
+
+
+def test_attach_reads_rejects_a_sentence_that_states_no_figure(capsys) -> None:
+    """The closing verdict sentence the live cards showed: no figure in it, so the read is
+    rejected like every other guard failure (no retry, no extra call)."""
+    rec = _base_record()
+    client = _FakeAnthropic(text="Operating margin is 24.0%. These figures paint a healthy picture.")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert "ai_read" not in rec and "read_model" not in rec
+    assert len(client.messages.calls) == 1
+    assert "read REJECTED (figures" in capsys.readouterr().err
+
+
+def test_attach_reads_figure_check_call_site_is_actually_wired(monkeypatch) -> None:
+    """Neutralize find_read_figure_violations at its _generate_read call site: the figure-less
+    read now succeeds, so the rejection above depends on the real call site."""
+    monkeypatch.setattr(gen, "find_read_figure_violations", lambda row, read: [])
+    rec = _base_record()
+    client = _FakeAnthropic(text="Operating margin is 24.0%. These figures paint a healthy picture.")
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
 
 
 def test_attach_reads_rejects_a_response_with_no_tool_use_block(capsys) -> None:
@@ -595,7 +620,7 @@ def test_attach_reads_rejects_a_non_string_verdict_meaning(capsys) -> None:
     future edit dropping just this one clause would otherwise pass every other test."""
     rec = _base_record()
     client = _FakeAnthropic(
-        text="Operating margin looks strong, financially healthy on these figures.",
+        text="Operating margin looks strong, operating margin is 24.0% and FCF margin is 16.0%.",
         verdict_meaning=None,
     )
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
@@ -667,17 +692,17 @@ def test_a_capped_cards_cleared_read_and_a_generated_cards_fresh_read_both_survi
         ("us_sp500", "FRESH"): _metric_row("FRESH"),
     }
     existing_by_key = {("us_sp500", "STALE"): existing[0]}
-    client = _FakeAnthropic(text="fresh read, financially healthy on these figures.")
+    client = _FakeAnthropic(text="fresh read, operating margin is 24.0% and FCF margin is 16.0%.")
     summary = gen.attach_reads([stale, fresh], rows, existing_by_key, client, max_reads=1)
     assert summary == {"generated": 1, "carried": 0, "capped": 1, "failed": 0}
     assert stale["ai_read"] is None and stale["read_model"] is None  # cleared, not absent
-    assert fresh["ai_read"] == "fresh read, financially healthy on these figures."
+    assert fresh["ai_read"] == "fresh read, operating margin is 24.0% and FCF margin is 16.0%."
 
     fake_sb = _FakeSupabase(existing=existing)
     calls = gen._upsert_records(fake_sb, [stale, fresh])
     assert calls == 1  # same key-shape (both carry ai_read/read_model) -> one call
     assert fake_sb.postgrest_state[("us_sp500", "STALE")]["ai_read"] is None
-    assert fake_sb.postgrest_state[("us_sp500", "FRESH")]["ai_read"] == "fresh read, financially healthy on these figures."
+    assert fake_sb.postgrest_state[("us_sp500", "FRESH")]["ai_read"] == "fresh read, operating margin is 24.0% and FCF margin is 16.0%."
 
 
 def test_upsert_records_batches_within_each_key_shape_group() -> None:
@@ -759,7 +784,7 @@ def test_main_with_anthropic_key_attaches_reads(tmp_path: Path, monkeypatch) -> 
     upserted = [rec for batch in fake_sb.upserts for rec in batch]
     assert upserted
     for rec in upserted:
-        assert "financially" in rec["ai_read"]
+        assert "first figure" in rec["ai_read"]
         assert rec["read_model"] == "claude-haiku-4-5"
 
 
