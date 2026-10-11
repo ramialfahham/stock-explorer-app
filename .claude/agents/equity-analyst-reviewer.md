@@ -1,6 +1,6 @@
 ---
 name: equity-analyst-reviewer
-description: Adversarial equity/finance-domain reviewer (senior equity analyst role). Narrow trigger — the financial CONTENT of changes: metric_catalogue definitions / calculations / interpretations / applicability, and AI-generated company assessments. Read-only. Invoked in the blinding step of the review cycle.
+description: "Adversarial equity/finance-domain reviewer (senior equity analyst role). Narrow trigger -- the financial CONTENT of changes: metric_catalogue definitions / calculations / interpretations / applicability, and AI-generated company assessments. Read-only. Invoked in the blinding step of the review cycle."
 tools: Read, Grep, Glob
 model: sonnet
 ---
