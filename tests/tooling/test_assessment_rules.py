@@ -1493,3 +1493,19 @@ def test_input_hash_version_is_pinned() -> None:
     """Changing it regenerates every stored read, one API call per card. Bump it on purpose
     and update this value in the same change."""
     assert rules.INPUT_HASH_VERSION == "5a.4"
+
+
+def test_system_prompt_bars_the_bare_advice_words() -> None:
+    """The advice guard rejects a whole read on any bare word in `_ADVICE_ACTION_RE`; the first
+    production run with the facts-only prompt rejected 13 reads on "sells". The prompt must
+    name every one of those words, so a read does not fail on ordinary business description."""
+    group = re.search(r"\(\?:([^)]*)\)", rules._ADVICE_ACTION_RE.pattern)
+    assert group is not None
+    guard_words = group.group(1).split("|")
+    bullet = next(
+        line for line in rules.READ_SYSTEM_PROMPT.lower().splitlines()
+        if line.startswith("- never use the words")
+    )
+    for word in guard_words:
+        assert re.search(rf"\b{word}\b", bullet), f"the prompt bullet does not bar {word!r}"
+    assert "a check rejects the whole read" in bullet

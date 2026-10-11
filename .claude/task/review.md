@@ -1,41 +1,34 @@
 # Review
 
-diff_sha256: 52be73cb33da41d70779581e4ec015ab22d5c66e23862d116be853b173aafd56
-rounds: 3
+diff_sha256: 83983fde140c1fdf4b2d447ddbb8acca110cab0f31f21eae72eb1116b0001f7e
+rounds: 1
 
-AI read, facts and not the verdict. Round 1 (tree 087629c): all three FAIL (an unsatisfiable done_when grep; a contradiction check that false-blocks a red read calling one metric healthy and could raise recurring API cost; a not-green rule that did not fit the verdict functions). Round 2 (tree e02d295): equity-analyst-reviewer PASS, platform-reviewer PASS, scope-auditor FAIL (a false retry sentence in data_contract.md; the owner-signed not-green wording had changed without an owner answer). Round 3 (tree ba2c860, the cap): all three PASS. equity-analyst-reviewer ran as a general-purpose agent following `.claude/agents/equity-analyst-reviewer.md` verbatim on that role's model (#48).
+AI read, no buy/sell/price words. Round 1 (tree f2e139f): scope-auditor PASS, platform-reviewer PASS. equity-analyst-reviewer was not routed: no docs/metric_layer.md, docs/data_contract.md or catalogue file changed.
 
-Wording fixes applied after the round-3 PASS verdicts, no fourth round (the precedent in #46's review): the red-cause list now also appears in the test docstring, three assertions pin the red figure list and the yellow clause, a stale sentence in the `generate_assessments.py` header (a base record also carries an explicit clear for a stale read), and two known limits recorded in the contract (the type-agnostic red list; "a measure could not be worked out" can be misapplied). Open follow-ups, not built: a check that ties the visible text to the verdict (new mechanism, owner); the `data_contract.md` list of causes of an absent `ai_read` omits the verdict-meaning and malformed-payload rejects; the `generate_assessments` rejection path has no mutation test for the `verdict_meaning_violation` call site.
+Wording fixes applied after the PASS verdicts, no second round (the precedent in #46's review): the new bullet says "revenue" for every company and "sales" only for an operating company (a financial company's metric glosses say revenue is "not sales"); the prompt's own margin rule no longer says "units the company sells"; the test derives its word list from the guard's regex and checks each word is in the bullet (the author ran the mutation of dropping "sells" from the bullet and the test fails), is renamed to say "bare" words and has no date; the guard comment no longer states a fact the rejected reads contradict; three handover claims corrected (hashed inputs, "sells" or "selling", the first-run date). Open, not built: the owner-signed prompt still uses the barred words in its own instructions (buy, sell, price) and in the advice rule, because the guard checks model output only; the model names what a company sells although it is given only numbers (the prompt forbids outside facts; no guard checks it).
 
-Coordinator evidence: full suite 1160 passed; `scripts/bootstrap.py --verify` passes; the em-dash check passes; the contract greps return nothing; `INPUT_HASH_VERSION` unchanged and now pinned by a test.
+Coordinator evidence: full suite 1161 passed; `scripts/bootstrap.py --verify` passes; the em-dash check passes; `INPUT_HASH_VERSION` unchanged.
 
 ## Owner answers
 
-CPO ANSWER: recorded for the AI-read change (no issue; raised by the owner from two card screenshots). (a) The owner chose "1 gradual" and saw hand-written example texts, then said "go". (b) The signed not-green sentence named falling revenue as an example cause, which the verdict rules never produce for red. The owner was asked in plain words whether to use the corrected wording (A) or keep the signed one (B) and answered "A". (c) Dropping the text-vs-verdict contradiction check, which would false-block a red read and could raise recurring API calls, was decided by the agent under the owner's earlier delegation ("act as the expert"); a check that ties the text to the verdict stays an open owner decision in the contract's known_limits.
+CPO ANSWER: recorded for the no-sell-words rule (no issue; found in the 2026-10-11 production run, 13 of 223 new reads rejected on "sells" or "selling"). The owner was shown the finding and the proposed prompt rule in plain words and answered "sells rule yes".
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: ba2c86055b416ae2c294ced68195769727564548
+reviewed_tree: f2e139f33a4e0369c28b33bf35cc38b29044f500
 risks_checked:
-- The false retry sentence is fixed against `_clear_stale_read_if_present` and `attach_reads`.
-- The owner's answer A and the final prompt wording are recorded; no hash or version change and no new rejection trigger, so no added API calls.
-- Every pinned prompt phrase in the tests matches the prompt text.
+- The diff stays inside scope_paths; the guard, INPUT_HASH_VERSION and the frontend are unchanged, so no regeneration is forced.
+- The handover paragraph is internally consistent and states state, not narrative.
+- No doc lists the guard's banned words or contradicts the new rule.
+wording_fixes: applied.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: ba2c86055b416ae2c294ced68195769727564548
+reviewed_tree: f2e139f33a4e0369c28b33bf35cc38b29044f500
 risks_checked:
-- The prompt-structure tests still match the edited prompt; the new phrases trip no advice or style regex.
-- Formatting limited to the two-blank-line trim; the docstring edit matches the function.
-- `INPUT_HASH_VERSION` unchanged and pinned.
-
-## equity-analyst-reviewer
-
-VERDICT: PASS
-reviewed_tree: ba2c86055b416ae2c294ced68195769727564548
-risks_checked:
-- The not-green sentence is accurate against the verdict functions for operating, financial and pre-revenue; falling revenue is never named as the cause of red.
-- No advice, invented threshold or outside fact; the numeric guard still covers every cited number.
-- Residual risk without a text-vs-verdict check is acceptable for a gradual rollout and is stated truthfully.
+- The new bullet collides with no other prompt rule and no metric label or gloss carries a banned word, so it can be followed.
+- The test fails when the bullet is removed; the guard's regex is exactly the seven listed words.
+- Nothing else changed.
+wording_fixes: applied.

@@ -442,10 +442,11 @@ Rules:
   number, "referenced_metrics" may be empty. Never invent a label or value that is not in the
   numbers list.
 - Educational only. Never give investment advice. Do not say or imply whether to buy, sell, hold, or avoid the share, whether it is cheap, expensive, or "worth it", and never predict the price. You explain what the numbers describe; you never recommend an action.
+- Never use the words buy, buys, buying, sell, sells, selling or price anywhere, even about what the company does or charges: say "revenue" instead ("sales" is fine for an operating company), or name what it makes. A check rejects the whole read if any of them appears.
 - Write for someone who knows no finance vocabulary. If you use a term, gloss it in plain words or an everyday comparison. Leave no jargon unexplained.
 - Reason only from the numbers given. Do not invent or assume anything about the company's products, industry, news, management, or history, and bring in no outside facts. If a number is missing, don't mention it - never guess.
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
-- A margin is a percentage, not money. Explaining one as the amount kept out of every unit of revenue is good teaching and is encouraged, but it must use the currency given on the "Currency this company trades in" line below and no other, whichever currency that turns out to be. Where that currency has no everyday small unit, say it per 100 units of that same currency instead. If there is no such line, describe the margin as a percentage or a share and do not phrase it per unit of money at all. Never mix two currencies in one explanation. A margin is per unit of revenue, never per item sold: you are not told how many units the company sells and must never imply profit per item.
+- A margin is a percentage, not money. Explaining one as the amount kept out of every unit of revenue is good teaching and is encouraged, but it must use the currency given on the "Currency this company trades in" line below and no other, whichever currency that turns out to be. Where that currency has no everyday small unit, say it per 100 units of that same currency instead. If there is no such line, describe the margin as a percentage or a share and do not phrase it per unit of money at all. Never mix two currencies in one explanation. A margin is per unit of revenue, never per item sold: you are not told how many units the company delivers and must never imply profit per item.
 - Returns and growth are NOT amounts per unit of revenue, so never phrase them that way. Return on equity is profit measured against the owners' money, and return on assets is profit measured against everything the company owns. Revenue growth compares the latest reported quarter with the same quarter a year earlier, so it is one quarter's change, never a full year's: do not write "this year" or "over the year" about it.
 - Interpret, don't list. Pull out the one or two things that most shape the financial picture and say what they mean; don't recite every number back.
 - Falling revenue counts against a company here and can stop it being called healthy. Rising revenue does not make a company healthy, and is never a reason to buy. When growth is positive, never give it as the reason the verdict is not green, because the rules only ever count a fall. Describing a nearly flat top line accurately is fine; blaming the verdict on it is not.
@@ -809,7 +810,8 @@ _SENTENCE_GAP = r"(?:[^.!?]|(?<=\d)\.(?=\d))"
 
 # Word-boundary matches so "buyback", "seller", "sales" never trip these -- none of those are
 # the banned action. "buy"/"sell"/"price" have no legitimate non-advice use in this app's own
-# vocabulary: a read never discusses the company buying or selling something else, and no card
+# vocabulary: the prompt bars these words from a read, so a read has no need to discuss the company buying or
+# selling something else, and no card
 # metric carries a share price any more (every price-carrying metric was dropped from the
 # catalogue -- see the module docstring). A bare "price" match also catches "target price"/
 # "share price", not only one worked phrasing. These stay bare-word matches, unlike the group
