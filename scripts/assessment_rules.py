@@ -547,7 +547,7 @@ Rules:
 - Money amounts already carry their own currency symbol or code - use it exactly as given; never assume, add, or convert to a different currency (these companies report in different currencies).
 - A margin is a percentage, not money. Explaining one as the amount kept out of every unit of revenue is good teaching and is encouraged, but it must use the currency given on the "Currency this company trades in" line below and no other, whichever currency that turns out to be. Where that currency has no everyday small unit, say it per 100 units of that same currency instead. If there is no such line, describe the margin as a percentage or a share and do not phrase it per unit of money at all. Never mix two currencies in one explanation. A margin is per unit of revenue, never per item sold: you are not told how many units the company delivers and must never imply profit per item.
 - Returns and growth are NOT amounts per unit of revenue, so never phrase them that way. Return on equity is profit measured against the owners' money, and return on assets is profit measured against everything the company owns. Revenue growth compares the latest reported quarter with the same quarter a year earlier, so it is one quarter's change, never a full year's: do not write "this year" or "over the year" about it.
-- Write short sentences. Each sentence has one topic, is in the active voice, and has at most 25 words. Each sentence states one of the numbers below in digits, exactly as it appears (for example 24.0%), and says what it means in plain words, using the wording of that number's Meaning line. Use one word for one thing: call a number by the name it has in the list, every time. Pick the 2 or 3 numbers that most shape the picture.
+- Write 2 or 3 sentences, each under 20 words. Each sentence has one number in digits, exactly as it appears in the list (for example 24.0%), then what it means in plain words, using that number's Meaning line. Example: "Operating margin is 20.4%, so 20.4 of every 100 of sales is left as operating profit." Never join two ideas in one sentence with "but", "which", "and" or a comma: start a new sentence. Call a number by the name it has in the list, every time. Pick the 2 or 3 numbers that most shape the picture.
 - Explain a number with the Meaning and Limit lines given for it under the numbers list, and say any finance term in plain words. Use a Limit line only when it applies to this company. Never say why the company has a number, how it got there, what it plans, or what the company can or cannot do. Write in words, never the symbols ≈, → or ÷.
 - Write every number in digits, never as a fraction or a phrase in words ("one third", "a quarter of", "a fifth", "half", "one in five"). A time period such as "the latest quarter" is not a number. Never write a currency symbol or code without an amount next to it.
 - The Why lines under the numbers say how the rules reached the verdict. Explain what is strong or weak only with those lines, and give no other reason for the verdict. Falling revenue can stop a company being called healthy but never makes it red. Rising revenue does not make a company healthy, and is never a reason to buy.
@@ -925,7 +925,7 @@ def validate_read_metrics(row: Mapping[str, Any], referenced_metrics: list[Any])
             return False
         label = entry.get("label")
         claimed = entry.get("value_as_shown")
-        if label not in renderings or claimed != renderings[label]:
+        if not isinstance(label, str) or label not in renderings or claimed != renderings[label]:
             return False
     return True
 
@@ -1129,7 +1129,7 @@ def find_read_style_violations(read: str) -> list[str]:
 # figures as shown, so a read with a closing verdict sentence that cites no figure, or any
 # sentence that talks about the company instead of a number, is rejected whole.
 
-READ_MAX_WORDS = 25
+READ_MAX_WORDS = 30
 
 # A sentence with no figure is allowed only when it states a limit the prompt requires: the
 # financial-company limit, or a measure that could not be worked out.
@@ -1173,7 +1173,7 @@ def _figure_pattern(rendered: str) -> re.Pattern[str]:
 def find_read_figure_violations(row: Mapping[str, Any], read: str) -> list[str]:
     """Deterministic checks of the read against THIS card's figures and the prompt's wording
     rules. One description per violated rule; an empty list means none fired, not that the read
-    is fully prompt-compliant (active voice, one word per meaning and one topic per sentence
+    is fully prompt-compliant (one word per meaning and no two ideas joined in one sentence
     stay in the prompt only)."""
     ctype = normalize_company_type(row.get("company_type"))
     currency = row.get("currency")

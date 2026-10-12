@@ -699,7 +699,8 @@ production evidence: a run logging `carried=853` had 839 of those rows come out 
 unranged select silently caps at PostgREST's default 1000 rows, missing later cards.
 
 The AI-read step is the pipeline's dominant runtime cost (one sequential API call per
-regenerating card, no retry). `--max-reads` caps new calls per run, unbounded by default;
+regenerating card, one retry when a check refuses a read, within a per-run budget of 30% of the reads attempted plus 20). `--max-reads` caps
+Claude calls per run, retries included, unbounded by default;
 no-stored-read cards fill before refresh-only ones, and anything the cap misses is eligible
 again next run. A capped or failed card's stale stored read is explicitly cleared, not left
 showing under fresh numbers -- `attach_assessments()`'s snapshot_date guard
@@ -718,21 +719,22 @@ checks each pair
 against `_present_metric_renderings`, the same rendering the model was shown: a numeric
 cross-check, not an LLM judge. It catches the model stating a number that does not match the
 card's data, not an unsupported qualitative claim that cites no wrong number (an LLM-judge second
-pass would catch that too, at roughly double the cost; not built here). Any mismatch, unknown
-label, or malformed tool response fails exactly like an API exception already does: `ai_read` /
+pass would catch that too, at roughly double the cost; not built here). A mismatch, an unknown
+label or a bad citation entry is retried once, then fails; a malformed payload (no tool call, a blank
+read, a wrong-typed `referenced_metrics` or `verdict_meaning`) fails at once. A failure is treated exactly like an API exception already is: `ai_read` /
 `read_model` are cleared (absent for a new card) and the card is retried next scheduled run (below).
 
 A deterministic style guard (`find_read_style_violations`, same file) runs after the numeric
 guard and checks a subset of the system prompt's own rules that a plain string/regex check can
 enforce without semantic judgment: no em/en-dash, no exclamation marks or emoji, no
 investment-advice language, none of the prompt's own named AI-tell phrases, no "this
-year"/"over the year" about growth. A violation fails the same way. `verdict_meaning_violation` matches the model's hidden
+year"/"over the year" about growth. A violation is retried once, then fails the same way. `verdict_meaning_violation` matches the model's hidden
 classification to the rules' verdict; only the prompt keeps the read from stating the verdict in so many words.
 
 A figure guard (`find_read_figure_violations`) runs after the style guard and checks the rules
 that need the card's own figures. Every sentence contains one of the card's figures as the card
 shows it (a leading minus may be dropped); a sentence containing "balance-sheet", "capital
-strength" or "could not be worked out" is exempt. No sentence has more than 25 words. No
+strength" or "could not be worked out" is exempt. No sentence has more than 30 words (the prompt asks for under 20). No
 fraction is written in words: thirds, fifths, tenths, halves, "a/one third|fifth|tenth|half",
 "half of", "half the", "a/one quarter of", "three quarters" (a space or a hyphen in each) and
 "one in five" style phrases; a time reference such as "the third quarter" or "the first half of
@@ -740,7 +742,7 @@ the year" passes. No sentence contains a purpose or cause phrase ("to fund", "to
 order to", "because", "thanks to", "driven by", "ability to", "so it can", "allowing it"). No
 currency symbol or code stands without a digit next to it (one space allowed before, spaces
 after). These are word lists: a paraphrase that avoids them passes, and a legitimate read that
-uses them is rejected. A violation rejects the whole read and fails the same way, with no retry.
+uses them is rejected. A violation rejects the whole read; the read is tried once more (within the per-run retry budget), and a second refusal fails the same way.
 
 The facts block gives each metric its catalogue `gloss` and a direction cue as `Meaning:` and its
 catalogue `applicability` as `Limit:`. `read_metric_meaning` mirrors the card's `metric_gloss`, pinned

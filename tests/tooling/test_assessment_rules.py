@@ -832,7 +832,9 @@ def test_catalogue_text_given_to_a_read_names_no_advice_word() -> None:
 
 def test_system_prompt_requires_figures_short_sentences_and_digits() -> None:
     prompt = rules.READ_SYSTEM_PROMPT
-    assert "at most 25 words" in prompt
+    assert "each under 20 words" in prompt
+    assert "Never join two ideas in one sentence" in prompt
+    assert "Operating margin is 20.4%, so 20.4 of every 100 of sales is left as operating profit." in prompt
     assert "exactly as it appears" in prompt
     assert "that number's Meaning line" in prompt
     assert "with the Meaning and Limit lines given for it" in prompt
@@ -901,7 +903,7 @@ _LIVE_AAPL = (
 @pytest.mark.parametrize(
     ("row", "read", "expected"),
     [
-        (_OP_ROW, _LIVE_3M, ("none of the card's figures", "words (rule: at most 25", "purpose or cause")),
+        (_OP_ROW, _LIVE_3M, ("none of the card's figures", "words (rule: at most 30", "purpose or cause")),
         (_LIVE_4DX_ROW, _LIVE_4DX, ("none of the card's figures", "without an amount")),
         (_LIVE_AAPL_ROW, _LIVE_AAPL, ("none of the card's figures", "number written in words", "purpose or cause")),
     ],
@@ -959,13 +961,14 @@ def test_a_loss_may_be_stated_without_its_minus_sign() -> None:
     assert rules.find_read_figure_violations(row, "The company lost 12.0% of its sales as operating profit.") == []
 
 
-def test_the_length_limit_is_25_words() -> None:
+def test_the_length_limit_is_30_words_while_the_prompt_asks_for_under_20() -> None:
     row = {"company_type": "operating", "currency": "USD", "ebit_margin_pct": 20.4}
-    at_limit = "Operating margin is 20.4% " + " ".join(["so"] * 21) + "."
-    over_limit = "Operating margin is 20.4% " + " ".join(["so"] * 22) + "."
-    assert len(at_limit.split()) == 25 and len(over_limit.split()) == 26
+    at_limit = "Operating margin is 20.4% " + " ".join(["so"] * 26) + "."
+    over_limit = "Operating margin is 20.4% " + " ".join(["so"] * 27) + "."
+    assert len(at_limit.split()) == 30 and len(over_limit.split()) == 31
+    assert rules.READ_MAX_WORDS == 30
     assert rules.find_read_figure_violations(row, at_limit) == []
-    assert any("26 words" in v for v in rules.find_read_figure_violations(row, over_limit))
+    assert any("31 words" in v for v in rules.find_read_figure_violations(row, over_limit))
 
 
 @pytest.mark.parametrize(
@@ -1319,6 +1322,9 @@ def test_validate_read_metrics_rejects_a_malformed_entry() -> None:
     row = {"company_type": "operating", "ebit_margin_pct": 24.0, "fcf_margin_pct": 16.0}
     assert rules.validate_read_metrics(row, [{"label": "missing value_as_shown key"}]) is False
     assert rules.validate_read_metrics(row, ["not a dict at all"]) is False
+    # a label that is not text must be refused, not raise (an unhashable list would crash the run)
+    for label in (["Operating margin (TTM)"], {"a": 1}, 7, None):
+        assert rules.validate_read_metrics(row, [{"label": label, "value_as_shown": "24.0%"}]) is False
 
 
 def test_read_tool_schema_requires_read_referenced_metrics_and_verdict_meaning() -> None:

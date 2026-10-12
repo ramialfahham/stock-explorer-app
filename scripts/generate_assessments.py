@@ -6,7 +6,7 @@ Two layers:
 - 5b (Claude Haiku prose read): fills ai_read / read_model, calling Claude ONLY when a
   card's input_hash changed or its stored ai_read is null (regenerate-on-change). The read
   is educational, never advice, and reasons only from the card's own numbers. --max-reads
-  caps how many NEW calls a single run makes (unbounded by default); cards with no stored
+  caps how many Claude calls a single run makes, retries included (unbounded by default); cards with no stored
   read are filled first, anything the cap does not reach becomes eligible again next run. A
   card the cap skips, or whose call fails, has any stale stored read explicitly cleared
   rather than left showing under this run's fresh verdict and numbers.
@@ -194,9 +194,10 @@ def _fetch_existing_assessments(client) -> dict[tuple, dict]:
     return {(r["market_code"], r["ticker"]): r for r in rows}
 
 
-def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | None]:
-    """Call Claude Haiku for one card's prose read. Returns (text, model_id), or
-    (None, None) on any failure so a single bad card never fails the batch.
+def _attempt_read(client, row: dict, verdict: str) -> tuple[str | None, str | None, bool]:
+    """One call to Claude Haiku for a card's prose read. Returns (text, model_id, refused), or
+    (None, None, refused) on any failure so a single bad card never fails the batch; `refused` is
+    True only when the model answered and a check rejected the read.
 
     Forces tool-use (READ_TOOL_SCHEMA) so the model returns the read alongside the exact
     metrics it cited and its own verdict_meaning classification, then checks those against the
@@ -207,7 +208,7 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
     a verdict-meaning mismatch, a style-rule violation, or a figure, length or wording violation
     is treated the same as an API failure:
     fail closed. The card keeps no read and is called again on the next scheduled run, because
-    attach_reads regenerates an empty ai_read. No retry within a run.
+    attach_reads regenerates an empty ai_read. _generate_read decides whether to ask again.
     """
     system, user = build_read_messages(row, verdict)
     try:
@@ -224,7 +225,7 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             f"  read failed for {row.get('market_code')}/{row.get('ticker')}: {exc}",
             file=sys.stderr,
         )
-        return None, None
+        return None, None, False
     tool_block = next(
         (block for block in resp.content if getattr(block, "type", None) == "tool_use"),
         None,
@@ -235,7 +236,7 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             f"no tool_use block in response (stop_reason={getattr(resp, 'stop_reason', None)!r})",
             file=sys.stderr,
         )
-        return None, None
+        return None, None, False
     payload = tool_block.input if isinstance(tool_block.input, dict) else {}
     text = str(payload.get("read") or "").strip()
     referenced = payload.get("referenced_metrics")
@@ -248,14 +249,14 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             f"verdict_meaning type={type(reported_meaning).__name__})",
             file=sys.stderr,
         )
-        return None, None
+        return None, None, False
     if not validate_read_metrics(row, referenced):
         print(
             f"  read REJECTED (unverifiable metric) for "
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )
-        return None, None
+        return None, None, True
     meaning_violation = verdict_meaning_violation(verdict, text, reported_meaning)
     if meaning_violation:
         print(
@@ -263,7 +264,7 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )
-        return None, None
+        return None, None, True
     style_violations = find_read_style_violations(text)
     if style_violations:
         print(
@@ -271,7 +272,7 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )
-        return None, None
+        return None, None, True
     figure_violations = find_read_figure_violations(row, text)
     if figure_violations:
         print(
@@ -279,8 +280,35 @@ def _generate_read(client, row: dict, verdict: str) -> tuple[str | None, str | N
             f"{row.get('market_code')}/{row.get('ticker')}",
             file=sys.stderr,
         )
-        return None, None
-    return text, resp.model
+        return None, None, True
+    return text, resp.model, False
+
+
+RETRY_SHARE_PERCENT = 30
+RETRY_FLOOR = 20
+
+
+def _retry_budget(reads: int) -> int:
+    """Retries one run may spend: 30% of the reads it attempts plus 20, so a run whose reads are
+    mostly refused cannot double its calls without end."""
+    return reads * RETRY_SHARE_PERCENT // 100 + RETRY_FLOOR
+
+
+def _generate_read(
+    client, row: dict, verdict: str, *, retries: list[int] | None = None
+) -> tuple[str | None, str | None]:
+    """A card's prose read: one call, and one more when the model answered and a check refused the
+    read (figures, style, cited metrics, verdict meaning). `retries` is the run's shared budget, a
+    one-element list that this call decrements per retry. No retry after an API error or a malformed
+    payload (no tool call, a blank read, or `referenced_metrics` or `verdict_meaning` of the wrong
+    type); a citation entry that is not an object or lacks a label or value is a refusal and is
+    retried. Returns (text, model_id), or (None, None) when no answer passed."""
+    text, model, refused = _attempt_read(client, row, verdict)
+    if refused and retries and retries[0] > 0:
+        retries[0] -= 1
+        print(f"  read retried for {row.get('market_code')}/{row.get('ticker')}")
+        text, model, _ = _attempt_read(client, row, verdict)
+    return text, model
 
 
 def _clear_stale_read_if_present(record: dict, existing_by_key: dict[tuple, dict]) -> None:
@@ -327,7 +355,8 @@ def attach_reads(
     --max-reads cap does not reach this run, clears any stale stored read instead
     (_clear_stale_read_if_present) rather than leaving old prose under new numbers.
 
-    `max_reads` bounds how many NEW Claude calls this run makes -- the AI-read step is the
+    `max_reads` bounds how many Claude calls this run makes, retries included (a refused read's
+    retry counts against it) -- the AI-read step is the
     scheduled pipeline's dominant, previously-ungoverned runtime cost (~39 of ~65 minutes on
     a 9-market run), the likely long-term driver toward the CI job's 2h timeout as more
     markets are onboarded. `None` (the default) is unbounded -- unchanged behavior; the
@@ -373,6 +402,11 @@ def attach_reads(
         _clear_stale_read_if_present(record, existing_by_key)
 
     generated = failed = 0
+    retry_cap = _retry_budget(len(selected))
+    if max_reads is not None:  # a retry is a call: --max-reads bounds reads plus retries
+        retry_cap = min(retry_cap, max(max(max_reads, 0) - len(selected), 0))
+    retries = [retry_cap]
+    retry_budget = retries[0]
     for record in selected:
         key = (record["market_code"], record["ticker"])
         row = rows_by_key.get(key)
@@ -385,7 +419,7 @@ def attach_reads(
             failed += 1
             _clear_stale_read_if_present(record, existing_by_key)
             continue
-        text, model = _generate_read(client, row, record["health_verdict"])
+        text, model = _generate_read(client, row, record["health_verdict"], retries=retries)
         if text is None:
             failed += 1
             _clear_stale_read_if_present(record, existing_by_key)
@@ -394,6 +428,7 @@ def attach_reads(
         record["read_model"] = model
         generated += 1
         print(f"  read generated for {record['market_code']}/{record['ticker']}")
+    print(f"  retries used: {retry_budget - retries[0]} of {retry_budget}")
     return {
         "generated": generated,
         "carried": carried,
@@ -458,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=None,
         help=(
-            "Cap on NEW Claude calls this run (the AI-read step's dominant, previously-"
+            "Cap on Claude calls this run, retries included (the AI-read step's dominant, previously-"
             "ungoverned runtime cost). Unbounded by default -- unchanged behavior. Cards with "
             "no stored read are filled before cards that only need a refresh; anything the "
             "cap does not reach becomes eligible again next run."
