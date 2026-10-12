@@ -30,20 +30,22 @@ unique test; `PyYAML` pinned in two places; the 3-line `sys.path` block copied i
 `load_markets` error messages; the active-code set built inline in four scripts and two tests): the owner
 says which to file. **Next: #51, #52, #55.**
 
-**AI read: the full production run is the open step (the Oct 11 run failed and was cancelled,
-nothing stored).** That run accepted 0 of 353 reads: 87% had a sentence over 25 words, 13% a fraction
-in words. The fix is merged (!261): revised prompt (2 or 3 sentences under 20 words, a worked example,
-no joined ideas), a 30-word check, one retry for a refused read (budget 30% of reads + 20, counted
-inside `--max-reads`); `INPUT_HASH_VERSION` 5a.6. Real-call tests (scratch scripts, nothing written):
-44 of 44 accepted on real cards, 5 retries. **Not yet run live.** The scheduled Oct 15 06:00 UTC run
-does the full refresh unattended (about $5.70, about 106 of 120 minutes, about 116 at the retry cap);
-the owner may trigger it earlier: `glab api -X POST projects/rami.al-fahham%2Fstock-explorer-app/pipeline_schedules/4404666/play`.
-Watch the job log: stop it (the owner cancels the job) if fewer than 60 of the first 100 reads are
-accepted; nothing is stored until the end. Afterwards count `read REJECTED` by rule, check the live
-AAPL, 3M and 4DMedical cards and a sample of yellow cards with falling revenue, scan the first 100
-accepted texts for capability or prediction words ("struggle", "unable", "freely", "soon") and for
-"sales" on financial cards, and report the rate; a high rate means a second prompt pass (#67 holds the
-wording items). Follow-ups (#66): sector medians in the read need their own check; audit the
+**AI read: the full production run (pipeline 2937439062, started 2026-10-12 06:43 UTC on `main` 27dc976, job
+17102728099) is the open step.** The Oct 11 run was cancelled with nothing stored: by timing it made about
+462 calls and refused 353 (about 76%; 87% of the refusals had a sentence over 25 words, 13% a fraction in
+words). The fix is merged (!261): revised prompt (2 or 3 sentences under 20 words, a worked example, no
+joined ideas), a 30-word check, one retry for a refused read (budget 30% of reads + 20, counted inside
+`--max-reads`); `INPUT_HASH_VERSION` 5a.6. Real-call tests (scratch scripts, nothing written): 44 of 44
+accepted, 5 retries. **The live job log shows only refusal lines (stdout is buffered until the job ends):
+estimate acceptance from timing (about 3.15 s per call) and the refusal lines: a card refused once was
+accepted on its retry, a card refused twice stayed blank.** At about 134 cards the estimate was 78% accepted
+on the first try and 90% after the retry, blank 10%; the main refusal was a fraction in words, then length.
+Stop rule: the owner cancels the job if fewer than 60 of the first 100 are accepted; nothing is stored
+until the end. When the job ends: read the final line `generate_assessments: reads generated=... failed=...`,
+count `read REJECTED` by rule, check the live AAPL, 3M and 4DMedical cards and a sample of yellow cards
+with falling revenue, scan the first 100 accepted texts for capability or prediction words ("struggle",
+"unable", "freely", "soon") and for "sales" on financial cards, and report the rate; a high rate
+means a second prompt pass (#67 holds the wording items). Follow-ups (#66): sector medians in the read need their own check; audit the
 catalogue text against ISO/IEC 11179-4 (thin glosses); `card_copy.metric_gloss` calls a negative debt
 ratio net cash even when EBITDA is negative. The owner's writing standards (ISO 24495-1, ISO/IEC
 11179-4, ASD-STE100) are in `football-data-pipeline/docs/working_agreement.md` section 9.
