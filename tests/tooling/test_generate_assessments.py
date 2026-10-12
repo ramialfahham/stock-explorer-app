@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 import duckdb
+import pytest
 
 import generate_assessments as gen
 from assessment_rules import VERDICTS
@@ -162,7 +163,11 @@ class _FakeMessages:
                  verdict_meaning: str | None = "healthy",
                  content: list | None = None,
                  stop_reason: str = "tool_use",
-                 auto_verdict_meaning: bool = False) -> None:
+                 auto_verdict_meaning: bool = False,
+                 texts: list[str] | None = None,
+                 payloads: list[dict] | None = None) -> None:
+        self._texts = texts
+        self._payloads = payloads
         self._text = text
         self._model = model
         self._fail_calls = set(fail_calls)
@@ -184,7 +189,7 @@ class _FakeMessages:
         self.calls.append(kwargs)
         if idx in self._fail_calls:
             raise RuntimeError("boom")
-        text = self._text
+        text = self._texts[min(idx, len(self._texts) - 1)] if self._texts else self._text
         verdict_meaning = self._verdict_meaning
         if self._auto_verdict_meaning:
             user_content = next(
@@ -196,10 +201,16 @@ class _FakeMessages:
             )
             figure = re.search(r"^- [^\n]*?: (\S+)$", str(user_content), re.M)
             text = f"The first figure is {figure.group(1) if figure else 'n/a'}, a {verdict_meaning} picture."
+        referenced, content = self._referenced_metrics, self._content
+        if self._payloads:
+            override = self._payloads[min(idx, len(self._payloads) - 1)]
+            text = override.get("text", text)
+            referenced = override.get("referenced_metrics", referenced)
+            verdict_meaning = override.get("verdict_meaning", verdict_meaning)
         return _FakeMessage(
-            text, self._model, self._referenced_metrics,
+            text, self._model, referenced,
             verdict_meaning=verdict_meaning,
-            content=self._content, stop_reason=self._stop_reason,
+            content=content, stop_reason=self._stop_reason,
         )
 
 
@@ -426,7 +437,7 @@ def test_attach_reads_negative_max_reads_is_clamped_to_fully_capped() -> None:
     assert client.messages.calls == []
 
 
-# --- --max-reads: bounds new Claude calls per run with a per-run cap. Cards with no stored
+# --- --max-reads: bounds Claude calls per run, retries included, with a per-run cap. Cards with no stored
 # read are filled before cards that only need a refresh -- a bare fallback line is a worse
 # gap than a stale read -- and whatever a tight cap can't reach this run is left exactly like
 # `carried` (keys absent), so it retries on the next run rather than being lost.
@@ -442,7 +453,7 @@ def test_max_reads_none_is_unbounded_default() -> None:
     assert summary == {"generated": 2, "carried": 0, "capped": 0, "failed": 0}
 
 
-def test_max_reads_caps_new_calls_and_reports_capped() -> None:
+def test_max_reads_caps_claude_calls_and_reports_capped() -> None:
     a = _base_record(ticker="AAA")
     b = _base_record(ticker="BBB")
     c = _base_record(ticker="CCC")
@@ -563,13 +574,13 @@ def test_attach_reads_style_check_call_site_is_actually_wired(monkeypatch) -> No
 
 def test_attach_reads_rejects_a_sentence_that_states_no_figure(capsys) -> None:
     """The closing verdict sentence the live cards showed: no figure in it, so the read is
-    rejected like every other guard failure (no retry, no extra call)."""
+    rejected like every other guard failure (one retry, then no read)."""
     rec = _base_record()
     client = _FakeAnthropic(text="Operating margin is 24.0%. These figures paint a healthy picture.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
     assert "ai_read" not in rec and "read_model" not in rec
-    assert len(client.messages.calls) == 1
+    assert len(client.messages.calls) == 2
     assert "read REJECTED (figures" in capsys.readouterr().err
 
 
@@ -581,6 +592,137 @@ def test_attach_reads_figure_check_call_site_is_actually_wired(monkeypatch) -> N
     client = _FakeAnthropic(text="Operating margin is 24.0%. These figures paint a healthy picture.")
     summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
     assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
+
+
+def _two_answers(first: str, second: str) -> "_FakeAnthropic":
+    return _FakeAnthropic(texts=[first, second])
+
+
+_BAD = "Operating margin is 24.0%. These figures paint a healthy picture."
+_GOOD = "Operating margin is 24.0%. FCF margin is 16.0%."
+
+
+def test_a_refused_read_is_asked_for_once_more_and_the_second_answer_is_used(capsys) -> None:
+    rec = _base_record()
+    client = _two_answers(_BAD, _GOOD)
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
+    assert rec["ai_read"] == _GOOD
+    assert len(client.messages.calls) == 2
+    out = capsys.readouterr()
+    assert "read retried for us_sp500/OPX" in out.out
+    assert "retries used: 1 of" in out.out
+
+
+def test_a_read_refused_twice_fails_after_exactly_two_calls() -> None:
+    rec = _base_record()
+    client = _two_answers(_BAD, _BAD)
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert "ai_read" not in rec
+    assert len(client.messages.calls) == 2
+
+
+def test_an_accepted_read_costs_one_call(capsys) -> None:
+    rec = _base_record()
+    client = _two_answers(_GOOD, _BAD)
+    gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert len(client.messages.calls) == 1
+    assert "retries used: 0 of" in capsys.readouterr().out
+
+
+def test_an_api_error_is_not_retried() -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(texts=[_GOOD, _GOOD], fail_calls={0})
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert len(client.messages.calls) == 1
+
+
+def test_a_malformed_answer_is_not_retried() -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(content=[])
+    gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert len(client.messages.calls) == 1
+
+
+def test_an_empty_retry_budget_means_no_retry() -> None:
+    client = _two_answers(_BAD, _GOOD)
+    text, _model = gen._generate_read(client, _metric_row(), "green", retries=[0])
+    assert text is None and len(client.messages.calls) == 1
+
+
+def test_a_retry_spends_one_from_the_shared_budget() -> None:
+    client = _two_answers(_BAD, _GOOD)
+    budget = [1]
+    text, _model = gen._generate_read(client, _metric_row(), "green", retries=budget)
+    assert text == _GOOD and budget == [0] and len(client.messages.calls) == 2
+
+
+def test_the_retry_budget_is_30_percent_of_the_reads_plus_20() -> None:
+    assert gen._retry_budget(0) == 20
+    assert gen._retry_budget(1241) == 392
+
+
+def test_a_run_stops_retrying_when_its_budget_is_spent() -> None:
+    recs = [_base_record(ticker=f"T{i}") for i in range(60)]
+    rows = {("us_sp500", f"T{i}"): _metric_row(f"T{i}") for i in range(60)}
+    client = _FakeAnthropic(text=_BAD)
+    summary = gen.attach_reads(recs, rows, {}, client)
+    assert summary["failed"] == 60
+    assert gen._retry_budget(60) == 38
+    assert len(client.messages.calls) == 60 + 38
+
+
+_GOOD_PAYLOAD = {"text": _GOOD, "referenced_metrics": [], "verdict_meaning": "healthy"}
+
+
+@pytest.mark.parametrize(
+    "refused_first",
+    [
+        {"text": "A great buy at 24.0%! Operating margin is 24.0%."},
+        {"referenced_metrics": [{"label": "Operating margin (TTM)", "value_as_shown": "99.9%"}]},
+        {"verdict_meaning": "fragile"},
+    ],
+    ids=["style guard", "cited-metric guard", "verdict-meaning guard"],
+)
+def test_every_guard_refusal_is_retried_once(refused_first: dict) -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(payloads=[refused_first, _GOOD_PAYLOAD])
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 1, "carried": 0, "capped": 0, "failed": 0}
+    assert rec["ai_read"] == _GOOD
+    assert len(client.messages.calls) == 2
+
+
+@pytest.mark.parametrize(
+    "malformed_first",
+    [{"text": ""}, {"referenced_metrics": "oops"}, {"verdict_meaning": 7}],
+    ids=["blank read", "referenced_metrics not a list", "verdict_meaning not a string"],
+)
+def test_a_malformed_payload_is_not_retried(malformed_first: dict) -> None:
+    rec = _base_record()
+    client = _FakeAnthropic(payloads=[malformed_first, _GOOD_PAYLOAD])
+    summary = gen.attach_reads([rec], {("us_sp500", "OPX"): _metric_row()}, {}, client)
+    assert summary == {"generated": 0, "carried": 0, "capped": 0, "failed": 1}
+    assert len(client.messages.calls) == 1
+
+
+def test_a_retry_counts_against_max_reads() -> None:
+    """--max-reads bounds Claude calls, retries included: 2 reads and a cap of 2 leave no room."""
+    recs = [_base_record(ticker=f"T{i}") for i in range(3)]
+    rows = {("us_sp500", f"T{i}"): _metric_row(f"T{i}") for i in range(3)}
+    client = _FakeAnthropic(text=_BAD)
+    gen.attach_reads(recs, rows, {}, client, max_reads=2)
+    assert len(client.messages.calls) == 2
+
+
+def test_the_retry_room_under_max_reads_is_the_cap_minus_the_reads() -> None:
+    recs = [_base_record(ticker=f"T{i}") for i in range(2)]
+    rows = {("us_sp500", f"T{i}"): _metric_row(f"T{i}") for i in range(2)}
+    client = _FakeAnthropic(text=_BAD)
+    gen.attach_reads(recs, rows, {}, client, max_reads=3)
+    assert len(client.messages.calls) == 3  # 2 reads + 1 retry
 
 
 def test_attach_reads_rejects_a_response_with_no_tool_use_block(capsys) -> None:

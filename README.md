@@ -102,7 +102,7 @@ The reasoning and trade-offs behind the core — deeper context lives in
 - **The AI read is a soft dependency, not a blocker.** `ANTHROPIC_API_KEY` is optional --
   without it the deterministic health verdict still ships, just without the prose read.
   Every generated read is checked against the card's own numbers before it's accepted; a
-  `--max-reads` flag exists to cap new-call volume per run, since the read step is the
+  `--max-reads` flag exists to cap Claude calls per run, retries included, since the read step is the
   pipeline's single biggest runtime cost otherwise.
 - **No accounts in v1.** The saved list persists in a browser cookie. Zero signup
   friction and no personal data to hold, traded against no cross-device sync — deferred,

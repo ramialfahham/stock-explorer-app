@@ -27,11 +27,20 @@ growth plays a small role; researched, the owner chose no new rule; open for a l
 (residual AI-read guard gaps). #50 (repo hygiene) is done on branch `chore/repo-hygiene-50`; the owner merges
 its MR after the production run of 2026-10-11 (pipeline 2936387293) ends. **Next: #51, #52, #55.**
 
-**AI read, waiting on the production run.** Both AI-read MRs are merged, so the scheduled Oct 15
-06:00 UTC run regenerates every read once (about $5.10, about 95 of its 120 minutes); the owner may
-trigger it earlier (below). Then: count the `read REJECTED` lines in the `generate_assessments`
-log by rule, check the live AAPL, 3M and 4DMedical cards and a sample of yellow cards with falling
-revenue, and report the rate; a high rate means a second prompt pass. Follow-ups (#66): sector
+**AI read: the Oct 11 on-demand run failed and was cancelled (pipeline 2936387293, nothing stored).**
+It accepted 0 of 353 reads: 87% had a sentence over 25 words (the model does not keep to it), 13% a
+fraction in words. The fix is branch `fix/ai-read-retry`: revised prompt (2 or 3 sentences under 20
+words, a worked example, no joined ideas), a 30-word check, one retry for a refused read (budget
+30% of reads + 20, counted inside `--max-reads`). Real-call tests (the owner's `ANTHROPIC_API_KEY` in `.env`; scratch scripts, no
+writes): 83% accepted at 30 words before the retry; 44 of 44 with it, 5 retries. It MUST be merged
+before the scheduled Oct 15 06:00 UTC run, or that run repeats the failure and clears nearly every
+stored read; if it cannot be, pause the schedule (the owner's call). After the merge the owner
+triggers a full run (about $5.70, about 106 of 120 minutes with the expected retries, about 116 at the retry cap): watch the first 100 reads and stop it
+if fewer than 60 are accepted. Afterwards count `read REJECTED` by rule, check the live AAPL, 3M and
+4DMedical cards and a sample of yellow cards with falling revenue, scan the first 100 accepted
+texts for capability or prediction words ("struggle", "unable", "freely", "soon") and for
+"sales" on financial cards, and report the rate; a high rate means a second prompt pass. Prompt-wording items for the owner
+(the worked example, the financial-company limit sentence, claims no check catches): #67. Follow-ups (#66): sector
 medians in the read need their own check; audit the catalogue text against ISO/IEC 11179-4 (thin
 glosses); `card_copy.metric_gloss` calls a negative debt ratio net cash even when EBITDA is
 negative. The owner's writing standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
