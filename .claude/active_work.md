@@ -30,25 +30,21 @@ unique test; `PyYAML` pinned in two places; the 3-line `sys.path` block copied i
 `load_markets` error messages; the active-code set built inline in four scripts and two tests): the owner
 says which to file. **Next: #51, #52, #55.**
 
-**AI read: the full production run (pipeline 2937439062, started 2026-10-12 06:43 UTC on `main` 27dc976, job
-17102728099) is the open step.** The Oct 11 run was cancelled with nothing stored: by timing it made about
-462 calls and refused 353 (about 76%; 87% of the refusals had a sentence over 25 words, 13% a fraction in
-words). The fix is merged (!261): revised prompt (2 or 3 sentences under 20 words, a worked example, no
-joined ideas), a 30-word check, one retry for a refused read (budget 30% of reads + 20, counted inside
-`--max-reads`); `INPUT_HASH_VERSION` 5a.6. Real-call tests (scratch scripts, nothing written): 44 of 44
-accepted, 5 retries. **The live job log shows only refusal lines (stdout is buffered until the job ends):
-estimate acceptance from timing (about 3.15 s per call) and the refusal lines: a card refused once was
-accepted on its retry, a card refused twice stayed blank.** At about 134 cards the estimate was 78% accepted
-on the first try and 90% after the retry, blank 10%; the main refusal was a fraction in words, then length.
-Stop rule: the owner cancels the job if fewer than 60 of the first 100 are accepted; nothing is stored
-until the end. When the job ends: read the final line `generate_assessments: reads generated=... failed=...`,
-count `read REJECTED` by rule, check the live AAPL, 3M and 4DMedical cards and a sample of yellow cards
-with falling revenue, scan the first 100 accepted texts for capability or prediction words ("struggle",
-"unable", "freely", "soon") and for "sales" on financial cards, and report the rate; a high rate
-means a second prompt pass (#67 holds the wording items). Follow-ups (#66): sector medians in the read need their own check; audit the
-catalogue text against ISO/IEC 11179-4 (thin glosses); `card_copy.metric_gloss` calls a negative debt
-ratio net cash even when EBITDA is negative. The owner's writing standards (ISO 24495-1, ISO/IEC
-11179-4, ASD-STE100) are in `football-data-pipeline/docs/working_agreement.md` section 9.
+**AI read: regenerated on the live data (2026-10-12/13).** `INPUT_HASH_VERSION` 5a.6 (!261: revised prompt,
+30-word check, one retry inside `--max-reads`). Live result in Supabase: 1222 of 1252 cards have AI text,
+30 show the plain fallback line (refused twice or malformed; the scheduled run of 2026-10-15 06:00 UTC
+retries them). Scan of the 1222 texts: 0 fractions in words, 0 dashes, 0 "sales" on financial cards, no
+closing verdict sentences; **19% say a company "can use ... freely" about free cash flow and 6% predict
+("may struggle to pay"); no check catches either (#66, #67; the wording is the owner's call).** The run on
+pipeline 2937439062 ran out of Anthropic credit at 08:10 UTC (310 failed calls, 364 blank cards); the rerun
+(pipeline 2937731363) generated 334, carried 881, failed 29, used 79 of 128 retries. The live job log shows
+only stderr (refusals, failed calls); stdout is buffered until the job ends. Open: #66 (abort the job on a
+billing error, flush the log, sector medians in the read need their own check, audit the catalogue text
+against ISO/IEC 11179-4, `card_copy.metric_gloss` calls a negative debt ratio net cash even when EBITDA is
+negative), #67 (the prompt's example contradicts its own rule; the "freely" and capability wording). The
+!261 MR description still says the first run "accepted none" (about 76% were refused). The owner's writing
+standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
+`football-data-pipeline/docs/working_agreement.md` section 9.
 
 **Next: #51, #52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
