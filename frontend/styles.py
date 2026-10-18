@@ -37,7 +37,7 @@ def inject_global_css() -> None:
     --ss-bottom-nav-h: 3.25rem;
     --ss-action-bar-h: 3.25rem;
 
-    /* Design system tokens (Slice 6a) — see docs/ui/design_system.md */
+    /* Design system tokens -- see docs/ui/design_system.md */
     --ss-space-1: 0.35rem;
     --ss-space-2: 0.55rem;
     --ss-space-3: 0.75rem;
@@ -61,8 +61,8 @@ section[data-testid="stSidebar"] {
     display: none !important;
 }
 
-/* Design system: every button gets a consistent corner radius by default (Slice 6a) and,
-   since Slice 6b, the accent/surface color skin app-wide too (see the global
+/* Design system: every button gets a consistent corner radius by default and the
+   accent/surface color skin app-wide too (see the global
    button[kind="primary"/"secondary"] rules below). See docs/ui/design_system.md. */
 [data-testid="stButton"] button {
     border-radius: var(--ss-radius-control);
@@ -278,7 +278,7 @@ section[data-testid="stSidebar"] {
     line-height: 1.45;
 }
 
-/* Verdict badge + AI read (Slice 6c) — Scan-tier signal, always visible. */
+/* Verdict badge + AI read -- Scan-tier signal, always visible. */
 /* The two card-face content blocks are visually distinct on purpose: the assessment is
    model-written prose, the description is the company's own words. Before this they ran
    together as one wall of text and a reader could not tell which was which. The panel
@@ -474,7 +474,7 @@ section[data-testid="stSidebar"] {
     padding: 0.35rem 0;
 }
 
-/* Metric label chip (Slice 6c) — applied uniformly, no hero/secondary split exists.
+/* Metric label chip -- applied uniformly, no hero/secondary split exists.
    Scoped under .ss-metric like .ss-metric-gloss below it — see that rule's comment. */
 .ss-metric .ss-metric-label {
     display: inline-block;
@@ -729,12 +729,10 @@ section[data-testid="stSidebar"] {
     margin: 0;
     line-height: 1.35;
 }
-/* Pre-existing rule (predates Slice 6b) — testid corrected from "stLinkButton" to the real
-   rendered value, "stBaseLinkButton-secondary", but the sibling-combinator prefix was the
-   same broken assumption as the two rules above (.ss-card-footer-shell has no next sibling
-   of its own -- the real relationship is one level up, stElementContainer -> stLayoutWrapper,
-   same as .ss-freshness and the footer separator). Confirmed live: this compact footer
-   sizing has never actually applied until this fix. */
+/* Footer link-button sizing. The testid is "stBaseLinkButton-secondary", and the combinator
+   starts at stElementContainer: .ss-card-footer-shell has no next sibling of its own, the
+   real relationship is one level up, stElementContainer -> stLayoutWrapper, same as
+   .ss-freshness and the footer separator. */
 [data-testid="stElementContainer"]:has(.ss-card-footer-shell) + [data-testid="stLayoutWrapper"] a[data-testid="stBaseLinkButton-secondary"] {
     font-size: var(--ss-caption-size) !important;
     min-height: 2rem !important;
@@ -750,7 +748,7 @@ section[data-testid="stSidebar"] {
     color: var(--ss-caption);
     margin: 0 0 0.65rem;
 }
-/* Row primitive (Slice 6a) — shared by Saved list and Search results.
+/* Row primitive -- shared by Saved list and Search results.
    See docs/ui/design_system.md. Left-aligned HTML row + invisible full-row tap target.
 
    Every rule below that targets "the stVerticalBlock that has a row in it" uses
@@ -933,9 +931,8 @@ section[data-testid="stSidebar"] {
     padding: 0.35rem 0;
     background: linear-gradient(to top, var(--ss-bg) 80%, transparent);
 }
-/* Button color skin (Slice 6b) — global, not scoped to one surface. See
-   docs/ui/design_system.md. Radius alone was globalized in 6a; color/background stayed
-   scoped to just this action bar until 6b closed that gap app-wide. */
+/* Button color skin -- global, not scoped to one surface. See
+   docs/ui/design_system.md. */
 button[kind="primary"] {
     background: var(--ss-accent) !important;
     color: var(--ss-bg) !important;
@@ -1030,8 +1027,8 @@ a[data-testid="stBaseLinkButton-tertiary"] {
     gap: 0.3rem;
     width: 100%;
 }
-/* Native widget theming (Slice 6b) — st.popover and st.expander rendered fully unstyled
-   before this; both now match the app's surface/border language instead of default
+/* Native widget theming -- st.popover and st.expander render fully unstyled
+   without it; both match the app's surface/border language instead of default
    Streamlit chrome. See docs/ui/design_system.md. */
 [data-testid="stPopoverButton"] {
     background: var(--ss-surface-control) !important;

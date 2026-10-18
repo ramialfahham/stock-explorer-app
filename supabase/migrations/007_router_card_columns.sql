@@ -1,4 +1,4 @@
--- Sector/Lifecycle Router (Slice 4a) card columns.
+-- Sector/Lifecycle Router card columns.
 -- All nullable + additive: pre-migration rows read null until the next full re-export.
 --   * company_type — operating | financial | pre_revenue (frontend treats a missing value as operating)
 --   * debt_to_equity / current_ratio_stmt / statement_roe_pct — the operating card's new

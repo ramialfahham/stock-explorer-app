@@ -279,7 +279,7 @@ unit_tests:
               currency: GBP,
             }
     expect:
-      # HSBA is financial; per-type eligibility (4b) judges it on the financial required pair
+      # HSBA is financial; per-type eligibility judges it on the financial required pair
       # (statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs
       # (it targets the annual ebit_margin fallback), so it lacks statement ROE and net margin and is
       # ineligible -- but ebit_margin still falls back to the annual figure correctly.
@@ -336,7 +336,7 @@ unit_tests:
             }
     expect:
       # This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
-      # inputs. Under per-type eligibility (4b) LLOY is financial and judged on the financial required pair
+      # inputs. Under per-type eligibility LLOY is financial and judged on the financial required pair
       # (statement_roe_pct + net_margin_pct); lacking statement ROE and net margin it is
       # ineligible -- but ebit_margin is still computed correctly from operating revenue - expense.
       rows:
@@ -816,7 +816,7 @@ unit_tests:
             statement_roe_pct: 20.0,
           }
   - name: card_metrics_financial_eligibility_required_pair
-    # Per-type eligibility (Router 4b): a financial is eligible on the required pair
+    # Per-type eligibility: a financial is eligible on the required pair
     # (statement_roe_pct + net_margin_pct). BANKOK has both -> eligible; BANKNO lacks revenue
     # so net_margin_pct is null -> ineligible, even as a financial.
     model: int_stock__card_metrics
@@ -876,7 +876,7 @@ unit_tests:
         - {market_code: us_sp500, ticker: FINNOPE, company_type: financial, is_card_eligible: true, net_cash: null}
         - {market_code: us_sp500, ticker: PRENOCAP, company_type: pre_revenue, is_card_eligible: true, net_cash: 500.0}
   - name: card_metrics_pre_revenue_eligibility_net_cash
-    # Per-type eligibility (Router 4c): a pre_revenue company is eligible when net_cash is computable
+    # Per-type eligibility: a pre_revenue company is eligible when net_cash is computable
     # (has cash + debt). PREOK has both -> eligible; PRENO lacks cash -> net_cash null -> ineligible.
     # Both classify pre_revenue (Healthcare, revenue 0).
     #

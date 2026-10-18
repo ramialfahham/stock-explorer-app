@@ -55,9 +55,9 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `004_business_summary.sql` | `business_summary` text on mart (Yahoo longBusinessSummary) |
 | `005_ebit_margin_basis.sql` | `ebit_margin_basis` on mart |
 | `006_company_founded_year.sql` | `company_founded_year` on mart (optional; not shown on card yet) |
-| `007_router_card_columns.sql` | `company_type` + operating-card solvency/liquidity/returns columns (Sector Router 4a) |
-| `008_financial_card_metrics.sql` | Financial/bank-card metric columns (Sector Router 4b) |
-| `009_pre_revenue_card_metrics.sql` | Pre-revenue/survival-card metric columns (Sector Router 4c) |
+| `007_router_card_columns.sql` | `company_type` + operating-card solvency/liquidity/returns columns |
+| `008_financial_card_metrics.sql` | Financial/bank-card metric columns |
+| `009_pre_revenue_card_metrics.sql` | Pre-revenue/survival-card metric columns |
 | `010_card_assessments.sql` | `card_assessments` table -- health verdict + AI read |
 | `011_grant_roles.sql` | Explicit role grants — needed when "automatically expose new tables" (step 1) is off |
 | `012_sector_benchmark_min_max.sql` | Sector benchmark min/max columns on mart |

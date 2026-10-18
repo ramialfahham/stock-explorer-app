@@ -1,4 +1,4 @@
--- Sector/Lifecycle Router (Slice 4b) financial-card metric values.
+-- Sector/Lifecycle Router financial-card metric values.
 -- All nullable + additive: pre-migration rows read null until the next full re-export.
 -- Rendered on the bank card per company_type (P/TBV + P/E, net margin, ROE, ROA, dividend yield).
 

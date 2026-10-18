@@ -1,9 +1,9 @@
--- Card assessments — AI health assessment per card (Sector/Lifecycle Router, Slice 5).
+-- Card assessments -- AI health assessment per card (Sector/Lifecycle Router).
 -- Applied by scripts/apply_supabase_migrations.py (auto-discovered NNN_*.sql).
 --
--- 5a writes the deterministic per-type health verdict (green|yellow|red) + input_hash via
--- scripts/generate_assessments.py. 5b fills ai_read/read_model (Claude Haiku prose read),
--- regenerating only when input_hash changes. Educational only — NOT investment advice.
+-- scripts/generate_assessments.py writes the deterministic per-type health verdict (green|yellow|red)
+-- + input_hash and fills ai_read/read_model (Claude Haiku prose read), regenerating only when
+-- input_hash changes or the stored read is empty. Educational only -- NOT investment advice.
 
 create table if not exists public.card_assessments (
     id bigint generated always as identity primary key,
@@ -11,9 +11,9 @@ create table if not exists public.card_assessments (
     ticker text not null,
     company_type text not null,
     health_verdict text not null check (health_verdict in ('green', 'yellow', 'red')),
-    ai_read text,               -- LLM prose read; null until Slice 5b
-    read_model text,            -- model id that wrote ai_read; null until Slice 5b
-    input_hash text not null,   -- sha256 of the verdict inputs; drives 5b regenerate-on-change
+    ai_read text,               -- LLM prose read; null until the read is generated
+    read_model text,            -- model id that wrote ai_read; null until the read is generated
+    input_hash text not null,   -- sha256 of the verdict inputs; drives regenerate-on-change
     snapshot_date date not null,
     generated_at timestamptz not null default now(),
     unique (market_code, ticker)

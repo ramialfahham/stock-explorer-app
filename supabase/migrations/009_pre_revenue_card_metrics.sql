@@ -1,4 +1,4 @@
--- Sector/Lifecycle Router (Slice 4c) pre-revenue / survival card metric values.
+-- Sector/Lifecycle Router pre-revenue / survival card metric values.
 -- All nullable + additive: pre-migration rows read null until the next full re-export.
 -- Rendered on the pre-revenue card (net cash vs value, working capital, cash runway, monthly burn).
 

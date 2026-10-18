@@ -1,9 +1,9 @@
-"""Generate per-card health assessments from the DuckDB mart into Supabase (Slice 5).
+"""Generate per-card health assessments from the DuckDB mart into Supabase.
 
 Two layers:
-- 5a (deterministic, no LLM): reads marts.mart_stock_cards (already filtered to eligible
+- Verdict (deterministic, no LLM): reads marts.mart_stock_cards (already filtered to eligible
   cards), computes a per-type health verdict + an input_hash per card.
-- 5b (Claude Haiku prose read): fills ai_read / read_model, calling Claude ONLY when a
+- Read (Claude Haiku prose): fills ai_read / read_model, calling Claude ONLY when a
   card's input_hash changed or its stored ai_read is null (regenerate-on-change). The read
   is educational, never advice, and reasons only from the card's own numbers. --max-reads
   caps how many Claude calls a single run makes, retries included (unbounded by default); cards with no stored
@@ -52,7 +52,7 @@ from assessment_rules import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Slice 5b: the Claude Haiku prose read. READ_MODEL is the request model; the id
+# The Claude Haiku prose read. READ_MODEL is the request model; the id
 # actually stored in read_model is response.model (echoed back by the API).
 READ_MODEL = "claude-haiku-4-5"
 # Forced tool-use (READ_TOOL_SCHEMA) adds JSON structure on top of the prose itself -- the
@@ -137,8 +137,8 @@ def _latest_per_ticker(rows: list[dict]) -> list[dict]:
 def build_assessment_records(rows: list[dict]) -> list[dict]:
     """Pure: dedupe to latest snapshot, then verdict + input_hash per card.
 
-    ai_read / read_model are intentionally omitted (not None) so a 5a upsert never nulls a
-    Slice-5b prose read.
+    ai_read / read_model are intentionally omitted (not None) so a verdict-only upsert never nulls a
+    stored prose read.
     """
     generated_at = datetime.now(timezone.utc).isoformat()
     records: list[dict] = []
@@ -165,7 +165,7 @@ def _verdict_distribution(records: list[dict]) -> dict[str, int]:
     return dist
 
 
-# --- Slice 5b: the Claude Haiku prose read (regenerate-on-change) -------------
+# --- The Claude Haiku prose read (regenerate-on-change) -------------
 
 
 # PostgREST's default per-request row cap. An unranged select silently truncates past this
@@ -313,9 +313,9 @@ def _generate_read(
 
 def _clear_stale_read_if_present(record: dict, existing_by_key: dict[tuple, dict]) -> None:
     """A stored read from a PRIOR input_hash must never render next to this run's fresh
-    verdict and metrics as if it were current. build_assessment_records() (5a) always writes
+    verdict and metrics as if it were current. build_assessment_records() always writes
     a fresh verdict/snapshot_date/input_hash for every eligible card regardless of whether
-    5b's read succeeds -- and the frontend's only staleness guard, attach_assessments()'s
+    the read succeeds -- and the frontend's only staleness guard, attach_assessments()'s
     snapshot_date comparison (frontend/explore_filters.py), does not see input_hash at all,
     so it cannot catch this (equity-analyst-reviewer finding). Leaving the keys merely ABSENT
     -- fine when there was nothing stored -- would let that old prose sit under this run's
@@ -470,7 +470,7 @@ def _upsert_records(client, records: list[dict], *, batch_size: int = 500) -> in
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Generate card_assessments verdicts + Claude Haiku reads from the DuckDB mart (Slice 5)"
+        description="Generate card_assessments verdicts + Claude Haiku reads from the DuckDB mart"
     )
     parser.add_argument(
         "--duckdb-path",
@@ -533,8 +533,8 @@ def main(argv: list[str] | None = None) -> int:
 
     client = create_client(url, key, options=SyncClientOptions(schema=schema))
 
-    # Slice 5b: fill ai_read / read_model for changed cards only. Skipped when no
-    # ANTHROPIC_API_KEY (verdicts still upsert, as in 5a) so the pipeline degrades
+    # Fill ai_read / read_model for changed cards only. Skipped when no
+    # ANTHROPIC_API_KEY (verdicts still upsert) so the pipeline degrades
     # gracefully and the secret is a soft dependency.
     if os.getenv("ANTHROPIC_API_KEY"):
         existing = _fetch_existing_assessments(client)

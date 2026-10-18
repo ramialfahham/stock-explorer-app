@@ -251,7 +251,7 @@ def test_business_summary_is_truncated() -> None:
 # --- Sector/Lifecycle Router: per-type render rule (metrics_for_card) ---
 
 _NEW_OPERATING_METRICS = ("debt_to_equity", "current_ratio_stmt", "statement_roe_pct")
-# Solvency/liquidity metrics that stay operating-only across slices (banks never show them).
+# Solvency/liquidity metrics that stay operating-only (banks never show them).
 _BANK_INAPPLICABLE = {"debt_to_equity", "current_ratio_stmt"}
 
 
@@ -309,7 +309,7 @@ def test_metrics_for_card_financial_omits_operating_only_and_the_new_bank_metric
         assert metric in operating and metric not in financial
 
 
-# The pre-revenue survival card (4c): 4 metrics, lens-grouped (liquidity, cash x3). net_cash
+# The pre-revenue survival card: 4 metrics, lens-grouped (liquidity, cash x3). net_cash
 # replaced net_cash_to_market_cap -- same cash-minus-debt idea, as a money
 # amount rather than a ratio against market cap, so no share price is involved. That also
 # moved its lens from valuation to cash, which is why it now renders AFTER working_capital
