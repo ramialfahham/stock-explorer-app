@@ -1,7 +1,7 @@
-"""Deterministic per-type financial-health verdict + regeneration hash (Slice 5a).
+"""Deterministic per-type financial-health verdict + regeneration hash.
 
 Pure; the one file it reads is frontend/metrics.json, once. The verdict COLOR is decided here
-by transparent rules, never by the LLM (5b writes only the prose read). The verdict measures **financial health /
+by transparent rules, never by the LLM (the model writes only the prose read). The verdict measures **financial health /
 resilience** from the card's own numbers, and it is **not** investment advice. Growth was
 excluded from the verdict and now enters ONE-SIDED: a shrinking top line blocks green, while
 growth never earns green and never causes red (see the policy comment below). Valuation used
@@ -9,7 +9,7 @@ to be excluded too; there is no valuation metric left to exclude, since every pr
 metric was dropped from the catalogue.
 
 `INPUT_FIELDS_BY_TYPE` / `DIRECTION_BY_METRIC` mirror `dbt_analytics/seeds/metric_catalogue.csv`
-(`applies_to` / `direction`), the same metric set 5b hashes and prompts over, so
+(`applies_to` / `direction`), the same metric set the read hashes and prompts over, so
 "regenerate the read iff a prompt input changed" holds for the metric set. A
 `tests/tooling` guard asserts this mirror stays in sync with the seed. The hash covers three
 things beyond that set: the display currency, because the prompt names it and the read quotes
@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# Verdict tokens (ASCII; the frontend maps token -> 🟢/🟡/🔴 in Slice 6).
+# Verdict tokens (ASCII; the frontend maps token -> 🟢/🟡/🔴).
 VERDICT_GREEN = "green"
 VERDICT_YELLOW = "yellow"
 VERDICT_RED = "red"
@@ -37,7 +37,7 @@ VERDICTS = (VERDICT_GREEN, VERDICT_YELLOW, VERDICT_RED)
 
 COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 
-# Bump this to force every stored 5b read to regenerate. Reads normally regenerate only when
+# Bump this to force every stored read to regenerate. Reads normally regenerate only when
 # a card's own input hash moves, so a change to the PROMPT or to the verdict wording leaves
 # existing prose untouched -- none of the numbers moved, so nothing tells the pipeline the
 # text is stale. Bumping the version moves every card's hash and makes them all eligible.
@@ -47,7 +47,7 @@ COMPANY_TYPES = ("operating", "financial", "pre_revenue")
 INPUT_HASH_VERSION = "5a.6"
 
 # Per-type card metric sets, mirroring metric_catalogue.csv `applies_to`. These feed the
-# input hash (and, in 5b, the prompt), so they are the FULL displayed set per type, not
+# input hash (and the prompt), so they are the FULL displayed set per type, not
 # only the health axes the verdict reads.
 INPUT_FIELDS_BY_TYPE: dict[str, tuple[str, ...]] = {
     "operating": (
@@ -482,7 +482,7 @@ def compute_verdict(row: Mapping[str, Any]) -> str:
 
 def _canonical_number(value: Any) -> float | None:
     """Round numerics to 6dp and coerce missing/NaN to None so float noise doesn't
-    force a spurious 5b regeneration."""
+    force a spurious read regeneration."""
     if _is_missing(value):
         return None
     try:
@@ -499,7 +499,7 @@ def compute_input_hash(
     note, and whether revenue is falling) + whether an operating card's margin is the annual
     figure + version.
 
-    5b regenerates the prose read only when this hash changes. Numbers only, plus the
+    The prose read regenerates only when this hash changes or the stored read is empty. Numbers only, plus the
     currency: name/sector are context, not signals ("reason only from the given numbers"),
     but the currency is named in the prompt and the read quotes it, so a card whose currency
     is corrected upstream must regenerate rather than keep prose naming the old one. Hashed
@@ -522,7 +522,7 @@ def compute_input_hash(
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
-# --- Slice 5b: the Claude-written prose "read" -------------------------------
+# --- The Claude-written prose "read" -------------------------------
 # The verdict COLOR is decided above by rules; the LLM writes ONLY the prose read.
 # Everything here is pure (no I/O, no anthropic import) so it unit-tests offline;
 # scripts/generate_assessments.py makes the actual Claude Haiku call.
@@ -564,7 +564,7 @@ Company-type lens:
 
 # Plain-English meaning of each verdict token, given to the model as context for its hidden
 # verdict_meaning field, never to be written in the read. Mirrors the frontend token -> emoji
-# mapping added in Slice 6.
+# mapping.
 VERDICT_MEANING: dict[str, str] = {
     VERDICT_GREEN: "green - financially healthy on these figures",
     VERDICT_YELLOW: "yellow - a mixed financial picture on these figures",
@@ -930,7 +930,7 @@ def validate_read_metrics(row: Mapping[str, Any], referenced_metrics: list[Any])
     return True
 
 
-# --- Slice 5b: deterministic style/rule guard (subset of READ_SYSTEM_PROMPT, no LLM judge) ----
+# --- Deterministic style/rule guard (subset of READ_SYSTEM_PROMPT, no LLM judge) ----
 # Complements validate_read_metrics (the numeric hallucination guard) with a SEPARATE guard over
 # STYLE: a deliberately partial subset of READ_SYSTEM_PROMPT's own rules that a plain string/regex
 # check can enforce without semantic judgment. Rules needing real language understanding -- the

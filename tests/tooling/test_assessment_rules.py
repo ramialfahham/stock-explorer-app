@@ -1,4 +1,4 @@
-"""Unit tests for the deterministic health-verdict rules + regeneration hash (Slice 5a).
+"""Unit tests for the deterministic health-verdict rules + regeneration hash.
 
 The verdict is health-only and must be total (always green|yellow|red), null-tolerant, and
 reproducible; the input hash must be stable under float noise but sensitive to real changes.
@@ -665,7 +665,7 @@ def test_directions_mirror_catalogue() -> None:
     assert rules.DIRECTION_BY_METRIC == expected
 
 
-# --- Slice 5b: the prose "read" prompt (build_read_messages) -------------------------------
+# --- The prose "read" prompt (build_read_messages) -------------------------------
 
 def test_read_brief_covers_every_input_field() -> None:
     # Every metric any card can display must have a beginner brief, or the facts block
@@ -1610,7 +1610,7 @@ def test_currency_symbol_maps_are_mirrors() -> None:
     )
 
 
-# --- Slice 5b: deterministic style/rule guard (find_read_style_violations) -----------------
+# --- Deterministic style/rule guard (find_read_style_violations) -----------------
 # A SEPARATE, deliberately partial guard from validate_read_metrics above. Each rule gets a
 # violating example AND a clean, similarly-shaped example that must NOT trip it -- the clean
 # side is what proves a check is precise rather than trigger-happy; a test fed only violating

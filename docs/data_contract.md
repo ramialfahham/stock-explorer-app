@@ -793,7 +793,7 @@ keyed on `(…, snapshot_date)`). Public-read RLS; service-role writes (migratio
 | `health_verdict` | text | `green` \| `yellow` \| `red` (the frontend maps to 🟢/🟡/🔴) |
 | `ai_read` | text | Claude Haiku prose read (`claude-haiku-4-5`); educational, never advice; reasons only from the card's numbers |
 | `read_model` | text | model id that wrote `ai_read` (from the Claude API response) |
-| `input_hash` | text | sha256 of the verdict inputs, the display currency, the rules' reasons and the annual-margin flag; drives 5b regenerate-on-change |
+| `input_hash` | text | sha256 of the verdict inputs, the display currency, the rules' reasons and the annual-margin flag; drives regenerate-on-change |
 | `snapshot_date` | date | the mart snapshot the assessment reflects. Load-bearing at read time, not just provenance: the frontend attaches the verdict only when this equals the card's `snapshot_date` |
 | `generated_at` | timestamptz | last write |
 

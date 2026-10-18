@@ -464,7 +464,7 @@ def test_labels_render_inside_the_card_identity_section() -> None:
 
 
 def test_ai_label_never_appears_without_ai_text() -> None:
-    """A verdict can be stored with a null ai_read: 5a writes verdicts, and
+    """A verdict can be stored with a null ai_read: the verdict step writes verdicts, and
     generate_assessments isolates a per-card read failure (or a hallucination-guard reject)
     rather than failing the batch. The badge is rule-computed, so it must still render -- but
     heading it "AI-written" with no AI-written words under it would be a plain falsehood about

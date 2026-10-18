@@ -1,4 +1,4 @@
-"""Offline test for the assessment generator (Slice 5a) — no Supabase, no network."""
+"""Offline test for the assessment generator -- no Supabase, no network."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ def test_build_records_dedupes_and_assigns_verdicts(tmp_path: Path) -> None:
 
     for rec in records:
         assert rec["health_verdict"] in VERDICTS
-        assert "ai_read" not in rec and "read_model" not in rec  # 5a never writes/clobbers the read
+        assert "ai_read" not in rec and "read_model" not in rec  # the verdict step never writes/clobbers the read
         assert len(rec["input_hash"]) == 64
         assert set(rec) == {
             "market_code", "ticker", "company_type", "health_verdict",
@@ -110,7 +110,7 @@ def test_missing_duckdb_returns_error() -> None:
     assert gen.main(["--duckdb-path", "/no/such/mart.duckdb", "--dry-run"]) == 1
 
 
-# --- Slice 5b: the Claude Haiku read path (fakes injected, no network) ---------
+# --- The Claude Haiku read path (fakes injected, no network) ---------
 # The real call forces tool-use (READ_TOOL_SCHEMA), so the fake response carries a tool_use
 # block with an .input dict, not a text block -- matching what _generate_read actually parses.
 

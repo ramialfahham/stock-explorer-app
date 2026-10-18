@@ -1,62 +1,73 @@
 # Review
 
-diff_sha256: 2d99faf9eff99f6ffef0ee4b3c972a1be88b330c1ce3bcb87c22086a1a02a9a3
-rounds: 3
+diff_sha256: d1cf9cbd43f3c72c5bd5f9cf4825801f3b8aad1e88155537abbffd673d1cbf70
+rounds: 1
 
-AI read: revised prompt, 30-word check, one retry. The on-demand production run of 2026-10-11 accepted
-0 of 353 reads (87% had a sentence over 25 words). Round 1 (tree 87408bc): scope-auditor FAIL (retries
-sat outside `--max-reads`; the run budget was an owner number), platform-reviewer FAIL (only the figures
-guard was tested for the retry), equity-analyst-reviewer PASS. Round 2 (tree dff40e1): equity and platform
-PASS, scope ESCALATE (three owner questions). Round 3 (tree 8c95e81, the cap): all three PASS. Applied
-after the PASS verdicts, no round 4: the citation validator refuses a label that is not text (an unhashable
-list raised TypeError and would have aborted the whole run; one test, mutation-checked), the data contract
-names `referenced_metrics` and `verdict_meaning` as the wrong-typed fields, and the contract states the full-run
-size (about 1240 reads), the formulas and the basis of $5.70. That last delta was not re-reviewed (cap).
+Closes #55: planning-phase labels ("Slice 5b", "Router 4a", bare "5a", "6b") removed from comments,
+docstrings, migration headers and two doc lines. Round 1 (tree da1372a): scope-auditor, platform-reviewer,
+data-engineer-reviewer, analytics-engineer-reviewer and equity-analyst-reviewer all PASS. Applied after the
+PASS verdicts, no round 2: every added line that kept an old dash now uses `--` (the em-dash gate failed on
+nine lines), the regeneration claim in two comments now includes "or the stored read is empty" (matches
+`attach_reads` and the data contract), and the migration 010 header names the script once.
 
 Coordinator evidence:
-- Real calls, nothing written, key from the owner's `.env`: prompt versions on 60 cards (current wording 60%
-  accepted at 30 words, revised wording 83%); the shipped change through the real `_generate_read` with its retry
-  on 44 cards (31 operating, 11 financial, 2 pre-revenue; 25 non-USD): 44 of 44 accepted, 5 retries of a budget of 37;
-  a reworded example on the same 44 cards: 39 of 44, 14 retries, so the shipped example stays (#67).
-- Mutation checks, file restored after each: each of the four refusal returns flipped to "not refused", an error
-  return flipped to "refused", retry disabled, budget not decremented, retry on any non-accepted read each fail 1 to
-  9 tests; removing the label type check fails one test.
-- `pytest tests` 1374 passed; `scripts/bootstrap.py --verify` passes (dbt build 149 tests); budget, narrative-date
-  and em-dash checks pass.
+- Done searches: `slice[ -]?[0-9]|across slices|router [0-9][abc]` finds nothing outside `.claude/task` and
+  `.claude/active_work.md`; `\b[3-6][abc]\b` finds only the keep list (`5a.6` and its test, the "3b" and "3c"
+  headings in `docs/supabase_setup.md`, the anchor in `docs/operations_guide.md`).
+- Comment-only: the AST of every `.py` file is equal once docstrings and comments are removed, except
+  `scripts/generate_assessments.py` (the `--help` description lost "(Slice 5)", no test pins it) and
+  `frontend/styles.py` (equal once the CSS comments inside the string are removed); each SQL migration is equal
+  with `--` comments removed; the dbt YAML is equal with comment lines removed.
+- `pytest tests` 1374 passed; `scripts/bootstrap.py --verify` passes (dbt build 149 tests); em-dash and
+  narrative-date checks pass.
 
-follow_ups: #67 (prompt-wording items for the owner), #66 (guard gaps); before the full run, watch wall-clock time
-(about 116 of 120 minutes at the retry cap).
-
-## Owner answers
-
-CPO ANSWER: acknowledged. The owner's chat answers: run a real-call test with the key in `.env` ("A, key is in
-.env"); the retry ("B", after the cost table); start the build ("go"); retry cap 30% of reads + 20 ("A", over
-40% + 20); retries count inside `--max-reads` ("A"); test a reworded example ("B"), with the rule that the shipped
-example stays if acceptance falls (it fell from 44/44 to 39/44). Prompt wording items: #67. No FAIL stands.
+follow_ups: the history sentences without a "Slice" label in `frontend/styles.py` ("Before this they ran
+together", "has never actually rendered", "Save has never actually been pinned"); "writes only the prose read"
+in `scripts/assessment_rules.py` is loose (the model also returns the cited metrics and a hidden verdict
+classification); `INPUT_HASH_VERSION = "5a.6"` keeps a label in a value (changing it regenerates every read:
+owner call).
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: 8c95e810b068813dd5abd9494a292f61bf999a06
+reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
 risks_checked:
-- The three owner answers are recorded; every touched file is in scope_paths; no verdict, seed, frontend, export or dbt change.
-- Retry arithmetic, the `--max-reads` wording and the stale-claim greps hold.
+- Every edited file is in `scope_paths`; the owner's answer A is recorded; the done searches find only the keep list.
+- The only non-comment strings changed are the `--help` description and CSS comments inside a string.
 wording_fixes: applied.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: 8c95e810b068813dd5abd9494a292f61bf999a06
+reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
 risks_checked:
-- The integer retry budget equals the old one for every read count; tests pin 20, 38 and 392.
-- The retry docstring matches `_attempt_read`; the prompt is untouched.
+- No code, SQL or test-used string changed; the rewritten comments match the code they describe.
+- The keep list is untouched.
+wording_fixes: none required.
+
+## data-engineer-reviewer
+
+VERDICT: PASS
+reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
+risks_checked:
+- The migration runner keys on file name only, so comment edits of applied migrations cannot re-run or fail.
+- The new column comments are true to how `ai_read` and `read_model` are filled.
+wording_fixes: applied.
+
+## analytics-engineer-reviewer
+
+VERDICT: PASS
+reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
+risks_checked:
+- The four rewritten dbt unit-test comments match the fixtures under them; only comments changed.
+- No label is left in `dbt_analytics`; "slice" in the catalogue is the English word.
 wording_fixes: applied.
 
 ## equity-analyst-reviewer
 
 VERDICT: PASS
-reviewed_tree: 8c95e810b068813dd5abd9494a292f61bf999a06
+reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
 risks_checked:
-- The data contract's retry paragraph matches the code; the prompt and worked example are unchanged.
-- The unsupported-claim classes are declared and sampled after the run.
-wording_fixes: applied.
+- The changed `input_hash` cell in `docs/data_contract.md` still holds against `compute_input_hash`.
+- No edited comment states anything false about the verdict or the AI read.
+wording_fixes: none.
