@@ -14,7 +14,7 @@ sector_counts as (
     select
         market_code,
         sector,
-        count(*) as sector_peer_count
+        cast(count(*) as integer) as sector_peer_count
     from eligible
     group by 1, 2
 ),
