@@ -1,73 +1,52 @@
 # Review
 
-diff_sha256: d1cf9cbd43f3c72c5bd5f9cf4825801f3b8aad1e88155537abbffd673d1cbf70
+diff_sha256: f909b3eef3be1d1163ad770e5890dcf6025570801c2e6faa0a2a540df8cdb047
 rounds: 1
 
-Closes #55: planning-phase labels ("Slice 5b", "Router 4a", bare "5a", "6b") removed from comments,
-docstrings, migration headers and two doc lines. Round 1 (tree da1372a): scope-auditor, platform-reviewer,
-data-engineer-reviewer, analytics-engineer-reviewer and equity-analyst-reviewer all PASS. Applied after the
-PASS verdicts, no round 2: every added line that kept an old dash now uses `--` (the em-dash gate failed on
-nine lines), the regeneration claim in two comments now includes "or the stored read is empty" (matches
-`attach_reads` and the data contract), and the migration 010 header names the script once.
+Refs #52, items 16, 17 and 19 (item 18 is split out by the owner's answer B). Round 1 (tree aa2b18e):
+scope-auditor, platform-reviewer and analytics-engineer-reviewer all PASS. Applied after the PASS verdicts,
+no round 2: the schema test now rejects any DO block that mentions the table other than the precision-cap
+drop of 019 (it skipped every DO block before), reads `alter table only`, skips `exclude` and `references`
+lines in a create body, names where to add a missing type mapping, and the ledger test names the heading it
+needs; the contract states the second allowlist (`DATABASE_ONLY`: `id`, `exported_at`) and the parser's
+limits. Each fix has a test.
 
 Coordinator evidence:
-- Done searches: `slice[ -]?[0-9]|across slices|router [0-9][abc]` finds nothing outside `.claude/task` and
-  `.claude/active_work.md`; `\b[3-6][abc]\b` finds only the keep list (`5a.6` and its test, the "3b" and "3c"
-  headings in `docs/supabase_setup.md`, the anchor in `docs/operations_guide.md`).
-- Comment-only: the AST of every `.py` file is equal once docstrings and comments are removed, except
-  `scripts/generate_assessments.py` (the `--help` description lost "(Slice 5)", no test pins it) and
-  `frontend/styles.py` (equal once the CSS comments inside the string are removed); each SQL migration is equal
-  with `--` comments removed; the dbt YAML is equal with comment lines removed.
-- `pytest tests` 1374 passed; `scripts/bootstrap.py --verify` passes (dbt build 149 tests); em-dash and
+- Real-file mutation checks, file restored after each: `_marts.yml` back to `bigint` makes the schema test fail
+  with "sector_peer_count: contract bigint but migrations integer"; removing a ledger row fails the ledger test
+  ("015_nl_ch_es_markets.sql: on disk but not in the ledger"); adding an unlisted `099_x.sql` fails it.
+- The three exported-column sets: 80 contract columns, 77 exported plus the 3 named in `NOT_EXPORTED`, and 79
+  table columns, the 77 plus `id` and `exported_at`.
+- `pytest tests` 1400 passed; `scripts/bootstrap.py --verify` passes (dbt build 149 tests); em-dash and
   narrative-date checks pass.
 
-follow_ups: the history sentences without a "Slice" label in `frontend/styles.py` ("Before this they ran
-together", "has never actually rendered", "Save has never actually been pinned"); "writes only the prose read"
-in `scripts/assessment_rules.py` is loose (the model also returns the cited metrics and a hidden verdict
-classification); `INPUT_HASH_VERSION = "5a.6"` keeps a label in a value (changing it regenerates every read:
-owner call).
+follow_ups: item 18 of #52 (run the migrations and `replace_cards_snapshot` against a throwaway Postgres in CI)
+filed as its own issue; `alter table` forms without the `public.` prefix and quoted names are not read by the
+schema test (declared in the contract and the docstring).
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
+reviewed_tree: aa2b18e2cbd650ca7ec48a9c9b42da76a59fb974
 risks_checked:
-- Every edited file is in `scope_paths`; the owner's answer A is recorded; the done searches find only the keep list.
-- The only non-comment strings changed are the `--help` description and CSS comments inside a string.
+- Every edited file is in `scope_paths`; items 16, 17 and 19 match the issue; item 18 is not built.
+- The `NOT_EXPORTED` reasons hold against the SQL; the removed ledger sentence has no other copy.
 wording_fixes: applied.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
+reviewed_tree: aa2b18e2cbd650ca7ec48a9c9b42da76a59fb974
 risks_checked:
-- No code, SQL or test-used string changed; the rewritten comments match the code they describe.
-- The keep list is untouched.
-wording_fixes: none required.
-
-## data-engineer-reviewer
-
-VERDICT: PASS
-reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
-risks_checked:
-- The migration runner keys on file name only, so comment edits of applied migrations cannot re-run or fail.
-- The new column comments are true to how `ai_read` and `read_model` are filled.
+- The migration parse was traced by hand over all 21 files and equals what the migrations build (79 columns).
+- The ledger parse reads the 21 real rows and stops at the next heading.
 wording_fixes: applied.
 
 ## analytics-engineer-reviewer
 
 VERDICT: PASS
-reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
+reviewed_tree: aa2b18e2cbd650ca7ec48a9c9b42da76a59fb974
 risks_checked:
-- The four rewritten dbt unit-test comments match the fixtures under them; only comments changed.
-- No label is left in `dbt_analytics`; "slice" in the catalogue is the English word.
-wording_fixes: applied.
-
-## equity-analyst-reviewer
-
-VERDICT: PASS
-reviewed_tree: da1372a304ebfc665dc6544af0debe2d709778fd
-risks_checked:
-- The changed `input_hash` cell in `docs/data_contract.md` still holds against `compute_input_hash`.
-- No edited comment states anything false about the verdict or the AI read.
+- The cast sits in the model that creates the value; no downstream model, unit test, fixture or the export changes.
+- The mart contract type now matches the Postgres column and `docs/data_contract.md`.
 wording_fixes: none.

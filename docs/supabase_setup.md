@@ -71,8 +71,6 @@ the existing schema, records `001` as applied, and only runs newer migrations.
 | `020_current_cards_view.sql` | `current_cards` view: the deck's newest row per company, leaving out any 28+ days behind its market. A later migration altering the mart must recreate it |
 | `021_fi_se_dk_no_ca_it_markets.sql` | Finland, Sweden, Denmark, Norway, Canada and Italy rows in `public.markets`. Same requirement as 014 |
 
-Every file in `supabase/migrations/` has a row here.
-
 After applying **004+**, run the data pipeline (ingest → dbt → export) so Streamlit receives
 company descriptions. The app holds its deck in an in-process cache shared by all browser
 sessions, with a 30-minute TTL, so neither a hard refresh nor a new browser session is enough
