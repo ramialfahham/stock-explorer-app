@@ -371,7 +371,7 @@ def test_seed_company_names_are_unique_within_a_market(market_code: str) -> None
     """Two constituents with one headline are indistinguishable on the deck.
 
     This is the failure mode over-stripping produces, so the guard exists whether or not the
-    cleaner ever causes it: `write_constituents` de-duplicates on ticker, never on name, so a
+    cleaner ever causes it: `write_constituents` checks tickers, never names, so a
     source table that repeats a name and a cleaner that collapses two names look identical from
     here. It also catches the plain case of a mis-transcribed name, which is what it finds twice
     in the Nikkei seed.

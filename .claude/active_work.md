@@ -13,9 +13,11 @@ one or two lines and let git and the MR keep the detail._
 
 ## In flight
 
-**Start here (2026-10-11).** Merged: the small-fix list #44-#47, #53, #54 (!234-!249); the AI-read
+**Start here (2026-10-21).** Merged: the small-fix list #44-#47, #53, #54 (!234-!249); the AI-read
 changes !251, !252, !257 (catalogue-grounded read, figure and wording checks, 5a.5) and !258 (the
-rules' own reasons for the verdict, 5a.6); #48 (!254); #49 (!256). Criteria
+rules' own reasons for the verdict, 5a.6); #48 (!254); #49 (!256); #55 (!264, Slice labels out of comments);
+#52 items 16, 17, 19 (!265: `sector_peer_count` is integer, a test that the dbt contract, `EXPORT_COLUMNS` and the
+migrations agree, a test of the migrations table). Criteria
 `docs/quality_criteria.json` is v3 (the FE-1 exception is the owner's answer A; DBT-3 allows a
 documented raw-file check model). Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
 (`importance_tier`, `basis_column`: no production reader), #58 (company identity), #59 (the
@@ -24,16 +26,21 @@ patterns vs GRD-3; recommended: amend the criterion), #61 (real `YFRateLimitErro
 test), #62 (SQL-structure gate and a CTE that mixes a ref with other work), #63 (owner call: may
 an import CTE filter?), #64 (`layering.md` says base unions; no base model does), #65 (verdict:
 growth plays a small role; researched, the owner chose no new rule; open for a later one), #66
-(residual AI-read guard gaps), #67 (prompt-wording items for the owner). #50 (repo hygiene) is merged; its
+(residual AI-read guard gaps), #67 (prompt-wording items for the owner), #68 (history sentences without a Slice
+label in `frontend/styles.py`), #69 (test the atomic export guarantees on a real Postgres in CI: try step 1
+first, then the owner decides the cost). #50 (repo hygiene) is merged; its
 unfiled follow-ups are in `.claude/task/review.md` at commit 276b045 (the health gate relies on the dbt
 unique test; `PyYAML` pinned in two places; the 3-line `sys.path` block copied in 17 scripts;
 `load_markets` error messages; the active-code set built inline in four scripts and two tests): the owner
-says which to file. **Next: #51, #52, #55.**
+says which to file. **In flight: #51 items 2 to 5** (branch `fix/ingestion-partial-data-51`: snapshot written
+atomically, fundamentals checkpoint refetched on a schema change, a repeated ticker in a constituents table raises,
+`price_tickers_all_nan` counter). Item 6 stays by the owner's answer A; the reworded ING-1 ("no torn file; partial
+coverage only while a resumable run is unfinished") goes into criteria v4 below.
 
-**AI read: regenerated on the live data (2026-10-12/13).** `INPUT_HASH_VERSION` 5a.6 (!261: revised prompt,
+**AI read: regenerated on the live data (2026-10-12 to 15).** `INPUT_HASH_VERSION` 5a.6 (!261: revised prompt,
 30-word check, one retry inside `--max-reads`). Live result in Supabase: 1222 of 1252 cards have AI text,
-30 show the plain fallback line (refused twice or malformed; the scheduled run of 2026-10-15 06:00 UTC
-retries them). Scan of the 1222 texts: 0 fractions in words, 0 dashes, 0 "sales" on financial cards, no
+30 showed the plain fallback line (refused twice or malformed); the scheduled run of 2026-10-15 (pipeline
+2949504220) left 14 of 1252 plain. Scan of the 1222 texts: 0 fractions in words, 0 dashes, 0 "sales" on financial cards, no
 closing verdict sentences; **19% say a company "can use ... freely" about free cash flow and 6% predict
 ("may struggle to pay"); no check catches either (#66, #67; the wording is the owner's call).** The run on
 pipeline 2937439062 ran out of Anthropic credit at 08:10 UTC (310 failed calls, 364 blank cards); the rerun
@@ -41,12 +48,11 @@ pipeline 2937439062 ran out of Anthropic credit at 08:10 UTC (310 failed calls, 
 only stderr (refusals, failed calls); stdout is buffered until the job ends. Open: #66 (abort the job on a
 billing error, flush the log, sector medians in the read need their own check, audit the catalogue text
 against ISO/IEC 11179-4, `card_copy.metric_gloss` calls a negative debt ratio net cash even when EBITDA is
-negative), #67 (the prompt's example contradicts its own rule; the "freely" and capability wording). The
-!261 MR description still says the first run "accepted none" (about 76% were refused). The owner's writing
+negative), #67 (the prompt's example contradicts its own rule; the "freely" and capability wording). The owner's writing
 standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 `football-data-pipeline/docs/working_agreement.md` section 9.
 
-**Next: #51, #52 and #55 in milestone "3 · Professional baseline"** (audit findings, each with
+**Next, milestone "3 · Professional baseline": #51 (this branch), then #69 (#52 item 18)** (audit findings, each with
 file:line, rule and proposed fix). Exit: run the `quality-baseline-audit` workflow, then
 `python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`; nothing left
 above cosmetic. Criteria: `docs/quality_criteria.json` v3 (a change needs a version bump and
@@ -60,8 +66,8 @@ GitLab): delete the branch, or port it to `GITLAB_CI`; left alone in #50 because
 Supabase migrations; #43 scope, name snapshot CSV only or also the
 fixture `manifest.json` through one atomic-write helper (recommended: both); the refresh
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
-criteria v4, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md` and DOC-2/DOC-5
-still name the removed handover archives; should `verify_quality_audit.py` name NOT AUDITED
+criteria v4, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md`, DOC-2/DOC-5
+still name the removed handover archives, and ING-1 needs the reworded rule above; should `verify_quality_audit.py` name NOT AUDITED
 areas on the console and exit non-zero; #58's two calls (a home-market rule for the tie-break,
 `business_summary` in the deck fetch); a Hugging Face Spaces migration; an httpx deck fetch instead
 of the Supabase client library (a mechanism change); whether to add a check that ties the AI read's text to the

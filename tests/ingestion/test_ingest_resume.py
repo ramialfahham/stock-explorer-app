@@ -494,9 +494,155 @@ def test_price_stats_reach_the_market_summary(monkeypatch, tmp_path):
         "price_batches_failed",
         "price_batches_empty",
         "price_tickers_missing",
+        "price_tickers_all_nan",
         "fundamentals_rows",
         "fundamentals_ok",
         "fundamentals_failed",
         "fundamentals_skipped",
         "fundamentals_failed_tickers",
     }
+
+
+# ---------------------------------------------------------------------------
+# Issue #51: constituents snapshot, fundamentals schema check, all-NaN price symbols
+# ---------------------------------------------------------------------------
+
+
+def test_constituents_snapshot_is_replaced_atomically_and_leaves_no_marker(monkeypatch, tmp_path):
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    path = output_dir / "yf_constituents.parquet"
+    ingest_module._write_constituents_snapshot(MARKET, pd.DataFrame({"ticker": ["OLD"]}))
+    assert not ingest_module._checkpoint_marker_path(path).exists()
+
+    def _failing_mid_write(self, target, *args, **kwargs):
+        with open(target, "wb") as handle:
+            handle.write(b"truncated")
+        raise OSError("write failed mid-way")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", _failing_mid_write)
+    with pytest.raises(OSError):
+        ingest_module._write_constituents_snapshot(MARKET, pd.DataFrame({"ticker": ["NEW"]}))
+
+    assert pd.read_parquet(path)["ticker"].tolist() == ["OLD"]
+    assert list(output_dir.iterdir()) == [path]
+
+
+def test_fundamentals_checkpoint_with_another_column_set_is_fully_refetched(monkeypatch, tmp_path):
+    """A same-day file whose columns differ from a freshly built row predates a schema change.
+    Reusing it would outer-join the columns and NaN-fill the gap, so it is refetched like a
+    stale file, including the tickers that were skipped before the mismatch was seen."""
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    output_path = output_dir / "yf_fundamentals.parquet"
+    old_row = {**_fake_row("AAA"), "old_only": 1.0}
+    ingest_module._atomic_write_parquet(pd.DataFrame([old_row]), output_path)
+
+    calls: list[str] = []
+
+    def _fake_fetch_row(market, local_ticker, yf_symbol, snapshot_date):
+        calls.append(local_ticker)
+        return {**_fake_row(local_ticker), "new_col": 2.0}
+
+    monkeypatch.setattr(ingest_module, "_fetch_fundamentals_row", _fake_fetch_row)
+    result, stats = ingest_module._fetch_fundamentals(MARKET, ["AAA", "BBB"], delay_seconds=0)
+
+    assert sorted(calls) == ["AAA", "BBB"]
+    assert sorted(result["ticker"]) == ["AAA", "BBB"]
+    assert "old_only" not in result.columns
+    assert result["new_col"].notna().all()
+    assert stats["fundamentals_skipped"] == 0
+    assert stats["fundamentals_ok"] == 2
+    on_disk = pd.read_parquet(output_path)
+    assert set(on_disk.columns) == set(result.columns)
+
+
+def test_fundamentals_mismatch_seen_on_the_first_ticker_needs_no_requeue(monkeypatch, tmp_path):
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    output_path = output_dir / "yf_fundamentals.parquet"
+    ingest_module._atomic_write_parquet(pd.DataFrame([{**_fake_row("BBB"), "old_only": 1.0}]), output_path)
+
+    calls: list[str] = []
+
+    def _fake_fetch_row(market, local_ticker, yf_symbol, snapshot_date):
+        calls.append(local_ticker)
+        return {**_fake_row(local_ticker), "new_col": 2.0}
+
+    monkeypatch.setattr(ingest_module, "_fetch_fundamentals_row", _fake_fetch_row)
+    result, stats = ingest_module._fetch_fundamentals(MARKET, ["AAA", "BBB"], delay_seconds=0)
+
+    assert calls == ["AAA", "BBB"]
+    assert "old_only" not in result.columns
+    assert stats["fundamentals_skipped"] == 0 and stats["fundamentals_ok"] == 2
+
+
+def _price_frame_with_a_failed_symbol(tickers: list[str], failed: str) -> pd.DataFrame:
+    """yfinance's failure path (utils.empty_df) hands back a block that is NaN in every column, for a
+    batch of two or more symbols; a failed one-symbol batch returns no rows."""
+    frame = _fake_price_frame(tickers)
+    for field in ("Open", "High", "Low", "Close", "Volume"):
+        frame[(failed, field)] = float("nan")
+    return frame
+
+
+def test_a_symbol_that_came_back_all_nan_is_counted_and_still_written(monkeypatch, tmp_path):
+    """yfinance concatenates a failed per-symbol download back in as an all-NaN block, so the
+    symbol looks retrieved. The rows are kept (they are the resume checkpoint); the counter is
+    what makes the loss visible."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+    monkeypatch.setattr(
+        ingest_module.yf, "download", lambda tickers, **kw: _price_frame_with_a_failed_symbol(tickers, "BBB")
+    )
+
+    combined, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+
+    assert stats["price_tickers_all_nan"] == 1
+    assert stats["price_tickers_missing"] == 0
+    assert sorted(combined["ticker"].unique()) == ["AAA", "BBB"]
+
+
+def test_a_one_ticker_batch_keeps_yfinances_ticker_field_columns_and_counts_an_all_nan_block(monkeypatch, tmp_path):
+    """yf.download returns (ticker, field) columns for ONE ticker too unless multi_level_index=False,
+    which this module does not pass. The one-ticker branch must read that shape."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 1)
+    monkeypatch.setattr(
+        ingest_module.yf, "download", lambda tickers, **kw: _price_frame_with_a_failed_symbol(tickers, tickers[0])
+    )
+
+    combined, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA"])
+
+    assert stats["price_tickers_all_nan"] == 1
+    assert combined["ticker"].tolist() == ["AAA"]
+
+
+def test_a_one_ticker_batch_with_prices_is_written_and_not_counted(monkeypatch, tmp_path):
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 1)
+    monkeypatch.setattr(ingest_module.yf, "download", lambda tickers, **kw: _fake_price_frame(tickers))
+
+    combined, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA"])
+
+    assert combined["ticker"].tolist() == ["AAA"]
+    assert combined["close"].notna().all()
+    assert stats["price_tickers_all_nan"] == 0
+
+
+def test_a_one_ticker_batch_whose_ticker_is_not_in_the_response_is_counted_missing(monkeypatch, tmp_path):
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 1)
+    monkeypatch.setattr(ingest_module.yf, "download", lambda tickers, **kw: _fake_price_frame(["OTHER"]))
+
+    _, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA"])
+
+    assert stats["price_tickers_missing"] == 1
+    assert stats["price_tickers_all_nan"] == 0
+
+
+def test_a_symbol_with_prices_is_not_counted_as_all_nan(monkeypatch, tmp_path):
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(ingest_module, "BATCH_SIZE", 2)
+    monkeypatch.setattr(ingest_module.yf, "download", lambda tickers, **kw: _fake_price_frame(tickers))
+
+    _, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
+
+    assert stats["price_tickers_all_nan"] == 0

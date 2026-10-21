@@ -38,6 +38,7 @@ _CLEAN = {
     "price_batches_failed": 0,
     "price_batches_empty": 0,
     "price_tickers_missing": 0,
+    "price_tickers_all_nan": 0,
     "fundamentals_rows": 4,
     "fundamentals_ok": 4,
     "fundamentals_failed": 0,
@@ -66,6 +67,7 @@ def test_the_fixture_matches_what_ingest_market_really_returns():
         "price_batches_failed",
         "price_batches_empty",
         "price_tickers_missing",
+        "price_tickers_all_nan",
         "fundamentals_rows",
         "fundamentals_ok",
         "fundamentals_failed",
@@ -77,13 +79,14 @@ def test_the_fixture_matches_what_ingest_market_really_returns():
 def test_every_price_counter_reaches_the_summary_line(monkeypatch, capsys):
     """The counts exist to be read by an operator. A counter that never prints is a counter
     that does not do its job."""
-    _run(monkeypatch, {"price_batches_empty": 2, "price_tickers_missing": 5})
+    _run(monkeypatch, {"price_batches_empty": 2, "price_tickers_missing": 5, "price_tickers_all_nan": 7})
     out = capsys.readouterr().out
     for field in (
         "price_batches=",
         "price_batches_failed=",
         "price_batches_empty=2",
         "price_tickers_missing=5",
+        "price_tickers_all_nan=7",
     ):
         assert field in out
 

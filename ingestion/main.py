@@ -82,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             f"price_batches_failed={stats['price_batches_failed']} "
             f"price_batches_empty={stats['price_batches_empty']} "
             f"price_tickers_missing={stats['price_tickers_missing']} "
+            f"price_tickers_all_nan={stats['price_tickers_all_nan']} "
             f"fundamentals_rows={stats['fundamentals_rows']} "
             f"fundamentals_ok={stats['fundamentals_ok']} "
             f"fundamentals_failed={stats['fundamentals_failed']} "
