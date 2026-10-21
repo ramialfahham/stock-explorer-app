@@ -75,7 +75,7 @@ def load_constituents(market_code: str) -> pd.DataFrame:
 # UPPERCASE bracketed token of the same length is usually meaningful: `[A]` and `[B]` are Nordic
 # share classes, and `[SA]`, `[NV]`, `[AB]`, `[ASA]` are legal forms. The Nordic markets
 # are named on the share-class convention. Stripping those would merge two constituents
-# to one headline, and `write_constituents` de-duplicates on ticker rather than name, so both
+# to one headline, and `write_constituents` checks tickers rather than names, so both
 # rows would survive as two cards reading identically. An uppercase marker therefore survives
 # here ON PURPOSE and is caught instead by the wider seed guard in
 # `tests/ingestion/test_market_onboarding.py`, which fails and asks a human, rather than by this
@@ -156,7 +156,12 @@ def write_constituents(
     )
     frame = frame.dropna(subset=["ticker"])
     frame = frame[frame["ticker"] != ""]
-    frame = frame.drop_duplicates(subset=["ticker"], keep="first")
+
+    repeated = sorted(frame.loc[frame["ticker"].duplicated(), "ticker"].unique())
+    if repeated:
+        raise ValueError(
+            f"{market_code}: ticker listed more than once: {', '.join(repeated)}; seed not written"
+        )
 
     unnamed = frame[frame["company_name"].isna() | (frame["company_name"] == "")]["ticker"]
     if not unnamed.empty:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from collections import deque
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -67,7 +68,7 @@ def _write_constituents_snapshot(market: Market, constituents: pd.DataFrame) -> 
 
     snapshot = constituents.copy()
     snapshot["ingested_at"] = datetime.now(timezone.utc).isoformat()
-    snapshot.to_parquet(output_dir / "yf_constituents.parquet", index=False)
+    _replace_parquet(snapshot, output_dir / "yf_constituents.parquet")
 
 
 def _checkpoint_marker_path(output_path: Path) -> Path:
@@ -98,20 +99,30 @@ def _is_fresh_today(output_path: Path) -> bool:
     return mtime.date() == datetime.now(timezone.utc).date()
 
 
-def _atomic_write_parquet(frame: pd.DataFrame, output_path: Path) -> None:
+def _replace_parquet(frame: pd.DataFrame, output_path: Path) -> None:
     """Write to a same-directory temp file, then `os.replace()` onto `output_path` --
-    atomic on both POSIX and Windows. A direct `.to_parquet(output_path, ...)` left the
-    checkpoint file itself exposed to a process kill mid-write: a truncated file's mtime
-    still reads as today, so the next run would trust it as fresh, then crash trying to
-    read it back, wedging every same-day retry until someone deletes it by hand. This way
-    `output_path` always holds either the last complete write or the new one, never a
-    partial one. Touches the checkpoint marker last, only after the parquet write is fully
-    complete and visible -- if the process dies between the two, the marker is missing or
-    stale and the next run just refetches, which is always safe, never corrupting."""
+    atomic on both POSIX and Windows. A direct `.to_parquet(output_path, ...)` leaves a
+    truncated file when the process is killed mid-write. This way `output_path` always holds
+    either the last complete write or the new one, never a partial one. A write that
+    raises leaves no temp file; a process killed mid-write can leave `<name>.tmp-<pid>` beside it."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = output_path.with_name(f"{output_path.name}.tmp-{os.getpid()}")
-    frame.to_parquet(tmp_path, index=False)
-    os.replace(tmp_path, output_path)
+    try:
+        frame.to_parquet(tmp_path, index=False)
+        os.replace(tmp_path, output_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
+def _atomic_write_parquet(frame: pd.DataFrame, output_path: Path) -> None:
+    """`_replace_parquet`, then the checkpoint marker. The checkpoint file itself must never
+    be torn: a truncated file's mtime still reads as today, so the next run would trust it as
+    fresh, then crash trying to read it back, wedging every same-day retry until someone
+    deletes it by hand. Touches the marker last, only after the parquet write is fully
+    complete and visible -- if the process dies between the two, the marker is missing or
+    stale and the next run just refetches, which is always safe, never corrupting."""
+    _replace_parquet(frame, output_path)
     _checkpoint_marker_path(output_path).write_text(
         datetime.now(timezone.utc).isoformat(), encoding="utf-8"
     )
@@ -169,6 +180,10 @@ def _is_usable_checkpoint(existing: pd.DataFrame, expected_columns: list[str]) -
     return set(existing.columns) == set(expected_columns)
 
 
+def _has_no_close_price(block: pd.DataFrame) -> bool:
+    return "Close" in block.columns and bool(block["Close"].isna().to_numpy().all())
+
+
 def _fetch_daily_prices(
     market: Market,
     local_tickers: list[str],
@@ -180,17 +195,19 @@ def _fetch_daily_prices(
     # cannot otherwise tell a batch was lost. _flush writes whatever was retrieved over the
     # previous complete file with a fresh mtime and ingested_at, so a run that lost batches
     # still looks fresh to `dbt source freshness`.
-    # Batch-level, plus ONE of the two per-symbol cases. price_tickers_missing catches a symbol
-    # absent from the response columns. It cannot catch the case yfinance's own failure path
-    # produces: a failed download is concatenated back in as an all-NaN OHLCV block (1.3.0,
-    # multi.py's _download_one -> utils.empty_df()), so the column IS present, the symbol counts
-    # as retrieved, its NaN rows are written, and nothing objects -- the staging model puts no
-    # test on OHLCV at all.
+    # Batch-level, plus the two per-symbol cases. price_tickers_missing is a symbol absent from the
+    # response columns. price_tickers_all_nan is yfinance's own failure path: in a batch of two or
+    # more symbols a failed download is concatenated back in as an all-NaN OHLCV block
+    # (multi.py's _download_one -> utils.empty_df()), so the column IS present and the symbol counts
+    # as retrieved; a failed one-symbol batch comes back with no rows and is price_batches_empty.
+    # The NaN rows are still written (the resume checkpoint), the counter is what makes them
+    # visible -- the staging model puts no test on OHLCV at all.
     stats = {
         "price_batches": 0,
         "price_batches_failed": 0,
         "price_batches_empty": 0,
         "price_tickers_missing": 0,
+        "price_tickers_all_nan": 0,
     }
     tickers = local_tickers[:max_tickers] if max_tickers else local_tickers
 
@@ -272,7 +289,16 @@ def _fetch_daily_prices(
         fetch_time = datetime.now(timezone.utc).isoformat()
 
         if len(batch) == 1:
+            # yf.download returns (ticker, field) columns even for one ticker unless
+            # multi_level_index=False, so select the ticker's block like the multi-symbol branch.
+            if isinstance(downloaded.columns, pd.MultiIndex):
+                if batch[0] not in downloaded.columns.get_level_values(0):
+                    stats["price_tickers_missing"] += 1
+                    continue
+                downloaded = downloaded[batch[0]]
             single = downloaded.copy()
+            if _has_no_close_price(single):
+                stats["price_tickers_all_nan"] += 1
             single["ticker"] = batch_local[0]
             single["ingested_at"] = fetch_time
             single = single.reset_index()
@@ -283,6 +309,8 @@ def _fetch_daily_prices(
                     stats["price_tickers_missing"] += 1
                     continue
                 part = downloaded[yf_ticker].copy()
+                if _has_no_close_price(part):
+                    stats["price_tickers_all_nan"] += 1
                 part["ticker"] = local_ticker
                 part["ingested_at"] = fetch_time
                 part = part.reset_index()
@@ -413,10 +441,12 @@ def _fetch_fundamentals(
     output_path = raw_dir(market.market_code) / "yf_fundamentals.parquet"
     already_fetched: set[str] = set()
     rows: list[dict[str, object]] = []
+    checkpoint_columns: set[str] | None = None
     if not force and _is_fresh_today(output_path):
         existing = pd.read_parquet(output_path)
         rows = existing.to_dict(orient="records")
         already_fetched = set(existing["ticker"].unique())
+        checkpoint_columns = set(existing.columns)
 
     failed_tickers: list[str] = []
     stats: dict[str, object] = {
@@ -429,14 +459,31 @@ def _fetch_fundamentals(
     def _flush() -> None:
         _atomic_write_parquet(pd.DataFrame(rows), output_path)
 
-    for local_ticker in tickers:
+    queue = deque(tickers)
+    skipped: list[str] = []
+    while queue:
+        local_ticker = queue.popleft()
         if local_ticker in already_fetched:
             stats["fundamentals_skipped"] += 1
+            skipped.append(local_ticker)
             continue
 
         yf_symbol = to_yfinance_ticker(local_ticker, market.exchange_suffix)
         try:
             row = _fetch_fundamentals_row(market, local_ticker, yf_symbol, snapshot_date)
+            if checkpoint_columns is not None and set(row) != checkpoint_columns:
+                # The row schema is built at run time, so the first fresh row is the only
+                # reference: a same-day file with other columns would be outer-joined with
+                # the new rows and NaN-filled silently. Same outcome as a stale file: refetch.
+                print(
+                    f"  warning: fundamentals checkpoint for {market.market_code} has a "
+                    "different column set than a fresh row; refetching every ticker"
+                )
+                rows, already_fetched = [], set()
+                stats["fundamentals_skipped"] = 0
+                queue.extend(skipped)
+                skipped.clear()
+            checkpoint_columns = None
             rows.append(row)
             stats["fundamentals_ok"] += 1
             # Flushed immediately, not batched -- each row is already one network call,

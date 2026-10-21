@@ -349,3 +349,16 @@ def test_overlap_is_not_checked_without_a_minimum_or_a_committed_seed(
     monkeypatch.setattr(seeds, "seed_path", lambda code: path)
     assert _write(TWENTY, min_overlap=0.85) == 20
     assert _write([f"{t}.TO" for t in TWENTY], min_overlap=None) == 20
+
+
+def test_write_constituents_refuses_a_ticker_listed_twice_and_writes_nothing(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "constituents.csv"
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    with pytest.raises(ValueError, match="ticker listed more than once: NA, SHOP; seed not written"):
+        seeds.write_constituents(
+            "ca_tsx60",
+            pd.Series(["AEM", "NA", "SHOP", "NA", " SHOP "], dtype=object),
+            pd.Series(["Agnico Eagle", "National Bank", "Shopify", "National Bank of Canada", "Shopify Inc"], dtype=object),
+            source="wikipedia",
+        )
+    assert not path.exists()

@@ -189,7 +189,8 @@ Use `--delay-seconds` (default `0.25`) to reduce Yahoo 429 rate limits on fundam
 Run per-market if a full run hits rate limits.
 
 A ticker already fetched into today's (UTC) raw parquet is skipped on a re-run, not
-refetched -- a re-run after a partial failure resumes rather than starting over, and a
+refetched (unless the file's columns differ from a freshly built row, then every ticker is
+refetched; a fundamentals file that already covers every ticker is reused as written) -- a re-run after a partial failure resumes rather than starting over, and a
 suspiciously-fast run after an earlier one the same day is this, not a bug. Add
 `--force-refetch` to ignore same-day cached output and refetch every ticker anyway. Freshness
 is tracked by a same-named `.checkpoint` file next to each raw parquet (gitignored along with
