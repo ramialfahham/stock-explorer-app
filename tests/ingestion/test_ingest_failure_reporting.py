@@ -43,7 +43,9 @@ _CLEAN = {
     "fundamentals_ok": 4,
     "fundamentals_failed": 0,
     "fundamentals_skipped": 0,
+    "fundamentals_empty": 0,
     "fundamentals_failed_tickers": [],
+    "fundamentals_empty_tickers": [],
 }
 
 
@@ -72,7 +74,9 @@ def test_the_fixture_matches_what_ingest_market_really_returns():
         "fundamentals_ok",
         "fundamentals_failed",
         "fundamentals_skipped",
+        "fundamentals_empty",
         "fundamentals_failed_tickers",
+        "fundamentals_empty_tickers",
     }
 
 
@@ -176,3 +180,54 @@ def test_a_single_failure_in_a_small_market_can_cross_the_line(monkeypatch):
     """5% of 10 tickers is half a ticker, so one failure is over the line. Small markets are
     not exempt; that is what a fraction means."""
     assert _run(monkeypatch, _with_fundamentals_failures(10, 1)) == 1
+
+
+def test_empty_fundamentals_are_on_the_summary_line_named_on_stderr_and_do_not_fail_the_run(monkeypatch, capsys):
+    """Owner-decided (issue #71): yfinance answering without data is reported loudly, apart from
+    failures, and does not count toward the 5% line, so one stale seed ticker cannot block a
+    market's export."""
+    code = _run(
+        monkeypatch,
+        {
+            "fundamentals_ok": 3,
+            "fundamentals_empty": 1,
+            "fundamentals_empty_tickers": ["GONE"],
+            "tickers_requested": 4,
+        },
+    )
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "fundamentals_empty=1" in captured.out
+    assert "test_market" in captured.err and "GONE" in captured.err
+    assert "not counted toward the 5% line" in captured.err
+
+
+def test_an_unknown_market_flag_returns_one_and_names_it(monkeypatch, capsys):
+    called: list[object] = []
+    monkeypatch.setattr(main_module, "load_markets", lambda active_only=True: [MARKET])
+    monkeypatch.setattr(main_module, "ingest_market", lambda *args, **kwargs: called.append(args))
+
+    assert main_module.main(["--market", "nope"]) == 1
+
+    assert "Unknown or inactive markets: ['nope']" in capsys.readouterr().err
+    assert called == []
+
+
+def test_no_active_markets_returns_one(monkeypatch, capsys):
+    monkeypatch.setattr(main_module, "load_markets", lambda active_only=True: [])
+
+    assert main_module.main([]) == 1
+
+    assert "No active markets to ingest." in capsys.readouterr().err
+
+
+def test_a_market_with_another_source_is_skipped_with_a_notice_and_not_ingested(monkeypatch, capsys):
+    other = Market(market_code="csv_market", index_name="^C", exchange_suffix="", source="csv", ingest_active=True)
+    called: list[object] = []
+    monkeypatch.setattr(main_module, "load_markets", lambda active_only=True: [other])
+    monkeypatch.setattr(main_module, "ingest_market", lambda *args, **kwargs: called.append(args))
+
+    assert main_module.main([]) == 0
+
+    assert "Skipping csv_market: unsupported source csv" in capsys.readouterr().out
+    assert called == []

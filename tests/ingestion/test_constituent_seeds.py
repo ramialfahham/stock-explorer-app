@@ -362,3 +362,27 @@ def test_write_constituents_refuses_a_ticker_listed_twice_and_writes_nothing(tmp
             source="wikipedia",
         )
     assert not path.exists()
+
+
+def test_write_constituents_keeps_the_previous_seed_when_the_write_fails(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "ca_tsx60" / "constituents.csv"
+    monkeypatch.setattr(seeds, "seed_path", lambda code: path)
+    seeds.write_constituents(
+        "ca_tsx60", pd.Series(["AEM", "NA"], dtype=object), pd.Series(["Agnico Eagle", "National Bank"], dtype=object),
+        source="wikipedia",
+    )
+    before = path.read_text(encoding="utf-8")
+
+    def failing_to_csv(self, target, *args, **kwargs):
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write("market_code,tick")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", failing_to_csv)
+    with pytest.raises(OSError, match="disk full"):
+        seeds.write_constituents(
+            "ca_tsx60", pd.Series(["AEM"], dtype=object), pd.Series(["Agnico Eagle"], dtype=object), source="wikipedia"
+        )
+
+    assert path.read_text(encoding="utf-8") == before
+    assert list(path.parent.iterdir()) == [path]

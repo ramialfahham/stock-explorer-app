@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 from collections import deque
 from datetime import date, datetime, timezone
@@ -11,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
+from ingestion.atomic_write import replace_atomically
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import raw_dir
 from ingestion.registry import Market
@@ -100,19 +100,9 @@ def _is_fresh_today(output_path: Path) -> bool:
 
 
 def _replace_parquet(frame: pd.DataFrame, output_path: Path) -> None:
-    """Write to a same-directory temp file, then `os.replace()` onto `output_path` --
-    atomic on both POSIX and Windows. A direct `.to_parquet(output_path, ...)` leaves a
-    truncated file when the process is killed mid-write. This way `output_path` always holds
-    either the last complete write or the new one, never a partial one. A write that
-    raises leaves no temp file; a process killed mid-write can leave `<name>.tmp-<pid>` beside it."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = output_path.with_name(f"{output_path.name}.tmp-{os.getpid()}")
-    try:
-        frame.to_parquet(tmp_path, index=False)
-        os.replace(tmp_path, output_path)
-    except BaseException:
-        tmp_path.unlink(missing_ok=True)
-        raise
+    """A direct `.to_parquet(output_path, ...)` leaves a truncated file when the process is
+    killed mid-write; this keeps `output_path` at the last complete write or the new one."""
+    replace_atomically(output_path, lambda tmp: frame.to_parquet(tmp, index=False))
 
 
 def _atomic_write_parquet(frame: pd.DataFrame, output_path: Path) -> None:
@@ -427,6 +417,13 @@ def _fetch_fundamentals_row(
     return call_with_retry(_load)
 
 
+_ROW_KEY_COLUMNS = ("market_code", "ticker", "snapshot_date")
+
+
+def _is_empty_row(row: dict[str, object]) -> bool:
+    return all(pd.isna(value) for key, value in row.items() if key not in _ROW_KEY_COLUMNS)
+
+
 def _fetch_fundamentals(
     market: Market,
     local_tickers: list[str],
@@ -449,11 +446,14 @@ def _fetch_fundamentals(
         checkpoint_columns = set(existing.columns)
 
     failed_tickers: list[str] = []
+    empty_tickers: list[str] = []
     stats: dict[str, object] = {
         "fundamentals_ok": 0,
         "fundamentals_failed": 0,
         "fundamentals_skipped": 0,
+        "fundamentals_empty": 0,
         "fundamentals_failed_tickers": failed_tickers,
+        "fundamentals_empty_tickers": empty_tickers,
     }
 
     def _flush() -> None:
@@ -485,7 +485,18 @@ def _fetch_fundamentals(
                 skipped.clear()
             checkpoint_columns = None
             rows.append(row)
-            stats["fundamentals_ok"] += 1
+            if _is_empty_row(row):
+                # yfinance answered without raising but with no data (for example a delisted,
+                # renamed or bad symbol), so every field defaulted to None. The row is still
+                # written, and counted apart from the ok rows so a run does not report it as one.
+                stats["fundamentals_empty"] += 1
+                empty_tickers.append(local_ticker)
+                print(
+                    f"  warning: fundamentals empty for {market.market_code}/{local_ticker}: "
+                    "yfinance returned no data"
+                )
+            else:
+                stats["fundamentals_ok"] += 1
             # Flushed immediately, not batched -- each row is already one network call,
             # so one small parquet write alongside it is negligible overhead, and it
             # bounds a crash's loss to the ticker in flight, not up to a batch's worth.

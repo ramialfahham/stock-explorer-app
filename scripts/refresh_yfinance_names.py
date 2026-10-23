@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from ingestion.atomic_write import replace_atomically
 from ingestion.constituents.refresh import load_refresh_configs
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import NAME_SNAPSHOT_PATH
@@ -42,10 +43,18 @@ def _fetch_long_name(yf_symbol: str) -> str | None:
     return call_with_retry(_load)
 
 
+def _previous_rows() -> dict[tuple[str, str], dict[str, str]]:
+    if not NAME_SNAPSHOT_PATH.exists():
+        return {}
+    with open(NAME_SNAPSHOT_PATH, encoding="utf-8", newline="") as f:
+        return {(r["market_code"], r["ticker"]): r for r in csv.DictReader(f)}
+
+
 def refresh_snapshot(
     market_codes: list[str], *, delay_seconds: float = 0.25
 ) -> list[dict[str, str]]:
     markets_by_code = {m.market_code: m for m in load_markets()}
+    previous = _previous_rows()
     rows: list[dict[str, str]] = []
     now = datetime.now(timezone.utc).isoformat()
 
@@ -55,6 +64,7 @@ def refresh_snapshot(
             print(f"{market_code}: not in market registry, skipped", file=sys.stderr)
             continue
         frame = load_constituents(market_code)
+        counts = {"refreshed": 0, "failed": 0, "no_name": 0, "kept": 0}
         for _, row in frame.iterrows():
             ticker = str(row["ticker"])
             symbol = to_yfinance_ticker(ticker, market.exchange_suffix)
@@ -62,8 +72,13 @@ def refresh_snapshot(
                 long_name = _fetch_long_name(symbol)
             except Exception as exc:  # noqa: BLE001
                 print(f"{market_code}:{ticker} ({symbol}): failed: {exc}", file=sys.stderr)
+                counts["failed"] += 1
                 long_name = None
+            else:
+                if not long_name:
+                    counts["no_name"] += 1
             if long_name:
+                counts["refreshed"] += 1
                 rows.append(
                     {
                         "market_code": market_code,
@@ -72,8 +87,15 @@ def refresh_snapshot(
                         "refreshed_at": now,
                     }
                 )
+            elif (market_code, ticker) in previous:
+                # A transient failure must not delete a name that was good last time.
+                counts["kept"] += 1
+                rows.append(dict(previous[(market_code, ticker)]))
             time.sleep(delay_seconds)
-        print(f"{market_code}: refreshed {sum(1 for r in rows if r['market_code'] == market_code)} names")
+        print(
+            f"{market_code}: refreshed {counts['refreshed']} names, failed {counts['failed']}, "
+            f"no name {counts['no_name']}, kept previous {counts['kept']}"
+        )
 
     return rows
 
@@ -89,14 +111,17 @@ def merge_with_existing(
 
 
 def write_snapshot(rows: list[dict[str, str]]) -> Path:
-    NAME_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     rows_sorted = sorted(rows, key=lambda r: (r["market_code"], r["ticker"]))
-    with open(NAME_SNAPSHOT_PATH, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=["market_code", "ticker", "yfinance_long_name", "refreshed_at"]
-        )
-        writer.writeheader()
-        writer.writerows(rows_sorted)
+
+    def _write(tmp: Path) -> None:
+        with open(tmp, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["market_code", "ticker", "yfinance_long_name", "refreshed_at"]
+            )
+            writer.writeheader()
+            writer.writerows(rows_sorted)
+
+    replace_atomically(NAME_SNAPSHOT_PATH, _write)
     return NAME_SNAPSHOT_PATH
 
 
