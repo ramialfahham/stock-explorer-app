@@ -86,10 +86,21 @@ def main(argv: list[str] | None = None) -> int:
             f"fundamentals_rows={stats['fundamentals_rows']} "
             f"fundamentals_ok={stats['fundamentals_ok']} "
             f"fundamentals_failed={stats['fundamentals_failed']} "
-            f"fundamentals_skipped={stats['fundamentals_skipped']}"
+            f"fundamentals_skipped={stats['fundamentals_skipped']} "
+            f"fundamentals_empty={stats['fundamentals_empty']}"
         )
         if stats["price_batches_failed"]:
             markets_with_failed_prices.append(market.market_code)
+        empty = int(stats["fundamentals_empty"])
+        if empty:
+            print(
+                f"run_ingestion: {market.market_code}: yfinance returned no data for {empty} of "
+                f"{int(stats['tickers_requested'])} tickers: "
+                f"{', '.join(stats['fundamentals_empty_tickers'])}. The rows were written empty and "
+                f"are not counted toward the {FUNDAMENTALS_FAIL_FRACTION:.0%} line; check the seed "
+                "for delisted or renamed tickers.",
+                file=sys.stderr,
+            )
         failed = int(stats["fundamentals_failed"])
         if failed:
             requested = int(stats["tickers_requested"])

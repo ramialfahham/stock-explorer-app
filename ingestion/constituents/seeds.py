@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from ingestion.atomic_write import replace_atomically
 from ingestion.paths import TICKER_OVERRIDES_PATH, seed_path
 
 SEED_COLUMNS = ("market_code", "ticker", "company_name", "refreshed_at", "source")
@@ -181,6 +182,5 @@ def write_constituents(
                 f"tickers are in the new table (minimum {min_overlap:.0%}); seed not written. "
                 "Check the page's ticker form and table_index, then replace the seed by hand."
             )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(path, index=False)
+    replace_atomically(path, lambda tmp: frame.to_csv(tmp, index=False))
     return len(frame)

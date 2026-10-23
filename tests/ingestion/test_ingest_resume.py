@@ -37,7 +37,12 @@ def _backdate_checkpoint(output_path) -> None:
 
 
 def _fake_row(ticker: str) -> dict:
-    return {"market_code": MARKET.market_code, "ticker": ticker, "snapshot_date": "2026-09-06"}
+    return {
+        "market_code": MARKET.market_code,
+        "ticker": ticker,
+        "snapshot_date": "2026-09-06",
+        "info_forward_pe": 10.0,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -499,7 +504,9 @@ def test_price_stats_reach_the_market_summary(monkeypatch, tmp_path):
         "fundamentals_ok",
         "fundamentals_failed",
         "fundamentals_skipped",
+        "fundamentals_empty",
         "fundamentals_failed_tickers",
+        "fundamentals_empty_tickers",
     }
 
 
@@ -646,3 +653,70 @@ def test_a_symbol_with_prices_is_not_counted_as_all_nan(monkeypatch, tmp_path):
     _, stats = ingest_module._fetch_daily_prices(MARKET, ["AAA", "BBB"])
 
     assert stats["price_tickers_all_nan"] == 0
+
+
+def _row_with_data(ticker: str) -> dict:
+    return {**_fake_row(ticker), "info_forward_pe": 12.0}
+
+
+def _row_without_data(ticker: str) -> dict:
+    return {**_fake_row(ticker), "info_forward_pe": None, "stmt_total_revenue": float("nan")}
+
+
+def test_a_ticker_yfinance_answered_with_no_data_is_counted_named_and_still_written(monkeypatch, tmp_path, capsys):
+    """info = ticker.info or {} turns an empty answer into a row of None values. It is written,
+    counted apart from the ok rows and named."""
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        ingest_module,
+        "_fetch_fundamentals_row",
+        lambda market, local_ticker, yf_symbol, snapshot_date: (
+            _row_without_data(local_ticker) if local_ticker == "GONE" else _row_with_data(local_ticker)
+        ),
+    )
+
+    result, stats = ingest_module._fetch_fundamentals(MARKET, ["AAA", "GONE"], delay_seconds=0)
+
+    assert stats["fundamentals_empty"] == 1
+    assert stats["fundamentals_empty_tickers"] == ["GONE"]
+    assert stats["fundamentals_ok"] == 1
+    assert stats["fundamentals_failed"] == 0
+    assert sorted(result["ticker"]) == ["AAA", "GONE"]
+    assert sorted(pd.read_parquet(output_dir / "yf_fundamentals.parquet")["ticker"]) == ["AAA", "GONE"]
+    assert "fundamentals empty for test_market/GONE" in capsys.readouterr().out
+
+
+def test_ok_failed_skipped_and_empty_add_up_to_the_requested_tickers(monkeypatch, tmp_path):
+    output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)
+    ingest_module._atomic_write_parquet(pd.DataFrame([_row_with_data("SKIP")]), output_dir / "yf_fundamentals.parquet")
+
+    def _fetch(market, local_ticker, yf_symbol, snapshot_date):
+        if local_ticker == "BAD":
+            raise RuntimeError("boom")
+        if local_ticker == "GONE":
+            return _row_without_data(local_ticker)
+        return _row_with_data(local_ticker)
+
+    monkeypatch.setattr(ingest_module, "_fetch_fundamentals_row", _fetch)
+    tickers = ["SKIP", "OK", "GONE", "BAD"]
+    result, stats = ingest_module._fetch_fundamentals(MARKET, tickers, delay_seconds=0)
+
+    assert (stats["fundamentals_ok"], stats["fundamentals_empty"]) == (1, 1)
+    assert (stats["fundamentals_failed"], stats["fundamentals_skipped"]) == (1, 1)
+    counted = sum(stats[key] for key in ("fundamentals_ok", "fundamentals_failed", "fundamentals_skipped", "fundamentals_empty"))
+    assert counted == len(tickers)
+    assert sorted(result["ticker"]) == ["GONE", "OK", "SKIP"]
+
+
+def test_a_row_with_one_field_set_is_not_counted_as_empty(monkeypatch, tmp_path):
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        ingest_module,
+        "_fetch_fundamentals_row",
+        lambda market, local_ticker, yf_symbol, snapshot_date: {**_row_without_data(local_ticker), "info_sector": "Energy"},
+    )
+
+    _, stats = ingest_module._fetch_fundamentals(MARKET, ["AAA"], delay_seconds=0)
+
+    assert stats["fundamentals_empty"] == 0
+    assert stats["fundamentals_ok"] == 1

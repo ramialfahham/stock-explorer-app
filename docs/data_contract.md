@@ -575,7 +575,7 @@ Implemented in `ingestion/main.py`; the 5% is the baseline gate's `warn_drop_fra
 equal by a test. A failed run skips the export, so Supabase keeps its last good snapshot. A
 ticker that fails under the line has no new row, so its previous snapshot stays in the deck:
 the card's `As of` date is older, but nothing on it says a refresh was attempted. The stderr
-line is the only trace of the attempt.
+line is the only trace of the attempt. Empty answers: stored empty, counted as `fundamentals_empty`, not toward the 5%.
 
 ### Registry
 
