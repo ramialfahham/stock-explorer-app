@@ -1,7 +1,7 @@
 # Review
 
-diff_sha256: 85ecb89ffc92e380e5122adc2fb66f20a7035ff20130550a127664d277db415d
-rounds: 2
+diff_sha256: f49d127c6fab312e80db99f0618c40f75f0e380c7a510d94e82a1af319c5cc59
+rounds: 3
 
 Works #72 defects 10 to 13 (items 14, 16, 18, 19 are owner calls, untouched). Round 1 (tree 7b74742):
 analytics-engineer-reviewer PASS, platform-reviewer PASS, equity-analyst-reviewer PASS, scope-auditor FAIL on two
@@ -13,6 +13,14 @@ is one sentence and its message lists the extra and the missing names. Round 2: 
 and analytics-engineer-reviewer all PASS (the equity analyst's file did not change). After the PASS verdicts only
 the "This machine" note in `.claude/active_work.md` changed (the secret scan now runs through
 `scripts/run_gitleaks.py`, merged in !268).
+
+Round 3 (tree 55e080d, delta since commit 52babdc; the equity analyst's and analytics engineer's files did not
+change): the owner answered both merge request questions with A. `docs/layering.md` "Allowed" bullet and the
+"attribute masquerading as entity" bullet now name the single-consumer entity table; the Used-by check fails a
+core, intermediate or mart model without the line (all six already have it), with tests and a sentence in
+`docs/engineering_standards.md` section 2. Round 3: scope-auditor and platform-reviewer PASS. Applied after the
+PASS verdicts: the two layering bullets use the owner's full "is the one place where an entity's key and display
+name are resolved", and the standards sentence states both directions of the check.
 
 Coordinator evidence:
 - Before the rebase onto main: `bootstrap.py --verify` steps run one by one: sqlfluff lint clean, dbt build 149
@@ -27,29 +35,29 @@ Coordinator evidence:
   called from `main()`. Each fails a test.
 - The scan for two-line comment blocks with two full sentences in `dbt_analytics/` finds none; em-dash,
   narrative-date and context-budget checks pass.
+- Round 3: `tests/tooling/test_check_dbt_documentation.py` 23 passed; `check_dbt_documentation.py` passes on the real
+  manifest; four mutations of the new rule, file restored after each, each fails a test: layer test negated, error
+  never reported, backslash path not normalised, staging and base also required.
 
-follow_ups (owner questions for the merge request): `docs/layering.md` line 68 ("shared across multiple use
-cases") and lines 87-88 ("attribute masquerading as entity") sit beside the amended condition 2: amend them or
-leave them; the Used-by line is skipped for core, intermediate and mart models that lack it: require it or say
-it is optional in `docs/engineering_standards.md` section 2; a mismatch message prints an empty bracket pair when
-only one side differs (cosmetic).
+follow_ups: the path-to-layer derivation is written twice in `scripts/check_dbt_documentation.py` (a small
+helper would remove it); a mismatch message prints an empty bracket pair when only one side differs (cosmetic).
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: 2968c2a7cc7701e9b98c4bd215bb25c0c37ba7af
+reviewed_tree: 55e080d92862eea691458d41d3c4b16ffe04c6ba
 risks_checked:
-- The Reuse and section 1.2 wording matches the owner's recorded answers; the delta stays inside `scope_paths`.
-- Owner-call items 14, 16, 18, 19 are untouched; no changed claim is left standing.
+- The five delta files are inside `scope_paths`; the layering text matches the owner's recorded Reuse wording.
+- No passage says a Used-by line is optional; every Used-by line matches the `ref()` graph.
 wording_fixes: applied.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: 2968c2a7cc7701e9b98c4bd215bb25c0c37ba7af
+reviewed_tree: 55e080d92862eea691458d41d3c4b16ffe04c6ba
 risks_checked:
-- The Used-by check's message names the extra and the missing models; its comment and docstring are true.
-- The exact-message assertions are confined to the two tests that pin the message.
+- The layer is derived as in `check_null_when_documented`, from one shared constant; a missing path is skipped.
+- The tests pin the skip, the failure with both path separators and the passing case; no state, safe to re-run.
 wording_fixes: none required.
 
 ## analytics-engineer-reviewer

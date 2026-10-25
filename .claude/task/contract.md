@@ -36,7 +36,10 @@ decisions_reserved: Answered by the owner in chat. Defect 10: keep `dim_stock` (
   model's "Used by" line with the models that depend on it (B). Defect 12: the descriptions follow the code, "each
   at its latest snapshot_date" (A); no filter is added. Defect 13: section 1.2 is reworded so one sentence may
   wrap (A), and a comment with two full sentences is cut to one. The owner-call items 14, 16, 18, 19 are not
-  touched. No change to a mart column, a card number or an export column.
+  touched. No change to a mart column, a card number or an export column. Merge request questions, answered A:
+  the two older passages of `docs/layering.md` (the "Allowed" list and the "attribute masquerading as entity"
+  pattern) are amended to match the Reuse condition; a core, intermediate or mart model without a "Used by" line
+  fails the check.
 
 changes:
   - Defect 10: `dim_stock.sql` keeps `market_code`, `ticker`, `company_name` (seed name over yfinance
@@ -50,8 +53,11 @@ changes:
   - Defect 11: "Used by" of `dim_stock` (`int_stock__card_metrics` only) and `int_stock__card_metrics` (adds
     `mart_stock_eligibility_gaps`). New `check_used_by_matches_dependencies(manifest, errors)` in
     `scripts/check_dbt_documentation.py`: for each project model whose description has a `**Used by:**`
-    line, the model names in that line must equal the project models that depend on it; models without the line
-    (staging, base) are skipped; non-model consumers named in the line are ignored. Called from `main()`.
+    line, the model names in that line must equal the project models that depend on it; a core, intermediate or
+    mart model without the line fails; staging and base models without it are skipped; non-model consumers named
+    in the line are ignored. Called from `main()`. `docs/engineering_standards.md` section 2 says so in one
+    sentence. `docs/layering.md`: the "Allowed" bullet for dimensions and the "attribute masquerading as entity"
+    bullet each name the single-consumer entity table.
   - Defect 12: the grain lines in `_intermediate.yml` and `_marts.yml` (`mart_stock_cards`), and the sentence in
     `docs/data_contract.md` about the dbt model's grain, say "each at its latest snapshot_date".
   - Defect 13: `docs/engineering_standards.md` section 1.2: "One sentence per comment, which may wrap onto more
@@ -68,8 +74,9 @@ done_when:
   - `git grep -n -E "market's latest snapshot|each market's latest" -- dbt_analytics/models docs` finds only the
     `card_assessments` grain in `docs/data_contract.md` (a different table) or nothing.
   - New tests, mutation-checked: a Used-by line naming a model that does not depend on it fails; a dependent model
-    missing from the line fails; a line naming only non-model consumers passes; a model without the line is
-    skipped; the real manifest passes.
+    missing from the line fails; a line naming only non-model consumers passes; a core, intermediate or mart model
+    without the line fails (forward and backslash paths); a staging or base model without it is skipped; the
+    real manifest passes.
   - No block of two `--` comment lines in `dbt_analytics/` holds two full sentences (`[.!?]\s+[A-Za-z_]` across
     the joined block), by the same scan as in the audit.
   - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.

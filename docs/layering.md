@@ -65,7 +65,8 @@ Purpose: system of record. Canonical dimensions and facts with stable grains and
 vetted definitions that other layers treat as the single source of truth.
 
 Allowed:
-- Dimensions and facts shared across multiple use cases.
+- Dimensions and facts shared across multiple use cases, and a single-consumer entity table that is the one
+  place where an entity's key and display name are resolved.
 - Relationship logic and conformed attributes that marts should reuse rather than re-derive.
 
 Not allowed:
@@ -85,7 +86,8 @@ Patterns that look like dimensions but are not:
 - **Closed enum.** A small, stable vocabulary: enforce with `accepted_values`; a dim adds
   maintenance without adding information.
 - **Attribute masquerading as entity.** Promote to a dim only when a rollup or hierarchy
-  is actually needed, not before.
+  is actually needed, not before. A single-consumer entity table that is the one place where an entity's key and
+  display name are resolved is an entity (condition 2), not this pattern.
 
 ### Fact qualification rules
 

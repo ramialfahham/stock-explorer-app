@@ -4,6 +4,8 @@ manifest -- not a full dbt build."""
 
 from __future__ import annotations
 
+import pytest
+
 from check_dbt_documentation import (  # noqa: E402
     check_null_when_documented,
     check_used_by_matches_dependencies,
@@ -115,13 +117,16 @@ def test_ignores_a_column_with_no_description_at_all() -> None:
     assert errors == []
 
 
-def _described_model(name: str, description: str, depends_on: list[str], package: str = "dbt_analytics") -> tuple[str, dict]:
+def _described_model(
+    name: str, description: str, depends_on: list[str], package: str = "dbt_analytics", path: str = ""
+) -> tuple[str, dict]:
     unique_id = f"model.{package}.{name}"
     return unique_id, {
         "resource_type": "model",
         "unique_id": unique_id,
         "name": name,
         "package_name": package,
+        "path": path,
         "description": description,
         "depends_on": {"nodes": [dep if "." in dep else f"model.dbt_analytics.{dep}" for dep in depends_on]},
     }
@@ -177,11 +182,23 @@ def test_used_by_naming_no_model_fails_when_a_model_depends_on_it() -> None:
     assert len(errors) == 1
 
 
-def test_a_model_without_a_used_by_line_is_skipped() -> None:
+@pytest.mark.parametrize("path", ["1_staging/a.sql", "2_base/a.sql", ""])
+def test_a_staging_or_base_model_without_a_used_by_line_is_skipped(path: str) -> None:
     errors = _used_by_errors(
-        _described_model("a", "**Grain:** x. **Source:** y.", []),
+        _described_model("a", "**Grain:** x. **Source:** y.", [], path=path),
         _described_model("b", "**Grain:** x.", ["a"]),
     )
+    assert errors == []
+
+
+@pytest.mark.parametrize("path", ["3_core/a.sql", "4_intermediate/a.sql", "5_marts/a.sql", "5_marts\\a.sql"])
+def test_a_core_intermediate_or_mart_model_without_a_used_by_line_fails(path: str) -> None:
+    errors = _used_by_errors(_described_model("a", "**Grain:** x. **Source:** y.", [], path=path))
+    assert errors == ["model a: description has no **Used by:** line"]
+
+
+def test_a_mart_model_with_a_used_by_line_passes() -> None:
+    errors = _used_by_errors(_described_model("a", "**Used by:** the Streamlit app.", [], path="5_marts/a.sql"))
     assert errors == []
 
 

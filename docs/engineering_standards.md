@@ -159,6 +159,9 @@ description: >
   **Used by:** Consumer (e.g. Supabase export, Streamlit).
 ```
 
+The check fails a core, intermediate or mart model without the `**Used by:**` line, and one whose line names a model
+that does not depend on it or leaves out one that does.
+
 **Staging / base:**
 
 ```yaml

@@ -30,6 +30,8 @@ REQUIRED_META_KEYS = ("owner", "domain", "criticality")
 # unit/scale, "Null when: ...") applies -- staging/base have their own lighter rule
 # ("map to source field name, note raw vs derived") and are not checked here.
 NULL_WHEN_LAYERS = ("3_core", "4_intermediate", "5_marts")
+# The same layers carry the "**Used by:**" line of the model description anatomy.
+USED_BY_LAYERS = NULL_WHEN_LAYERS
 
 # This repo's own established naming convention for a column carried through unmodified
 # from a raw source field (assigned once in staging, e.g. stg_yf__fundamentals.sql, never
@@ -175,7 +177,7 @@ def check_null_when_documented(manifest: dict[str, Any], errors: list[str]) -> N
 def check_used_by_matches_dependencies(manifest: dict[str, Any], errors: list[str]) -> None:
     """A model's "**Used by:**" line must name exactly the project models that depend on it.
     Names in prose after the list count as named. Only model names are compared: the line may also name a script,
-    an export or the app. A model without the line (staging, base) is skipped."""
+    an export or the app. A core, intermediate or mart model without the line fails; staging and base are skipped."""
     project = manifest.get("metadata", {}).get("project_name", "dbt_analytics")
     models = {
         node["unique_id"]: node
@@ -192,6 +194,9 @@ def check_used_by_matches_dependencies(manifest: dict[str, Any], errors: list[st
     for unique_id, node in models.items():
         match = USED_BY_PATTERN.search(node.get("description") or "")
         if not match:
+            path = (node.get("path") or "").replace("\\", "/")
+            if path.split("/")[0] in USED_BY_LAYERS:
+                errors.append(f"model {node['name']}: description has no **Used by:** line")
             continue
         claimed = {
             name for name in names if re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", match.group(1))
