@@ -40,3 +40,6 @@ storage/audit/
 
 # Local agent working artifacts, not part of the repo's committed state.
 .claude/task/review_input.patch
+
+# Tools the repo downloads for itself (scripts/run_gitleaks.py).
+.cache/

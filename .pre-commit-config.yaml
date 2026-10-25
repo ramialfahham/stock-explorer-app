@@ -2,7 +2,8 @@
 # and by CI's validate:pre-commit. The local hooks are the offline checks validate:full used to
 # run; they run in pre-commit's own Python environment (language: python), never the python on PATH.
 # no-commit-to-branch guards commits, not files: --verify skips it. gitleaks scans what is
-# staged; CI's validate:secret-scan scans the full history with the same pinned version.
+# staged, through scripts/run_gitleaks.py (the pinned official release); CI's validate:secret-scan scans
+# the full history with the same pinned version.
 # review-gate is Claude Code's commit policy: it acts whenever hooks run under CLAUDECODE=1
 # (a commit, in the checkout git is committing, or a manual `pre-commit run`; --verify skips it).
 repos:
@@ -86,8 +87,9 @@ repos:
         language: python
         pass_filenames: false
         always_run: true
-
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
-    hooks:
       - id: gitleaks
+        name: Detect hardcoded secrets
+        entry: python scripts/run_gitleaks.py
+        language: python
+        pass_filenames: false
+        always_run: true
