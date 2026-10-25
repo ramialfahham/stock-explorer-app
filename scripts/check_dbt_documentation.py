@@ -39,6 +39,9 @@ RAW_PASSTHROUGH_PREFIXES = ("info_", "stmt_", "qtr_")
 
 NULL_MENTION_PATTERN = re.compile(r"null", re.IGNORECASE)
 
+# The text after "**Used by:**" runs to the next bold marker or the end of the description.
+USED_BY_PATTERN = re.compile(r"\*\*Used by:\*\*(.*?)(?=\*\*|\Z)", re.DOTALL)
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     if not path.is_file():
@@ -169,6 +172,39 @@ def check_null_when_documented(manifest: dict[str, Any], errors: list[str]) -> N
                 )
 
 
+def check_used_by_matches_dependencies(manifest: dict[str, Any], errors: list[str]) -> None:
+    """A model's "**Used by:**" line must name exactly the project models that depend on it.
+    Names in prose after the list count as named. Only model names are compared: the line may also name a script,
+    an export or the app. A model without the line (staging, base) is skipped."""
+    project = manifest.get("metadata", {}).get("project_name", "dbt_analytics")
+    models = {
+        node["unique_id"]: node
+        for node in manifest.get("nodes", {}).values()
+        if node.get("resource_type") == "model" and node.get("package_name") == project
+    }
+    dependents: dict[str, set[str]] = {unique_id: set() for unique_id in models}
+    for node in models.values():
+        for dep in node.get("depends_on", {}).get("nodes", []):
+            if dep in dependents:
+                dependents[dep].add(node["name"])
+
+    names = {node["name"] for node in models.values()}
+    for unique_id, node in models.items():
+        match = USED_BY_PATTERN.search(node.get("description") or "")
+        if not match:
+            continue
+        claimed = {
+            name for name in names if re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", match.group(1))
+        }
+        actual = dependents[unique_id]
+        extra, missing = sorted(claimed - actual), sorted(actual - claimed)
+        if extra or missing:
+            errors.append(
+                f"model {node['name']}: Used by names {extra} which do not depend on it and "
+                f"leaves out {missing} which do"
+            )
+
+
 def check_sources(errors: list[str]) -> None:
     if not SOURCES_PATH.is_file():
         errors.append("sources.yml: missing")
@@ -207,6 +243,7 @@ def main() -> int:
     check_model_descriptions(manifest, errors)
     check_column_descriptions(manifest, catalog, errors)
     check_null_when_documented(manifest, errors)
+    check_used_by_matches_dependencies(manifest, errors)
     check_sources(errors)
 
     if errors:

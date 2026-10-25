@@ -76,7 +76,8 @@ Not allowed:
 A table earns `dim_` status only when all three conditions hold:
 
 1. **Entity.** It represents a real-world thing the business talks about by name.
-2. **Reuse.** Its attributes are shared across more than one fact or mart.
+2. **Reuse.** Its attributes are shared across more than one fact or mart, or it is a
+   single-consumer entity table that is the one place where an entity's key and display name are resolved.
 3. **Conformance.** The vocabulary is one the whole warehouse agrees on.
 
 Patterns that look like dimensions but are not:

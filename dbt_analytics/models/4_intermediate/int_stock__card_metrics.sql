@@ -63,8 +63,8 @@ metrics as (
         s.ticker,
         s.snapshot_date,
         st.company_name,
-        coalesce(s.info_sector, st.sector) as sector,
-        coalesce(s.info_currency, st.currency) as currency,
+        s.info_sector as sector,
+        s.info_currency as currency,
         s.info_business_summary as business_summary,
         s.info_founded_year as company_founded_year,
         s.info_forward_pe as forward_pe,
@@ -245,7 +245,7 @@ metrics as (
                 then s.stmt_cash_and_equivalents - s.stmt_total_debt
         end as net_cash,
         case
-            when coalesce(s.info_sector, st.sector) = 'Financial Services'
+            when s.info_sector = 'Financial Services'
                 then 'financial'
             when s.stmt_total_revenue is not null
                 and s.stmt_total_revenue <= 0

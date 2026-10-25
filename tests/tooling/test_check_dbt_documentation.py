@@ -1,9 +1,13 @@
 """check_null_when_documented's logic (the raw-passthrough exemption, the not_null-test
-lookup, the "mentions null" check) against a small fake manifest -- not a full dbt build."""
+lookup, the "mentions null" check) and check_used_by_matches_dependencies against a small fake
+manifest -- not a full dbt build."""
 
 from __future__ import annotations
 
-from check_dbt_documentation import check_null_when_documented  # noqa: E402
+from check_dbt_documentation import (  # noqa: E402
+    check_null_when_documented,
+    check_used_by_matches_dependencies,
+)
 
 
 def _model(name: str, path: str, columns: dict[str, str]) -> tuple[str, dict]:
@@ -109,3 +113,105 @@ def test_ignores_a_column_with_no_description_at_all() -> None:
     errors: list[str] = []
     check_null_when_documented(manifest, errors)
     assert errors == []
+
+
+def _described_model(name: str, description: str, depends_on: list[str], package: str = "dbt_analytics") -> tuple[str, dict]:
+    unique_id = f"model.{package}.{name}"
+    return unique_id, {
+        "resource_type": "model",
+        "unique_id": unique_id,
+        "name": name,
+        "package_name": package,
+        "description": description,
+        "depends_on": {"nodes": [dep if "." in dep else f"model.dbt_analytics.{dep}" for dep in depends_on]},
+    }
+
+
+def _manifest(*models: tuple[str, dict]) -> dict:
+    return {"metadata": {"project_name": "dbt_analytics"}, "nodes": dict(models)}
+
+
+def _used_by_errors(*models: tuple[str, dict]) -> list[str]:
+    errors: list[str] = []
+    check_used_by_matches_dependencies(_manifest(*models), errors)
+    return errors
+
+
+def test_used_by_naming_exactly_the_dependents_passes() -> None:
+    errors = _used_by_errors(
+        _described_model("a", "**Grain:** x. **Used by:** b, c. **Source:** y.", []),
+        _described_model("b", "**Grain:** x.", ["a"]),
+        _described_model("c", "**Grain:** x.", ["a"]),
+    )
+    assert errors == []
+
+
+def test_used_by_naming_a_model_that_does_not_depend_on_it_fails() -> None:
+    errors = _used_by_errors(
+        _described_model("a", "**Used by:** b, c.", []),
+        _described_model("b", "**Grain:** x.", ["a"]),
+        _described_model("c", "**Grain:** x.", []),
+    )
+    assert errors == ["model a: Used by names ['c'] which do not depend on it and leaves out [] which do"]
+
+
+def test_used_by_leaving_out_a_dependent_model_fails() -> None:
+    errors = _used_by_errors(
+        _described_model("a", "**Used by:** b.", []),
+        _described_model("b", "**Grain:** x.", ["a"]),
+        _described_model("c", "**Grain:** x.", ["a"]),
+    )
+    assert errors == ["model a: Used by names [] which do not depend on it and leaves out ['c'] which do"]
+
+
+def test_used_by_naming_only_non_model_consumers_passes_when_nothing_depends_on_the_model() -> None:
+    errors = _used_by_errors(_described_model("a", "**Used by:** export_to_supabase.py, Streamlit app.", []))
+    assert errors == []
+
+
+def test_used_by_naming_no_model_fails_when_a_model_depends_on_it() -> None:
+    errors = _used_by_errors(
+        _described_model("a", "**Used by:** the Streamlit app.", []),
+        _described_model("b", "**Grain:** x.", ["a"]),
+    )
+    assert len(errors) == 1
+
+
+def test_a_model_without_a_used_by_line_is_skipped() -> None:
+    errors = _used_by_errors(
+        _described_model("a", "**Grain:** x. **Source:** y.", []),
+        _described_model("b", "**Grain:** x.", ["a"]),
+    )
+    assert errors == []
+
+
+def test_a_model_name_that_contains_another_is_not_a_match_for_it() -> None:
+    errors = _used_by_errors(
+        _described_model("fct", "**Used by:** fct_extra.", []),
+        _described_model("fct_extra", "**Grain:** x.", ["fct"]),
+    )
+    assert errors == []
+
+
+def test_models_of_another_package_are_ignored() -> None:
+    errors = _used_by_errors(
+        _described_model("a", "**Used by:** b.", []),
+        _described_model("b", "**Grain:** x.", ["a"]),
+        _described_model("c", "**Grain:** x.", ["model.dbt_analytics.a"], package="dbt_utils"),
+    )
+    assert errors == []
+
+
+def test_main_runs_the_used_by_check(monkeypatch, capsys) -> None:
+    import check_dbt_documentation as module
+
+    monkeypatch.setattr(module, "_load_json", lambda path: {})
+    for other in ("check_model_descriptions", "check_column_descriptions", "check_null_when_documented"):
+        monkeypatch.setattr(module, other, lambda *args, **kwargs: None)
+    monkeypatch.setattr(module, "check_sources", lambda errors: None)
+    monkeypatch.setattr(
+        module, "check_used_by_matches_dependencies", lambda manifest, errors: errors.append("model x: Used by is wrong")
+    )
+
+    assert module.main() == 1
+    assert "model x: Used by is wrong" in capsys.readouterr().out
