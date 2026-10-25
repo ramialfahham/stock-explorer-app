@@ -18,7 +18,7 @@ How to change this repo safely. Agent behavior: [`.claude/working-agreement.md`]
 
 Never commit directly to `main`.
 
-**One-time setup:** README "Getting started" (`python scripts/bootstrap.py`, proven by `--verify`). It installs the pre-commit hooks from [`.pre-commit-config.yaml`](../.pre-commit-config.yaml), including `no-commit-to-branch` and a staged gitleaks scan.
+**One-time setup:** README "Getting started" (`python scripts/bootstrap.py`, proven by `--verify`). It installs the pre-commit hooks from [`.pre-commit-config.yaml`](../.pre-commit-config.yaml), including `no-commit-to-branch` and a staged gitleaks scan (`scripts/run_gitleaks.py` runs the pinned official release, downloaded once into `.cache/gitleaks/`).
 
 **GitLab (recommended):** branch protection on `main` — require MR, disallow direct push. Read
 it back rather than assuming it's set: `glab api projects/<NAMESPACE>%2F<REPO>/protected_branches`
