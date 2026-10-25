@@ -10,9 +10,7 @@ latest_fundamentals as (
     select
         market_code,
         ticker,
-        info_long_name,
-        info_sector,
-        info_currency
+        info_long_name
     from fundamentals
     qualify row_number() over (
         partition by market_code, ticker
@@ -24,9 +22,7 @@ joined as (
     select
         c.market_code,
         c.ticker,
-        coalesce(c.company_name, f.info_long_name) as company_name,
-        f.info_sector as sector,
-        f.info_currency as currency
+        coalesce(c.company_name, f.info_long_name) as company_name
     from constituents as c
     left join latest_fundamentals as f
         on c.market_code = f.market_code

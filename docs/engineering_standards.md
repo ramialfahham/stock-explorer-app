@@ -92,7 +92,7 @@ Do not write a comment when:
 - You would only be paraphrasing the next line
 - The context belongs in the PR description
 
-One sentence per comment is almost always enough. No multi-line comment blocks.
+One sentence per comment, which may wrap onto more than one line.
 
 **No dates, timestamps, approval markers or authorship in a comment you add or edit.** Not
 "owner-approved 2026-09-09", not "fixed in MR !115", not "added by". <!-- narrative-check: allow -->
@@ -158,6 +158,9 @@ description: >
   **Source:** Upstream refs or raw source.
   **Used by:** Consumer (e.g. Supabase export, Streamlit).
 ```
+
+The check fails a core, intermediate or mart model without the `**Used by:**` line, and one whose line names a model
+that does not depend on it or leaves out one that does.
 
 **Staging / base:**
 

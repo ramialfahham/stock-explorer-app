@@ -4,7 +4,7 @@ models:
   - name: mart_stock_cards
     description: >
       **What:** Supabase export dataset for Streamlit stock swipe cards (card-eligible rows only).
-      **Grain:** One row per (market_code, ticker) where is_card_eligible, each at its market's
+      **Grain:** One row per (market_code, ticker) where is_card_eligible, each at its
       latest snapshot_date. The Supabase table accumulates dates per ticker; this model does not.
       **Source:** int_stock__card_metrics left join int_stock__sector_benchmarks.
       **Used by:** export_to_supabase.py, Streamlit app.
@@ -67,15 +67,13 @@ models:
         data_type: varchar
       - name: sector
         description: >
-          Sector label for UI and benchmark join. Null when: this row's own info_sector is
-          missing AND dim_stock has no sector for this ticker either (no fundamentals match
-          there, or that row's own info_sector was also missing).
+          Sector label for UI and benchmark join. Null when: this row's info_sector is
+          missing (Yahoo did not report a sector for this ticker).
         data_type: varchar
       - name: currency
         description: >
-          Currency code for formatted metric display. Null when: this row's own
-          info_currency is missing AND dim_stock has no currency for this ticker either (no
-          fundamentals match there, or that row's own info_currency was also missing).
+          Currency code for formatted metric display. Null when: this row's info_currency
+          is missing (Yahoo did not report a currency for this ticker).
         data_type: varchar
       - name: business_summary
         description: >
@@ -664,9 +662,8 @@ models:
           Yahoo's info_long_name is available for this ticker.
       - name: sector
         description: >
-          Sector label for grouping gap patterns. Null when: this row's own info_sector is
-          missing AND dim_stock has no sector for this ticker either (no fundamentals match
-          there, or that row's own info_sector was also missing).
+          Sector label for grouping gap patterns. Null when: this row's info_sector is
+          missing (Yahoo did not report a sector for this ticker).
       - name: missing_metrics
         description: >
           List of null card metric column names blocking eligibility.

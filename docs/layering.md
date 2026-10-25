@@ -65,7 +65,8 @@ Purpose: system of record. Canonical dimensions and facts with stable grains and
 vetted definitions that other layers treat as the single source of truth.
 
 Allowed:
-- Dimensions and facts shared across multiple use cases.
+- Dimensions and facts shared across multiple use cases, and a single-consumer entity table that is the one
+  place where an entity's key and display name are resolved.
 - Relationship logic and conformed attributes that marts should reuse rather than re-derive.
 
 Not allowed:
@@ -76,7 +77,8 @@ Not allowed:
 A table earns `dim_` status only when all three conditions hold:
 
 1. **Entity.** It represents a real-world thing the business talks about by name.
-2. **Reuse.** Its attributes are shared across more than one fact or mart.
+2. **Reuse.** Its attributes are shared across more than one fact or mart, or it is a
+   single-consumer entity table that is the one place where an entity's key and display name are resolved.
 3. **Conformance.** The vocabulary is one the whole warehouse agrees on.
 
 Patterns that look like dimensions but are not:
@@ -84,7 +86,8 @@ Patterns that look like dimensions but are not:
 - **Closed enum.** A small, stable vocabulary: enforce with `accepted_values`; a dim adds
   maintenance without adding information.
 - **Attribute masquerading as entity.** Promote to a dim only when a rollup or hierarchy
-  is actually needed, not before.
+  is actually needed, not before. A single-consumer entity table that is the one place where an entity's key and
+  display name are resolved is an entity (condition 2), not this pattern.
 
 ### Fact qualification rules
 

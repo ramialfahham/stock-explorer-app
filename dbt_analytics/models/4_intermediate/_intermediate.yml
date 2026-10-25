@@ -4,10 +4,10 @@ models:
   - name: int_stock__card_metrics
     description: >
       **What:** Swipe-card metrics and per-company-type eligibility per ticker snapshot.
-      **Grain:** One row per (market_code, ticker), each at its market's latest snapshot_date
+      **Grain:** One row per (market_code, ticker), each at its latest snapshot_date
       from fct_fundamentals_snapshot.
       **Source:** fct_fundamentals_snapshot, dim_stock.
-      **Used by:** int_stock__sector_benchmarks, mart_stock_cards.
+      **Used by:** int_stock__sector_benchmarks, mart_stock_cards, mart_stock_eligibility_gaps.
       Eligibility rules: see doc block card_eligibility in _docs.md / data_contract.md.
     meta:
       owner: data
@@ -65,12 +65,12 @@ models:
           name for this ticker (both the seed name and info_long_name were missing there).
       - name: sector
         description: >
-          Sector for peer grouping: coalesce(snapshot info_sector, dim_stock.sector). Null
-          when: both sides of the coalesce are missing for this ticker.
+          Sector for peer grouping: the snapshot's info_sector. Null when: Yahoo did not
+          report a sector for this ticker.
       - name: currency
         description: >
-          Display currency: coalesce(snapshot info_currency, dim_stock.currency). Null
-          when: both sides of the coalesce are missing for this ticker.
+          Display currency: the snapshot's info_currency. Null when: Yahoo did not report
+          a currency for this ticker.
       - name: business_summary
         description: >
           Company description from Yahoo longBusinessSummary; nullable context for card UI.
@@ -251,7 +251,7 @@ models:
       - name: company_type
         description: >
           Lifecycle/sector classification for the Sector Router: financial when
-          coalesce(info_sector, dim_stock.sector) = 'Financial Services'; else pre_revenue when
+          info_sector = 'Financial Services'; else pre_revenue when
           stmt_total_revenue is present and <= 0, OR when stmt_total_revenue is positive but under
           0.1% of info_market_cap (revenue negligible relative to valuation -- e.g. a development-stage
           miner/biotech that the strict <= 0 test alone misses); else operating. Always resolves to one

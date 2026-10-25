@@ -39,8 +39,6 @@ unit_tests:
               market_code: us_sp500,
               ticker: T1,
               company_name: Test Co,
-              sector: Technology,
-              currency: USD,
             }
     expect:
       rows:
@@ -94,8 +92,6 @@ unit_tests:
               market_code: us_sp500,
               ticker: T2,
               company_name: Test Co,
-              sector: Technology,
-              currency: USD,
             }
     expect:
       rows:
@@ -139,8 +135,6 @@ unit_tests:
               market_code: us_sp500,
               ticker: T_NEAR,
               company_name: Near Miss Co,
-              sector: Technology,
-              currency: USD,
             }
     expect:
       rows:
@@ -184,8 +178,6 @@ unit_tests:
               market_code: us_sp500,
               ticker: T3,
               company_name: Test Co,
-              sector: Technology,
-              currency: USD,
             }
     expect:
       rows:
@@ -231,8 +223,6 @@ unit_tests:
               market_code: us_sp500,
               ticker: T4,
               company_name: Test Co,
-              sector: Technology,
-              currency: USD,
             }
     expect:
       rows:
@@ -275,8 +265,6 @@ unit_tests:
               market_code: uk_ftse100,
               ticker: HSBA,
               company_name: HSBC,
-              sector: Financial Services,
-              currency: GBP,
             }
     expect:
       # HSBA is financial; per-type eligibility judges it on the financial required pair
@@ -331,8 +319,6 @@ unit_tests:
               market_code: uk_ftse100,
               ticker: LLOY,
               company_name: Lloyds,
-              sector: Financial Services,
-              currency: GBP,
             }
     expect:
       # This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
@@ -379,8 +365,6 @@ unit_tests:
               market_code: us_sp500,
               ticker: T5,
               company_name: Test Co,
-              sector: Technology,
-              currency: USD,
             }
     expect:
       rows:
@@ -412,14 +396,14 @@ unit_tests:
           - {market_code: au_asx200, ticker: NOMCAP, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0}
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: FIN, company_name: Bank Co, sector: Financial Services, currency: USD}
-          - {market_code: us_sp500, ticker: FIN0, company_name: Bank Zero Co, sector: Financial Services, currency: USD}
-          - {market_code: us_sp500, ticker: PRE, company_name: Biotech Co, sector: Healthcare, currency: USD}
-          - {market_code: us_sp500, ticker: OPS, company_name: Tech Co, sector: Technology, currency: USD}
-          - {market_code: us_sp500, ticker: NUL, company_name: Energy Co, sector: Energy, currency: USD}
-          - {market_code: au_asx200, ticker: MICRO, company_name: Micro Co, sector: Energy, currency: AUD}
-          - {market_code: au_asx200, ticker: SMALL, company_name: Small Co, sector: Energy, currency: AUD}
-          - {market_code: au_asx200, ticker: NOMCAP, company_name: No Mcap Co, sector: Energy, currency: AUD}
+          - {market_code: us_sp500, ticker: FIN, company_name: Bank Co}
+          - {market_code: us_sp500, ticker: FIN0, company_name: Bank Zero Co}
+          - {market_code: us_sp500, ticker: PRE, company_name: Biotech Co}
+          - {market_code: us_sp500, ticker: OPS, company_name: Tech Co}
+          - {market_code: us_sp500, ticker: NUL, company_name: Energy Co}
+          - {market_code: au_asx200, ticker: MICRO, company_name: Micro Co}
+          - {market_code: au_asx200, ticker: SMALL, company_name: Small Co}
+          - {market_code: au_asx200, ticker: NOMCAP, company_name: No Mcap Co}
     expect:
       rows:
         - {market_code: us_sp500, ticker: FIN, company_type: financial}
@@ -687,7 +671,7 @@ unit_tests:
             }
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: SM1, company_name: SM Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: SM1, company_name: SM Co}
     expect:
       rows:
         - {
@@ -722,7 +706,7 @@ unit_tests:
             }
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: BURN, company_name: Burn Co, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: BURN, company_name: Burn Co}
     expect:
       rows:
         - {
@@ -747,7 +731,7 @@ unit_tests:
             }
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: NEGI, company_name: NegI Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: NEGI, company_name: NegI Co}
     expect:
       rows:
         - {
@@ -776,7 +760,7 @@ unit_tests:
             }
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: ZERO, company_name: Zero Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: ZERO, company_name: Zero Co}
     expect:
       rows:
         - {
@@ -806,7 +790,7 @@ unit_tests:
             }
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: NEGE, company_name: NegE Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: NEGE, company_name: NegE Co}
     expect:
       rows:
         - {
@@ -827,8 +811,8 @@ unit_tests:
           - {market_code: us_sp500, ticker: BANKNO, snapshot_date: "2026-01-01", info_sector: 'Financial Services', info_forward_pe: 11.0, stmt_net_income_common: 11000.0, stmt_stockholders_equity: 60000.0, stmt_net_income: 12000.0}
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: BANKOK, company_name: Bank OK, sector: 'Financial Services', currency: USD}
-          - {market_code: us_sp500, ticker: BANKNO, company_name: Bank No, sector: 'Financial Services', currency: USD}
+          - {market_code: us_sp500, ticker: BANKOK, company_name: Bank OK}
+          - {market_code: us_sp500, ticker: BANKNO, company_name: Bank No}
     expect:
       rows:
         - {market_code: us_sp500, ticker: BANKOK, company_type: financial, is_card_eligible: true}
@@ -846,9 +830,9 @@ unit_tests:
           - {market_code: us_sp500, ticker: EDGE, snapshot_date: "2026-01-01", info_dividend_yield: 0.05, info_sector: Technology}
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: DIV, company_name: Div Co, sector: Technology, currency: USD}
-          - {market_code: us_sp500, ticker: AVB, company_name: Avalon, sector: Real Estate, currency: USD}
-          - {market_code: us_sp500, ticker: EDGE, company_name: Edge Co, sector: Technology, currency: USD}
+          - {market_code: us_sp500, ticker: DIV, company_name: Div Co}
+          - {market_code: us_sp500, ticker: AVB, company_name: Avalon}
+          - {market_code: us_sp500, ticker: EDGE, company_name: Edge Co}
     expect:
       rows:
         - {market_code: us_sp500, ticker: DIV, dividend_yield_pct: 3.5}
@@ -867,9 +851,9 @@ unit_tests:
           - {market_code: us_sp500, ticker: PRENOCAP, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, stmt_cash_and_equivalents: 900.0, stmt_total_debt: 400.0}
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: OPNOPE, company_name: Op No PE, sector: Technology, currency: USD}
-          - {market_code: us_sp500, ticker: FINNOPE, company_name: Fin No PE, sector: "Financial Services", currency: USD}
-          - {market_code: us_sp500, ticker: PRENOCAP, company_name: Pre No Cap, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: OPNOPE, company_name: Op No PE}
+          - {market_code: us_sp500, ticker: FINNOPE, company_name: Fin No PE}
+          - {market_code: us_sp500, ticker: PRENOCAP, company_name: Pre No Cap}
     expect:
       rows:
         - {market_code: us_sp500, ticker: OPNOPE, company_type: operating, is_card_eligible: true, net_cash: null}
@@ -889,8 +873,8 @@ unit_tests:
           - {market_code: us_sp500, ticker: PRENO, snapshot_date: "2026-01-01", info_sector: Healthcare, stmt_total_revenue: 0.0, info_market_cap: 5000.0, stmt_total_debt: 100.0}
       - input: ref('dim_stock')
         rows:
-          - {market_code: us_sp500, ticker: PREOK, company_name: Pre OK, sector: Healthcare, currency: USD}
-          - {market_code: us_sp500, ticker: PRENO, company_name: Pre No, sector: Healthcare, currency: USD}
+          - {market_code: us_sp500, ticker: PREOK, company_name: Pre OK}
+          - {market_code: us_sp500, ticker: PRENO, company_name: Pre No}
     expect:
       rows:
         - {market_code: us_sp500, ticker: PREOK, company_type: pre_revenue, is_card_eligible: true}
@@ -909,7 +893,7 @@ unit_tests:
           - {market_code: au_asx200, ticker: RATIOOK, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0, info_market_cap: 2000000.0, stmt_cash_and_equivalents: 500000.0, stmt_total_debt: 100000.0}
       - input: ref('dim_stock')
         rows:
-          - {market_code: au_asx200, ticker: RATIOOK, company_name: Ratio OK, sector: Energy, currency: AUD}
+          - {market_code: au_asx200, ticker: RATIOOK, company_name: Ratio OK}
     expect:
       rows:
         - {market_code: au_asx200, ticker: RATIOOK, company_type: pre_revenue, is_card_eligible: true, missing_metrics: []}

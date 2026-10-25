@@ -201,7 +201,7 @@ catalogued metric (not in the `metric_catalogue` or `frontend/metrics.json`), bu
 per-type `is_card_eligible` branch** (the `CASE company_type` switch key) and **is exported to
 Supabase**. Always non-null — evaluated in order, first match wins:
 
-1. `financial` — when `coalesce(info_sector, dim_stock.sector) = 'Financial Services'`.
+1. `financial` -- when `info_sector = 'Financial Services'`.
 2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`, **or** when it's positive
    but under 0.1% of `info_market_cap` (revenue negligible relative to valuation — e.g. a
    development-stage miner/biotech the strict `<= 0` test alone misses; a ratio, not an absolute
@@ -588,7 +588,7 @@ registry `ingest_active: true` entries (CI on every PR).
 
 Grain: one row per `(market_code, ticker, snapshot_date)` -- the Postgres TABLE's grain,
 which accumulates snapshot dates per ticker. The dbt MODEL of the same name declares a
-narrower grain, `(market_code, ticker)` at each market's latest snapshot only (see its own
+narrower grain, `(market_code, ticker)` at each ticker's latest snapshot only (see its own
 description in `dbt_analytics/models/5_marts/_marts.yml`); this heading names the table.
 
 **Schema is dbt-contract-enforced** (`config: {contract: {enforced: true}}` in
