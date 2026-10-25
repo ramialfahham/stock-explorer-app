@@ -1,7 +1,8 @@
-"""The dbt mart contract, EXPORT_COLUMNS and the Postgres migrations describe one table.
+"""The dbt mart contract, EXPORT_COLUMNS, the Postgres migrations and the column table in
+docs/data_contract.md describe one table.
 
 Nothing else compares them: a column added to one copy and not the others fails only at the
-export, in production. This test reads the three copies and fails on a missing column, an
+export, in production. This test reads the copies and fails on a missing column, an
 unexpected column or a type that does not map. Column types are compared by family
 (numeric(18, 6) and numeric are both numeric)."""
 
@@ -18,6 +19,8 @@ import export_to_supabase as exp
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MARTS_YML = REPO_ROOT / "dbt_analytics" / "models" / "5_marts" / "_marts.yml"
 MIGRATIONS_DIR = REPO_ROOT / "supabase" / "migrations"
+DATA_CONTRACT = REPO_ROOT / "docs" / "data_contract.md"
+DOC_TABLE_HEADING = "## Supabase export -- `mart_stock_cards` table"
 
 NOT_EXPORTED = {
     "info_ebitda": "data-only denominator of net_debt_to_ebitda; no card renders it",
@@ -127,6 +130,33 @@ def find_disagreements(
     return problems
 
 
+_DOC_ROW = re.compile(r"^\|\s*`(\w+)`\s*\|\s*(\w+)\s*\|", re.MULTILINE)
+
+
+def doc_table_columns(doc_text: str) -> list[tuple[str, str]]:
+    """(column, type) rows of the table under DOC_TABLE_HEADING, in document order."""
+    start = doc_text.index(DOC_TABLE_HEADING)
+    section = doc_text[start + len(DOC_TABLE_HEADING) :]
+    end = re.search(r"^## ", section, re.MULTILINE)
+    return _DOC_ROW.findall(section[: end.start()] if end else section)
+
+
+def find_doc_disagreements(rows: list[tuple[str, str]], table: dict[str, str], undocumented: set[str]) -> list[str]:
+    problems: list[str] = []
+    names = [name for name, _ in rows]
+    for name in sorted({n for n in names if names.count(n) > 1}):
+        problems.append(f"{name}: listed twice in the data contract table")
+    documented = dict(rows)
+    for column in sorted(set(table) - set(documented) - undocumented):
+        problems.append(f"{column}: in the migrations but missing from the data contract table")
+    for column in sorted(set(documented) - set(table)):
+        problems.append(f"{column}: in the data contract table but not in the migrations")
+    for column in sorted(set(documented) & set(table)):
+        if documented[column] != table[column]:
+            problems.append(f"{column}: data contract table {documented[column]} but migrations {table[column]}")
+    return problems
+
+
 def _migrations_on_disk() -> list[tuple[str, str]]:
     return [(p.name, p.read_text(encoding="utf-8")) for p in sorted(MIGRATIONS_DIR.glob("*.sql"))]
 
@@ -138,6 +168,15 @@ def test_the_three_schema_copies_agree() -> None:
         table_columns(_migrations_on_disk()),
         set(NOT_EXPORTED),
         set(DATABASE_ONLY),
+    )
+    assert problems == []
+
+
+def test_the_data_contract_table_agrees_with_the_migrations() -> None:
+    problems = find_doc_disagreements(
+        doc_table_columns(DATA_CONTRACT.read_text(encoding="utf-8")),
+        table_columns(_migrations_on_disk()),
+        {"id"},
     )
     assert problems == []
 
@@ -280,3 +319,34 @@ def test_a_statement_that_changes_an_existing_column_is_not_silently_ignored(sta
                 ("009.sql", statement),
             ]
         )
+
+
+_DOC = (
+    "## Other\n| `skipped` | text | not read |\n\n"
+    + DOC_TABLE_HEADING
+    + "\n\nGrain: x.\n\n| Column | Type | Notes |\n|--------|------|-------|\n"
+    "| `a` | text | FK |\n| `b` | numeric | nullable |\n\n---\n\n## Next\n| `after` | text | not read |\n"
+)
+_DOC_ROWS = [("a", "text"), ("b", "numeric")]
+_MIGRATION_COLUMNS = {"id": "bigint", "a": "text", "b": "numeric"}
+
+
+def test_the_doc_table_is_read_between_its_heading_and_the_next_one() -> None:
+    assert doc_table_columns(_DOC) == _DOC_ROWS
+
+
+def test_a_consistent_doc_table_has_no_problem() -> None:
+    assert find_doc_disagreements(_DOC_ROWS, _MIGRATION_COLUMNS, {"id"}) == []
+
+
+@pytest.mark.parametrize(
+    ("rows", "expected"),
+    [
+        ([("a", "text")], "b: in the migrations but missing from the data contract table"),
+        (_DOC_ROWS + [("new", "text")], "new: in the data contract table but not in the migrations"),
+        (_DOC_ROWS + [("a", "text")], "a: listed twice in the data contract table"),
+        ([("a", "text"), ("b", "integer")], "b: data contract table integer but migrations numeric"),
+    ],
+)
+def test_each_kind_of_doc_table_disagreement_is_reported(rows: list[tuple[str, str]], expected: str) -> None:
+    assert expected in find_doc_disagreements(rows, _MIGRATION_COLUMNS, {"id"})

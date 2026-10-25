@@ -3,92 +3,51 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #72 (the four dbt defects of the quality-baseline audit re-run; items 14, 16, 18, 19 are owner
-  calls and stay untouched). `dim_stock` fails the Reuse condition of `docs/layering.md` and carries `sector`
-  and `currency` that the fact table already has, so two `coalesce` calls in `int_stock__card_metrics` can never
-  change a value; the `dim_stock` and `int_stock__card_metrics` "Used by" lines are wrong; three descriptions
-  say "each at its market's latest snapshot_date" while the model keeps each ticker's own latest snapshot; and
-  `docs/engineering_standards.md` section 1.2 says "no multi-line comment blocks" while 13 of the 14 two-line
-  comment blocks in the dbt SQL are one sentence wrapped. One rule over every case: a description states what the
-  code does, a rule says what the code already is, and a documented claim that a tool can check is checked.
+objective: Works #73 (EXP-1, defect 20 of the quality-baseline audit re-run; the EXP-2 items 21 and 22 are owner
+  calls and stay untouched). The column table in `docs/data_contract.md` section "Supabase export --
+  `mart_stock_cards` table" omits `company_founded_year` and `ebit_margin_basis`, which are in the dbt contract,
+  `EXPORT_COLUMNS` and the migrations, and the paragraph above it still says those surfaces are hand-maintained
+  although `tests/tooling/test_schema_copies_agree.py` now compares three of them. One rule: a documented claim
+  that a tool can check is checked, so the doc table joins the schema copies the test compares.
 
 scope_paths:
-  - dbt_analytics/models/3_core/dim_stock.sql
-  - dbt_analytics/models/3_core/_core.yml
-  - dbt_analytics/models/4_intermediate/int_stock__card_metrics.sql
-  - dbt_analytics/models/4_intermediate/_intermediate.yml
-  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
-  - dbt_analytics/models/5_marts/_marts.yml
-  - dbt_analytics/tests/assert_dividend_yield_suspects.sql
-  - docs/layering.md
-  - docs/engineering_standards.md
   - docs/data_contract.md
-  - scripts/check_dbt_documentation.py
-  - tests/tooling/test_check_dbt_documentation.py
+  - tests/tooling/test_schema_copies_agree.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Answered by the owner in chat. Defect 10: keep `dim_stock` (A); amend the Reuse condition of
-  `docs/layering.md` so a single-consumer entity table that is the one place an entity's key and display name are
-  resolved may be a dimension, and drop the redundant `sector` and `currency` from it and the two coalesces.
-  Defect 11: correct both "Used by" lines AND extend `scripts/check_dbt_documentation.py` to compare every
-  model's "Used by" line with the models that depend on it (B). Defect 12: the descriptions follow the code, "each
-  at its latest snapshot_date" (A); no filter is added. Defect 13: section 1.2 is reworded so one sentence may
-  wrap (A), and a comment with two full sentences is cut to one. The owner-call items 14, 16, 18, 19 are not
-  touched. No change to a mart column, a card number or an export column. Merge request questions, answered A:
-  the two older passages of `docs/layering.md` (the "Allowed" list and the "attribute masquerading as entity"
-  pattern) are amended to match the Reuse condition; a core, intermediate or mart model without a "Used by" line
-  fails the check.
+decisions_reserved: Answered by the owner in chat (A): keep the table and extend the test to check it; the table's
+  notes stay in the document. No column, type or note of an existing row changes. The paragraph above the table is
+  reworded as `changes` lists; no other doc text changes.
 
 changes:
-  - Defect 10: `dim_stock.sql` keeps `market_code`, `ticker`, `company_name` (seed name over yfinance
-    `longName`); `sector` and `currency` leave it and its `_core.yml` block. `int_stock__card_metrics.sql` uses
-    `s.info_sector` and `s.info_currency` directly and still joins `stocks` for `company_name`. The 19 unit-test
-    `dim_stock` inputs lose `sector` and `currency`. Every description and comment that mentions
-    `coalesce(info_sector, dim_stock.sector)` or "dim_stock has no sector" is restated (`_intermediate.yml`,
-    `_marts.yml`, `_core.yml`, `docs/data_contract.md`). `docs/layering.md` condition 2 becomes: "Reuse. Its
-    attributes are shared across more than one fact or mart, or it is a single-consumer entity table that is the
-    one place where an entity's key and display name are resolved."
-  - Defect 11: "Used by" of `dim_stock` (`int_stock__card_metrics` only) and `int_stock__card_metrics` (adds
-    `mart_stock_eligibility_gaps`). New `check_used_by_matches_dependencies(manifest, errors)` in
-    `scripts/check_dbt_documentation.py`: for each project model whose description has a `**Used by:**`
-    line, the model names in that line must equal the project models that depend on it; a core, intermediate or
-    mart model without the line fails; staging and base models without it are skipped; non-model consumers named
-    in the line are ignored. Called from `main()`. `docs/engineering_standards.md` section 2 says so in one
-    sentence. `docs/layering.md`: the "Allowed" bullet for dimensions and the "attribute masquerading as entity"
-    bullet each name the single-consumer entity table.
-  - Defect 12: the grain lines in `_intermediate.yml` and `_marts.yml` (`mart_stock_cards`), and the sentence in
-    `docs/data_contract.md` about the dbt model's grain, say "each at its latest snapshot_date".
-  - Defect 13: `docs/engineering_standards.md` section 1.2: "One sentence per comment, which may wrap onto more
-    than one line." `assert_dividend_yield_suspects.sql` (the one block with two full sentences) becomes one
-    sentence.
-  - `.claude/active_work.md`: current facts (audit issues, this branch, the #71 state).
+  - `docs/data_contract.md`: two rows added in `EXPORT_COLUMNS` order, `company_founded_year` (bigint, as in the dbt
+    contract and migration 006; the audit's proposed `integer` is wrong) after `business_summary`, and
+    `ebit_margin_basis` (text) after `ebit_margin_pct`. The paragraph before the table says that
+    `tests/tooling/test_schema_copies_agree.py` compares `EXPORT_COLUMNS`, the migrations, the dbt contract and this
+    table. The file is 29 bytes under its context budget, so the paragraph's other sentences are shortened to fit
+    the two rows and the new sentence; it drops the clause "before anything downstream ever sees a bad schema" and
+    keeps the claim that `dbt build` enforces the dbt contract on every merge request.
+  - `tests/tooling/test_schema_copies_agree.py`: reads the table under that heading and fails on a column the
+    migrations have (except the identity key `id`) that the table lacks, a column the table lists that the
+    migrations lack, a column listed twice, and a type that differs from the migrations' type. Tests for each kind
+    of disagreement and for the real document.
+  - `.claude/active_work.md`: current facts.
 
 done_when:
-  - `git grep -n -E "dim_stock\.(sector|currency)|st\.(sector|currency)|dim_stock has no" -- dbt_analytics docs scripts tests ':!dbt_analytics/target' ':!dbt_analytics/logs'`
-    finds nothing.
-  - `python scripts/bootstrap.py --verify` passes (dbt build with the unit tests, including the 19 changed
-    `dim_stock` inputs), and `python scripts/check_real_fixture_mart.py` shows the real-fixture golden mart
-    unchanged (`git diff --stat tests/fixtures/real/golden_mart.csv` empty).
-  - `git grep -n -E "market's latest snapshot|each market's latest" -- dbt_analytics/models docs` finds only the
-    `card_assessments` grain in `docs/data_contract.md` (a different table) or nothing.
-  - New tests, mutation-checked: a Used-by line naming a model that does not depend on it fails; a dependent model
-    missing from the line fails; a line naming only non-model consumers passes; a core, intermediate or mart model
-    without the line fails (forward and backslash paths); a staging or base model without it is skipped; the
-    real manifest passes.
-  - No block of two `--` comment lines in `dbt_analytics/` holds two full sentences (`[.!?]\s+[A-Za-z_]` across
-    the joined block), by the same scan as in the audit.
+  - The real document passes the new test, and with `company_founded_year` or `ebit_margin_basis` removed from the
+    table in memory it reports exactly that column.
+  - Mutation-checked: a missing row, an extra row, a duplicate row and a wrong type each fail a test.
+  - `git grep -n "hand-maintained" -- docs` finds nothing that describes the schema copies.
   - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.
 
 known_limits:
-  - The Used-by check compares model names only; a Used-by line may name an export, a script or the frontend.
-  - A comment block counts as one sentence when it has no full stop followed by a new sentence; semicolons join
-    clauses within a sentence.
-  - Model names in prose after a Used-by list count as named; a bold marker inside the list ends the match.
-  - The Reuse amendment is a rule text change: it ships with this merge request for the owner to merge.
+  - The test reads every `| `name` | type |` row between the heading and the next `## ` heading; it compares names and
+    Postgres types, not the notes column.
+  - It compares the table to the migrations; the migrations are already compared to `EXPORT_COLUMNS` and the dbt
+    contract, so all four agree when the test passes.
 
 regression_checklist:
-  - Every card number, eligibility flag and column of the mart is unchanged (golden mart, dbt unit tests).
-  - The other staging, base, core, intermediate and mart descriptions are untouched.
-  - `scripts/check_dbt_documentation.py` keeps every existing check and its exit behaviour.
+  - The existing three-copy test and its parser behave as before.
+  - No row other than the two new ones changes in the table.

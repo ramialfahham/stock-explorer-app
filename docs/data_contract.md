@@ -593,11 +593,9 @@ description in `dbt_analytics/models/5_marts/_marts.yml`); this heading names th
 
 **Schema is dbt-contract-enforced** (`config: {contract: {enforced: true}}` in
 `dbt_analytics/models/5_marts/_marts.yml`): `dbt build` fails if a column's name, type, or
-count drifts from what's declared there. This guarantees the DuckDB mart matches its own
-documented shape, on every merge request, before anything downstream ever sees a bad schema --
-it does not auto-sync `scripts/export_to_supabase.py`'s separate `EXPORT_COLUMNS` allowlist or
-the Postgres migration schema, which stay hand-maintained, separate surfaces the contract
-cannot see.
+count drifts from it. That keeps the DuckDB mart on its documented shape
+on every merge request. It does not sync `EXPORT_COLUMNS` in `scripts/export_to_supabase.py`, the
+Postgres migrations or the table below; `tests/tooling/test_schema_copies_agree.py` compares all four.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -607,8 +605,10 @@ cannot see.
 | `sector` | text | |
 | `currency` | text | |
 | `business_summary` | text | Yahoo `longBusinessSummary`; nullable |
+| `company_founded_year` | bigint | nullable |
 | `forward_pe` | numeric | Superseded; still computed and stored, not catalogued. |
 | `ebit_margin_pct` | numeric | |
+| `ebit_margin_basis` | text | `ttm_quarterly` or `annual_latest`; nullable |
 | `revenue_growth_yoy_pct` | numeric | |
 | `net_debt_to_ebitda` | numeric | |
 | `fcf_margin_pct` | numeric | |
