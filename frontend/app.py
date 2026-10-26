@@ -347,7 +347,7 @@ def _go_to_nav_page(target: str) -> None:
     st.session_state["active_page"] = target
 
 
-def _render_bottom_nav(*, saved_count: int, client) -> str:
+def _render_bottom_nav(*, client) -> str:
     active = normalize_nav_page(st.session_state.get("active_page"))
 
     st.markdown('<div class="ss-nav-row-marker"></div>', unsafe_allow_html=True)
@@ -512,7 +512,7 @@ def _render_discover_tab(client) -> dict | None:
 
     if not pool:
         if query:
-            st.warning(f"No matches for “{query}”.")
+            st.info(f"No matches for “{query}”.")
         else:
             st.info("No companies match this scope. Try another market, sector, or clear filters.")
         return None
@@ -719,10 +719,7 @@ def _discovery_page(client) -> None:
 
     # The brand header is already on screen (main() renders it first); the nav reads the same
     # session-state page the header's compact flag was computed from.
-    active = _render_bottom_nav(
-        saved_count=saved_count,
-        client=client,
-    )
+    active = _render_bottom_nav(client=client)
 
     discover_focused = active == "Discover" and bool(
         st.session_state.get("discover_focus_key")

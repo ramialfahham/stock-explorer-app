@@ -35,9 +35,9 @@ unique test; `PyYAML` pinned in two places; the 3-line `sys.path` block copied i
 `load_markets` error messages; the active-code set built inline in four scripts and two tests): the owner
 says which to file. Merged: #72 (!268 the gitleaks launcher, !269 `dim_stock` keeps only the display name, the Used-by
 line is required and checked, the grain lines say "each at its latest snapshot_date"; follow-up, not filed: one helper for the
-path-to-layer line in `check_dbt_documentation.py`). #74 is open as !271. **In flight: #75** (branch
-`fix/docs-audit-75`): `streamlit_deploy.md` loses its "More metrics" claim; `data_contract.md` and `project_context.md`
-lose the Phase B and Phase 2 labels and the News freshness row. #51 item 6 stays by the owner's answer A; the reworded ING-1 ("no torn file; partial coverage only while a resumable
+path-to-layer line in `check_dbt_documentation.py`); #74 (!271: search rows keep the lead metric, an empty search
+shows `st.info`, dead `saved_count` dropped); #75 (!272: no "More metrics" claim, no Phase B or News row; follow-up
+#79). #51 item 6 stays by the owner's answer A; the reworded ING-1 ("no torn file; partial coverage only while a resumable
 run is unfinished") goes into criteria v4 below.
 
 **AI read: regenerated on the live data (2026-10-12 to 15).** `INPUT_HASH_VERSION` 5a.6 (!261: revised prompt,
@@ -56,7 +56,7 @@ standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 `football-data-pipeline/docs/working_agreement.md` section 9.
 
 **Next, milestone "3 · Professional baseline".** The audit re-run of 2026-10-22 (criteria v3) found 21 defects,
-filed as #71 ingestion (done), #72 dbt (done), #73 export (done), #74 frontend (!271 open), #75 docs (in flight), #76 hygiene; each issue
+filed as #71 ingestion (done), #72 dbt (done), #73 export (done), #74 frontend (done), #75 docs (done), #76 hygiene (next); each issue
 lists its owner calls apart. **Done = all 21 fixed, then one audit re-run with zero defects** (the owner approves its cost, about 1.7M
 tokens: the `quality-baseline-audit` workflow, then `python scripts/verify_quality_audit.py <workflow output JSON>
 --report <file>`). Take the issues one at a time, owner decisions one at a time. Criteria:
