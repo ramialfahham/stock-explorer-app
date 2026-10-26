@@ -17,20 +17,13 @@ import re
 import sys
 from pathlib import Path
 
+from governed_files import files_matching
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 GOVERNED_GLOBS = ("docs/*.md", "docs/ui/*.md")
 
 LINK_RE = re.compile(r"\]\(([^)]+)\)")
-
-
-def governed_docs(root: Path) -> set[str]:
-    found: set[str] = set()
-    for pattern in GOVERNED_GLOBS:
-        for p in root.glob(pattern):
-            if p.is_file():
-                found.add(p.relative_to(root).as_posix())
-    return found
 
 
 def linked_docs(claude_md: Path) -> set[str]:
@@ -47,7 +40,7 @@ def linked_docs(claude_md: Path) -> set[str]:
 def find_violations(root: Path, claude_md: Path) -> list[str]:
     if not claude_md.is_file():
         return [f"{claude_md.name} does not exist"]
-    governed = governed_docs(root)
+    governed = files_matching(root, GOVERNED_GLOBS)
     linked = linked_docs(claude_md)
     missing = sorted(governed - linked)
     return [f"{rel}: not linked from {claude_md.name}" for rel in missing]

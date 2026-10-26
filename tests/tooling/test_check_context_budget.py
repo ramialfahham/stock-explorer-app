@@ -13,10 +13,10 @@ from check_context_budget import (  # noqa: E402
     GOVERNED_GLOBS,
     REPO_ROOT,
     find_violations,
-    governed_files,
     load_budgets,
     measured_size,
 )
+from governed_files import files_matching
 
 
 def _tree(tmp_path: Path, files: dict[str, int]) -> Path:
@@ -55,7 +55,7 @@ def test_an_ungoverned_markdown_file_is_ignored(tmp_path: Path) -> None:
     root = _tree(
         tmp_path, {"README.md": 10, ".claude/skills/s/SKILL.md": 10, "docs/ui/deep/x.md": 10}
     )
-    assert governed_files(root) == set()
+    assert files_matching(root, GOVERNED_GLOBS) == set()
     assert find_violations(root, {}) == []
 
 

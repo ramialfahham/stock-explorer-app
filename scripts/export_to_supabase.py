@@ -110,6 +110,19 @@ EXPORT_COLUMNS = [
 ]
 
 
+def coerce_cell(value):
+    """One mart cell as a JSON-ready value: NaN/NA -> None, dates -> iso, numpy -> python."""
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, float) and value != value:  # defensive NaN
+        return None
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if hasattr(value, "item"):
+        return value.item()
+    return value
+
+
 def _load_mart_rows(db_path: Path) -> list[dict]:
     conn = duckdb.connect(str(db_path), read_only=True)
     try:
@@ -126,18 +139,7 @@ def _load_mart_rows(db_path: Path) -> list[dict]:
     exported_at = datetime.now(timezone.utc).isoformat()
     records: list[dict] = []
     for _, row in rows.iterrows():
-        record = {col: row[col] for col in EXPORT_COLUMNS}
-        for key, value in record.items():
-            if value is None or pd.isna(value):
-                record[key] = None
-            elif isinstance(value, float) and value != value:
-                record[key] = None
-            elif hasattr(value, "isoformat"):
-                record[key] = value.isoformat()
-            elif hasattr(value, "item"):
-                record[key] = value.item()
-            else:
-                record[key] = value
+        record = {col: coerce_cell(row[col]) for col in EXPORT_COLUMNS}
         record["exported_at"] = exported_at
         records.append(record)
     return records

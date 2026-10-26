@@ -11,7 +11,7 @@ Two layers:
   card the cap skips, or whose call fails, has any stale stored read explicitly cleared
   rather than left showing under this run's fresh verdict and numbers.
 
-Mirrors scripts/export_to_supabase.py for the read/coerce/upsert shape and for --target
+Shares coerce_cell with scripts/export_to_supabase.py and mirrors its upsert shape and --target
 (prod writes public.card_assessments, dev writes dev.card_assessments in the same project;
 dev needs the schema exposed to PostgREST, see docs/supabase_setup.md). --dry-run returns
 before any credential or LLM call, so CI can smoke it secret-free; the real path also skips
@@ -32,7 +32,6 @@ from pathlib import Path
 
 import anthropic
 import duckdb
-import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client
 from supabase.lib.client_options import SyncClientOptions
@@ -49,6 +48,7 @@ from assessment_rules import (
     validate_read_metrics,
     verdict_meaning_violation,
 )
+from export_to_supabase import coerce_cell
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -95,19 +95,6 @@ ASSESSMENT_INPUT_COLUMNS = [
 ]
 
 
-def _coerce(value):
-    """Match export_to_supabase coercion: NaN/NA -> None, dates -> iso, numpy -> python."""
-    if value is None or pd.isna(value):
-        return None
-    if isinstance(value, float) and value != value:  # defensive NaN
-        return None
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    if hasattr(value, "item"):
-        return value.item()
-    return value
-
-
 def _load_mart_rows(db_path: Path) -> list[dict]:
     conn = duckdb.connect(str(db_path), read_only=True)
     try:
@@ -118,7 +105,7 @@ def _load_mart_rows(db_path: Path) -> list[dict]:
     if frame.empty:
         return []
     return [
-        {col: _coerce(row[col]) for col in ASSESSMENT_INPUT_COLUMNS}
+        {col: coerce_cell(row[col]) for col in ASSESSMENT_INPUT_COLUMNS}
         for _, row in frame.iterrows()
     ]
 

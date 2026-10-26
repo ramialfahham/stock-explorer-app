@@ -11,9 +11,9 @@ from check_docs_indexed import (  # noqa: E402
     GOVERNED_GLOBS,
     REPO_ROOT,
     find_violations,
-    governed_docs,
     linked_docs,
 )
+from governed_files import files_matching
 
 
 def _write(path: Path, text: str) -> None:
@@ -50,7 +50,7 @@ def test_a_nested_backlog_doc_is_not_governed(tmp_path: Path) -> None:
     # docs/*.md matches only direct children, matching check_context_budget.py's own
     # GOVERNED_GLOBS semantics -- docs/backlog/x.md is a grandchild, out of scope here.
     _write(tmp_path / "docs" / "backlog" / "x.md", "content")
-    assert governed_docs(tmp_path) == set()
+    assert files_matching(tmp_path, GOVERNED_GLOBS) == set()
 
 
 def test_a_link_with_a_leading_dot_slash_still_counts(tmp_path: Path) -> None:
