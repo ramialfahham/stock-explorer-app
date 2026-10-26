@@ -18,6 +18,8 @@ from pathlib import Path
 
 import yaml
 
+from governed_files import files_matching
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUDGET_PATH = REPO_ROOT / "docs" / "context_budget.yml"
 GOVERNED_GLOBS = ("CLAUDE.md", ".claude/*.md", ".claude/task/*.md", "docs/*.md", "docs/ui/*.md")
@@ -40,18 +42,9 @@ def measured_size(path: Path) -> int:
     return len(path.read_bytes().replace(b"\r\n", b"\n"))
 
 
-def governed_files(root: Path) -> set[str]:
-    found: set[str] = set()
-    for pattern in GOVERNED_GLOBS:
-        for p in root.glob(pattern):
-            if p.is_file():
-                found.add(p.relative_to(root).as_posix())
-    return found
-
-
 def find_violations(root: Path, budgets: dict[str, int]) -> list[str]:
     violations: list[str] = []
-    governed = governed_files(root)
+    governed = files_matching(root, GOVERNED_GLOBS)
     for rel in sorted(governed - set(budgets)):
         size = measured_size(root / rel)
         violations.append(f"{rel}: {size} bytes, no budget in {BUDGET_PATH.name}")
