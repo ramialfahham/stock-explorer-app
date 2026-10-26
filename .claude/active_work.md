@@ -16,8 +16,9 @@ one or two lines and let git and the MR keep the detail._
 **Start here (2026-10-25).** Merged: the small-fix list #44-#47, #53, #54 (!234-!249); the AI-read
 changes !251, !252, !257 (catalogue-grounded read, figure and wording checks, 5a.5) and !258 (the
 rules' own reasons for the verdict, 5a.6); #48 (!254); #49 (!256); #55 (!264);
-#52 items 16, 17, 19 (!265: includes `tests/tooling/test_schema_copies_agree.py`, which #73 extends); #51 items 2 to 5
-(!266); #71 items 1 to 6 and #43 (!267: `ingestion/atomic_write.py`, `fundamentals_empty`). Criteria
+#52 items 16, 17, 19 (!265); #51 items 2 to 5
+(!266); #71 items 1 to 6 and #43 (!267); #73 (!270: `test_schema_copies_agree.py` also checks the data contract
+column table; follow-ups in #78). Criteria
 `docs/quality_criteria.json` is v3 (the FE-1 exception is the owner's answer A; DBT-3 allows a
 documented raw-file check model). Open follow-ups: #56 (preset cutoffs vs verdict bands), #57
 (`importance_tier`, `basis_column`: no production reader), #58 (company identity), #59 (the
@@ -34,9 +35,9 @@ unique test; `PyYAML` pinned in two places; the 3-line `sys.path` block copied i
 `load_markets` error messages; the active-code set built inline in four scripts and two tests): the owner
 says which to file. Merged: #72 (!268 the gitleaks launcher, !269 `dim_stock` keeps only the display name, the Used-by
 line is required and checked, the grain lines say "each at its latest snapshot_date"; follow-up, not filed: one helper for the
-path-to-layer line in `check_dbt_documentation.py`). **In flight: #73** (branch `fix/export-audit-73`): the column
-table in `docs/data_contract.md` gets the two missing rows and `test_schema_copies_agree.py` checks it (owner answer A).
-#51 item 6 stays by the owner's answer A; the reworded ING-1 ("no torn file; partial coverage only while a resumable
+path-to-layer line in `check_dbt_documentation.py`). **In flight: #74** (branch `fix/frontend-audit-74`): search rows keep the lead
+metric and `docs/ui/discover_list.md` says so (owner answer A); an empty search shows `st.info` (owner answer A); the
+dead `saved_count` parameter of `_render_bottom_nav` is dropped. #51 item 6 stays by the owner's answer A; the reworded ING-1 ("no torn file; partial coverage only while a resumable
 run is unfinished") goes into criteria v4 below.
 
 **AI read: regenerated on the live data (2026-10-12 to 15).** `INPUT_HASH_VERSION` 5a.6 (!261: revised prompt,
@@ -55,7 +56,7 @@ standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 `football-data-pipeline/docs/working_agreement.md` section 9.
 
 **Next, milestone "3 · Professional baseline".** The audit re-run of 2026-10-22 (criteria v3) found 21 defects,
-filed as #71 ingestion (done), #72 dbt (done), #73 export (in flight), #74 frontend, #75 docs, #76 hygiene; each issue
+filed as #71 ingestion (done), #72 dbt (done), #73 export (done), #74 frontend (in flight), #75 docs, #76 hygiene; each issue
 lists its owner calls apart. **Done = all 21 fixed, then one audit re-run with zero defects** (the owner approves its cost, about 1.7M
 tokens: the `quality-baseline-audit` workflow, then `python scripts/verify_quality_audit.py <workflow output JSON>
 --report <file>`). Take the issues one at a time, owner decisions one at a time. Criteria:

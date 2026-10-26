@@ -3,51 +3,53 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #73 (EXP-1, defect 20 of the quality-baseline audit re-run; the EXP-2 items 21 and 22 are owner
-  calls and stay untouched). The column table in `docs/data_contract.md` section "Supabase export --
-  `mart_stock_cards` table" omits `company_founded_year` and `ebit_margin_basis`, which are in the dbt contract,
-  `EXPORT_COLUMNS` and the migrations, and the paragraph above it still says those surfaces are hand-maintained
-  although `tests/tooling/test_schema_copies_agree.py` now compares three of them. One rule: a documented claim
-  that a tool can check is checked, so the doc table joins the schema copies the test compares.
+objective: Works #74 (FE-2 defects 23 and 24, FE-3 defect 25 of the quality-baseline audit re-run; the owner calls 27
+  to 30 stay untouched). `docs/ui/discover_list.md` says search-result rows carry no numbers while the code, and
+  `docs/ui/design_system.md`, give them the lead metric; the spec says an empty list is "one `st.info`" while an
+  empty search shows `st.warning`; and `_render_bottom_nav` takes a `saved_count` it never reads. One rule: the
+  spec and the code say the same thing, and a parameter that nothing reads is removed.
 
 scope_paths:
-  - docs/data_contract.md
-  - tests/tooling/test_schema_copies_agree.py
+  - frontend/app.py
+  - tests/frontend/test_app_e2e.py
+  - docs/ui/discover_list.md
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Answered by the owner in chat (A): keep the table and extend the test to check it; the table's
-  notes stay in the document. No column, type or note of an existing row changes. The paragraph above the table is
-  reworded as `changes` lists; no other doc text changes.
+decisions_reserved: Answered by the owner in chat. Defect 23: A, search-result rows keep the lead metric, so
+  `discover_list.md` is corrected to match the code and `design_system.md`; no code change. Defect 24: A, an empty
+  search shows `st.info` (not `st.warning`) with the text it has today, and the "Empty state" row of
+  `discover_list.md` says so. Defect 25 is mechanical (a parameter nothing reads). No other copy, layout, token or
+  interaction changes.
 
 changes:
-  - `docs/data_contract.md`: two rows added in `EXPORT_COLUMNS` order, `company_founded_year` (bigint, as in the dbt
-    contract and migration 006; the audit's proposed `integer` is wrong) after `business_summary`, and
-    `ebit_margin_basis` (text) after `ebit_margin_pct`. The paragraph before the table says that
-    `tests/tooling/test_schema_copies_agree.py` compares `EXPORT_COLUMNS`, the migrations, the dbt contract and this
-    table. The file is 29 bytes under its context budget, so the paragraph's other sentences are shortened to fit
-    the two rows and the new sentence; it drops the clause "before anything downstream ever sees a bad schema" and
-    keeps the claim that `dbt build` enforces the dbt contract on every merge request.
-  - `tests/tooling/test_schema_copies_agree.py`: reads the table under that heading and fails on a column the
-    migrations have (except the identity key `id`) that the table lacks, a column the table lists that the
-    migrations lack, a column listed twice, and a type that differs from the migrations' type. Tests for each kind
-    of disagreement and for the real document.
+  - `docs/ui/discover_list.md`: the heading and first paragraph of "Why this list is richer than ..." name Saved rows
+    only as the picking rows with no numbers, and say search results share this list and its lead metric (one pool,
+    one rendering path, as `design_system.md` says). The "Empty state" row says one `st.info`, and that an empty
+    search shows `No matches for “<query>”.` in it.
+  - `frontend/app.py`: the empty-search message is `st.info(f"No matches for “{query}”.")`; `_render_bottom_nav`
+    loses `saved_count`, and `_discovery_page` stops passing it (it keeps its own `saved_count` for
+    `_render_saved_scope_stats`).
+  - `tests/frontend/test_app_e2e.py`: the no-match search test asserts the message is an info box and that no
+    warning box shows.
   - `.claude/active_work.md`: current facts.
 
 done_when:
-  - The real document passes the new test, and with `company_founded_year` or `ebit_margin_basis` removed from the
-    table in memory it reports exactly that column.
-  - Mutation-checked: a missing row, an extra row, a duplicate row and a wrong type each fail a test.
-  - `git grep -n "hand-maintained" -- docs` finds nothing that describes the schema copies.
-  - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.
+  - `git grep -n -E "richer than Saved's or search results|search-result rows are picking rows" -- docs frontend tests`
+    finds nothing.
+  - `git grep -n "st\.warning" -- frontend` finds nothing (the only use was the empty search).
+  - `_render_bottom_nav` has no `saved_count` parameter and no caller passes one: `git grep -n "_render_bottom_nav" --
+    frontend tests` shows only the definition, the one call with `client=` alone, and prose mentions.
+  - The e2e test fails when the empty search shows `st.warning` again, and when the text changes (mutation-checked).
+  - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes; the UX PR gate in
+    `docs/working_agreement.md` is answered in the merge request.
 
 known_limits:
-  - The test reads every `| `name` | type |` row between the heading and the next `## ` heading; it compares names and
-    Postgres types, not the notes column.
-  - It compares the table to the migrations; the migrations are already compared to `EXPORT_COLUMNS` and the dbt
-    contract, so all four agree when the test passes.
+  - No live run against Supabase: the app needs keys this machine does not have; the Streamlit AppTest e2e suite
+    renders the real page against a mocked client.
+  - The colour change (yellow box to blue box) for an empty search is the owner's answer A; no other widget moves.
 
 regression_checklist:
-  - The existing three-copy test and its parser behave as before.
-  - No row other than the two new ones changes in the table.
+  - Every other e2e test of search, Discover and Saved passes unchanged.
+  - The empty filter scope still shows its own `st.info` text; Saved's empty state is untouched.

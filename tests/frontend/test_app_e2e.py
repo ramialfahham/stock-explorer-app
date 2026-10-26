@@ -457,12 +457,12 @@ def test_discover_persistent_search_hidden_while_a_card_is_focused(app_test: App
     assert len(at.text_input) == 0
 
 
-def test_search_with_no_match_shows_warning(app_test: AppTest) -> None:
+def test_search_with_no_match_shows_an_info_box_with_the_query(app_test: AppTest) -> None:
     at = app_test.run()
     at = at.text_input[0].set_value("nonexistent-zzz").run()
     _assert_clean(at)
-    assert len(at.warning) == 1
-    assert "nonexistent-zzz" in at.warning[0].value
+    assert len(at.warning) == 0
+    assert [i.value for i in at.info] == ["No matches for “nonexistent-zzz”."]
 
 
 def _rendered_markdown(at: AppTest) -> list[str]:

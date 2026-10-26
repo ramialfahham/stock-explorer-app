@@ -19,12 +19,13 @@ when only one company matches. No auto-focus on tab load, matching Saved's own r
 
 ---
 
-## Why this list is richer than Saved's or search results'
+## Why this list is richer than Saved's
 
-Saved rows and search-result rows are picking rows, title and subtitle only, deliberately no numbers
+Saved rows are picking rows, title and subtitle only, deliberately no numbers
 (`saved_list.md`'s own anti-pattern: "list is for picking, not reading numbers"). Discover's
 filter narrows a large, unfamiliar pool (up to hundreds of companies), so the row carries one
 extra signal that helps a reader decide which company to open first: one glance metric.
+Search results share this list's pool and rows, so they carry the same metric.
 
 **The lead metric is not a free choice per row.** It's exactly the one metric that is a CORE,
 verdict-deciding axis for that company type's own verdict rule in `scripts/assessment_rules.py`,
@@ -84,7 +85,7 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
 | Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measures at ~2.4s before Streamlit even registers a click. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
 | Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and search results already use, unchanged |
 | Sticky action | **Save** renders on the **focus card only**, not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` rejects |
-| Empty state | One `st.info`, no fake rows |
+| Empty state | One `st.info`, no fake rows. An empty search shows `No matches for “<query>”.` in it |
 
 ---
 

@@ -1,52 +1,42 @@
 # Review
 
-diff_sha256: 66715afd882c052f84747b3f69f62ab8b6c935ae9d3497f67b068febb7621a0b
+diff_sha256: 48b36a05f6250b7a45938af6e63566f1d27fa3e595da6e94bf866de53bf32d89
 rounds: 1
 
-Works #73 (EXP-1, defect 20; the EXP-2 items 21 and 22 are owner calls, untouched). The column table in
-`docs/data_contract.md` gets the two missing rows (`company_founded_year` bigint, `ebit_margin_basis` text; the audit
-proposed `integer` for the first, which the dbt contract and migration 006 contradict), and
-`tests/tooling/test_schema_copies_agree.py` now compares that table with the migrations. Round 1 (tree 1ee7229):
-scope-auditor, platform-reviewer and equity-analyst-reviewer all PASS. Applied after the PASS verdicts: the final newline of the test file (added by the end-of-file hook) and the contract
-sentence "no other doc text changes" now names the reworded paragraph. The data contract was 29 bytes under its
-context budget, so the paragraph before the table is shortened to fit the two rows; it drops the clause "before
-anything downstream ever sees a bad schema".
+Works #74 (FE-2 defects 23 and 24, FE-3 defect 25; the owner calls 27 to 30 are untouched). Defect 23 (owner answer
+A): `docs/ui/discover_list.md` now says search results share Discover's list and its lead metric, as the code and
+`docs/ui/design_system.md` already do. Defect 24 (owner answer A): an empty search shows `st.info` with its existing
+text, and the spec's "Empty state" row says so. Defect 25: `_render_bottom_nav` loses its unread `saved_count`
+parameter. Round 1 (tree 0fbcd46): scope-auditor and platform-reviewer PASS. No edits after the PASS verdicts.
 
 Coordinator evidence:
-- The real document passes the new test; with either new row removed in memory the test reports exactly that column
-  ("in the migrations but missing from the data contract table").
-- Six mutations of the check, file restored after each, each fails a test: missing row not reported, extra row not
-  reported, duplicate not reported, type not compared, section running past the next heading, `id` not excused.
-- `pytest tests` 1482 passed, 1 skipped; `check_context_budget.py`, em-dash and narrative-date checks pass.
+- `pytest tests` 1482 passed, 1 skipped (the frontend suite alone: 333 passed); `check_context_budget.py`, em-dash and
+  narrative-date checks pass.
+- Three mutations of `frontend/app.py`, file restored after each, each fails the renamed e2e test on its assertion:
+  `st.warning` again, changed text, the query dropped from the text.
+- The done_when searches: no "richer than Saved's or search results" or "search-result rows are picking rows" in
+  docs, frontend or tests; no `st.warning` in `frontend/`; `_render_bottom_nav` has its definition, one call with
+  `client=` alone and a docstring mention.
+- No live run: this machine has no Supabase keys; the AppTest e2e suite renders the page against a mocked client.
 
-follow_ups: `supabase/migrations/018_atomic_card_export.sql` lines 68-69 still call the schema a "fourth
-hand-maintained copy" of which only the dbt contract is machine-checked (outside scope, a migrations comment: the
-owner's call); a test that a changed heading raises; the "except `id`" wording is stricter than the check, which
-only excuses `id` when the table omits it.
+follow_ups: the exact-list assertion on `at.info` breaks if a persistent `st.info` is added to Discover (narrow it to
+the message text then); `frontend/app.py` line 574 holds an older em-dash in the "Nothing saved yet" message, not an
+edited line.
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: 1ee722930a5429c49bace9257ca1aa8750081e8e
+reviewed_tree: 0fbcd466b542791aae7b3ac4d49d771cc949eb68
 risks_checked:
-- The new rows match the dbt contract and migrations 005 and 006, in `EXPORT_COLUMNS` order.
-- The shortened paragraph keeps the claim that `dbt build` enforces the contract on every merge request.
-wording_fixes: applied.
+- All five staged files are in `scope_paths`; the code change is exactly the two owner answers and the mechanical parameter.
+- No copy of the changed claims is left: the spec matches `row_ui.py`, `design_system.md` and the code.
+wording_fixes: none.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: 1ee722930a5429c49bace9257ca1aa8750081e8e
+reviewed_tree: 0fbcd466b542791aae7b3ac4d49d771cc949eb68
 risks_checked:
-- The row pattern matches every row of the real table and none of the header; a changed heading or an emptied table fails loudly.
-- The unit tests pin the missing, extra, duplicate and type branches, the section boundaries and the `id` exemption.
-wording_fixes: none required.
-
-## equity-analyst-reviewer
-
-VERDICT: PASS
-reviewed_tree: 1ee722930a5429c49bace9257ca1aa8750081e8e
-risks_checked:
-- The two rows and their "nullable" notes are true against `_marts.yml` and the explanation of `ebit_margin_basis`.
-- The reworded paragraph still states the contract enforcement truthfully; no metric definition or number changed.
-wording_fixes: none required.
+- The only caller of `_render_bottom_nav` passes `client` alone; `saved_count` is still defined and read in `_discovery_page`.
+- Nothing else on the no-match path renders an `st.info`, so the exact-list assertion holds; it fails on a warning or any text change.
+wording_fixes: none.
