@@ -3,51 +3,51 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #73 (EXP-1, defect 20 of the quality-baseline audit re-run; the EXP-2 items 21 and 22 are owner
-  calls and stay untouched). The column table in `docs/data_contract.md` section "Supabase export --
-  `mart_stock_cards` table" omits `company_founded_year` and `ebit_margin_basis`, which are in the dbt contract,
-  `EXPORT_COLUMNS` and the migrations, and the paragraph above it still says those surfaces are hand-maintained
-  although `tests/tooling/test_schema_copies_agree.py` now compares three of them. One rule: a documented claim
-  that a tool can check is checked, so the doc table joins the schema copies the test compares.
+objective: Works #75 (DOC-3 defects 32 and 33 of the quality-baseline audit re-run; the owner calls 34 to 52 stay
+  untouched). `docs/streamlit_deploy.md` says the card has three headline metrics with two more under "More
+  metrics (scroll)", which `docs/north_star.md` and `docs/ui/card_metric_cell.md` contradict and the frontend does
+  not render; `docs/data_contract.md` lists `yf_fundamentals.parquet` as "Planned" under a "Phase B baseline" heading
+  although ingestion writes it on every run, and its Freshness table has a "News (Phase 2) | Daily | Separate
+  workflow" row for a workflow that does not exist (headlines are fetched on demand in the Saved tab, as
+  `docs/operations_guide.md` says); `docs/project_context.md` repeats "(Phase B)". One rule: a doc states what the
+  code does now, with no phase labels for work that has shipped.
 
 scope_paths:
+  - docs/streamlit_deploy.md
   - docs/data_contract.md
-  - tests/tooling/test_schema_copies_agree.py
+  - docs/project_context.md
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Answered by the owner in chat (A): keep the table and extend the test to check it; the table's
-  notes stay in the document. No column, type or note of an existing row changes. The paragraph above the table is
-  reworded as `changes` lists; no other doc text changes.
+decisions_reserved: None open. Both defects are false claims with a documented true version elsewhere (the audit's
+  own proposed fixes); no product, metric, naming or permanent decision. The owner calls 34 to 52 are not touched.
 
 changes:
-  - `docs/data_contract.md`: two rows added in `EXPORT_COLUMNS` order, `company_founded_year` (bigint, as in the dbt
-    contract and migration 006; the audit's proposed `integer` is wrong) after `business_summary`, and
-    `ebit_margin_basis` (text) after `ebit_margin_pct`. The paragraph before the table says that
-    `tests/tooling/test_schema_copies_agree.py` compares `EXPORT_COLUMNS`, the migrations, the dbt contract and this
-    table. The file is 29 bytes under its context budget, so the paragraph's other sentences are shortened to fit
-    the two rows and the new sentence; it drops the clause "before anything downstream ever sees a bad schema" and
-    keeps the claim that `dbt build` enforces the dbt contract on every merge request.
-  - `tests/tooling/test_schema_copies_agree.py`: reads the table under that heading and fails on a column the
-    migrations have (except the identity key `id`) that the table lacks, a column the table lists that the
-    migrations lack, a column listed twice, and a type that differs from the migrations' type. Tests for each kind
-    of disagreement and for the real document.
+  - `docs/streamlit_deploy.md`: the UX notes sentence about three headline metrics and "More metrics (scroll)"
+    becomes a pointer to `north_star.md` section "The card: fundamentals by company type". The next paragraph (Save
+    is stored in the browser) stays.
+  - `docs/data_contract.md`: the two raw-parquet tables ("Current (Phase B baseline)" and "Planned (fundamentals)")
+    become one table of the three files under one heading, rows unchanged; the "News (Phase 2)" row of the Freshness
+    table is deleted.
+  - `docs/project_context.md`: "and (Phase B) `yf_fundamentals.parquet`" becomes "and `yf_fundamentals.parquet`".
   - `.claude/active_work.md`: current facts.
 
 done_when:
-  - The real document passes the new test, and with `company_founded_year` or `ebit_margin_basis` removed from the
-    table in memory it reports exactly that column.
-  - Mutation-checked: a missing row, an extra row, a duplicate row and a wrong type each fail a test.
-  - `git grep -n "hand-maintained" -- docs` finds nothing that describes the schema copies.
-  - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.
+  - `git grep -n -E "Phase B|Planned \(fundamentals\)|News \(Phase 2\)|More metrics|three headline metrics" -- docs
+    frontend scripts tests` finds nothing.
+  - `git grep -n "yf_fundamentals.parquet" -- docs/data_contract.md docs/project_context.md` still finds the file named
+    in both documents.
+  - `pytest tests -q` passes (it includes the doc-path and docs-indexed checks); `python scripts/check_context_budget.py`
+    passes.
 
 known_limits:
-  - The test reads every `| `name` | type |` row between the heading and the next `## ` heading; it compares names and
-    Postgres types, not the notes column.
-  - It compares the table to the migrations; the migrations are already compared to `EXPORT_COLUMNS` and the dbt
-    contract, so all four agree when the test passes.
+  - Other phase labels outside this defect ("Phase 2 checklist" in `docs/supabase_setup.md`, the "Phase 2 backlog" in
+    `docs/north_star.md`, "Metric-layer Phase 2" in `scripts/audit_mart_vs_yfinance.py`) name a checklist, a backlog
+    and a past stage of other work; they are not claims about whether a file exists and are left as they are.
+  - The Freshness table loses its News row and gains no replacement; `docs/operations_guide.md` line 51 already
+    states how Saved-tab headlines are fetched.
 
 regression_checklist:
-  - The existing three-copy test and its parser behave as before.
-  - No row other than the two new ones changes in the table.
+  - No other row, heading or sentence of the three docs changes.
+  - `tests/tooling/test_schema_copies_agree.py` still finds its heading and table in `docs/data_contract.md`.

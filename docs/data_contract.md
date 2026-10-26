@@ -38,17 +38,12 @@ from Wikipedia or manual import.
 Base path: `storage/raw/{market_code}/` (dbt var `raw_path`, default `storage/raw`, overridable
 with `DBT_RAW_PATH`).
 
-### Current (Phase B baseline)
+### Files
 
 | File | Grain | Notes |
 |------|-------|-------|
 | `yf_constituents.parquet` | One row per ticker | Joined from seeds at ingest time |
 | `yf_daily_prices.parquet` | One row per `(ticker, trade_date)` | OHLCV; not shown on discovery card |
-
-### Planned (fundamentals)
-
-| File | Grain | Notes |
-|------|-------|-------|
 | `yf_fundamentals.parquet` | One row per `(ticker, snapshot_date)` | Raw `ticker.info` + statement fields from yfinance only |
 
 **Rule:** Python ingestion writes provider fields as-is. No derived ratios in ingestion.
@@ -306,7 +301,6 @@ Benchmark availability does **not** affect `is_card_eligible`.
 | Fundamentals | **Every two weeks** (or on statement refresh) | GitLab CI `data-pipeline` job |
 | Daily prices | Every two weeks or daily (supporting only) | Same pipeline |
 | Supabase export | After successful dbt build | `export_to_supabase.py` |
-| News (Phase 2) | Daily | Separate workflow |
 
 **Stale export policy:** if the scheduled pipeline run fails the completeness gate, **keep
 last good Supabase snapshot**; do not truncate to empty.

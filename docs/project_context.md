@@ -74,7 +74,7 @@ dbt <command> --project-dir dbt_analytics --profiles-dir .
 - **Hybrid constituents:** committed seeds in `storage/seeds/{market_code}/constituents.csv`;
   refresh via `scripts/refresh_constituents.py` using `docs/constituent_sources.yml`.
 - Raw parquet output: `storage/raw/{market_code}/yf_constituents.parquet`, `yf_daily_prices.parquet`,
-  and (Phase B) `yf_fundamentals.parquet`.
+  and `yf_fundamentals.parquet`.
 - Fundamentals ingestion: raw `ticker.info` keys + financial statement rows only — see
   [`data_contract.md`](data_contract.md) § yfinance raw field mapping. No ratios in Python.
 - Run ingestion: `python scripts/run_ingestion.py` (optional `--max-tickers` for local dev).

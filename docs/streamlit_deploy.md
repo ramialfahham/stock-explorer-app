@@ -37,7 +37,6 @@ from the repo root run `streamlit run streamlit_app.py` with the `.venv` Python.
 
 ## UX notes
 
-Card layout follows [`north_star.md`](north_star.md): three headline metrics on the card;
-net debt / EBITDA and FCF margin under **More metrics (scroll)**.
+Card layout follows [`north_star.md`](north_star.md), section "The card: fundamentals by company type".
 
 Save is stored in the browser only (not synced across devices). Supabase accounts are deferred to a later release; the `user_interactions` table remains for that phase.
