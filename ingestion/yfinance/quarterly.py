@@ -6,6 +6,8 @@ from typing import Any
 
 import pandas as pd
 
+from ingestion.yfinance.balance_sheet import numeric_columns
+
 OPERATING_INCOME_ROW = "Operating Income"
 TOTAL_REVENUE_ROW = "Total Revenue"
 OPERATING_REVENUE_ROW = "Operating Revenue"
@@ -21,19 +23,6 @@ OPERATING_INCOME_FALLBACK_ROWS: tuple[str, ...] = (
 )
 
 
-def _numeric_quarter_columns(row: pd.Series) -> list[object]:
-    cols: list[object] = []
-    for col in row.index:
-        try:
-            val = row[col]
-            if val is not None and not (isinstance(val, float) and pd.isna(val)):
-                cols.append(col)
-        except (TypeError, ValueError):
-            continue
-    cols.sort(key=lambda c: pd.Timestamp(c), reverse=True)
-    return cols
-
-
 def quarterly_row_values(
     statement: pd.DataFrame | None,
     row_label: str,
@@ -45,7 +34,7 @@ def quarterly_row_values(
         return [None] * quarters
 
     row = statement.loc[row_label]
-    ordered_cols = _numeric_quarter_columns(row)
+    ordered_cols = numeric_columns(row)
     values: list[float | None] = []
     for col in ordered_cols[:quarters]:
         raw = row[col]

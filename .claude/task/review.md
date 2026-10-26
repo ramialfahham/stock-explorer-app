@@ -1,53 +1,54 @@
 # Review
 
-diff_sha256: 208a87a4eb03c90bdbf2b30a803985e6f8146f301072172975fb2066bcbc6ba2
-rounds: 1
+diff_sha256: 069a41abd2139cfbf1b48b3a284395c6177786fbb7124eb6875e62a684d5b562
+rounds: 2
 
-Works #74 (FE-2 defects 23 and 24, FE-3 defect 25; the owner calls 27 to 30 are untouched). Defect 23 (owner answer
-A): `docs/ui/discover_list.md` now says search results share Discover's list and its lead metric, as the code and
-`docs/ui/design_system.md` already do. Defect 24 (owner answer A): an empty search shows `st.info` with its existing
-text, and the spec's "Empty state" row says so. Defect 25: `_render_bottom_nav` loses its unread `saved_count`
-parameter. Round 1 (tree 0fbcd46): scope-auditor and platform-reviewer PASS. After the PASS verdicts only the "In flight" lines of
-`.claude/active_work.md` changed, when !272 (#75) merged first and `main` was merged into this branch; the reviewed
-files are unchanged.
+Works #76 (HYG-1 defects 54 to 57, HYG-3 defect 53; the owner calls 58 to 60 are untouched). Owner answer A: delete the
+four unused files (`scripts/backfill_fundamentals_parquet_schema.py`, `.claude/task/hygiene_sweep.py`,
+`.devcontainer/devcontainer.json`, `ingestion/__main__.py`) and the `.devcontainer/` exclude of the `check-json` hook.
+Defect 53: one `numeric_columns` in `ingestion/yfinance/balance_sheet.py`, used by `quarterly.py`. Round 1 (tree
+4182c0f): all three reviewers PASS; two of them named the same contract wording fix (the `done_when` search matched the
+contract itself, now `-- . ':!.claude/task'`), and the data-engineer named a third inline copy of the same filter loop in
+`_latest_annual_statement_value` (`ingest.py`), which had no test. Round 2 (tree 9f0f773): that function now calls
+`numeric_columns`, and the new `tests/ingestion/test_latest_annual_statement_value.py` pins it; all three PASS on the
+delta.
 
 Coordinator evidence:
-- `pytest tests` 1482 passed, 1 skipped (the frontend suite alone: 333 passed); `check_context_budget.py`, em-dash and
-  narrative-date checks pass.
-- Three mutations of `frontend/app.py`, file restored after each, each fails the renamed e2e test on its assertion:
-  `st.warning` again, changed text, the query dropped from the text.
-- The done_when searches: no "richer than Saved's or search results" or "search-result rows are picking rows" in
-  docs, frontend or tests; no `st.warning` in `frontend/`; `_render_bottom_nav` has its definition, one call with
-  `client=` alone and a docstring mention.
-- No live run: this machine has no Supabase keys; the AppTest e2e suite renders the page against a mocked client.
+- `pytest tests` 1485 passed, 1 skipped; `check_context_budget.py` passes.
+- Mutations, file restored after each: `numeric_columns` sorted oldest first fails 7 of the 9 tests of
+  `test_quarterly.py` and `test_balance_sheet.py`; picking `numeric_cols[-1]` in `_latest_annual_statement_value` fails 2
+  of the 3 new tests (before the new test existed the same mutation left all 1482 tests green).
+- The done_when searches: no `backfill_fundamentals_parquet_schema`, `hygiene_sweep`, `devcontainer`,
+  `_numeric_quarter_columns` or `_numeric_columns` outside `.claude/task`; one `def numeric_columns`.
 
-follow_ups: the exact-list assertion on `at.info` breaks if a persistent `st.info` is added to Discover (narrow it to
-the message text then); `frontend/app.py` line 574 holds an older em-dash in the "Nothing saved yet" message, not an
-edited line.
+follow_ups: the `try/except` around `pd.Timestamp(latest_col).date()` in `_latest_annual_statement_value` cannot fire
+any more (`numeric_columns` already converted that label); a `NaT` column label could order differently under `sort`
+than under `max` (yfinance emits none); no CI job checks rules R1, R2, R4 and R5 of the deleted sweep (known limit in
+the contract).
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: 0fbcd466b542791aae7b3ac4d49d771cc949eb68
+reviewed_tree: 9f0f773751d8a34a2ed0220812a62da38a5b506d
 risks_checked:
-- All five staged files are in `scope_paths`; the code change is exactly the two owner answers and the mechanical parameter.
-- No copy of the changed claims is left: the spec matches `row_ui.py`, `design_system.md` and the code.
+- Every path of the diff is in `scope_paths`; no new mechanism; the owner's answer A is the only decision and is recorded.
+- One definition of `numeric_columns` with three callers; ties and unconvertible labels behave as before (`max` and a stable reverse sort pick the same column).
 wording_fixes: none.
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: 0fbcd466b542791aae7b3ac4d49d771cc949eb68
+reviewed_tree: 9f0f773751d8a34a2ed0220812a62da38a5b506d
 risks_checked:
-- The only caller of `_render_bottom_nav` passes `client` alone; `saved_count` is still defined and read in `_discovery_page`.
-- Nothing else on the no-match path renders an `st.info`, so the exact-list assertion holds; it fails on a warning or any text change.
+- No CI job, hook, script, doc or `review_routing.json` entry still depends on a deleted file; every remaining tracked `.json` file parses under strict `check-json`.
+- The new test is collected by `pytest tests/`, makes no network call and follows its neighbours' layout.
 wording_fixes: none.
 
-## equity-analyst-reviewer
+## data-engineer-reviewer
 
 VERDICT: PASS
-reviewed_tree: 0a7ba5a1832d01ed5a0bb8ad16b38fb4944d84b5
+reviewed_tree: 9f0f773751d8a34a2ed0220812a62da38a5b506d
 risks_checked:
-- Carried over, not re-run: this branch changes no file the equity analyst owns. `docs/data_contract.md` is in the branch's path list only because !272 (#75) merged into `main` first and `main` was merged in; that change is the one the equity analyst passed at tree 0a7ba5a.
-- The merge brought those files in unchanged: the Raw parquet table and the Freshness table are as reviewed in !272.
+- `quarterly_row_values`, `latest_annual_value` and `_latest_annual_statement_value` return exactly what they returned before; no import cycle.
+- The `_is_fresh_today` docstring and `docs/operations_guide.md` still describe the checkpoint correctly with only `seed_ci_raw_fixtures.py` left; the deleted backfill has no job left (a column mismatch refetches every ticker).
 wording_fixes: none.

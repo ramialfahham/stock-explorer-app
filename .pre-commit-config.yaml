@@ -22,8 +22,7 @@ repos:
         args: [--unsafe]   # allow GitHub Actions ${{ }} syntax
       - id: check-json
         entry: python -m pre_commit_hooks.check_json
-        # .devcontainer/devcontainer.json is JSONC (allows // comments), which strict check-json can't parse.
-        exclude: ^(dbt_analytics/target/|\.devcontainer/)
+        exclude: ^dbt_analytics/target/
       - id: end-of-file-fixer
         entry: python -m pre_commit_hooks.end_of_file_fixer
         exclude: \.(svg|png|jpe?g)$
