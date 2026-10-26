@@ -19,9 +19,8 @@ clean-targets:
 vars:
   # Resolved from repo root when DBT_RAW_PATH is set (CI and recommended local runs).
   raw_path: "{{ env_var('DBT_RAW_PATH', 'storage/raw') }}"
-  # Derived from docs/market_registry.yml (ingest_active: true).
-  # DO NOT edit by hand -- run scripts/sync_dbt_vars.py after updating the registry.
-  # scripts/check_registry_var_sync.py (CI) enforces sorted-set equality with the registry.
+  # Generated from docs/market_registry.yml (ingest_active: true) by scripts/sync_dbt_vars.py, so do not edit it by hand
+  # and run that script after a registry change, because scripts/check_registry_var_sync.py fails CI when the two market lists differ.
   active_market_codes:
     - au_asx200
     - ca_tsx60

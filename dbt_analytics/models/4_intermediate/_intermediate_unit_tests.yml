@@ -233,6 +233,11 @@ unit_tests:
             net_debt_to_ebitda: 2.0,
           }
   - name: card_metrics_annual_margin_when_quarterly_missing
+    description: >-
+      HSBA is financial, so per-type eligibility judges it on the financial required pair
+      (statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs because it
+      targets the annual ebit_margin fallback, so it lacks statement ROE and net margin and HSBA is
+      ineligible, while ebit_margin still falls back to the annual figure.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -267,10 +272,6 @@ unit_tests:
               company_name: HSBC,
             }
     expect:
-      # HSBA is financial; per-type eligibility judges it on the financial required pair
-      # (statement_roe_pct + net_margin_pct). This fixture supplies only operating inputs
-      # (it targets the annual ebit_margin fallback), so it lacks statement ROE and net margin and is
-      # ineligible -- but ebit_margin still falls back to the annual figure correctly.
       rows:
         - {
             market_code: uk_ftse100,
@@ -280,6 +281,11 @@ unit_tests:
             ebit_margin_basis: annual_latest,
           }
   - name: card_metrics_bank_quarterly_from_operating_revenue_expense
+    description: >-
+      This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
+      inputs. Under per-type eligibility LLOY is financial and judged on the financial required pair
+      (statement_roe_pct + net_margin_pct), so lacking both it is ineligible while ebit_margin is
+      still computed from operating revenue - expense.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -321,10 +327,6 @@ unit_tests:
               company_name: Lloyds,
             }
     expect:
-      # This fixture targets the bank quarterly-op -> ebit_margin path, so it supplies only operating
-      # inputs. Under per-type eligibility LLOY is financial and judged on the financial required pair
-      # (statement_roe_pct + net_margin_pct); lacking statement ROE and net margin it is
-      # ineligible -- but ebit_margin is still computed correctly from operating revenue - expense.
       rows:
         - {
             market_code: uk_ftse100,
@@ -387,8 +389,7 @@ unit_tests:
           - {market_code: us_sp500, ticker: NUL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: null}
           # DYL-like: revenue positive but 0.05% of market cap -- under the 0.1% floor, reclassifies.
           - {market_code: au_asx200, ticker: MICRO, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 1000.0, info_market_cap: 2000000.0}
-          # Boundary: revenue 0.15% of market cap -- above the floor, stays operating. Pins both
-          # sides of the threshold, not just the one case that motivated it.
+          # Boundary: revenue 0.15% of market cap is above the floor and stays operating, pinning both sides of the threshold, not just the one case that motivated it.
           - {market_code: au_asx200, ticker: SMALL, snapshot_date: "2026-01-01", info_sector: Energy, stmt_total_revenue: 3000.0, info_market_cap: 2000000.0}
           # Positive-but-negligible revenue with NO market cap to compare it against -- a data gap,
           # not a signal, so this must stay operating rather than silently reclassifying on a
@@ -467,17 +468,17 @@ unit_tests:
             sector_max_ebit_margin_pct: 20.0,
           }
   - name: sector_benchmarks_computes_quartiles_with_real_spread
+    description: >-
+      ebit_margin_pct is evenly spaced 10..24 (step 2) across 8 peers, sorted by construction. Q1
+      and Q3 are hand-computed by linear interpolation, the method of quantile_cont and median(): h
+      = (n-1)*p with n=8, so Q1 has h=7*0.25=1.75 and is a[1]+0.75*(a[2]-a[1]) = 12+0.75*(14-12) =
+      13.5, and Q3 has h=7*0.75=5.25 and is a[5]+0.25*(a[6]-a[5]) = 20+0.25*(22-20) = 20.5. They are
+      not derived from the SQL under test, per the anti-pattern warning against self-referential
+      fixtures in docs/ui/card_metric_cell.md.
     model: int_stock__sector_benchmarks
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          # ebit_margin_pct evenly spaced 10..24 (step 2) across 8 peers, sorted by construction --
-          # Q1/Q3 hand-computed via linear interpolation (quantile_cont's own method, matching
-          # median()'s): h = (n-1)*p with n=8. Q1: h=7*0.25=1.75 -> a[1]+0.75*(a[2]-a[1])
-          # = 12+0.75*(14-12) = 13.5. Q3: h=7*0.75=5.25 -> a[5]+0.25*(a[6]-a[5])
-          # = 20+0.25*(22-20) = 20.5. Not derived from the SQL under test -- computed by hand
-          # against the standard linear-interpolation formula, per this doc's own anti-pattern
-          # warning against self-referential fixtures (docs/ui/card_metric_cell.md).
           - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 10.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
           - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 12.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
           - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, ebit_margin_pct: 14.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
@@ -529,18 +530,18 @@ unit_tests:
             sector_max_statement_roe_pct: 24.0,
           }
   - name: sector_benchmarks_equity_filter_drop_below_threshold_nulls_debt_to_equity_and_roe
+    description: >-
+      7 clean (positive-equity) peers have debt_to_equity 1.0..7.0 and statement_roe_pct 10.0..70.0,
+      plus an 8th peer with NEGATIVE stmt_stockholders_equity (sign-flipped debt_to_equity and
+      statement_roe_pct, the failure mode documented in assessment_rules.py, excluded by the model's
+      positive-equity filter). sector_peer_count is 8 (the raw, unfiltered card-eligible count), but
+      only 7 peers survive the filter for these two metrics, so n_debt_to_equity and
+      n_statement_roe_pct are 7, below peer_threshold (8), and combined's per-metric gate must null
+      both metrics even though sector_peer_count itself clears 8.
     model: int_stock__sector_benchmarks
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          # 7 clean (positive-equity) peers, debt_to_equity 1.0..7.0 / statement_roe_pct
-          # 10.0..70.0, plus an 8th peer with NEGATIVE stmt_stockholders_equity (sign-flipped
-          # debt_to_equity/statement_roe_pct per assessment_rules.py's documented failure mode,
-          # excluded by the model's positive-equity filter). sector_peer_count is 8 (the raw,
-          # unfiltered card-eligible count) but only 7 peers survive the filter for these two
-          # metrics -- n_debt_to_equity/n_statement_roe_pct = 7 < peer_threshold (8), so
-          # combined's per-metric gate must null both metrics out even though sector_peer_count
-          # itself clears 8.
           - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
@@ -567,23 +568,22 @@ unit_tests:
             sector_max_statement_roe_pct: null,
           }
   - name: sector_benchmarks_excludes_negative_equity_peer_when_coverage_sufficient
+    description: >-
+      Same shape as the null case above, with an 8th clean peer added (9 rows in all) so 8
+      positive-equity peers survive the filter (n_debt_to_equity = n_statement_roe_pct = 8, meeting
+      peer_threshold) alongside the same negative-equity contaminant. This proves the filter still
+      EXCLUDES the contaminant from every statistic, not just min, once coverage is sufficient,
+      because an extreme low value like -100.0 would otherwise become the new sector_min and pull
+      median/Q1/Q3 toward it. The expected values are hand-computed by DuckDB's linear-interpolation
+      formula (h = (n-1)*p), not derived from the SQL under test. With n=8 and sorted
+      [1,2,3,4,5,6,7,8], min is 1.0 and max is 8.0, Q1 has h=1.75 and is arr[1]+0.75*(arr[2]-arr[1])
+      = 2+0.75*(3-2) = 2.75, the median has h=3.5 and is arr[3]+0.5*(arr[4]-arr[3]) = 4+0.5*(5-4) =
+      4.5, and Q3 has h=5.25 and is arr[5]+0.25*(arr[6]-arr[5]) = 6+0.25*(7-6) = 6.25.
+      statement_roe_pct has the same shape x10.
     model: int_stock__sector_benchmarks
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          # Same shape as the null case above, but with a 9th clean peer added so 8 positive-
-          # equity peers survive the filter (n_debt_to_equity = n_statement_roe_pct = 8, meeting
-          # peer_threshold) alongside the same negative-equity contaminant. Proves the filter
-          # still correctly EXCLUDES the contaminant from every statistic (not just min) once
-          # coverage is sufficient -- an extreme low value like -100.0 would otherwise become
-          # the new sector_min and pull median/Q1/Q3 toward it too.
-          #
-          # Hand-computed via DuckDB's linear-interpolation formula (h = (n-1)*p), same method
-          # used elsewhere in this file, not derived from the SQL under test. n=8, sorted
-          # [1,2,3,4,5,6,7,8]: min=1.0, max=8.0. Q1: h=7*0.25=1.75 -> arr[1]+0.75*(arr[2]-arr[1])
-          # = 2+0.75*(3-2) = 2.75. median: h=7*0.5=3.5 -> arr[3]+0.5*(arr[4]-arr[3]) =
-          # 4+0.5*(5-4) = 4.5. Q3: h=7*0.75=5.25 -> arr[5]+0.25*(arr[6]-arr[5]) =
-          # 6+0.25*(7-6) = 6.25. statement_roe_pct is the same shape x10.
           - {market_code: us_sp500, ticker: T1, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 1.0, statement_roe_pct: 10.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T2, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 2.0, statement_roe_pct: 20.0, stmt_stockholders_equity: 40000.0}
           - {market_code: us_sp500, ticker: T3, sector: Industrials, is_card_eligible: true, company_type: operating, debt_to_equity: 3.0, statement_roe_pct: 30.0, stmt_stockholders_equity: 40000.0}
@@ -611,16 +611,17 @@ unit_tests:
             sector_max_statement_roe_pct: 80.0,
           }
   - name: sector_benchmarks_ungated_metric_null_below_own_coverage_despite_peer_count
+    description: >-
+      8 card-eligible operating peers (sector_peer_count = 8, clearing peer_threshold) all report
+      the 4 metrics that gate operating eligibility (ebit_margin_pct, revenue_growth_yoy_pct,
+      net_debt_to_ebitda, fcf_margin_pct, guaranteed non-null by construction), but only 3 of the 8
+      report forward_pe, which no eligibility rule requires. n_forward_pe = 3 is below
+      peer_threshold, so forward_pe is nulled out, while the fully-covered ebit_margin_pct still
+      computes in the same sector.
     model: int_stock__sector_benchmarks
     given:
       - input: ref('int_stock__card_metrics')
         rows:
-          # 8 card-eligible operating peers (sector_peer_count = 8, clearing peer_threshold) all
-          # reporting the 4 metrics that gate operating eligibility (ebit_margin_pct/
-          # revenue_growth_yoy_pct/net_debt_to_ebitda/fcf_margin_pct -- guaranteed non-null by
-          # construction), but only 3 of the 8 report forward_pe, which no eligibility rule
-          # requires. n_forward_pe = 3 < peer_threshold nulls forward_pe out, while the
-          # fully-covered ebit_margin_pct still computes in the same sector.
           - {market_code: us_sp500, ticker: T1, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 10.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
           - {market_code: us_sp500, ticker: T2, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 11.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
           - {market_code: us_sp500, ticker: T3, sector: Technology, is_card_eligible: true, company_type: operating, forward_pe: 12.0, ebit_margin_pct: 20.0, revenue_growth_yoy_pct: 5.0, net_debt_to_ebitda: 1.0, fcf_margin_pct: 10.0}
@@ -772,9 +773,10 @@ unit_tests:
             roa_pct: null,
           }
   - name: card_metrics_statement_metrics_negative_equity
-    # Negative equity is a legitimate (not clipped/nulled) signed output: debt_to_equity flips
-    # negative, and a loss over negative equity yields a spuriously POSITIVE ROE -- the exact case
-    # the catalogue applicability copy warns beginners about. Guards only exclude equity == 0.
+    description: >-
+      Negative equity is a legitimate (not clipped or nulled) signed output: debt_to_equity flips
+      negative, and a loss over negative equity yields a spuriously POSITIVE ROE, the exact case the
+      catalogue applicability copy warns beginners about. Guards only exclude equity == 0.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -800,9 +802,10 @@ unit_tests:
             statement_roe_pct: 20.0,
           }
   - name: card_metrics_financial_eligibility_required_pair
-    # Per-type eligibility: a financial is eligible on the required pair
-    # (statement_roe_pct + net_margin_pct). BANKOK has both -> eligible; BANKNO lacks revenue
-    # so net_margin_pct is null -> ineligible, even as a financial.
+    description: >-
+      Per-type eligibility: a financial is eligible on the required pair (statement_roe_pct +
+      net_margin_pct). BANKOK has both and is eligible; BANKNO lacks revenue, so net_margin_pct is
+      null and it is ineligible even as a financial.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -818,9 +821,11 @@ unit_tests:
         - {market_code: us_sp500, ticker: BANKOK, company_type: financial, is_card_eligible: true}
         - {market_code: us_sp500, ticker: BANKNO, company_type: financial, is_card_eligible: false}
   - name: card_metrics_dividend_yield_pct_percent_passthrough
-    # Mocked input pins the transform only; live scale: dbt_analytics/tests/assert_percent_scale_passthroughs.sql.
-    # A percent-scale value passes through; a fraction-scale value (below 0.05) is scaled by 100;
-    # 0.05 itself passes through, the boundary being "below", not "at".
+    description: >-
+      Mocked input pins the transform only; the live scale is checked by
+      dbt_analytics/tests/assert_percent_scale_passthroughs.sql. A percent-scale value passes
+      through, a fraction-scale value (below 0.05) is scaled by 100, and 0.05 itself passes through,
+      the boundary being "below", not "at".
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -839,9 +844,10 @@ unit_tests:
         - {market_code: us_sp500, ticker: AVB, dividend_yield_pct: 3.87}
         - {market_code: us_sp500, ticker: EDGE, dividend_yield_pct: 0.05}
   - name: card_metrics_eligibility_without_forward_pe
-    # A null forward_pe does not block eligibility: OPNOPE is operating with no forward P/E and
-    # FINNOPE is a bank with none, and both qualify on the remaining metrics. PRENOCAP is
-    # pre-revenue with no market cap, which net_cash does not need.
+    description: >-
+      A null forward_pe does not block eligibility: OPNOPE is operating with no forward P/E and
+      FINNOPE is a bank with none, and both qualify on the remaining metrics. PRENOCAP is
+      pre-revenue with no market cap, which net_cash does not need.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -860,11 +866,12 @@ unit_tests:
         - {market_code: us_sp500, ticker: FINNOPE, company_type: financial, is_card_eligible: true, net_cash: null}
         - {market_code: us_sp500, ticker: PRENOCAP, company_type: pre_revenue, is_card_eligible: true, net_cash: 500.0}
   - name: card_metrics_pre_revenue_eligibility_net_cash
-    # Per-type eligibility: a pre_revenue company is eligible when net_cash is computable
-    # (has cash + debt). PREOK has both -> eligible; PRENO lacks cash -> net_cash null -> ineligible.
-    # Both classify pre_revenue (Healthcare, revenue 0).
-    #
-    # A missing market cap does not block a pre-revenue card; only net_cash gates it.
+    description: >-
+      Per-type eligibility: a pre_revenue company is eligible when net_cash is computable (has cash
+      + debt). PREOK has both and is eligible; PRENO lacks cash, so net_cash is null and it is
+      ineligible. Both classify pre_revenue (Healthcare, revenue 0), and a missing market cap does
+      not block a pre-revenue card because only net_cash gates it (pinned by
+      card_metrics_eligibility_without_forward_pe).
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
@@ -880,12 +887,13 @@ unit_tests:
         - {market_code: us_sp500, ticker: PREOK, company_type: pre_revenue, is_card_eligible: true}
         - {market_code: us_sp500, ticker: PRENO, company_type: pre_revenue, is_card_eligible: false}
   - name: card_metrics_ratio_reclassified_pre_revenue_is_eligible
-    # A company reclassified pre_revenue via the ratio branch (revenue positive but < 0.1% of
-    # market cap -- see card_metrics_company_type_classification for the classification pin alone)
-    # must flip to the pre_revenue eligibility branch correctly too, exactly like a company that
-    # classifies pre_revenue via the original revenue <= 0 branch above. DYL-like: revenue $1,000
-    # against a $2,000,000 market cap (0.05%, under the floor), with cash/debt present so
-    # net_cash is computable -- matches real DYL, which has cash and debt populated.
+    description: >-
+      A company reclassified pre_revenue via the ratio branch (revenue positive but < 0.1% of market
+      cap; see card_metrics_company_type_classification for the classification pin alone) must flip
+      to the pre_revenue eligibility branch correctly too, exactly like a company that classifies
+      pre_revenue via the original revenue <= 0 branch above. DYL-like: revenue $1,000 against a
+      $2,000,000 market cap (0.05%, under the floor), with cash and debt present so net_cash is
+      computable, matching real DYL, which has cash and debt populated.
     model: int_stock__card_metrics
     given:
       - input: ref('fct_fundamentals_snapshot')
