@@ -160,9 +160,8 @@ def test_fundamentals_stale_file_is_fully_refetched(monkeypatch, tmp_path):
 
 
 def test_fundamentals_ignores_a_same_day_write_from_another_script(monkeypatch, tmp_path):
-    """Regression: scripts/seed_ci_raw_fixtures.py and
-    scripts/backfill_fundamentals_parquet_schema.py write these exact raw parquet paths for
-    unrelated reasons, with no checkpoint marker. A same-day write from one of them must not
+    """Regression: scripts/seed_ci_raw_fixtures.py writes these exact raw parquet paths for
+    an unrelated reason, with no checkpoint marker. A same-day write from it must not
     be mistaken for a completed ingestion run -- the marker, not the parquet file's own
     mtime, is the freshness signal, so ingestion should still fully (re)fetch."""
     output_dir = _use_tmp_raw_dir(monkeypatch, tmp_path)

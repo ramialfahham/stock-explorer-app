@@ -56,7 +56,7 @@ standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 `football-data-pipeline/docs/working_agreement.md` section 9.
 
 **Next, milestone "3 · Professional baseline".** The audit re-run of 2026-10-22 (criteria v3) found 21 defects,
-filed as #71 ingestion (done), #72 dbt (done), #73 export (done), #74 frontend (done), #75 docs (done), #76 hygiene (next); each issue
+filed as #71 ingestion (done), #72 dbt (done), #73 export (done), #74 frontend (done), #75 docs (done), #76 hygiene (in review); each issue
 lists its owner calls apart. **Done = all 21 fixed, then one audit re-run with zero defects** (the owner approves its cost, about 1.7M
 tokens: the `quality-baseline-audit` workflow, then `python scripts/verify_quality_audit.py <workflow output JSON>
 --report <file>`). Take the issues one at a time, owner decisions one at a time. Criteria:

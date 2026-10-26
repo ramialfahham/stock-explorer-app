@@ -67,7 +67,7 @@ BALANCE_SHEET_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _numeric_columns(row: pd.Series) -> list[object]:
+def numeric_columns(row: pd.Series) -> list[object]:
     """Dated columns that hold a usable (non-null) numeric value, newest first."""
     cols: list[object] = []
     for col in row.index:
@@ -94,7 +94,7 @@ def latest_annual_value(
     for label in labels:
         if label not in statement.index:
             continue
-        ordered_cols = _numeric_columns(statement.loc[label])
+        ordered_cols = numeric_columns(statement.loc[label])
         if not ordered_cols:
             continue
         raw = statement.loc[label][ordered_cols[0]]

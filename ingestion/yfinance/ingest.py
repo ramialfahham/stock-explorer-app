@@ -14,7 +14,7 @@ from ingestion.atomic_write import replace_atomically
 from ingestion.constituents.seeds import load_constituents
 from ingestion.paths import raw_dir
 from ingestion.registry import Market
-from ingestion.yfinance.balance_sheet import land_balance_sheet_fields
+from ingestion.yfinance.balance_sheet import land_balance_sheet_fields, numeric_columns
 from ingestion.yfinance.quarterly import (
     OPERATING_EXPENSE_ROW,
     OPERATING_INCOME_FALLBACK_ROWS,
@@ -78,16 +78,15 @@ def _checkpoint_marker_path(output_path: Path) -> Path:
 def _is_fresh_today(output_path: Path) -> bool:
     """True when `output_path` has a checkpoint marker last touched today (UTC) --
     the freshness boundary for skip-if-already-fetched. The marker's own mtime is the
-    signal, not the parquet file's -- deliberately decoupled, since other scripts write
-    these exact paths for unrelated reasons with no coordination with this checkpoint
+    signal, not the parquet file's -- deliberately decoupled, since another script writes
+    these exact paths for an unrelated reason with no coordination with this checkpoint
     (`scripts/seed_ci_raw_fixtures.py` writes fake fixture rows into real market_codes for
-    CI dbt builds; `scripts/backfill_fundamentals_parquet_schema.py` rewrites the schema
-    across every market). Only `_atomic_write_parquet` ever touches the marker, so only a
+    CI dbt builds). Only `_atomic_write_parquet` ever touches the marker, so only a
     completed write from this module can ever satisfy the check -- a same-day write from
-    one of those other scripts leaves no marker, so the next real ingestion run correctly
+    that script leaves no marker, so the next real ingestion run correctly
     treats the file as not-fresh and fully refetches, self-healing rather than trusting
-    stale-looking-but-wrong content. (Narrower residual case, not fully closed: if one of
-    those scripts overwrites the parquet file itself AFTER a real ingestion run already
+    stale-looking-but-wrong content. (Narrower residual case, not fully closed: if that
+    script overwrites the parquet file itself AFTER a real ingestion run already
     wrote both the file and the marker the same day, the marker still reads fresh even
     though the parquet content is no longer what ingestion wrote -- an unusual, deliberate
     action sequence, not a normal workflow; use `--force-refetch` if this is ever suspected.)
@@ -319,19 +318,11 @@ def _latest_annual_statement_value(
         return None, None, None
 
     row = statement.loc[row_label]
-    numeric_cols = []
-    for col in row.index:
-        try:
-            val = row[col]
-            if val is not None and not (isinstance(val, float) and pd.isna(val)):
-                numeric_cols.append(col)
-        except (TypeError, ValueError):
-            continue
-
+    numeric_cols = numeric_columns(row)
     if not numeric_cols:
         return None, None, None
 
-    latest_col = max(numeric_cols, key=lambda c: pd.Timestamp(c))
+    latest_col = numeric_cols[0]
     value = row[latest_col]
     if isinstance(value, float) and pd.isna(value):
         value = None

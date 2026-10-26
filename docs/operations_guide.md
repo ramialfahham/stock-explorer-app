@@ -194,12 +194,11 @@ refetched; a fundamentals file that already covers every ticker is reused as wri
 suspiciously-fast run after an earlier one the same day is this, not a bug. Add
 `--force-refetch` to ignore same-day cached output and refetch every ticker anyway. Freshness
 is tracked by a same-named `.checkpoint` file next to each raw parquet (gitignored along with
-the rest of `storage/raw/`), not the parquet's own timestamp -- other scripts that write these
-same paths (`seed_ci_raw_fixtures.py`, `backfill_fundamentals_parquet_schema.py`) never touch
-it, so a same-day write from one of them, before real ingestion runs, can't be mistaken for a
-completed run.
+the rest of `storage/raw/`), not the parquet's own timestamp -- `seed_ci_raw_fixtures.py`, which writes these
+same paths, never touches it, so a same-day write from it, before real ingestion runs, can't be
+mistaken for a completed run.
 
-Not covered by the marker: running one of those scripts against a real market_code AFTER real
+Not covered by the marker: running that script against a real market_code AFTER real
 ingestion already ran the same day. The marker still reads fresh (ingestion wrote it), but the
 parquet content is no longer what ingestion produced. This is a narrow, deliberate action
 sequence, not a normal workflow -- if data looks wrong and this ordering is suspected, use
