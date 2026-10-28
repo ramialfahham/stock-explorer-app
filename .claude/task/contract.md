@@ -3,52 +3,45 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #84 (HYG-1 defect 58, HYG-3 defects 59 and 60 of the second quality-baseline audit re-run). A dbt
-  selectors file nothing uses, and two pairs of copied logic with no lock between them. Same rules as #76: a file nothing
-  runs is deleted, and one piece of logic has one definition. The handover also records the owner's answer A of
-  2026-10-26: the milestone closes on the list of 34 findings, not on a clean re-run.
+objective: Works #81 (DBT-5 defects 6 and 7 of the second quality-baseline audit re-run). `docs/engineering_standards.md`
+  section 1.2 says "One sentence per comment, which may wrap onto more than one line"; `dbt_project.yml` has a
+  three-sentence comment and `_intermediate_unit_tests.yml` has ten more multi-sentence comment blocks. One rule over
+  every case: every comment block under `dbt_analytics/` is one sentence, and explanation that does not fit one
+  sentence moves to the unit test's `description:` field (a dbt field for prose, not a comment).
 
 scope_paths:
-  - dbt_analytics/selectors.yml
-  - scripts/export_to_supabase.py
-  - scripts/generate_assessments.py
-  - scripts/check_docs_indexed.py
-  - scripts/check_context_budget.py
-  - scripts/governed_files.py
-  - tests/tooling/test_governed_files.py
-  - tests/tooling/test_export_coerce_cell.py
-  - tests/tooling/test_check_docs_indexed.py
-  - tests/tooling/test_check_context_budget.py
+  - dbt_analytics/dbt_project.yml
+  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: None open. The owner's answer A (2026-10-26) sets the order of work and the milestone exit; the
-  delete-what-nothing-uses rule is the one answered for #76. No behaviour, metric, copy or schema change.
+decisions_reserved: Answered by the owner in chat: a semicolon joining two clauses keeps a comment one sentence (answer A), so
+  the seven semicolon-joined comments in five other dbt files stay as they are. The rule is written
+  (`docs/engineering_standards.md` section 1.2); the audit's own proposed fix names `description:` as the home for the
+  arithmetic. No test, fixture value, expectation or model changes.
 
 changes:
-  - Delete `dbt_analytics/selectors.yml` (three selectors, no `--selector` use anywhere).
-  - `scripts/export_to_supabase.py`: the inline per-cell coercion becomes the public `coerce_cell`;
-    `scripts/generate_assessments.py` imports it and its own `_coerce` copy is deleted. Same branches, same results.
-  - New `scripts/governed_files.py` with `files_matching(root, patterns)`; `check_docs_indexed.py` and
-    `check_context_budget.py` call it, and their two identical walks (`governed_docs`, `governed_files`) are deleted.
-    The two tests that called those functions call `files_matching(root, GOVERNED_GLOBS)`.
-  - New tests: `coerce_cell` (missing values, dates, numpy scalars, passthrough) and `files_matching` (patterns, posix
-    paths, directories are not files).
-  - `.claude/active_work.md`: the milestone exit and the issue list.
+  - `dbt_project.yml`: the three-sentence comment above `active_market_codes` is one sentence.
+  - `_intermediate_unit_tests.yml`: for each of the ten multi-sentence blocks, the prose becomes the unit test's
+    `description:` (worked quartile arithmetic, fixture shape, eligibility reasoning), or, for the boundary comment in
+    `card_metrics_company_type_classification`, one sentence. The text states the same facts, reflowed.
+  - `.claude/active_work.md`: current facts.
 
 done_when:
-  - `git grep -n -E "selectors\.yml|_coerce\b|def governed_files" -- . ':!.claude/task' ':!docs/quality_criteria.json'`
-    finds nothing, and `git grep -n "governed_docs" -- scripts` finds nothing; `dbt_analytics/selectors.yml` does not
-    exist. (`tests/tooling/test_doc_paths_exist.py` has its own, different `governed_docs`; it is not touched.)
-  - `git grep -n "def coerce_cell\|def files_matching"` finds one definition each; both scripts of each pair call it.
-  - Mutating `coerce_cell` (dates as `str(value)`) and `files_matching` (directories count) each fail a test.
-  - `pytest tests -q` passes; `python scripts/check_context_budget.py` and `scripts/check_docs_indexed.py` pass.
+  - A scan of every `#` and `--` comment block under `dbt_analytics/` (`.sql`, `.yml`, excluding `target/` and
+    `dbt_packages/`) for two or more sentences reports zero blocks (it reported 11 before; the scan counts a period
+    followed by a space and any letter, and a semicolon stays inside one sentence (owner answer A); it is a scratch script, not a
+    committed check).
+  - `dbt build` with the CI fixtures passes: 149 of 149, including all 29 unit tests.
+  - `pytest tests -q` passes; `check_registry_var_sync.py` passes (it reads `active_market_codes`).
+  - Every `description:` added sits directly under its `- name:` line, and no fixture row, `expect` row or model
+    reference changed (the diff shows only comment removals and `description:` additions, plus the one reworded
+    boundary comment).
 
 known_limits:
-  - `dbt` is not run here (no warehouse on this machine); nothing in the repo references `selectors.yml`, and dbt reads it
-    only for `--selector`.
+  - The sentence scan is a heuristic (a period followed by a space and a letter); a comment it cannot see is not covered.
+  - Comments outside `dbt_analytics/` (Python, docs) are out of this task; the audit named only these two files.
 
 regression_checklist:
-  - The export rows are unchanged: `tests/tooling/test_export_to_supabase.py` and `test_generate_assessments.py` pass as before.
-  - Both doc checks still pass on the real tree.
+  - The unit tests keep their names, models, inputs and expectations; the `dbt build` count stays 149.

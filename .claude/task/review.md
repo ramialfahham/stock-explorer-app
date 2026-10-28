@@ -1,51 +1,42 @@
 # Review
 
-diff_sha256: 03280e3da0183401dfeb5a77f0ce19f0fc647b61d02b7bae8cbebc568889d5c5
-rounds: 1
+diff_sha256: f7253505f2a093546a965b2e44a0062b86c20f42dffb92095c6fe57c227e5aa7
+rounds: 2
 
-Works #84 (HYG-1 defect 58, HYG-3 defects 59 and 60 of the second audit re-run). `dbt_analytics/selectors.yml` is
-deleted (no `--selector` use anywhere). `coerce_cell` in `scripts/export_to_supabase.py` is the one cell coercion;
-`scripts/generate_assessments.py` imports it. `files_matching` in the new `scripts/governed_files.py` is the one glob
-walk of `check_docs_indexed.py` and `check_context_budget.py`. The handover records the owner's answer A of 2026-10-26:
-the milestone closes on the list of 34 findings, not on a clean re-run. Round 1 (tree f093f18): all three reviewers
-PASS. After the PASS verdicts only the scope-auditor's wording fixes changed: the handover counts (14 owner calls of
-#75, so 16 + 18 = 34), the dropped rationale clause, "each issue lists its items", the `generate_assessments.py`
-docstring line, and the `import pandas as pd` that the deleted `_coerce` left unused.
+Works #81 (DBT-5 defects 6 and 7 of the second audit re-run). Every comment block under `dbt_analytics/` is one
+sentence: `dbt_project.yml` has one sentence above `active_market_codes`, and the ten multi-sentence blocks of
+`_intermediate_unit_tests.yml` became the unit tests' `description:` fields (one boundary comment became one sentence).
+No fixture row, expectation or model changed. Round 1 (tree e034a10): analytics-engineer-reviewer PASS; scope-auditor
+FAIL (one two-sentence block left, second sentence lowercase, so the first scan missed it) with six wording fixes, all
+applied. Round 2 (tree 860f601): analytics-engineer-reviewer PASS; scope-auditor ESCALATE on whether a semicolon ends a
+sentence, answered by the owner (A). After round 2 only the `dbt_project.yml` comment's last words changed ("when the
+two market lists differ", the non-blocking nit of that review) and the contract and handover.
 
 Coordinator evidence:
-- `pytest tests` 1491 passed, 1 skipped; `check_context_budget.py` and `check_docs_indexed.py` pass.
-- Mutations, file restored after each: dates as `str(value)` in `coerce_cell` fails 1 test; directories counted in
-  `files_matching` fails 1 test.
-- The done_when searches: no `selectors.yml`, `_coerce` or `def governed_files` outside `.claude/task` and
-  `docs/quality_criteria.json`; no `governed_docs` under `scripts/`; one `def coerce_cell`, one `def files_matching`.
+- `dbt build` with the CI fixtures: 149 of 149 pass, 29 of them unit tests (run after round 1's fixes and again after
+  round 2's); `pytest tests` 1491 passed, 1 skipped; `check_registry_var_sync.py` passes.
+- Scan of every `#` and `--` comment block under `dbt_analytics/` (period, space, letter counts as a sentence end; a
+  semicolon does not): 11 blocks before, 0 after.
 
-follow_ups: the `isinstance(value, float) and value != value` branch of `coerce_cell` cannot fire (`pd.isna` already
-catches every float NaN); the text was moved unchanged, not added. `coerce_cell` has no test for a non-scalar value.
-`generate_assessments.py` imports a sibling entry-point script for the helper (precedent: `audit_mart_vs_yfinance.py`).
+follow_ups: seven semicolon-joined comments in five other dbt files stay as they are by the owner's answer (A); the
+sentence scan is a scratch heuristic, not a committed check.
 
 ## scope-auditor
 
-VERDICT: PASS
-reviewed_tree: f093f182042dafa24843970c977142809b63e173
+VERDICT: ESCALATE
+reviewed_tree: 860f601aedeeacbecc14cc4492ca5a3980acd49f
 risks_checked:
-- All 11 files are in `scope_paths`; `governed_files.py` is a plain helper under a written rule (no duplicated logic), not a new mechanism.
-- No copy of the old exit rule or of the deleted names is left.
-wording_fixes: applied (counts in the handover, rationale clause, "each issue lists its items", docstring line).
-
-## platform-reviewer
-
-VERDICT: PASS
-reviewed_tree: f093f182042dafa24843970c977142809b63e173
-risks_checked:
-- `coerce_cell` returns what the inline loop returned for every cell type; importing `export_to_supabase` has no import-time side effect and no cycle.
-- Both doc checks still run as `python scripts/<name>.py` from the pre-commit hooks and CI; the new tests resolve through `tests/conftest.py`.
+- Round 1's FAIL is fixed and the six wording fixes were applied faithfully; the claims in the new descriptions hold against the fixtures and models.
+- No fixture, expectation or model line changed in either round.
+question: does a semicolon-joined pair of clauses in a dbt comment count as one sentence? (A: one sentence, zero blocks left; B: two sentences, seven more comments in five files outside this task's scope.)
+CPO ANSWER: A. A semicolon keeps a comment one sentence; the seven semicolon-joined comments stay as they are and are not a follow-up.
 wording_fixes: none.
 
 ## analytics-engineer-reviewer
 
 VERDICT: PASS
-reviewed_tree: f093f182042dafa24843970c977142809b63e173
+reviewed_tree: 860f601aedeeacbecc14cc4492ca5a3980acd49f
 risks_checked:
-- Nothing in CI, scripts, docs or hooks uses a named dbt selector; every documented dbt command is unselected, so no model set changes.
-- Exported mart values are unchanged for dates, timestamps, bigint, double, boolean, varchar and NULL.
+- Every claim in the new descriptions (peer counts, thresholds, quartile arithmetic, the market-cap case pinned by `card_metrics_eligibility_without_forward_pe`) matches the fixtures and `int_stock__card_metrics.sql` and `int_stock__sector_benchmarks.sql`.
+- The folded scalars are valid unit-test YAML and `scripts/sync_dbt_vars.py` does not read the comment above `active_market_codes`.
 wording_fixes: none.
