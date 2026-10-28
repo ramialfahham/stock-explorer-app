@@ -3,45 +3,50 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #81 (DBT-5 defects 6 and 7 of the second quality-baseline audit re-run). `docs/engineering_standards.md`
-  section 1.2 says "One sentence per comment, which may wrap onto more than one line"; `dbt_project.yml` has a
-  three-sentence comment and `_intermediate_unit_tests.yml` has ten more multi-sentence comment blocks. One rule over
-  every case: every comment block under `dbt_analytics/` is one sentence, and explanation that does not fit one
-  sentence moves to the unit test's `description:` field (a dbt field for prose, not a comment).
+objective: Works #80 (ING-1 defect 1 and ING-5 defect 2 of the second quality-baseline audit re-run). The full-recording
+  mode of `scripts/record_ingestion_fixtures.py` writes each ticker file before it has fetched the market's prices and
+  saves the manifest once at the end, so a network failure leaves recordings that disagree with the manifest and the
+  golden mart, unlike `--ticker` mode in the same script. And the rule that turns a US class-share dot into a hyphen
+  (`to_yfinance_download_ticker`) has no test. One rule: a market's recording changes no file until that market's network
+  calls have finished, the manifest is saved after each market, and every symbol rule has a test.
 
 scope_paths:
-  - dbt_analytics/dbt_project.yml
-  - dbt_analytics/models/4_intermediate/_intermediate_unit_tests.yml
+  - scripts/record_ingestion_fixtures.py
+  - tests/tooling/test_record_ingestion_fixtures.py
+  - tests/ingestion/test_symbols.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Answered by the owner in chat: a semicolon joining two clauses keeps a comment one sentence (answer A), so
-  the seven semicolon-joined comments in five other dbt files stay as they are. The rule is written
-  (`docs/engineering_standards.md` section 1.2); the audit's own proposed fix names `description:` as the home for the
-  arithmetic. No test, fixture value, expectation or model changes.
+decisions_reserved: None open. Both fixes copy what `rerecord_tickers` and the ticker-mode manifest save already do, and
+  the test rule is `.claude/working-agreement.md` section 4. No recorded fixture, golden mart or ingestion code changes.
 
 changes:
-  - `dbt_project.yml`: the three-sentence comment above `active_market_codes` is one sentence.
-  - `_intermediate_unit_tests.yml`: for each of the ten multi-sentence blocks, the prose becomes the unit test's
-    `description:` (worked quartile arithmetic, fixture shape, eligibility reasoning), or, for the boundary comment in
-    `card_metrics_company_type_classification`, one sentence. The text states the same facts, reflowed.
+  - `record_market`: fetches every ticker payload and the price batch first, then writes the JSON files and
+    `prices.parquet` (the order `rerecord_tickers` uses). A failed network call changes no file of that market.
+  - `main` (full mode): the Wikipedia page of a `provider: wikipedia` market is fetched before `record_market` runs and
+    written after it; the manifest is saved after each market, not once at the end. `record_wikipedia` is split into
+    `fetch_wikipedia` (network) and `write_wikipedia` (file); nothing else called it.
+  - `tests/tooling/test_record_ingestion_fixtures.py`: a failing ticker fetch, a failing price download and a failing
+    Wikipedia fetch each leave every file as it was; a failure in the second market leaves the first market's manifest
+    entry saved; the Wikipedia page is written and flagged; a full recording writes every ticker and the price batch.
+  - `tests/ingestion/test_symbols.py` (new): pins `to_yfinance_ticker` and `to_yfinance_download_ticker`, including the
+    dot-to-hyphen branch for an empty suffix and the unchanged dotted symbol for a non-empty one.
   - `.claude/active_work.md`: current facts.
 
 done_when:
-  - A scan of every `#` and `--` comment block under `dbt_analytics/` (`.sql`, `.yml`, excluding `target/` and
-    `dbt_packages/`) for two or more sentences reports zero blocks (it reported 11 before; the scan counts a period
-    followed by a space and any letter, and a semicolon stays inside one sentence (owner answer A); it is a scratch script, not a
-    committed check).
-  - `dbt build` with the CI fixtures passes: 149 of 149, including all 29 unit tests.
-  - `pytest tests -q` passes; `check_registry_var_sync.py` passes (it reads `active_market_codes`).
-  - Every `description:` added sits directly under its `- name:` line, and no fixture row, `expect` row or model
-    reference changed (the diff shows only comment removals and `description:` additions, plus the one reworded
-    boundary comment).
+  - Moving the file writes back in front of the network calls in `record_market`, removing the dot-to-hyphen
+    `replace`, and saving the manifest once after the loop each fail a test (mutation-checked).
+  - `git grep -n "record_wikipedia" -- . ':!.claude/task'` finds nothing.
+  - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.
 
 known_limits:
-  - The sentence scan is a heuristic (a period followed by a space and a letter); a comment it cannot see is not covered.
-  - Comments outside `dbt_analytics/` (Python, docs) are out of this task; the audit named only these two files.
+  - The recorder needs the network and is run by hand; the tests replace the network calls, so no live recording run
+    is part of this change.
+  - A local file write that fails halfway (disk full) can still leave a market partly written; only network failures
+    are covered, as in `rerecord_tickers`.
 
 regression_checklist:
-  - The unit tests keep their names, models, inputs and expectations; the `dbt build` count stays 149.
+  - `--ticker` mode and its tests are untouched and pass as before.
+  - The manifest content of a full recording is the same as before (`tickers`, `info_symbols`, `download_batch`,
+    `wikipedia`, `recorded_at`, markets sorted); only when it is saved changes.

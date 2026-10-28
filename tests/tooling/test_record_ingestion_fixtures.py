@@ -1,9 +1,12 @@
 """The recorder's `--ticker` mode must re-record only the named tickers and keep every other
-recording: a regression there would silently mix fresh and old data into the golden mart."""
+recording, and a full recording must not touch a market's files before that market's network calls
+have finished: a regression there would silently mix fresh and old data into the golden mart."""
 
 from __future__ import annotations
 
+import gzip
 import json
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -170,3 +173,94 @@ def test_full_recording_clears_rerecorded_at(tmp_path, monkeypatch) -> None:
     entry = manifest["markets"]["us_sp500"]
     assert "rerecorded_at" not in entry
     assert entry["recorded_at"] != "x"
+
+
+def test_full_recording_touches_nothing_when_a_later_ticker_fails(market, monkeypatch) -> None:
+    def _offline_on_ko(symbol):
+        if symbol == "KO":
+            raise ConnectionError("no network")
+        return {"symbol": symbol, "v": "new"}
+
+    monkeypatch.setattr(recorder, "_record_ticker", _offline_on_ko)
+    before = {p.name: p.read_bytes() for p in market.iterdir()}
+    with pytest.raises(ConnectionError):
+        recorder.record_market("us_sp500")
+    assert {p.name: p.read_bytes() for p in market.iterdir()} == before
+
+
+def test_full_recording_touches_nothing_when_the_price_download_fails(market, monkeypatch) -> None:
+    def _offline(_batch):
+        raise ConnectionError("no network")
+
+    monkeypatch.setattr(recorder, "_record_prices", _offline)
+    before = {p.name: p.read_bytes() for p in market.iterdir()}
+    with pytest.raises(ConnectionError):
+        recorder.record_market("us_sp500")
+    assert {p.name: p.read_bytes() for p in market.iterdir()} == before
+
+
+def test_full_recording_writes_every_ticker_and_the_price_batch(market) -> None:
+    entry = recorder.record_market("us_sp500")
+    for name in ("AAPL", "KO"):
+        assert json.loads((market / f"{name}.json").read_text(encoding="utf-8"))["v"] == "new"
+    prices = pd.read_parquet(market / "prices.parquet")
+    assert prices.groupby("symbol")["Close"].first().to_dict() == {"AAPL": 9.0, "KO": 9.0}
+    assert entry["download_batch"] == ["AAPL", "KO"]
+
+
+def test_main_full_mode_saves_each_market_before_the_next(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(recorder, "FIXTURE_DIR", tmp_path)
+    active = [m.market_code for m in recorder.load_markets(active_only=True)]
+    monkeypatch.setattr(recorder, "FIXTURE_TICKERS", {code: [] for code in active})
+    monkeypatch.setattr(recorder, "load_refresh_configs", lambda: {})
+
+    def _fail_on_uk(code):
+        if code == "uk_ftse100":
+            raise ConnectionError("no network")
+        return {"tickers": ["KO"]}
+
+    monkeypatch.setattr(recorder, "record_market", _fail_on_uk)
+    with pytest.raises(ConnectionError):
+        recorder.main(["--market", "us_sp500", "--market", "uk_ftse100"])
+    markets = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))["markets"]
+    assert list(markets) == ["us_sp500"]
+    assert markets["us_sp500"]["recorded_at"] == _utc_today()
+
+
+def test_main_full_mode_fetches_the_wikipedia_page_before_recording_the_market(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(recorder, "FIXTURE_DIR", tmp_path)
+    active = [m.market_code for m in recorder.load_markets(active_only=True)]
+    monkeypatch.setattr(recorder, "FIXTURE_TICKERS", {code: [] for code in active})
+    wiki = SimpleNamespace(provider="wikipedia", url="https://example.invalid/page")
+    monkeypatch.setattr(recorder, "load_refresh_configs", lambda: {"us_sp500": wiki})
+    recorded = []
+    monkeypatch.setattr(recorder, "record_market", lambda code: recorded.append(code) or {})
+
+    def _offline(_url):
+        raise ConnectionError("no network")
+
+    monkeypatch.setattr(recorder, "fetch_wikipedia", _offline)
+    with pytest.raises(ConnectionError):
+        recorder.main(["--market", "us_sp500"])
+    assert recorded == []
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_main_full_mode_writes_the_wikipedia_page_and_flags_the_manifest(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(recorder, "FIXTURE_DIR", tmp_path)
+    active = [m.market_code for m in recorder.load_markets(active_only=True)]
+    monkeypatch.setattr(recorder, "FIXTURE_TICKERS", {code: [] for code in active})
+    wiki = SimpleNamespace(provider="wikipedia", url="https://example.invalid/page")
+    monkeypatch.setattr(recorder, "load_refresh_configs", lambda: {"us_sp500": wiki})
+    monkeypatch.setattr(recorder, "record_market", lambda code: {"tickers": []})
+    monkeypatch.setattr(recorder, "fetch_wikipedia", lambda url: "<html>page</html>")
+
+    assert recorder.main(["--market", "us_sp500"]) == 0
+    with gzip.open(tmp_path / "wikipedia" / "us_sp500.html.gz", "rt", encoding="utf-8") as handle:
+        assert handle.read() == "<html>page</html>"
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["markets"]["us_sp500"]["wikipedia"] is True

@@ -1,42 +1,43 @@
 # Review
 
-diff_sha256: f7253505f2a093546a965b2e44a0062b86c20f42dffb92095c6fe57c227e5aa7
-rounds: 2
+diff_sha256: ba4475bf4db5c1cff50faf05e065a556b3c6eff348d1b361f716feba7f48a951
+rounds: 1
 
-Works #81 (DBT-5 defects 6 and 7 of the second audit re-run). Every comment block under `dbt_analytics/` is one
-sentence: `dbt_project.yml` has one sentence above `active_market_codes`, and the ten multi-sentence blocks of
-`_intermediate_unit_tests.yml` became the unit tests' `description:` fields (one boundary comment became one sentence).
-No fixture row, expectation or model changed. Round 1 (tree e034a10): analytics-engineer-reviewer PASS; scope-auditor
-FAIL (one two-sentence block left, second sentence lowercase, so the first scan missed it) with six wording fixes, all
-applied. Round 2 (tree 860f601): analytics-engineer-reviewer PASS; scope-auditor ESCALATE on whether a semicolon ends a
-sentence, answered by the owner (A). After round 2 only the `dbt_project.yml` comment's last words changed ("when the
-two market lists differ", the non-blocking nit of that review) and the contract and handover.
+Works #80 (ING-1 defect 1, ING-5 defect 2 of the second audit re-run). In `scripts/record_ingestion_fixtures.py`,
+`record_market` fetches every ticker payload and the price batch before it writes a file; the Wikipedia page of a market
+is fetched before the market is recorded and written after it (`record_wikipedia` is split into `fetch_wikipedia` and
+`write_wikipedia`, no other caller); the manifest is saved after each market. `tests/ingestion/test_symbols.py` pins
+`to_yfinance_ticker` and `to_yfinance_download_ticker`. Round 1 (tree 935b6d3): scope-auditor and platform-reviewer
+PASS. After the PASS verdicts only the two wording fixes changed: the module docstring of the recorder's test file and
+the contract's objective (the rule is per market).
 
 Coordinator evidence:
-- `dbt build` with the CI fixtures: 149 of 149 pass, 29 of them unit tests (run after round 1's fixes and again after
-  round 2's); `pytest tests` 1491 passed, 1 skipped; `check_registry_var_sync.py` passes.
-- Scan of every `#` and `--` comment block under `dbt_analytics/` (period, space, letter counts as a sentence end; a
-  semicolon does not): 11 blocks before, 0 after.
+- `pytest tests` 1505 passed, 1 skipped; `check_context_budget.py` passes.
+- Mutations, file restored after each: removing the dot-to-hyphen `replace` fails 1 test; writing each ticker file
+  before the fetches (the old order) fails 2; saving the manifest once after the loop fails 1.
+- `git grep -n "record_wikipedia" -- . ':!.claude/task'` finds nothing.
+- No live recording run: the recorder needs the network and is run by hand; the tests replace the network calls.
 
-follow_ups: seven semicolon-joined comments in five other dbt files stay as they are by the owner's answer (A); the
-sentence scan is a scratch heuristic, not a committed check.
+follow_ups: per-ticker progress lines now print only after a market's fetches finish (as `rerecord_tickers` already
+does); `write_wikipedia`, the manifest and the parquet are written non-atomically (the declared local-write limit);
+the `to_yfinance_download_ticker` docstring says "US class shares" but the rule keys on an empty exchange suffix (only
+`us_sp500` has one today); no seed-level guard enforces the dotted-ticker convention (`BT.A` is taken as a complete
+Yahoo symbol).
 
 ## scope-auditor
 
-VERDICT: ESCALATE
-reviewed_tree: 860f601aedeeacbecc14cc4492ca5a3980acd49f
+VERDICT: PASS
+reviewed_tree: 935b6d3ed90766974fe2cfe9b35afd319c68e4c8
 risks_checked:
-- Round 1's FAIL is fixed and the six wording fixes were applied faithfully; the claims in the new descriptions hold against the fixtures and models.
-- No fixture, expectation or model line changed in either round.
-question: does a semicolon-joined pair of clauses in a dbt comment count as one sentence? (A: one sentence, zero blocks left; B: two sentences, seven more comments in five files outside this task's scope.)
-CPO ANSWER: A. A semicolon keeps a comment one sentence; the seven semicolon-joined comments stay as they are and are not a follow-up.
-wording_fixes: none.
+- Only the four in-scope files changed; no recorded fixture, golden mart or ingestion file is in the diff, and `record_wikipedia` has no other caller.
+- Full-mode manifest content is the same keys and sorting as before; only when it is saved changed, and `--ticker` mode is untouched.
+wording_fixes: applied (test file docstring, contract objective).
 
-## analytics-engineer-reviewer
+## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: 860f601aedeeacbecc14cc4492ca5a3980acd49f
+reviewed_tree: 935b6d3ed90766974fe2cfe9b35afd319c68e4c8
 risks_checked:
-- Every claim in the new descriptions (peer counts, thresholds, quartile arithmetic, the market-cap case pinned by `card_metrics_eligibility_without_forward_pe`) matches the fixtures and `int_stock__card_metrics.sql` and `int_stock__sector_benchmarks.sql`.
-- The folded scalars are valid unit-test YAML and `scripts/sync_dbt_vars.py` does not read the comment above `active_market_codes`.
+- A network failure in market N leaves markets 1 to N-1 recorded with a matching manifest, and market N's files, including its Wikipedia file, untouched.
+- Each new test would fail if the order regressed (old files carry a marker the new write replaces); no test reaches the network or writes outside `tmp_path`; the symbol tests cover every branch of `symbols.py`.
 wording_fixes: none.

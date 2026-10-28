@@ -124,24 +124,27 @@ def _record_prices(batch: list[str]) -> pd.DataFrame:
 
 
 def record_market(market_code: str) -> dict:
+    """Record every fixture ticker and the price batch of one market.
+
+    All network calls finish before any file is touched, so a failed network call changes nothing.
+    """
     market = get_market(market_code)
     local = fixture_tickers(market_code)
     if len(local) > BATCH_SIZE:
         raise SystemExit(f"{market_code}: more fixture tickers than one price batch holds")
     out = FIXTURE_DIR / "yfinance" / market_code
-    out.mkdir(parents=True, exist_ok=True)
-
-    symbols = {}
-    for t in local:
-        symbol = to_yfinance_ticker(t, market.exchange_suffix)
-        symbols[t] = symbol
-        (out / f"{symbol}.json").write_text(
-            json.dumps(_record_ticker(symbol), indent=1, default=str) + "\n", encoding="utf-8"
-        )
-        print(f"  {market_code}: {t} -> {symbol}")
-
+    symbols = {t: to_yfinance_ticker(t, market.exchange_suffix) for t in local}
     batch = [to_yfinance_download_ticker(t, market.exchange_suffix) for t in local]
-    _record_prices(batch).to_parquet(out / "prices.parquet", index=False)
+    payloads = {t: _record_ticker(symbols[t]) for t in local}
+    prices = _record_prices(batch)
+
+    out.mkdir(parents=True, exist_ok=True)
+    for t, payload in payloads.items():
+        (out / f"{symbols[t]}.json").write_text(
+            json.dumps(payload, indent=1, default=str) + "\n", encoding="utf-8"
+        )
+        print(f"  {market_code}: {t} -> {symbols[t]}")
+    prices.to_parquet(out / "prices.parquet", index=False)
     return {"tickers": local, "info_symbols": symbols, "download_batch": batch}
 
 
@@ -177,13 +180,17 @@ def rerecord_tickers(market_code: str, tickers: list[str]) -> dict:
     return {"tickers": local, "info_symbols": symbols, "download_batch": batch}
 
 
-def record_wikipedia(market_code: str, url: str) -> None:
+def fetch_wikipedia(url: str) -> str:
     response = requests.get(url, headers={"User-Agent": WIKIPEDIA_USER_AGENT}, timeout=30)
     response.raise_for_status()
+    return response.text
+
+
+def write_wikipedia(market_code: str, html: str) -> None:
     out = FIXTURE_DIR / "wikipedia"
     out.mkdir(parents=True, exist_ok=True)
     with gzip.open(out / f"{market_code}.html.gz", "wt", encoding="utf-8") as handle:
-        handle.write(response.text)
+        handle.write(html)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -228,15 +235,20 @@ def main(argv: list[str] | None = None) -> int:
     manifest.setdefault("markets", {})
     configs = load_refresh_configs()
     for code in targets:
-        entry = record_market(code)
         cfg = configs.get(code)
-        if cfg and cfg.provider == "wikipedia" and cfg.url:
-            record_wikipedia(code, cfg.url)
+        wikipedia = (
+            fetch_wikipedia(cfg.url) if cfg and cfg.provider == "wikipedia" and cfg.url else None
+        )
+        entry = record_market(code)
+        if wikipedia is not None:
+            write_wikipedia(code, wikipedia)
             entry["wikipedia"] = True
         entry["recorded_at"] = datetime.now(timezone.utc).date().isoformat()
         manifest["markets"][code] = entry
-    manifest["markets"] = dict(sorted(manifest["markets"].items()))
-    manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+        manifest["markets"] = dict(sorted(manifest["markets"].items()))
+        # Per market, so a later market's failure cannot leave this one's recording newer
+        # than its manifest entry.
+        manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
     print(f"recorded {len(targets)} market(s) into {FIXTURE_DIR}")
     return 0
 
