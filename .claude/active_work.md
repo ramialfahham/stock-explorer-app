@@ -59,8 +59,7 @@ standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 merged; each issue lists its items). The re-run of 2026-10-26 found 34: 16 new, filed as #80 ingestion, #81 dbt, #82 frontend, #83 docs, #84 hygiene, and
 18 already filed (the 14 owner calls of #75, items 38 to 44 and 46 to 52, and one item each in #70, #57, #79, #18). **Done = every one of the 34
 fixed or ruled on by the owner, each with an exact search or test; no re-run gates it** (the owner's answer A of 2026-10-26; the audit stays a check the owner starts, about 1.7M tokens: `quality-baseline-audit`, then
-`python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`). Order: #84, #81, #80, #82 and #83 (merged); the 18 are on branch
-`fix/docs-audit-final` (in review). Take the issues one at a time, owner decisions one at a time. Criteria:
+`python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`). Order: #84, #81, #80, #82 and #83 (merged); the 18 are merged too (!279), so all 34 are fixed or ruled on. Closing the milestone is the owner's call. Take the issues one at a time, owner decisions one at a time. Criteria:
 `docs/quality_criteria.json` v3 (a change needs a version bump and the owner). Way of working the owner set: one rule over every case instead of per-case fixes;
 make a sweep's "done" checkable (an exact search and a keep list in the contract); fix every
 copy of a changed claim.
