@@ -22,6 +22,7 @@ DECK_COLUMNS: tuple[str, ...] = (
     "currency",
     "ebit_margin_basis",
     "ebit_margin_pct",
+    "net_margin_pct",
     "statement_roe_pct",
     "cash_runway_months",
     # A preset metric missing from the rows makes that preset silently match every card.

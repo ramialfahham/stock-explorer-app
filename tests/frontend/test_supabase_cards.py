@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from explore_filters import METRIC_PRESETS  # noqa: E402
 from supabase_cards import (  # noqa: E402
     DECK_COLUMNS,
     UNDEFINED_COLUMN_SQLSTATE,
@@ -306,3 +307,12 @@ def test_card_detail_omits_a_verdict_computed_from_a_different_snapshot() -> Non
         assert card is not None, label
         assert "health_verdict" not in card, label
         assert "ai_read" not in card, label
+
+
+def test_deck_columns_cover_every_filter_preset_metric() -> None:
+    """A preset check on a metric the deck rows lack reads None and passes every card, so the
+    pill filters nothing. The metrics are derived from METRIC_PRESETS, so a new preset or
+    check cannot be added without its column."""
+    metrics = {metric for spec in METRIC_PRESETS.values() for _, metric, _, _ in spec["checks"]}
+    assert metrics
+    assert metrics <= set(DECK_COLUMNS)

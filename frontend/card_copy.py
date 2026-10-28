@@ -284,7 +284,7 @@ def format_snapshot_date(raw: date | str | None) -> str | None:
         parsed = raw
     else:
         return None
-    return parsed.strftime("%B %d, %Y")
+    return f"{parsed:%B} {parsed.day}, {parsed.year}"
 
 
 def freshness_line(card: dict) -> str | None:

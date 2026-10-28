@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 from markets import latest_snapshot_label  # noqa: E402
 from overflow_menu import MENU_ABOUT_INTRO, MENU_METRICS_LINE, markets_line  # noqa: E402
 
@@ -60,4 +58,4 @@ def test_latest_snapshot_label_picks_max_date() -> None:
         {"is_card_eligible": False, "snapshot_date": "2099-01-01"},
     ]
     label = latest_snapshot_label(cards)
-    assert label == date(2026, 6, 8).strftime("%B %d, %Y")
+    assert label == "June 8, 2026"
