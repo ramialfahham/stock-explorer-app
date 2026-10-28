@@ -49,7 +49,6 @@ Each row is a **bordered HTML field** (left-aligned name + ticker·sector) with 
 | Freshness | **Tab-level once** — `Fundamentals as of {date}` above the list; **never per row** |
 | Focus mode | `← Back to list` then **Recent headlines** (auto-load, up to 3) then Company Snapshot — **no duplicate name/sector row** above the card |
 | Empty state | One `st.info` — no fake rows |
-| Compare | **Removed** — no saved-company compare UI |
 
 ---
 
@@ -90,7 +89,6 @@ Long headlines reuse the shared disclosure pattern — see [`disclosure_pattern.
 - **Never repeat “As of …” on every row** — clutters the learning list.
 - **Never use the full card or metric grid in list mode** — list is for picking, not reading numbers.
 - **Never horizontal-scroll tables** of saved companies on mobile.
-- **Never “Compare with another saved company”.**
 
 ---
 

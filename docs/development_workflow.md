@@ -61,14 +61,8 @@ and `--verify` in a clean image.
 
 ### Tier C — production (`data-pipeline` job)
 
-Scheduled full run:
-
-1. Ingest all active markets
-2. `archive_raw_to_supabase.py` (a failure fails the job only at its end)
-3. `dbt build` (full)
-4. `check_pipeline_completeness.py` (fail if gates not met)
-5. `export_to_supabase.py`
-6. `generate_assessments.py`
+Scheduled full run: the steps are the `data-pipeline` job in [`.gitlab-ci.yml`](../.gitlab-ci.yml),
+listed in [`operations_guide.md`](operations_guide.md) under Production architecture.
 
 A GitLab pipeline schedule (CI/CD → Schedules — project configuration, not something a
 commit can set) drives the scheduled run (1st and 15th of each month); a manual `web`

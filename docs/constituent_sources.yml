@@ -93,19 +93,16 @@ markets:
       The table carries a Rank column, so the company name is under Name rather than Company.
       That column also gives LEGAL names ("Novartis International AG") where every other source
       gives trade names ("Adidas", "Philips"), and the seed name wins over yfinance in dim_stock.
-      Fixed 2026-08-28: nineteen ch_smi rows in dbt_analytics/seeds/company_name_overrides.csv
-      correct this to trade names; the raw seed here is untouched by design.
+      The ch_smi rows in dbt_analytics/seeds/company_name_overrides.csv correct this to trade
+      names; the raw seed here is untouched by design.
       Switzerland TRADES in CHF, which has no _CURRENCY_SYMBOLS entry, so _display_currency
-      returns the bare ISO code. Trades, not reports: audited 2026-08-28 against yfinance
-      `financialCurrency`, NINE of the twenty file in something else. USD for Novartis, ABB, UBS,
-      Zurich, Swiss Re, Alcon, Amrize and Logitech; EUR for Richemont. That includes the index's
-      heaviest constituent and its three largest financials. The mart's currency is the display
-      code and the read prompt says "trades in" for exactly this reason; anything that renders a
-      franc on a money amount has to reckon with those nine. Not a Swiss novelty either:
-      uk_ftse100 already carries Shell, BP, AstraZeneca, HSBC and Rio Tinto reporting in USD
-      against a GBp trading currency. Recorded as observed
-      behaviour: whether that is the wanted
-      treatment is the owner's under section 6 and has not been decided.
+      returns the bare ISO code. Trades, not reports: yfinance `financialCurrency` differs from
+      the trading currency for several constituents (USD for Novartis, ABB, UBS, Zurich, Swiss
+      Re, Alcon, Amrize and Logitech; EUR for Richemont), including the index's heaviest
+      constituent and its three largest financials. The mart's currency is the display code and
+      the read prompt says "trades in" for exactly this reason; anything that renders a franc on
+      a money amount has to reckon with those. Not a Swiss novelty either: uk_ftse100 carries
+      Shell, BP, AstraZeneca, HSBC and Rio Tinto reporting in USD against a GBp trading currency.
 
   es_ibex35:
     provider: wikipedia

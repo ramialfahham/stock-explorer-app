@@ -112,8 +112,7 @@ Streamlit's `link_button` supports are covered so a future variant never silentl
 unstyled: `-primary` gets the same accent skin as `button[kind="primary"]`;
 `-secondary`/`-tertiary` share the surface skin (this app has no separate visual tier for
 "tertiary" anywhere else, so it doesn't invent one here). **Watch this testid if a future
-Streamlit upgrade changes it** — it was already wrong once (a pre-existing footer-scoped
-rule assumed `"stLinkButton"`, which never matched anything; fixed alongside this one).
+Streamlit upgrade changes it.**
 Currently one consumer (the card footer's "Yahoo Finance" link, type `secondary`).
 
 ---

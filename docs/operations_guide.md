@@ -12,13 +12,16 @@ How production data moves and how to respond when it breaks. Product rules live 
 
 ```
 GitLab CI (schedule)
+  → apply_supabase_migrations.py
   → run_ingestion.py (yfinance → parquet)
   → archive_raw_to_supabase.py (parquet → Storage bucket raw-archive)
+  → dbt source freshness
   → dbt build (DuckDB)
   → check_pipeline_completeness.py
   → check_eligibility_baseline.py
   → check_export_health.py
   → export_to_supabase.py
+  → generate_assessments.py
   → Streamlit reads Supabase (anon key)
 ```
 
@@ -36,13 +39,15 @@ Nothing in this path runs on a developer laptop in production.
 ### Verify production pipeline
 
 1. Ensure `SUPABASE_DB_HOST` and `SUPABASE_DB_PORT` are set as GitLab CI/CD variables (see
-   below), **Protected** (they're only needed by protected-branch pipelines). Without them,
-   `apply_supabase_migrations` fails with **HTTP 403** when the Management API fallback is used.
+   below), **Protected** (they're only needed by protected-branch pipelines). Without them and
+   without a full URI (`SUPABASE_DB_URL` or `SUPABASE_DB_POOLER_URL`), `apply_supabase_migrations` tries the
+   direct database host (when `SUPABASE_URL` and `SUPABASE_DB_PASSWORD` are set) or fails with an error that asks
+   for `SUPABASE_DB_HOST`; shared runners cannot reach the direct host.
 2. CI/CD → Pipelines → **Run pipeline** on `main` (this is a `web`-source dispatch; the
    `data-pipeline` job appears with a manual play button — click it to actually start it).
-3. Expect: migrate → ingest → raw archive → `dbt build` → completeness → eligibility baseline → export health → export.
+3. Expect the steps under Production architecture, in that order.
 
-If migrate fails with 403, use `python scripts/discover_supabase_db_host.py` locally and set
+If migrate cannot connect, use `python scripts/discover_supabase_db_host.py` locally and set
 `SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` as GitLab CI/CD variables ([`supabase_setup.md`](supabase_setup.md)).
 
 After a successful export, deploy or refresh the UI: [`streamlit_deploy.md`](streamlit_deploy.md).
@@ -56,8 +61,8 @@ session cache ~1 hour). Not part of the scheduled fundamentals pipeline and not 
 
 Full table (every variable, what uses it, Protected requirement): [`supabase_setup.md`](supabase_setup.md)
 §3. Unlike GitHub Actions' per-step `secrets:` mapping, GitLab injects every project CI/CD
-variable into every job -- **Protected** is what limits them to the two jobs that actually
-use them (`supabase-migrate`, `data-pipeline`, both restricted to protected-branch
+variable into every job -- **Protected** is what limits them to the jobs that actually
+use them (`supabase-migrate`, `data-pipeline`, `dev-schema-check`, all restricted to protected-branch
 pipelines), and it only works if `main` is genuinely a protected branch.
 
 Streamlit uses the **anon** key in its own hosting secrets — not in the data pipeline.

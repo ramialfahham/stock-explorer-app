@@ -83,7 +83,7 @@ immediately.
 
 In your project **Settings → CI/CD → Variables**, add each below. Mark each **Protected**
 (GitLab injects every variable into every job by default — Protected is what limits these to
-protected-branch pipelines, i.e. the `supabase-migrate` and `data-pipeline` jobs; this only
+protected-branch pipelines, i.e. the `supabase-migrate`, `data-pipeline` and `dev-schema-check` jobs; this only
 takes effect if `main` is actually a protected branch — verify with `glab api
 projects/<NAMESPACE>%2F<REPO>/protected_branches`). None of these need **Masked** beyond
 what GitLab requires by value shape; the service role key and DB password are still
@@ -91,13 +91,12 @@ sensitive and should stay Protected regardless.
 
 | Variable | Used by | Notes |
 |--------|---------|--------|
-| `SUPABASE_URL` | Migrate, data pipeline, export | Project URL |
-| `SUPABASE_DB_PASSWORD` | Migrate, data pipeline | Database password |
-| `SUPABASE_DB_HOST` | Migrate, data pipeline | **Session pooler hostname only** (recommended for CI) |
-| `SUPABASE_DB_PORT` | Migrate, data pipeline | Usually `5432` (Session pooler) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline: export, raw archive, assessments | Bypasses RLS -- still needs the table-level `GRANT`s in `011_grant_roles.sql` |
-| `SUPABASE_ACCESS_TOKEN` | Migrate (optional) | Personal access token; Management API pooler lookup **fallback only** |
-| `ANTHROPIC_API_KEY` | Data pipeline | Assessment prose reads; soft dependency, skipped when unset |
+| `SUPABASE_URL` | Migrate, data pipeline, dev-schema-check | Project URL |
+| `SUPABASE_DB_PASSWORD` | Migrate, data pipeline, dev-schema-check | Database password |
+| `SUPABASE_DB_HOST` | Migrate, data pipeline, dev-schema-check | **Session pooler hostname only** (recommended for CI) |
+| `SUPABASE_DB_PORT` | Migrate, data pipeline, dev-schema-check | Usually `5432` (Session pooler) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Data pipeline and dev-schema-check: export, raw archive, assessments | Bypasses RLS -- still needs the table-level `GRANT`s in `011_grant_roles.sql` |
+| `ANTHROPIC_API_KEY` | Data pipeline (blanked for the `generate_assessments.py` step in dev-schema-check) | Assessment prose reads; soft dependency, skipped when unset |
 
 ### CI migrations — recommended: host + port (not full URI)
 
@@ -121,9 +120,8 @@ GitLab's shared runners cannot reach the direct `db.*.supabase.co` host (IPv6). 
 [`scripts/apply_supabase_migrations.py`](../scripts/apply_supabase_migrations.py) resolution order:
 
 1. `SUPABASE_URL` + `SUPABASE_DB_PASSWORD` + `SUPABASE_DB_HOST` (+ optional `SUPABASE_DB_PORT`) — **use this in CI**
-2. **CI only:** same URL/password + `SUPABASE_ACCESS_TOKEN` → Management API pooler lookup (may return **403** if token lacks scope)
-3. `SUPABASE_DB_URL` or `SUPABASE_DB_POOLER_URL` (full Postgres URI)
-4. Local fallback: direct `db.{ref}.supabase.co:5432`
+2. `SUPABASE_DB_URL` or `SUPABASE_DB_POOLER_URL` (full Postgres URI)
+3. Local fallback: direct `db.{ref}.supabase.co:5432`
 
 Pooler username format: **`postgres.{project_ref}`** (not `postgres` alone).
 
@@ -136,17 +134,6 @@ If you prefer one secret instead of host/port:
 3. Add as `SUPABASE_DB_URL` in `.env` or as a GitLab CI/CD variable
 
 Locally you can use direct connection (`SUPABASE_URL` + `SUPABASE_DB_PASSWORD`) or the same pooler URI.
-
-### Management API 403 troubleshooting
-
-If CI fails with `HTTP Error 403: Forbidden` on pooler config:
-
-- Set `SUPABASE_DB_HOST` / `SUPABASE_DB_PORT` (skip the API), or
-- Regenerate a personal access token at [Account → Access Tokens](https://supabase.com/dashboard/account/tokens) and test:
-
-  ```bash
-  python scripts/print_supabase_pooler_config.py
-  ```
 
 When migration files change on `main`, the [`supabase-migrate`](../.gitlab-ci.yml) job
 applies them automatically. You can also trigger it manually (**CI/CD → Pipelines → Run

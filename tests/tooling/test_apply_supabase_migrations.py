@@ -107,7 +107,6 @@ def test_main_target_dev_wires_schema_through(tmp_path: Path, monkeypatch) -> No
     monkeypatch.setattr(asm, "resolve_database_url", lambda: "postgresql://fake")
     monkeypatch.setattr(asm, "_connect", lambda db_url: fake_conn)
     monkeypatch.setattr(asm, "_list_migration_files", lambda: [migration])
-    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
     assert asm.main(["--target", "dev"]) == 0
 
@@ -125,10 +124,68 @@ def test_main_target_prod_is_the_default(tmp_path: Path, monkeypatch, capsys) ->
     monkeypatch.setattr(asm, "resolve_database_url", lambda: "postgresql://fake")
     monkeypatch.setattr(asm, "_connect", lambda db_url: fake_conn)
     monkeypatch.setattr(asm, "_list_migration_files", lambda: [migration])
-    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
     assert asm.main(["--dry-run"]) == 0  # no --target at all
 
     out = capsys.readouterr().out
     assert "Pending migrations for 'public'" in out
     assert "create schema if not exists dev" not in "\n".join(sql for sql, _ in fake_conn.log)
+
+
+_RESOLVE_KEYS = (
+    "SUPABASE_URL",
+    "SUPABASE_DB_PASSWORD",
+    "SUPABASE_DB_HOST",
+    "SUPABASE_DB_PORT",
+    "SUPABASE_DB_URL",
+    "SUPABASE_DB_POOLER_URL",
+)
+
+
+def _env(monkeypatch, **values: str) -> None:
+    for key in _RESOLVE_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    for key, value in values.items():
+        monkeypatch.setenv(key, value)
+
+
+def test_resolve_database_url_prefers_the_pooler_host(monkeypatch) -> None:
+    _env(
+        monkeypatch,
+        SUPABASE_URL="https://abcd.supabase.co",
+        SUPABASE_DB_PASSWORD="pw",
+        SUPABASE_DB_HOST="aws-1-eu.pooler.supabase.com",
+        SUPABASE_DB_URL="postgresql://ignored",
+    )
+    url = asm.resolve_database_url()
+    assert url.startswith("postgresql://postgres.abcd:pw@aws-1-eu.pooler.supabase.com:5432/postgres")
+
+
+def test_resolve_database_url_falls_back_to_the_full_uri(monkeypatch) -> None:
+    _env(monkeypatch, SUPABASE_DB_URL="postgresql://u:p@host:5432/postgres")
+    assert asm.resolve_database_url().startswith("postgresql://u:p@host:5432/postgres")
+
+
+def test_resolve_database_url_full_uri_beats_the_direct_host(monkeypatch) -> None:
+    _env(
+        monkeypatch,
+        SUPABASE_URL="https://abcd.supabase.co",
+        SUPABASE_DB_PASSWORD="pw",
+        SUPABASE_DB_URL="postgresql://u:p@host:5432/postgres",
+    )
+    assert asm.resolve_database_url().startswith("postgresql://u:p@host:5432/postgres")
+
+
+def test_resolve_database_url_local_direct_host(monkeypatch) -> None:
+    _env(monkeypatch, SUPABASE_URL="https://abcd.supabase.co", SUPABASE_DB_PASSWORD="pw")
+    assert "@db.abcd.supabase.co:5432/postgres" in asm.resolve_database_url()
+
+
+def test_resolve_database_url_without_credentials_raises(monkeypatch) -> None:
+    _env(monkeypatch)
+    try:
+        asm.resolve_database_url()
+    except RuntimeError as exc:
+        assert "SUPABASE_DB_HOST" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")

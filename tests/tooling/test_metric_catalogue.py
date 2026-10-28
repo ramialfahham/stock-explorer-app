@@ -7,10 +7,8 @@ metric once; frontend/metrics.json is generated from the seed. These tests lock 
   - the regenerated metrics.json matches the committed file (the frontend bridge can't silently drift);
   - the catalogue values are well-formed.
 
-Football guards model->catalogue drift with a jinja dbt singular test; this repo's §1.1 SQL-structure
-gate requires WITH-first singular tests, incompatible with column-introspection jinja — so the guard
-lives here in Python (which CI already runs). Strict model->catalogue introspection (flagging a NEW
-uncatalogued model column) is a Phase-2 follow-up.
+The §1.1 SQL-structure gate requires WITH-first singular tests, incompatible with
+column-introspection jinja, so the guard lives here in Python (which CI already runs).
 """
 
 from __future__ import annotations

@@ -61,9 +61,7 @@ The sticky **Save** action renders **below** the card body on Discover -- not in
 
 **Open state:** Market selectbox, Sector selectbox (respects current market), then five metric-preset pills (`st.pills`, multi-select: High margin, Low debt, Growing revenue, Strong returns, Cash-safe -- `METRIC_PRESETS` in `frontend/explore_filters.py`). Market options come from live eligible cards (`market_filter_options()`), not the full static list. Changes return to the list via `_on_filter_change`.
 
-**Pills, not numeric min/max (issue #13):** numeric min/max inputs are rejected for being too tall on mobile and for needing sentinel defaults and a Clear control. Plain-language toggles avoid all three: compact, unselected already means "no filter," no Clear control needed -- tap a pill again to deselect. A card whose company_type has no corresponding metric passes through untouched.
-
-**Removed:** "Surprise me worldwide" checkbox -- use **All markets** instead.
+**Pills, not numeric min/max:** plain-language toggles are compact, unselected already means "no filter," and no Clear control is needed -- tap a pill again to deselect. A card whose company_type has no corresponding metric passes through untouched.
 
 ---
 

@@ -111,7 +111,7 @@ Some metrics need copy that depends on the **number**, not just the metric id.
 | Metric | Condition | Gloss behavior |
 |--------|-----------|----------------|
 | `net_debt_to_ebitda` | value &lt; 0 | “Net cash: cash on hand exceeds debt” (not “years to repay”), and the universal direction cue below is suppressed; this branch already states the favorable read directly |
-| `debt_to_equity` | value &lt; 0 | “Negative equity, so this ratio isn't a normal leverage read” and the cue is suppressed — same failure shape as net debt/EBITDA (debt is always ≥ 0, so a negative ratio structurally means equity itself went negative — the catalogue's own `applicability` text: "the ratio then flips or explodes"), self-detecting from the ratio's own sign the same way. `statement_roe_pct` has the same underlying risk (a loss over negative equity can read as a spuriously positive %) but is **not** self-detecting this way — its sign alone can't distinguish that case from genuine profitability, and fixing it properly needs a raw equity-sign signal the pipeline doesn't currently expose to the frontend. Given a caveat in its `learn` text instead (equity-analyst-reviewer, round 2 of this task) rather than a frontend-only value-aware branch. |
+| `debt_to_equity` | value &lt; 0 | “Negative equity, so this ratio isn't a normal leverage read” and the cue is suppressed -- same failure shape as net debt/EBITDA (debt is always ≥ 0, so a negative ratio structurally means equity itself went negative -- the catalogue's own `applicability` text: "the ratio then flips or explodes"), self-detecting from the ratio's own sign the same way. `statement_roe_pct` has the same underlying risk (a loss over negative equity can read as a spuriously positive %) but is **not** self-detecting this way -- its sign alone can't distinguish that case from genuine profitability, and fixing it properly needs a raw equity-sign signal the pipeline doesn't currently expose to the frontend. It carries a caveat in its `learn` text instead of a frontend-only value-aware branch. |
 | `ebit_margin_pct` | `ebit_margin_basis == annual_latest` | Label/gloss say **annual**, not TTM — the direction cue still appends after this alternate base text |
 
 **Implementation:** `metric_gloss()`, `metric_analogy()`, `metric_learn_text()` in `frontend/card_copy.py` — pass the full `card` dict when basis or sign matters.
@@ -222,13 +222,8 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   can put the true median within a few percent of the min or max, and the label text
   must not run into the min/max labels at the track's own edges. The bar's actual gap
   still renders at the true, unclamped `median_pct`; only the label text is nudged
-  inward. Verified against every real range-mark row in production (3,967 rows across all 9
-  benchmarked metrics, see "Range mark mechanics" above, incl. a sector with a -129,810.5%
-  FCF-margin outlier -- see the data-quality note below) plus synthetic cases beyond today's real spread; the
-  tightest real numbers-row gap was ~12px at the original 11.5px axis size; at the 13px
-  size labels are ~13% wider, so the widest real edge label (~44px) beside the widest median
-  label (~40px) at the floor leaves ~6px, and live cards re-measured at 13px showed 15px to
-  23px. Non-colliding, with less margin than before.
+  inward. At the 13px axis size the widest real edge label (~44px) and median label (~40px) still clear each
+  other at the floor.
   This is a fixed floor, not width-aware — an even more extreme future data shape could
   in principle still crowd it. If a real case ever visibly collides, widen the floor
   (and re-verify against production data the same way) rather than special-casing one
@@ -294,10 +289,9 @@ open and belongs upstream, not here.
   carries an ancestor-scoped `p { margin-top: 0; margin-left: 0; margin-right: 0; }`
   reset at (0,1,1) specificity, which silently beats a (0,1,0) single-class rule
   regardless of source order — no error, `getComputedStyle` just reports Streamlit's
-  value instead of yours. This bit both `.ss-metric-gloss` and
-  `.ss-metric-range-unavailable` on first write (the fix each needed is why they're
-  scoped `.ss-metric .ss-metric-gloss` / `.ss-metric .ss-metric-range-unavailable`
-  rather than bare classes). Scope under a parent class for (0,2,0)+ specificity
+  value instead of yours. `.ss-metric-gloss` and
+  `.ss-metric-range-unavailable` are scoped `.ss-metric .ss-metric-gloss` /
+  `.ss-metric .ss-metric-range-unavailable` for that reason. Scope under a parent class for (0,2,0)+ specificity
   instead of trying to win a specificity tie on source order alone.
 
 ---

@@ -1,72 +1,58 @@
 # Review
 
-diff_sha256: 06600667124599dd39ed17cee4414926938cfcefff64a39a4d4366262368baca
-rounds: 1
+diff_sha256: 7cbb866b58594027ff570aca0766ad1696d2387500c76d3ea008da1470868ab0
+rounds: 3
 
-Works #83 (DOC-3 defect 29, DOC-1 defect 30, DOC-2 defects 34 to 37 of the second audit re-run). The scheduled-run
-diagram in `docs/operations_guide.md` no longer lists the manual constituent refresh; the pre-revenue company count (3, 11
-and 15 stated in six places, two of them a migration comment and a test comment) is replaced by the rule; the history,
-measurement log, open to-do and redesign parenthetical are deleted from the five docs the defects name. Round 1 (tree
-01162d8): scope-auditor, platform-reviewer, equity-analyst-reviewer, data-engineer-reviewer and
-analytics-engineer-reviewer PASS. After the PASS verdicts only wording changed: the rejected-argument sentence and the
-`/auth/v1/health` sentence in the monitor paragraph, "rows that each metric actually renders" in
-`docs/data_contract.md`, and the reflow of the test comment.
+Works #75 (items 38 to 52), #70 (ING-3), #79 (DOC-3) and #18 (DOC-1) of the second audit re-run. Round 1 (platform and
+scope-auditor FAIL on the deleted `_fetch_pooler_host_port` still imported by `scripts/print_supabase_pooler_config.py`;
+data-engineer PASS) led to deleting the helper; round 2 (tree bd4f528): equity-analyst and platform PASS, scope-auditor
+ESCALATE on the helper deletion; the owner answered A (delete). Round 3 (tree ecc389c): scope-auditor PASS. After the PASS
+verdicts only wording changed: the direct-host sentence in `docs/operations_guide.md` and the `ANTHROPIC_API_KEY` row in
+`docs/supabase_setup.md`.
 
 Coordinator evidence:
-- `pytest tests` 1515 passed, 1 skipped; `check_context_budget.py` and `check_docs_indexed.py` pass.
-- The contract's `done_when` search finds nothing outside `.claude/task` and `tests/fixtures`; `refresh constituents` in
-  `docs` finds only the heading `### Refresh constituents`.
-- Migration 017 changes in two comment lines; `scripts/apply_supabase_migrations.py` tracks applied files by name only, so
-  the edit trips no checksum. The `supabase-migrate` job runs on `main` for any change under `supabase/migrations/` and
-  finds nothing pending.
+- `pytest tests` 1521 passed, 1 skipped; `check_context_budget.py`, `check_docs_indexed.py` and `check_no_em_dash.py` pass.
+- The contract's `done_when` search (plus `SUPABASE_ACCESS_TOKEN`) finds nothing outside `.claude/task`, `.claude/active_work.md` and `tests/fixtures`.
+- The ingest test fails on the old code (mutation-checked).
+- Not exercised: the Management API deletion against a live Supabase project; the CI jobs use `SUPABASE_DB_HOST`, the first resolution step, which is unchanged.
 
-follow_ups: the retained rule "too few pre-revenue companies exist to clear the 8-peer threshold" has no per-sector count
-behind it in the repo (a dbt test or audit query would make it fail loudly if the population grew); the measured
-pre-revenue ranges in `docs/data_contract.md` carry no sample size now; `docs/supabase_setup.md` 3c says the export
-"completes inside 8s" with no measured duration (the export could log the RPC time, an owner call); the scheduled-run
-diagram and "Expect:" line in `docs/operations_guide.md` still omit migrations, source freshness and assessments (#75
-item 38); `frontend/styles.py:907` carries feedback-round history in a comment.
+follow_ups: a test that sets `SUPABASE_DB_POOLER_URL` (pooler URL beats the direct host); a smoke test importing every
+`scripts/*.py` (an unused import would have caught the round-1 failure); tests for the column-mismatch reset with a failing
+write and for an empty row whose write fails; `scripts/discover_supabase_db_host.py:6` docstring says "GitHub secret
+values"; measurement figures still in `docs/data_contract.md` (roa_pct, current_ratio_stmt, dividend_yield, fill-floor,
+ch_smi count); `frontend/styles.py:279` and `:907` carry history in comments; `frontend/metrics.json` columns
+`importance_tier` and `basis_column` stay (tracked in #57).
 
 ## scope-auditor
 
 VERDICT: PASS
-reviewed_tree: 01162d8964e67e530be1c7850706bbd1e2d6ba4a
+reviewed_tree: ecc389c8babbcab30cea16525f05b2eec7abf379
 risks_checked:
-- All ten changed paths are in `scope_paths`; the only owner choice (item 36, delete) is the owner's answer A; no SQL, copy, label or number changed.
-- The `done_when` searches hold, the diagram still matches the data-pipeline job order in `.gitlab-ci.yml`, and no doc relied on the dropped 2.87s and 2.8x figures.
-wording_fixes: applied (monitor paragraph).
+- The round-3 delta touches only paths in `scope_paths`; the helper deletion is recorded as the owner's answer (1b).
+- The direct-host sentence matches `resolve_database_url`; a repo-wide grep finds no dangling `SUPABASE_ACCESS_TOKEN` or Management API reference.
+wording_fixes: applied (`SUPABASE_DB_POOLER_URL` named, "fails with an error that asks for", scope of the blanked key).
 
 ## platform-reviewer
 
 VERDICT: PASS
-reviewed_tree: 01162d8964e67e530be1c7850706bbd1e2d6ba4a
+reviewed_tree: bd4f528b1b8687d7a2048461d50ab4ee885b716a
 risks_checked:
-- The test change is comment-only and the assertions below it still match the comment.
-- No test reads the removed phrases; the doc readers in `tests/` look at tables and markers this diff does not touch.
-wording_fixes: applied (comment reflow).
+- The `resolve_database_url` tests are hermetic and pin the order; no script imports the deleted function.
+- Routed files (`scripts/*`, `tests/*`, `.claude/working-agreement.md`) are unchanged since this verdict.
+wording_fixes: none.
 
 ## equity-analyst-reviewer
 
 VERDICT: PASS
-reviewed_tree: 01162d8964e67e530be1c7850706bbd1e2d6ba4a
+reviewed_tree: bd4f528b1b8687d7a2048461d50ab4ee885b716a
 risks_checked:
-- No metric definition, formula, bound or interpretation changed; the 8-peer rule and "Peer threshold" are intact, and peers are grouped by market and sector with `pre_revenue` removed from the peer set.
-- "Too few pre-revenue companies to clear the 8-peer threshold" is still a true statement of why the four metrics are unbenchmarked.
-wording_fixes: applied ("rows that each metric actually renders").
+- No metric definition, formula or accepted_range bound changed in `docs/data_contract.md` or `docs/metric_layer.md`.
+wording_fixes: applied (1,000 months).
 
 ## data-engineer-reviewer
 
 VERDICT: PASS
-reviewed_tree: 01162d8964e67e530be1c7850706bbd1e2d6ba4a
+reviewed_tree: 4f21ad6086b56799f31e9e52a1ed2cf19fa5b424
 risks_checked:
-- Migration 017 changes in two comment lines only; applied migrations are tracked by file name, so no checksum or re-run is affected.
-- Section 3c still states true things: one `replace_cards_snapshot` RPC, the 8s `authenticator` timeout as an observation, and a failed export rolls back.
-wording_fixes: none.
-
-## analytics-engineer-reviewer
-
-VERDICT: PASS
-reviewed_tree: 01162d8964e67e530be1c7850706bbd1e2d6ba4a
-risks_checked:
-- No SQL statement changed and no dbt model is in the diff; the new wording matches `peer_threshold = 8` and the `pre_revenue` exclusion in `int_stock__sector_benchmarks.sql`.
-wording_fixes: none.
+- A failed checkpoint write drops the row so a ticker is counted once; `ingestion/yfinance/ingest.py` and `tests/ingestion/test_ingest_resume.py` are byte-identical in every later tree.
+wording_fixes: applied.
