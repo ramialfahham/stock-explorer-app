@@ -12,7 +12,6 @@ How production data moves and how to respond when it breaks. Product rules live 
 
 ```
 GitLab CI (schedule)
-  → refresh constituents (optional / on change)
   → run_ingestion.py (yfinance → parquet)
   → archive_raw_to_supabase.py (parquet → Storage bucket raw-archive)
   → dbt build (DuckDB)
@@ -283,9 +282,6 @@ request to a Streamlit app returns only the static page shell; Streamlit runs th
 does. The response body contains no card data at all, so an app-only ping leaves the database
 entirely uncovered -- the database monitor below exists for exactly this gap.
 
-The database monitor's configured check interval was not captured when it was set up; only
-the requirement above (well under 7 days) is known.
-
 **Not yet confirmed working.** The database monitor's effect cannot show up for ~7 days after
 setup. To verify: check that the Supabase project still serves a REST request more than 7 days
 after the last pipeline write (writes land on the 1st and 15th), without anyone having visited
@@ -294,15 +290,13 @@ the app in between.
 The database URL carries the `sb_publishable_` key as a query parameter. That is acceptable
 because the key is publishable by design and because `mart_stock_cards` has row-level security
 with a select-only policy for `anon` (`supabase/migrations/001_initial_schema.sql`,
-`011_grant_roles.sql`). Note it is NOT acceptable on the grounds that the key already reaches
-browsers -- it does not: Streamlit builds the Supabase client server-side
+`011_grant_roles.sql`). Streamlit builds the Supabase client server-side
 (`frontend/supabase_client.py`), so the key never leaves the server. Putting it in a monitor
 URL genuinely widens where it exists. What makes that acceptable is primarily that the key is
 publishable by design; the select-only `anon` policy limits what it can do against the REST
 API specifically, and is not the control on every surface the key reaches. The `sb_secret_`
-key must never be used here. Supabase's `/auth/v1/health` endpoint
-was tried first to avoid a key in the URL and returns 401 without one, so it would read as
-permanently down.
+key must never be used here. The monitor uses this database URL, not Supabase's
+`/auth/v1/health`, which needs a key.
 
 Beyond the email and the monitors, rely on:
 

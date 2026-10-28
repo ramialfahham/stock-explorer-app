@@ -3,52 +3,51 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #82 (FE-3 defect 17, FE-2 defect 18, FE-1 defect 21 of the second quality-baseline audit re-run). One
-  rule per defect: every metric a filter preset checks is a column of the deck rows; every `.ss-*` class and `--ss-*`
-  custom property in the stylesheet is used; a snapshot date prints with no leading zero on the day.
+objective: Works #83 (DOC-3 defect 29, DOC-1 defect 30, DOC-2 defects 34 to 37 of the second quality-baseline audit
+  re-run). One rule: a durable doc states the current rule or fact, once, and is not a log, a count that is stated several
+  ways, or a to-do; every copy of a changed claim is fixed, in docs, code comments and tests alike.
 
 scope_paths:
-  - frontend/supabase_cards.py
-  - frontend/styles.py
-  - frontend/card_copy.py
-  - tests/frontend/test_supabase_cards.py
-  - tests/frontend/test_styles.py
-  - tests/frontend/test_card_copy.py
-  - tests/frontend/test_overflow_menu.py
+  - docs/operations_guide.md
+  - docs/data_contract.md
+  - docs/supabase_setup.md
+  - docs/development_workflow.md
+  - docs/working_agreement.md
+  - docs/ui/card_metric_cell.md
+  - supabase/migrations/017_sector_benchmark_financial_operating.sql
+  - tests/tooling/test_export_to_supabase.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Both owner calls are answered (2026-10-28). Defect 17: answer A, load `net_margin_pct` so the High
-  margin pill works as written for financial cards. Defect 21: answer A, the day prints without a leading zero, as the
-  wireframe in `docs/ui/saved_list.md` already shows. No preset cutoff, label or card face changes.
+decisions_reserved: Answered 2026-10-28. Defect 36 (the open "worth a skill" to-do in `docs/development_workflow.md`):
+  answer A, delete it, no new issue. The other five need no owner choice: the written rule (`docs/engineering_standards.md`
+  section 1.2, `.claude/working-agreement.md` section 2) already says current state only.
 
 changes:
-  - `DECK_COLUMNS` gains `net_margin_pct`. The High margin pill now filters financial cards (net margin above 20); before,
-    the value was never loaded, so the check passed every financial card.
-  - `frontend/styles.py`: deletes the rules for `.ss-saved-fresh`, `.ss-header-pool`, `.ss-market-breakdown` (with its
-    summary and body), `.ss-metric-sources`, `.ss-benchmark-compare` (with its summary), `.ss-benchmark-note` (selector),
-    `.ss-explain-all` (with its parts), `.ss-explain-list` (with dt, dd), `.ss-card-footer`, and the custom property
-    `--ss-bottom-nav-h`; two comments that named a deleted class are shortened.
-  - `format_snapshot_date` returns `June 8, 2026` (no `%d` padding, no platform-specific `%-d`).
-  - Tests: every metric in `METRIC_PRESETS` is in `DECK_COLUMNS`; every stylesheet class is emitted by a frontend module
-    and every custom property is read; `format_snapshot_date` is pinned with literal strings; the About-menu test asserts a
-    literal date instead of repeating the code's own format call.
+  - `docs/operations_guide.md`: the diagram no longer lists "refresh constituents" under the scheduled CI run (it is a
+    manual step, section "Refresh constituents"); the monitor paragraph drops the "check interval was not captured"
+    setup history; the key paragraph drops the rejected-argument sentence ("NOT acceptable on the grounds that..."); the
+    `/auth/v1/health` sentence states the current fact (the monitor uses the database URL, that endpoint needs a key), not the order tried.
+  - `docs/data_contract.md`, `docs/ui/card_metric_cell.md`, the comment in migration 017 and the comment in
+    `tests/tooling/test_export_to_supabase.py`: the pre-revenue company count (3 in four places, 11 and 15 rows in two
+    more) is dropped; the rule stays: too few pre-revenue companies to clear the 8-peer threshold. No SQL line changes.
+  - `docs/supabase_setup.md` section 3c: the measurement log (nine markets, 3.9 MB, 2.87s, 4.21s, 2.8x) is dropped; the
+    rule stays: one RPC, the margin to the 8s bound shrinks with every market added.
+  - `docs/development_workflow.md`: the "Still uncovered, worth a skill" paragraph is deleted.
+  - `docs/working_agreement.md`: the "as of the card-metric-cell redesign" parenthetical is deleted; the links stay.
 
 done_when:
-  - Removing `net_margin_pct` from `DECK_COLUMNS`, adding a stylesheet rule for an unused class, declaring an unused
-    `--ss-*` property, and restoring the `%d` format each fail a test (mutation-checked).
-  - `git grep -n -E "ss-saved-fresh|ss-explain-(all|list)|ss-market-breakdown|ss-header-pool|ss-bottom-nav-h|ss-benchmark-compare|ss-metric-sources|ss-benchmark-note|ss-card-footer([^-]|$)" -- frontend tests docs` finds nothing.
-  - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.
+  - `git grep -n -i -E "only 3 pre|exist app-wide|11 rows the pre_revenue|15 .pre_revenue|tried first to avoid|interval was not captured|worth a skill when|as of the card-metric-cell|Measured at nine|2\.87s|2\.8x" -- . ':!.claude/task' ':!tests/fixtures'` finds nothing (the one hit that stays, `frontend/styles.py` "tried first" about a layout, is not matched by `tried first to avoid`).
+  - `git grep -n "refresh constituents" -- docs` finds only the section heading `### Refresh constituents`.
+  - `pytest tests -q` passes; `check_context_budget.py` and `check_docs_indexed.py` pass.
 
 known_limits:
-  - The class test reads the frontend source for the literal class name, so a class built from a prefix and a variable
-    would count as unused. None is built that way today.
-  - The class test counts a class name found anywhere in the other frontend `.py` files, a comment or docstring included,
-    so a dead rule whose name is only mentioned there would pass.
-  - The High margin pill's effect on the live deck is not measured here; no browser run, the deck needs Supabase.
+  - The measured ranges kept in `docs/data_contract.md` (599 and 5,726 rows, min and max values) are other point-in-time
+    figures; they are data-contract evidence for a bound, not part of these six defects.
+  - No re-measurement of the pre-revenue population: the local database has no marts schema.
 
 regression_checklist:
-  - Other presets and their checks are untouched; `_card_matches_preset` is unchanged.
-  - The deck query selects one more column, `net_margin_pct`, which exists in `mart_stock_cards` and in migration 008.
-  - No other rule in `frontend/styles.py` changes.
+  - The 8-peer threshold wording in "Peer threshold" and the benchmark text is unchanged.
+  - Migration 017 changes in comment lines only.
+  - Every doc linked from `CLAUDE.md` is still linked.

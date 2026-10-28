@@ -111,9 +111,9 @@ def test_export_columns_include_sector_financial_operating_expansion() -> None:
         assert f"sector_q1_{metric}" in exp.EXPORT_COLUMNS
         assert f"sector_q3_{metric}" in exp.EXPORT_COLUMNS
 
-    # Pre-revenue's 4 metrics stay deliberately unbenchmarked (only 3 pre-revenue companies
-    # exist app-wide -- can never clear the 8-peer rendering threshold): this documents the
-    # scope boundary as a test, not just prose.
+    # Pre-revenue's 4 metrics stay deliberately unbenchmarked (too few pre-revenue companies
+    # exist to clear the 8-peer rendering threshold): this documents the scope boundary as a
+    # test, not just prose.
     for metric in (
         "net_cash",
         "working_capital",

@@ -241,8 +241,8 @@ Every metric with a known catalogue `direction` (currently all 13 — 10 `higher
   mark today: operating margin, net debt/EBITDA, FCF margin, debt-to-equity, and current ratio
   (operating-only); net margin and ROA (financial-only); revenue growth and statement ROE (both
   operating and financial cards). Pre-revenue's 4 metrics (net cash, working capital, cash
-  runway, burn rate) stay deliberately unbenchmarked, not just "not done yet": only 3
-  pre-revenue companies exist app-wide today, which can never clear the 8-peer threshold below
+  runway, burn rate) stay deliberately unbenchmarked, not just "not done yet": too few
+  pre-revenue companies exist to clear the 8-peer threshold below
   in any sector, so building it now would ship a mark nobody could ever see. (The direction cue
   is not limited this way; see above.) Debt-to-equity and statement ROE's sector aggregates also
   exclude any peer with negative stockholders' equity -- that peer's own ratio has flipped sign

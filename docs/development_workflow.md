@@ -129,6 +129,3 @@ wasted round trip. The rest of Tier A when the change touches dbt or export.
 `.claude/skills/onboard-market/` covers adding or activating a market. It points at the
 activation checklist in [`data_contract.md`](data_contract.md) rather than restating it, and
 carries the traps that are recorded in no other document.
-
-Still uncovered, and worth a skill when ingestion work resumes: the raw-only rule and parquet
-paths.
