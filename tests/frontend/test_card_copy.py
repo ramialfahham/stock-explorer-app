@@ -17,6 +17,7 @@ from card_copy import (  # noqa: E402
     business_summary_is_truncated,
     business_summary_preview,
     format_metric_value,
+    format_snapshot_date,
     freshness_line,
     lead_metric_for_row,
     metric_analogy,
@@ -563,3 +564,19 @@ def test_hardcoded_analogy_overrides_name_no_currency() -> None:
                     )
                 for symbol in symbols:
                     assert symbol not in text, f"{metric} analogy names {symbol}: {text!r}"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (date(2026, 6, 8), "June 8, 2026"),
+        ("2026-06-08", "June 8, 2026"),
+        ("2026-06-08T00:00:00+00:00", "June 8, 2026"),
+        ("2026-12-18", "December 18, 2026"),
+        ("not a date", None),
+        (None, None),
+        (20260608, None),
+    ],
+)
+def test_format_snapshot_date_never_pads_the_day(raw, expected) -> None:
+    assert format_snapshot_date(raw) == expected

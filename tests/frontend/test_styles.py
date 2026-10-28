@@ -256,3 +256,41 @@ def test_financial_caveat_is_styled_where_it_renders():
     assert ".ss-health-block .ss-financial-caveat" not in sheet
     block = sheet.split(".ss-card-metrics .ss-financial-caveat {", 1)[1].split("}", 1)[0]
     assert "font-size: var(--ss-caption-size)" in block
+
+
+# --- Dead rules ---------------------------------------------------------------------------
+# A rule for a class no module emits renders nothing and still reads as live styling, so
+# every `.ss-*` class and every `--ss-*` custom property in the stylesheet must be used.
+
+FRONTEND_DIR = STYLES_FILE.parent
+CSS_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+def _frontend_source_outside_styles() -> str:
+    return "".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(FRONTEND_DIR.glob("*.py"))
+        if path != STYLES_FILE
+    )
+
+
+def test_every_stylesheet_class_is_emitted_by_a_frontend_module():
+    css = CSS_COMMENT.sub("", STYLES_FILE.read_text(encoding="utf-8"))
+    classes = set(re.findall(r"\.(ss-[\w-]+)", css))
+    assert len(classes) >= 50, "the class scan matched almost nothing, so it proves nothing"
+    source = _frontend_source_outside_styles()
+    dead = sorted(
+        cls for cls in classes if not re.search(r"(?<![\w-])%s(?![\w-])" % re.escape(cls), source)
+    )
+    assert not dead, (
+        f"stylesheet rules for classes no frontend module emits: {dead}. Delete the rule, or "
+        f"emit the class."
+    )
+
+
+def test_every_stylesheet_custom_property_is_read():
+    css = CSS_COMMENT.sub("", STYLES_FILE.read_text(encoding="utf-8"))
+    declared = set(re.findall(r"(--ss-[\w-]+)\s*:", css))
+    assert len(declared) >= 10, "the custom-property scan matched almost nothing"
+    unread = sorted(prop for prop in declared if f"var({prop})" not in css)
+    assert not unread, f"custom properties declared but never read with var(): {unread}"

@@ -3,50 +3,52 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #80 (ING-1 defect 1 and ING-5 defect 2 of the second quality-baseline audit re-run). The full-recording
-  mode of `scripts/record_ingestion_fixtures.py` writes each ticker file before it has fetched the market's prices and
-  saves the manifest once at the end, so a network failure leaves recordings that disagree with the manifest and the
-  golden mart, unlike `--ticker` mode in the same script. And the rule that turns a US class-share dot into a hyphen
-  (`to_yfinance_download_ticker`) has no test. One rule: a market's recording changes no file until that market's network
-  calls have finished, the manifest is saved after each market, and every symbol rule has a test.
+objective: Works #82 (FE-3 defect 17, FE-2 defect 18, FE-1 defect 21 of the second quality-baseline audit re-run). One
+  rule per defect: every metric a filter preset checks is a column of the deck rows; every `.ss-*` class and `--ss-*`
+  custom property in the stylesheet is used; a snapshot date prints with no leading zero on the day.
 
 scope_paths:
-  - scripts/record_ingestion_fixtures.py
-  - tests/tooling/test_record_ingestion_fixtures.py
-  - tests/ingestion/test_symbols.py
+  - frontend/supabase_cards.py
+  - frontend/styles.py
+  - frontend/card_copy.py
+  - tests/frontend/test_supabase_cards.py
+  - tests/frontend/test_styles.py
+  - tests/frontend/test_card_copy.py
+  - tests/frontend/test_overflow_menu.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: None open. Both fixes copy what `rerecord_tickers` and the ticker-mode manifest save already do, and
-  the test rule is `.claude/working-agreement.md` section 4. No recorded fixture, golden mart or ingestion code changes.
+decisions_reserved: Both owner calls are answered (2026-10-28). Defect 17: answer A, load `net_margin_pct` so the High
+  margin pill works as written for financial cards. Defect 21: answer A, the day prints without a leading zero, as the
+  wireframe in `docs/ui/saved_list.md` already shows. No preset cutoff, label or card face changes.
 
 changes:
-  - `record_market`: fetches every ticker payload and the price batch first, then writes the JSON files and
-    `prices.parquet` (the order `rerecord_tickers` uses). A failed network call changes no file of that market.
-  - `main` (full mode): the Wikipedia page of a `provider: wikipedia` market is fetched before `record_market` runs and
-    written after it; the manifest is saved after each market, not once at the end. `record_wikipedia` is split into
-    `fetch_wikipedia` (network) and `write_wikipedia` (file); nothing else called it.
-  - `tests/tooling/test_record_ingestion_fixtures.py`: a failing ticker fetch, a failing price download and a failing
-    Wikipedia fetch each leave every file as it was; a failure in the second market leaves the first market's manifest
-    entry saved; the Wikipedia page is written and flagged; a full recording writes every ticker and the price batch.
-  - `tests/ingestion/test_symbols.py` (new): pins `to_yfinance_ticker` and `to_yfinance_download_ticker`, including the
-    dot-to-hyphen branch for an empty suffix and the unchanged dotted symbol for a non-empty one.
-  - `.claude/active_work.md`: current facts.
+  - `DECK_COLUMNS` gains `net_margin_pct`. The High margin pill now filters financial cards (net margin above 20); before,
+    the value was never loaded, so the check passed every financial card.
+  - `frontend/styles.py`: deletes the rules for `.ss-saved-fresh`, `.ss-header-pool`, `.ss-market-breakdown` (with its
+    summary and body), `.ss-metric-sources`, `.ss-benchmark-compare` (with its summary), `.ss-benchmark-note` (selector),
+    `.ss-explain-all` (with its parts), `.ss-explain-list` (with dt, dd), `.ss-card-footer`, and the custom property
+    `--ss-bottom-nav-h`; two comments that named a deleted class are shortened.
+  - `format_snapshot_date` returns `June 8, 2026` (no `%d` padding, no platform-specific `%-d`).
+  - Tests: every metric in `METRIC_PRESETS` is in `DECK_COLUMNS`; every stylesheet class is emitted by a frontend module
+    and every custom property is read; `format_snapshot_date` is pinned with literal strings; the About-menu test asserts a
+    literal date instead of repeating the code's own format call.
 
 done_when:
-  - Moving the file writes back in front of the network calls in `record_market`, removing the dot-to-hyphen
-    `replace`, and saving the manifest once after the loop each fail a test (mutation-checked).
-  - `git grep -n "record_wikipedia" -- . ':!.claude/task'` finds nothing.
+  - Removing `net_margin_pct` from `DECK_COLUMNS`, adding a stylesheet rule for an unused class, declaring an unused
+    `--ss-*` property, and restoring the `%d` format each fail a test (mutation-checked).
+  - `git grep -n -E "ss-saved-fresh|ss-explain-(all|list)|ss-market-breakdown|ss-header-pool|ss-bottom-nav-h|ss-benchmark-compare|ss-metric-sources|ss-benchmark-note|ss-card-footer([^-]|$)" -- frontend tests docs` finds nothing.
   - `pytest tests -q` passes; `python scripts/check_context_budget.py` passes.
 
 known_limits:
-  - The recorder needs the network and is run by hand; the tests replace the network calls, so no live recording run
-    is part of this change.
-  - A local file write that fails halfway (disk full) can still leave a market partly written; only network failures
-    are covered, as in `rerecord_tickers`.
+  - The class test reads the frontend source for the literal class name, so a class built from a prefix and a variable
+    would count as unused. None is built that way today.
+  - The class test counts a class name found anywhere in the other frontend `.py` files, a comment or docstring included,
+    so a dead rule whose name is only mentioned there would pass.
+  - The High margin pill's effect on the live deck is not measured here; no browser run, the deck needs Supabase.
 
 regression_checklist:
-  - `--ticker` mode and its tests are untouched and pass as before.
-  - The manifest content of a full recording is the same as before (`tickers`, `info_symbols`, `download_batch`,
-    `wikipedia`, `recorded_at`, markets sorted); only when it is saved changes.
+  - Other presets and their checks are untouched; `_card_matches_preset` is unchanged.
+  - The deck query selects one more column, `net_margin_pct`, which exists in `mart_stock_cards` and in migration 008.
+  - No other rule in `frontend/styles.py` changes.

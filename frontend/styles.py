@@ -34,7 +34,6 @@ def inject_global_css() -> None:
     --ss-body: 0.875rem;
     --ss-label: 0.75rem;
     --ss-caption-size: 0.8125rem;
-    --ss-bottom-nav-h: 3.25rem;
     --ss-action-bar-h: 3.25rem;
 
     /* Design system tokens -- see docs/ui/design_system.md */
@@ -132,30 +131,6 @@ section[data-testid="stSidebar"] {
 }
 [data-testid="stElementContainer"]:has(.ss-back-row-marker) + [data-testid="stLayoutWrapper"] {
     margin: 0 0 0.45rem;
-}
-.ss-header-pool {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-muted);
-    margin: 0 0 0.45rem;
-    padding-bottom: 0.45rem;
-    border-bottom: 1px solid var(--ss-border);
-    line-height: 1.35;
-}
-
-.ss-market-breakdown {
-    margin: 0 0 0.65rem;
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-}
-.ss-market-breakdown summary {
-    cursor: pointer;
-    color: var(--ss-accent);
-    margin-bottom: 0.25rem;
-}
-.ss-market-breakdown-body {
-    margin: 0;
-    line-height: 1.45;
-    color: var(--ss-muted);
 }
 
 /* Card */
@@ -363,8 +338,8 @@ section[data-testid="stSidebar"] {
 /* .ss-financial-caveat (frontend/card_ui.py, financial-type cards only): sits under the
    metric stack, outside the health block, so it shows whether or not that block does. A
    caveat about the card, not part of the narrative, so it gets the muted caption treatment
-   already used for other secondary/qualifying card text (.ss-metric-sources,
-   .ss-benchmark-unavailable), not the equal weight .ss-ai-read-list bullets share. */
+   already used for other secondary/qualifying card text (.ss-benchmark-unavailable),
+   not the equal weight .ss-ai-read-list bullets share. */
 .ss-card-metrics .ss-financial-caveat {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
@@ -397,34 +372,15 @@ section[data-testid="stSidebar"] {
     margin-top: 0.5rem;
 }
 
-.ss-metric-sources {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-    margin: 0.35rem 0 0.45rem;
-    line-height: 1.35;
-}
-
 /* Scoped under .ss-learn-section, their always-present wrapper -- see the
-   .ss-metric .ss-metric-gloss comment below for why. (.ss-benchmark-note has no current
-   caller -- scoped anyway so it doesn't reintroduce this bug if it's ever used again.) */
-.ss-learn-section .ss-median-primer,
-.ss-learn-section .ss-benchmark-note {
+   .ss-metric .ss-metric-gloss comment below for why. */
+.ss-learn-section .ss-median-primer {
     font-size: var(--ss-caption-size);
     color: var(--ss-caption);
     margin: 0 0 0.45rem;
     line-height: 1.35;
 }
 
-.ss-benchmark-compare {
-    margin: 0.35rem 0 0;
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-}
-.ss-benchmark-compare summary {
-    cursor: pointer;
-    color: var(--ss-accent);
-    margin-bottom: 0.25rem;
-}
 .ss-benchmark-list {
     margin: 0.35rem 0 0;
     padding-left: 1rem;
@@ -639,43 +595,6 @@ section[data-testid="stSidebar"] {
     color: var(--ss-muted);
 }
 
-/* Explain all */
-.ss-explain-all {
-    margin: 0.35rem 0 0.45rem;
-}
-.ss-explain-all summary {
-    cursor: pointer;
-    font-size: var(--ss-caption-size);
-    font-weight: 600;
-    color: var(--ss-muted);
-    list-style: none;
-}
-.ss-explain-all summary::before {
-    content: "▸ ";
-    color: var(--ss-accent);
-}
-.ss-explain-all[open] summary::before {
-    content: "▾ ";
-}
-.ss-explain-all summary::-webkit-details-marker {
-    display: none;
-}
-.ss-explain-list {
-    margin: 0.45rem 0 0;
-    padding: 0;
-}
-.ss-explain-list dt {
-    font-size: var(--ss-body);
-    font-weight: 700;
-    color: var(--ss-text);
-    margin-top: 0.35rem;
-}
-.ss-explain-list dd {
-    font-size: var(--ss-body);
-    color: var(--ss-muted);
-    margin: 0.1rem 0 0;
-    line-height: 1.4;
-}
 .ss-metric-learn-list {
     margin: 0.35rem 0 0;
 }
@@ -702,14 +621,6 @@ section[data-testid="stSidebar"] {
     line-height: 1.45;
 }
 
-.ss-card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    padding-top: 0.4rem;
-    border-top: 1px solid var(--ss-border);
-}
 /* Found alongside the .ss-freshness fix below and sharing its exact root cause (same
    review pass caught it): .ss-card-footer-shell's own next sibling is nothing (it's alone
    inside its stMarkdownContainer) -- the real sibling relationship is one level up, between
@@ -812,11 +723,6 @@ section[data-testid="stSidebar"] {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
-}
-.ss-saved-fresh {
-    font-size: var(--ss-caption-size);
-    color: var(--ss-caption);
-    margin: 0.12rem 0 0;
 }
 
 /* !important on both font-size AND margin, not parent-scoped: same reasoning as
