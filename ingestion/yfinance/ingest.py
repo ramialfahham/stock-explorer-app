@@ -476,6 +476,15 @@ def _fetch_fundamentals(
                 skipped.clear()
             checkpoint_columns = None
             rows.append(row)
+            # Flushed immediately, not batched -- each row is already one network call,
+            # so one small parquet write alongside it is negligible overhead, and it
+            # bounds a crash's loss to the ticker in flight, not up to a batch's worth.
+            # A failed write drops the row again, so the ticker is counted as failed once.
+            try:
+                _flush()
+            except Exception:
+                rows.pop()
+                raise
             if _is_empty_row(row):
                 # yfinance answered without raising but with no data (for example a delisted,
                 # renamed or bad symbol), so every field defaulted to None. The row is still
@@ -488,10 +497,6 @@ def _fetch_fundamentals(
                 )
             else:
                 stats["fundamentals_ok"] += 1
-            # Flushed immediately, not batched -- each row is already one network call,
-            # so one small parquet write alongside it is negligible overhead, and it
-            # bounds a crash's loss to the ticker in flight, not up to a batch's worth.
-            _flush()
         except Exception as exc:  # noqa: BLE001
             stats["fundamentals_failed"] += 1
             failed_tickers.append(local_ticker)

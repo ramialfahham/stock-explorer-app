@@ -55,7 +55,9 @@ One DuckDB file (`storage/stock_data.db` locally; ephemeral in CI) with one sche
 | `intermediate` | `models/4_intermediate/` |
 | `marts` | `models/5_marts/` |
 
-Raw landing is **parquet** under `storage/raw/{market_code}/`. dbt reads via `sources.yml`.
+Raw landing is **parquet** under `storage/raw/{market_code}/`. dbt reads it through the
+`raw_parquet_union` macro; `sources.yml` documents the raw tables and drives
+`dbt source freshness`.
 dbt var `raw_path` (default `storage/raw`, overridable with `DBT_RAW_PATH`; see
 `dbt_analytics/dbt_project.yml`) must match ingestion output.
 
@@ -105,9 +107,9 @@ Setup: [`supabase_setup.md`](supabase_setup.md).
 | Layer | Example |
 |-------|---------|
 | staging | `stg_yf__daily_prices` |
-| base | `base_yf__daily_prices` |
-| core | `dim_stock`, `fct_daily_price` |
-| intermediate | `int_stock__price_changes` |
+| base | `base_yf__fundamentals` |
+| core | `dim_stock`, `fct_fundamentals_snapshot` |
+| intermediate | `int_stock__card_metrics` |
 | marts | `mart_stock_cards` |
 
 Staging SQL lives under `models/1_staging/yfinance/`, never at the `1_staging/` root.

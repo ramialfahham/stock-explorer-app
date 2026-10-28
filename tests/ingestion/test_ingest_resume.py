@@ -105,6 +105,30 @@ def test_fundamentals_failures_are_named_not_only_counted(monkeypatch, tmp_path)
     assert sorted(frame["ticker"]) == ["AAA", "CCC"]
 
 
+def test_fundamentals_write_failure_counts_the_ticker_once(monkeypatch, tmp_path):
+    """A failed checkpoint write must not leave the ticker counted as fetched and as failed."""
+    _use_tmp_raw_dir(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        ingest_module, "_fetch_fundamentals_row",
+        lambda market, local_ticker, yf_symbol, snapshot_date: _fake_row(local_ticker),
+    )
+    real_write = ingest_module._atomic_write_parquet
+
+    def _failing_write(frame, output_path):
+        if "BBB" in set(frame["ticker"]):
+            raise OSError("disk full")
+        real_write(frame, output_path)
+
+    monkeypatch.setattr(ingest_module, "_atomic_write_parquet", _failing_write)
+
+    frame, stats = ingest_module._fetch_fundamentals(MARKET, ["AAA", "BBB", "CCC"], delay_seconds=0)
+
+    assert stats["fundamentals_failed"] == 1
+    assert stats["fundamentals_failed_tickers"] == ["BBB"]
+    assert stats["fundamentals_ok"] == 2
+    assert sorted(frame["ticker"]) == ["AAA", "CCC"]
+
+
 def test_fundamentals_skip_if_fresh_today(monkeypatch, tmp_path):
     _use_tmp_raw_dir(monkeypatch, tmp_path)
     calls: list[str] = []

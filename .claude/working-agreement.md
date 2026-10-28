@@ -89,8 +89,6 @@ own mistakes, or a rationale in a file separate from the thing it explains. If a
 keeping, put it next to the code, where a reviewer can check it against what it describes.
 
 When you change a claim, grep the repo for the claim, not for the file you were told about.
-Every one of those six rounds was the same failure: fixing the site a reviewer named and leaving
-the same assertion standing elsewhere.
 
 ## 3. Branches
 

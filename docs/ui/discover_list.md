@@ -33,7 +33,7 @@ not merely any input of any weight to it:
 
 | Company type | Lead metric | Why this one |
 |---|---|---|
-| Operating | Operating margin (TTM) | One of the three core axes (`net_debt_to_ebitda`, `ebit_margin_pct`, `fcf_margin_pct`) that alone decide red/green in `_evaluate_operating`; `statement_roe_pct` was considered but is only a supporting axis there, which "can break a tie but never rescue a red flag" (that function's own comment) |
+| Operating | Operating margin (TTM) | One of the three core axes (`net_debt_to_ebitda`, `ebit_margin_pct`, `fcf_margin_pct`) that alone decide red/green in `_evaluate_operating`; `statement_roe_pct` is only a supporting axis there, which "can break a tie but never rescue a red flag" (that function's own comment) |
 | Financial | Return on equity | Co-primary in `_evaluate_financial`: checked first, alone can force red, and required good for green |
 | Pre-revenue | Cash runway (months) | The central axis of `_evaluate_pre_revenue`'s "survival story" framing |
 
@@ -82,7 +82,7 @@ hidden entirely, not just disabled, when the whole filtered pool already fits on
 |------|--------|
 | Row structure | Same tap mechanics as the plain row (`st.container` plus an invisible overlay `st.button`), different HTML via `build_rich_row_html`, see `design_system.md`'s row primitive |
 | Ordering | Alphabetical by company name: a list should be stable and re-findable |
-| Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the full ~923-row pool unconditionally (~931 tap-target buttons, ~20,600 DOM nodes) measures at ~2.4s before Streamlit even registers a click. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
+| Pagination | `DISCOVER_PAGE_SIZE` (30) rows per page, Previous/Next below the list, hidden entirely (not just disabled) when the filtered pool already fits on one page. Mounting the whole pool at once costs one tap-target button per row, which is why the list is paged. Changing market/sector resets to page 1; the page index is clamped to the pool's current bounds regardless of why it shrank |
 | Focus mode | `← Back to list`, then the Company Snapshot, the same `render_stock_card` Saved and search results already use, unchanged |
 | Sticky action | **Save** renders on the **focus card only**, not on list rows. A second per-row tap target would break "the row itself is the control," the same anti-pattern `saved_list.md` rejects |
 | Empty state | One `st.info`, no fake rows. An empty search shows `No matches for “<query>”.` in it |

@@ -200,7 +200,7 @@ Supabase**. Always non-null — evaluated in order, first match wins:
 2. `pre_revenue` — else when `stmt_total_revenue` is present and `<= 0`, **or** when it's positive
    but under 0.1% of `info_market_cap` (revenue negligible relative to valuation — e.g. a
    development-stage miner/biotech the strict `<= 0` test alone misses; a ratio, not an absolute
-   currency floor, since this app spans 6 currencies with no FX normalization in the pipeline).
+   currency floor, since this app spans several currencies with no FX normalization in the pipeline).
    Real example: Deep Yellow (ASX: DYL) — $15,949 revenue against a $1.7B market cap (~0.001%).
 3. `operating` — else (the default). A **null** `stmt_total_revenue`, or a positive-but-negligible
    `stmt_total_revenue` with no `info_market_cap` to compare it against, is treated as a data gap
@@ -299,7 +299,7 @@ Benchmark availability does **not** affect `is_card_eligible`.
 |-------|---------|-------|
 | Constituents | On demand / when index changes | `refresh_constituents.py` |
 | Fundamentals | **Every two weeks** (or on statement refresh) | GitLab CI `data-pipeline` job |
-| Daily prices | Every two weeks or daily (supporting only) | Same pipeline |
+| Daily prices | Every two weeks (supporting only) | Same pipeline |
 | Supabase export | After successful dbt build | `export_to_supabase.py` |
 
 **Stale export policy:** if the scheduled pipeline run fails the completeness gate, **keep
@@ -475,12 +475,7 @@ dropping or renaming a field, is covered by the fill floor below, not by this gu
 near-zero-denominator explosion per their own catalogue caveats -- `ebit_margin_pct`,
 `revenue_growth_yoy_pct`, `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to_equity`,
 `statement_roe_pct`, `net_margin_pct` -- get a wide bound, not a business-rule definition of a
-valid value. Measured against the full exported history (5,726 rows):
-`ebit_margin_pct` ranges -90,333.7% (DYL, a known accepted pre-revenue outlier) to 44,944.9%
-(IAG -- large, real, unexplained; flagged, not root-caused here); `net_margin_pct`, which
-shares `fcf_margin_pct`'s revenue denominator and the same "breaks for pre-revenue firms"
-catalogue caveat, ranges -66,685.5% (DYL again) to 203.9% (PNI). Bounds sit well past every
-measured extreme: `ebit_margin_pct` +-100000; `net_debt_to_ebitda`/`debt_to_equity` +-200;
+valid value. Bounds: `ebit_margin_pct` +-100000; `net_debt_to_ebitda`/`debt_to_equity` +-200;
 `fcf_margin_pct`/`net_margin_pct` +-150000; `statement_roe_pct` +-5000;
 `revenue_growth_yoy_pct` -100 to 15000 (floored, revenue cannot fall further). Warn-only:
 catches an orders-of-magnitude pipeline bug, not a business judgment about plausibility.
@@ -492,14 +487,10 @@ a company sitting right at cash-flow breakeven can push the ratio arbitrarily hi
 column is computed for every `company_type` (the SQL's only gate is `computed_fcf < 0`, no
 type filter), though only the `pre_revenue` card renders it -- and the test itself carries no
 `where` clause, so it runs over the full computed population, not just what's displayed. Not
-theoretical: measured range across that full population (599 non-null rows) is
-0.06 months (SRE, `operating`) to 1093.1 months (~91 years, LLOY, `financial`) -- a bank or a
-capital-heavy operating company having one period of small negative free cash flow, not a
-startup nearing breakeven. Within just the rows the pre_revenue card actually renders, the
-range is far narrower: 1.50 to 41.31 months. Bound 0 to 100000 covers both populations with
-room to spare. The metric is structurally non-negative (cash and
-burn are both non-negative by construction), so the floor is a real fact, not a margin, and
-the ceiling sits ~90x past the measured extreme.
+theoretical: a bank or a capital-heavy operating company with one period of small negative
+free cash flow pushes the ratio past 1,000 months. Bound 0 to 100000.
+The metric is structurally non-negative (cash and
+burn are both non-negative by construction), so the floor is a real fact, not a margin.
 
 Two other metrics with a revenue/liability-style denominator were checked and left out:
 `roa_pct` (divides by total assets, which a real operating company's balance sheet does not
@@ -520,12 +511,7 @@ near-zero-denominator ratio (subtraction, or FCF divided by the constant 12), so
 here isn't explosion. It's that all three are computed for every `company_type` (data
 availability gates them, not type), rendered on `pre_revenue`, and `net_cash` also gates
 `pre_revenue` eligibility -- `cash_runway_months`'s existing "catch an orders-of-magnitude
-pipeline bug" role. Full population (5,726 rows): `net_cash` -30.5T to 64.3T; `working_capital`
--11.0T to 9.2T; `burn_rate_monthly` 833K to 2.0T (all JPY, mega-caps; non-negative, same as
-`cash_runway_months`). Same pattern as that metric too: within the `pre_revenue` rows that each
-metric actually renders, the range is far narrower (`net_cash` -37M to 216M; `working_capital` 0 to
-517M; `burn_rate_monthly` 3.2M to 19.4M). Bounds cover the full population with headroom:
-`net_cash` -50T to 100T; `working_capital` +-20T; `burn_rate_monthly` 0 to 2.5T.
+pipeline bug" role. Bounds: `net_cash` -50T to 100T; `working_capital` +-20T; `burn_rate_monthly` 0 to 2.5T.
 
 **`dividend_yield_pct` was checked and left out.** A third dead-but-exported column (not
 catalogued, unrendered), same category as the pair above. Its real defect, per-row mixed units
@@ -687,8 +673,7 @@ verdict -- regenerated only when `input_hash` changes or `ai_read` is null. The 
 The write is `_upsert_records()`, batched **by each record's exact set of present keys**, never
 a single upsert of the whole batch -- PostgREST computes `columns` as the union of keys across
 every record in ONE call, so a "carried" record (omits `ai_read`/`read_model` to keep the
-stored value) sharing a call with a "generated" one gets that value nulled, not preserved --
-production evidence: a run logging `carried=853` had 839 of those rows come out null.
+stored value) sharing a call with a "generated" one gets that value nulled, not preserved.
 `_fetch_existing_assessments()` paginates for the same reason -- an
 unranged select silently caps at PostgREST's default 1000 rows, missing later cards.
 
@@ -820,8 +805,8 @@ Conservative — one serious weakness caps it:
   outright) would overreach: `company_type == 'financial'` is the whole GICS
   "Financial Services" sector (insurers, asset managers, broker-dealers, payment networks,
   exchanges, mortgage finance, not only depository banks), spans markets under entirely different
-  regulatory regimes (this app covers US, UK, Japan, Australia, Germany, France, Netherlands,
-  Switzerland, Spain), and includes firms known for the same benign buyback-driven negative
+  regulatory regimes (the active markets are listed in [`market_registry.yml`](market_registry.yml)),
+  and includes firms known for the same benign buyback-driven negative
   equity operating companies can have. Nothing in the data distinguishes a bank in genuine
   distress from a payment network mid-buyback, so `unknown` -- the same neutral treatment every
   other axis gets for information this app cannot actually determine -- is the honest choice.
@@ -876,8 +861,7 @@ double counting: `cash_runway_months` already divides cash by burn, so reading b
 would weigh the same fact twice. It stays on the card because a ratio alone destroys the
 magnitude information the raw number carries.
 
-**Percentile or sector-relative ranking as a verdict threshold is rejected**, considered and
-declined twice. Being in some top percentile can still mean an unhealthy state if the whole
+**Percentile or sector-relative ranking is not used as a verdict threshold.** Being in some top percentile can still mean an unhealthy state if the whole
 sector is unhealthy, so a relative rank cannot answer "is this company financially sound". If
 this is ever revisited, the legitimate shape to copy is a rating agency's per-industry ABSOLUTE
 thresholds, not relative ranking. This is a different rule from the benchmark-display guidance in

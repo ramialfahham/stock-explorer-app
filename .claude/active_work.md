@@ -59,16 +59,13 @@ standards (ISO 24495-1, ISO/IEC 11179-4, ASD-STE100) are in
 merged; each issue lists its items). The re-run of 2026-10-26 found 34: 16 new, filed as #80 ingestion, #81 dbt, #82 frontend, #83 docs, #84 hygiene, and
 18 already filed (the 14 owner calls of #75, items 38 to 44 and 46 to 52, and one item each in #70, #57, #79, #18). **Done = every one of the 34
 fixed or ruled on by the owner, each with an exact search or test; no re-run gates it** (the owner's answer A of 2026-10-26; the audit stays a check the owner starts, about 1.7M tokens: `quality-baseline-audit`, then
-`python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`). Order: #84, #81, #80 and #82 (merged), #83 (in review),
-then the 18. Take the issues one at a time, owner decisions one at a time. Criteria:
+`python scripts/verify_quality_audit.py <workflow output JSON> --report <file>`). Order: #84, #81, #80, #82 and #83 (merged); the 18 are on branch
+`fix/docs-audit-final` (in review). Take the issues one at a time, owner decisions one at a time. Criteria:
 `docs/quality_criteria.json` v3 (a change needs a version bump and the owner). Way of working the owner set: one rule over every case instead of per-case fixes;
 make a sweep's "done" checkable (an exact search and a keep list in the contract); fix every
 copy of a changed claim.
 
-**Owner decisions open (ask one at a time):** `scripts/apply_supabase_migrations.py` reads
-`GITHUB_ACTIONS` (a Management-API pooler lookup and a "GitHub secret" hint that never run on
-GitLab): delete the branch, or port it to `GITLAB_CI`; left alone in #50 because it applies the
-Supabase migrations; the refresh
+**Owner decisions open (ask one at a time):** the refresh
 overlap check passes a larger table that contains the whole seed (file an issue or drop);
 criteria v4, as DOC-2 and HYG-4 also cite the global `~/.claude/CLAUDE.md`, DOC-2/DOC-5
 still name the removed handover archives, and ING-1 needs the reworded rule above; should `verify_quality_audit.py` name NOT AUDITED

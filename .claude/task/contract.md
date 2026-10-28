@@ -3,51 +3,79 @@
 > `done_when`.
 > **Never:** anything that outlives the task. Overwritten by the next task.
 
-objective: Works #83 (DOC-3 defect 29, DOC-1 defect 30, DOC-2 defects 34 to 37 of the second quality-baseline audit
-  re-run). One rule: a durable doc states the current rule or fact, once, and is not a log, a count that is stated several
-  ways, or a to-do; every copy of a changed claim is fixed, in docs, code comments and tests alike.
+objective: Works #75 (documentation items 38 to 52 of the second quality-baseline audit re-run), #70 (ING-3), #79 (DOC-3) and
+  #18 (DOC-1 saved_list). One rule: a durable doc states the current rule or fact, once, and is not a log, a count that
+  is stated several ways, or a to-do; every copy of a changed claim is fixed, in docs, code comments and tests alike.
 
 scope_paths:
-  - docs/operations_guide.md
   - docs/data_contract.md
-  - docs/supabase_setup.md
+  - docs/project_context.md
   - docs/development_workflow.md
-  - docs/working_agreement.md
+  - docs/operations_guide.md
+  - docs/supabase_setup.md
+  - docs/metric_layer.md
+  - docs/constituent_sources.yml
+  - docs/ux_principles_finanz_lern_apps.md
   - docs/ui/card_metric_cell.md
-  - supabase/migrations/017_sector_benchmark_financial_operating.sql
-  - tests/tooling/test_export_to_supabase.py
+  - docs/ui/design_system.md
+  - docs/ui/discover_header.md
+  - docs/ui/discover_list.md
+  - docs/ui/saved_list.md
+  - .claude/working-agreement.md
+  - .env.example
+  - scripts/apply_supabase_migrations.py
+  - scripts/print_supabase_pooler_config.py
+  - ingestion/yfinance/ingest.py
+  - tests/ingestion/test_ingest_resume.py
+  - tests/tooling/test_apply_supabase_migrations.py
+  - tests/tooling/test_metric_catalogue.py
   - .claude/active_work.md
   - .claude/task/contract.md
   - .claude/task/review.md
 
-decisions_reserved: Answered 2026-10-28. Defect 36 (the open "worth a skill" to-do in `docs/development_workflow.md`):
-  answer A, delete it, no new issue. The other five need no owner choice: the written rule (`docs/engineering_standards.md`
-  section 1.2, `.claude/working-agreement.md` section 2) already says current state only.
+decisions_reserved: Answered 2026-10-28 ("defaults"). (1) The Management API pooler lookup in
+  `scripts/apply_supabase_migrations.py`: delete the branch and its doc passages. (1b) Answered A on
+  2026-10-28: the local helper `scripts/print_supabase_pooler_config.py` imported the deleted function and is deleted
+  with `SUPABASE_ACCESS_TOKEN`. (2) `.claude/working-agreement.md`:
+  delete the sentence "Every one of those six rounds was the same failure". (3) `docs/constituent_sources.yml` ch_smi
+  note: state current facts without dates and file the open question as an issue (issue 85). (4)
+  `frontend/metrics.json` seed columns `importance_tier` and `basis_column` (tracked #57): left in place, no change in
+  this task. The other items follow the audit's proposed fix.
 
 changes:
-  - `docs/operations_guide.md`: the diagram no longer lists "refresh constituents" under the scheduled CI run (it is a
-    manual step, section "Refresh constituents"); the monitor paragraph drops the "check interval was not captured"
-    setup history; the key paragraph drops the rejected-argument sentence ("NOT acceptable on the grounds that..."); the
-    `/auth/v1/health` sentence states the current fact (the monitor uses the database URL, that endpoint needs a key), not the order tried.
-  - `docs/data_contract.md`, `docs/ui/card_metric_cell.md`, the comment in migration 017 and the comment in
-    `tests/tooling/test_export_to_supabase.py`: the pre-revenue company count (3 in four places, 11 and 15 rows in two
-    more) is dropped; the rule stays: too few pre-revenue companies to clear the 8-peer threshold. No SQL line changes.
-  - `docs/supabase_setup.md` section 3c: the measurement log (nine markets, 3.9 MB, 2.87s, 4.21s, 2.8x) is dropped; the
-    rule stays: one RPC, the margin to the 8s bound shrinks with every market added.
-  - `docs/development_workflow.md`: the "Still uncovered, worth a skill" paragraph is deleted.
-  - `docs/working_agreement.md`: the "as of the card-metric-cell redesign" parenthetical is deleted; the links stay.
+  - `scripts/apply_supabase_migrations.py`: the `GITHUB_ACTIONS` Management API lookup, its `SUPABASE_ACCESS_TOKEN` read,
+    the "GitHub secret" hint and the now unused imports are deleted; `tests/tooling/test_apply_supabase_migrations.py`
+    pins the remaining resolution order. `docs/supabase_setup.md`, `docs/operations_guide.md` and `.env.example` drop the
+    403 and Management API passages, the access token row and the helper script; `SUPABASE_ACCESS_TOKEN` is removed with
+    `scripts/print_supabase_pooler_config.py`, whose only job was the deleted lookup.
+  - `ingestion/yfinance/ingest.py`: the checkpoint write runs before the ok/empty counters, and a failed write drops the
+    row, so a ticker is counted once; `tests/ingestion/test_ingest_resume.py` covers it.
+  - `docs/operations_guide.md` "Production architecture" is the one list of the `data-pipeline` steps and matches
+    `.gitlab-ci.yml`; `docs/development_workflow.md` links to it; the "Expect:" line points at it.
+  - `docs/data_contract.md`: no currency count, no market list, daily prices on the 1st and 15th schedule, incident and
+    measurement logs and the "considered and declined twice" history removed (back under its byte budget).
+  - `docs/project_context.md`: real model names; dbt reads parquet through `raw_parquet_union`.
+  - Jobs that use the credentials: three named in `docs/operations_guide.md` and `docs/supabase_setup.md`.
+  - `docs/ux_principles_finanz_lern_apps.md` links the UX gate instead of copying it; the "Removed:" lines and the
+    rejected-option clause are gone from the UI specs; review-round history and measurement logs removed from
+    `docs/ui/card_metric_cell.md`, `docs/ui/design_system.md` and `docs/ui/discover_list.md`.
+  - `docs/ui/saved_list.md` states only what Saved v1 contains; `docs/north_star.md` owns compare.
+  - `docs/metric_layer.md`: origin sentences and the "Scope / follow-ups" section deleted;
+    `tests/tooling/test_metric_catalogue.py` docstring loses the origin sentence.
+  - `docs/constituent_sources.yml`, `.claude/working-agreement.md`: as in decisions_reserved.
 
 done_when:
-  - `git grep -n -i -E "only 3 pre|exist app-wide|11 rows the pre_revenue|15 .pre_revenue|tried first to avoid|interval was not captured|worth a skill when|as of the card-metric-cell|Measured at nine|2\.87s|2\.8x" -- . ':!.claude/task' ':!tests/fixtures'` finds nothing (the one hit that stays, `frontend/styles.py` "tried first" about a layout, is not matched by `tried first to avoid`).
-  - `git grep -n "refresh constituents" -- docs` finds only the section heading `### Refresh constituents`.
-  - `pytest tests -q` passes; `check_context_budget.py` and `check_docs_indexed.py` pass.
+  - `git grep -n -i -E "spans 6 currencies|GITHUB_ACTIONS|HTTP 403|base_yf__daily_prices|fct_daily_price|int_stock__price_changes|Surprise me worldwide|six rounds|5,726 rows|carried=853|Phase 1 \(this layer\)|Fixed 2026-08-28|audited 2026-08-28|round 2 of this task|Never .Compare" -- . ':!.claude/task' ':!.claude/active_work.md' ':!tests/fixtures'` finds nothing.
+  - `pytest tests -q` passes; `check_context_budget.py`, `check_docs_indexed.py` and `check_no_em_dash.py` pass.
+  - The new tests fail on the old code (ingest write failure counted twice).
 
 known_limits:
-  - The measured ranges kept in `docs/data_contract.md` (599 and 5,726 rows, min and max values) are other point-in-time
-    figures; they are data-contract evidence for a bound, not part of these six defects.
-  - No re-measurement of the pre-revenue population: the local database has no marts schema.
+  - The Management API deletion is not exercised against a live Supabase project; the `supabase-migrate` job on `main`
+    runs `apply_supabase_migrations.py` with `SUPABASE_DB_HOST`, the first resolution step, which this change leaves as it was.
+  - Measured ranges still in `docs/data_contract.md` (for example the fill-floor and dividend-yield ranges) are not part
+    of this task.
 
 regression_checklist:
-  - The 8-peer threshold wording in "Peer threshold" and the benchmark text is unchanged.
-  - Migration 017 changes in comment lines only.
-  - Every doc linked from `CLAUDE.md` is still linked.
+  - The resolution order in `resolve_database_url` is host, then full URI, then direct host.
+  - Every doc linked from `CLAUDE.md` is still linked; `docs/data_contract.md` is under 68,400 bytes.
+  - The accepted_range bounds in `docs/data_contract.md` are unchanged.

@@ -95,16 +95,9 @@ Per north_star and this doc:
 - **Filter default:** All markets · All sectors (`north_star.md`)
 - **List ordering:** alphabetical by company name
 - **Browse list on Discover:** filtering shows a paginated list of every match (30 rows at a time, Previous/Next below); tap a row to open the full snapshot, with a Back to list link
-- **Removed:** “Surprise me worldwide” checkbox, use **All markets** in Filters popover
 
 ---
 
 ## UX PR gate (see also working_agreement.md)
 
-Before merging user-facing UX changes:
-
-- [ ] Matches north_star tab behavior
-- [ ] Matches component specs in [`docs/ui/`](ui/) when touching Saved, Discover chrome, or card metrics
-- [ ] Mobile 480px smoke — one primary action visible; no horizontal scroll on Saved
-- [ ] PR description states one-sentence user job (e.g. “Saved: continue learning company X”)
-- [ ] ASCII or wireframe in PR body for new layout patterns
+The checklist is in [`working_agreement.md`](working_agreement.md).

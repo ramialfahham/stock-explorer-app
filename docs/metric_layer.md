@@ -3,8 +3,7 @@
 > DURABLE. **Owns:** where metric definitions live, and what earns a catalogue row.
 > **Never:** the definitions themselves. The `metric_catalogue.csv` seed owns those.
 
-> How Stock Explorer keeps its card metrics consistent. Adapted from the football-data-pipeline
-> metric-catalogue pattern. Short by design.
+> How Stock Explorer keeps its card metrics consistent. Short by design.
 
 ## Where each thing lives (read this first)
 
@@ -60,10 +59,10 @@ catalogue entries.
 
 ## Why the drift guard is in Python (not a dbt singular test)
 
-The football project guards model→catalogue drift with a jinja column-introspection dbt test. This
-repo's §1.1 SQL-structure gate (`scripts/check_dbt_sql_structure.py`) requires every `tests/*.sql` to
-start with `WITH`, which that jinja style can't satisfy — so the equivalent guard lives in
-`tests/tooling/test_metric_catalogue.py` (CI runs pytest). Same intent.
+The model-to-catalogue drift guard lives in `tests/tooling/test_metric_catalogue.py` (CI runs
+pytest), not in a dbt singular test: the §1.1 SQL-structure gate
+(`scripts/check_dbt_sql_structure.py`) requires every `tests/*.sql` to start with `WITH`, which a
+jinja column-introspection test cannot satisfy.
 
 ## Adding a metric
 
@@ -76,9 +75,3 @@ start with `WITH`, which that jinja style can't satisfy — so the equivalent gu
 3. Regenerate the JSON and the contract table: `python scripts/export_metric_definitions_json.py`
    and `python scripts/render_metric_table.py`.
 4. `dbt build` + `pytest tests/tooling/test_metric_catalogue.py` pass once all exist.
-
-## Scope / follow-ups
-
-- Phase 1 (this layer): catalogue SSoT + compute-once + JSON bridge + the guards above.
-- Open: folding the value-aware label/gloss variants (net-cash, annual-basis) into the
-  catalogue -- `frontend/card_copy.py` still hardcodes these branches outside it.
