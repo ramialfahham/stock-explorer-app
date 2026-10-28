@@ -2,8 +2,8 @@
 -- (operating supporting axes) and statement_roe_pct, net_margin_pct, roa_pct
 -- (financial-only). Same 5-statistic set and peer_threshold >= 8 gating as every existing
 -- sector_median_* column -- see docs/data_contract.md.
--- Pre-revenue's 4 metrics are deliberately excluded: only 3 pre-revenue companies exist
--- app-wide, which can never clear the 8-peer rendering threshold.
+-- Pre-revenue's 4 metrics are deliberately excluded: too few pre-revenue companies exist
+-- to clear the 8-peer rendering threshold.
 -- All nullable + additive: pre-migration rows read null until the next full re-export.
 
 alter table public.mart_stock_cards

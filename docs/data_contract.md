@@ -284,8 +284,8 @@ Benchmarked: `ebit_margin_pct`, `net_debt_to_ebitda`, `fcf_margin_pct`, `debt_to
 and `statement_roe_pct`'s benchmark aggregates exclude peers with negative stockholders' equity
 (a sign-flipped ratio, not just an extreme one -- see `int_stock__sector_benchmarks.sql`'s own
 comment). Pre-revenue's 4 metrics (`net_cash`, `working_capital`, `cash_runway_months`,
-`burn_rate_monthly`) are deliberately excluded: only 3 pre-revenue companies exist app-wide,
-which can never clear the 8-peer rendering threshold (see "Peer threshold" below).
+`burn_rate_monthly`) are deliberately excluded: too few pre-revenue companies exist to clear the 8-peer
+rendering threshold (see "Peer threshold" below).
 
 **Peer threshold:** if `sector_peer_count < 8`, export `null` medians/min/max/quartiles; the card shows a no-comparison placeholder, not a range mark.
 
@@ -495,7 +495,7 @@ type filter), though only the `pre_revenue` card renders it -- and the test itse
 theoretical: measured range across that full population (599 non-null rows) is
 0.06 months (SRE, `operating`) to 1093.1 months (~91 years, LLOY, `financial`) -- a bank or a
 capital-heavy operating company having one period of small negative free cash flow, not a
-startup nearing breakeven. Within just the 11 rows the pre_revenue card actually renders, the
+startup nearing breakeven. Within just the rows the pre_revenue card actually renders, the
 range is far narrower: 1.50 to 41.31 months. Bound 0 to 100000 covers both populations with
 room to spare. The metric is structurally non-negative (cash and
 burn are both non-negative by construction), so the floor is a real fact, not a margin, and
@@ -522,8 +522,8 @@ availability gates them, not type), rendered on `pre_revenue`, and `net_cash` al
 `pre_revenue` eligibility -- `cash_runway_months`'s existing "catch an orders-of-magnitude
 pipeline bug" role. Full population (5,726 rows): `net_cash` -30.5T to 64.3T; `working_capital`
 -11.0T to 9.2T; `burn_rate_monthly` 833K to 2.0T (all JPY, mega-caps; non-negative, same as
-`cash_runway_months`). Same pattern as that metric too: within the 15 `pre_revenue` rows each
-actually renders, the range is far narrower (`net_cash` -37M to 216M; `working_capital` 0 to
+`cash_runway_months`). Same pattern as that metric too: within the `pre_revenue` rows that each
+metric actually renders, the range is far narrower (`net_cash` -37M to 216M; `working_capital` 0 to
 517M; `burn_rate_monthly` 3.2M to 19.4M). Bounds cover the full population with headroom:
 `net_cash` -50T to 100T; `working_capital` +-20T; `burn_rate_monthly` 0 to 2.5T.
 
